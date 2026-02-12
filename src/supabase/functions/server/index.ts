@@ -7,7 +7,6 @@ import { Hono } from 'npm:hono';
 import { cors } from 'npm:hono/cors';
 import { logger } from 'npm:hono/logger';
 import { getGlobalSupabaseClient } from './global-supabase.tsx';
-import * as kv from './kv_wrapper.tsx';
 import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
 import { getParticipantDashboard } from './participant-dashboard.tsx';
@@ -351,73 +350,58 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
   try {
     const token = c.req.param('token');
     const roundId = c.req.param('roundId');
-    
+
     console.log('🎯 CONFIRM ATTENDANCE REQUEST');
     console.log('Token:', token?.substring(0, 20) + '...');
     console.log('RoundId:', roundId);
-    
+
     // Try to parse body, but handle empty body gracefully
     let sessionId;
     try {
       const body = await c.req.json();
       sessionId = body.sessionId;
     } catch (parseError) {
-      // Body might be empty or invalid - try to get sessionId from query or URL
       console.log('⚠️ Could not parse JSON body:', parseError);
       sessionId = c.req.query('sessionId');
     }
-    
+
     console.log('SessionId:', sessionId);
-    
+
     if (!sessionId) {
       console.log('❌ Missing sessionId');
       return c.json({ error: 'sessionId is required' }, 400);
     }
-    
+
     debugLog('🎯 CONFIRM ATTENDANCE', { token, roundId, sessionId });
-    
-    const participant = await kv.get(`participant_token:${token}`);
+
+    const participant = await db.getParticipantByToken(token);
     console.log('📦 Participant lookup:', participant ? 'FOUND' : 'NOT FOUND');
     if (!participant) {
       console.log('❌ Invalid token');
       return c.json({ error: 'Invalid token' }, 404);
     }
-    
-    const registrations = await kv.get(`participant_registrations:${participant.participantId}`) || [];
-    console.log('📦 Registrations count:', registrations.length);
-    
-    const regIndex = registrations.findIndex((r: any) => 
-      r.sessionId === sessionId && r.roundId === roundId
-    );
-    
-    console.log('🔍 Registration index:', regIndex);
-    
-    if (regIndex === -1) {
+
+    // Get specific registration
+    const registration = await db.getRegistration(participant.participantId, sessionId, roundId);
+
+    if (!registration) {
       console.log('❌ Registration not found');
-      console.log('Looking for:', { sessionId, roundId });
-      console.log('Available registrations:', registrations.map((r: any) => ({ 
-        sessionId: r.sessionId, 
-        roundId: r.roundId,
-        status: r.status 
-      })));
       return c.json({ error: 'Registration not found' }, 404);
     }
-    
-    const registration = registrations[regIndex];
+
     console.log('📋 Current registration status:', registration.status);
-    
-    // ✅ VERIFICATION: Allow confirmation if status is 'registered', 'confirmed', 'matched', or 'completed'
-    // This makes the operation idempotent and handles race conditions with auto-matching
+
+    // Allow confirmation if status is 'registered', 'confirmed', 'matched', or 'completed'
     const allowedStatuses = ['registered', 'confirmed', 'matched', 'completed', 'unconfirmed'];
     if (!allowedStatuses.includes(registration.status)) {
       console.log('❌ Cannot confirm - status not allowed');
-      return c.json({ 
+      return c.json({
         error: 'Cannot confirm',
         message: `Round status is "${registration.status}". Cannot confirm this round.`,
         currentStatus: registration.status
       }, 400);
     }
-    
+
     // If already confirmed or later status, just return success (idempotent)
     if (['confirmed', 'matched', 'completed'].includes(registration.status)) {
       console.log(`✅ Round already in status "${registration.status}", returning success (idempotent)`);
@@ -428,50 +412,27 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
         message: 'Attendance already confirmed'
       });
     }
-    
+
     const now = new Date().toISOString();
-    registrations[regIndex] = {
-      ...registration,
-      status: 'confirmed',
+
+    await db.updateRegistrationStatus(participant.participantId, sessionId, roundId, 'confirmed', {
       confirmedAt: now,
-      lastStatusUpdate: now
-    };
-    
-    await kv.set(`participant_registrations:${participant.participantId}`, registrations);
-    console.log('✅ Updated participant_registrations');
-    
-    const roundParticipantId = registration.roundParticipantId || participant.participantId;
-    const participantKey = `participant:${sessionId}:${roundId}:${roundParticipantId}`;
-    console.log('🔑 Participant key:', participantKey);
-    
-    const participantEntry = await kv.get(participantKey);
-    console.log('📦 Participant entry:', participantEntry ? 'FOUND' : 'NOT FOUND');
-    
-    if (participantEntry) {
-      await kv.set(participantKey, {
-        ...participantEntry,
-        status: 'confirmed',
-        confirmedAt: now
-      });
-      console.log('✅ Updated participant entry');
-    }
-    
+    });
+
     console.log(`✅ Confirmed attendance for round ${roundId}`);
     debugLog(`✅ Confirmed attendance for round ${roundId}`);
-    
+
     return c.json({
       success: true,
       status: 'confirmed',
       confirmedAt: now
     });
-    
+
   } catch (error) {
     console.error('💥 ERROR in confirm attendance:');
-    console.error('Error type:', typeof error);
     console.error('Error message:', error instanceof Error ? error.message : String(error));
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     errorLog('Error confirming attendance:', error);
-    return c.json({ 
+    return c.json({
       error: 'Failed to confirm attendance',
       details: error instanceof Error ? error.message : String(error)
     }, 500);
@@ -488,38 +449,31 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
     const participantId = c.req.param('participantId');
     const body = await c.req.json();
     const { sessionId } = body;
-    
+
     debugLog('🎯 CONFIRM ATTENDANCE (via participantId)', { participantId, roundId, sessionId });
-    
+
     if (!sessionId) {
       return c.json({ error: 'sessionId is required' }, 400);
     }
-    
-    // Get participant registrations
-    const registrations = await kv.get(`participant_registrations:${participantId}`) || [];
-    
-    const regIndex = registrations.findIndex((r: any) => 
-      r.sessionId === sessionId && r.roundId === roundId
-    );
-    
-    if (regIndex === -1) {
+
+    // Get specific registration
+    const registration = await db.getRegistration(participantId, sessionId, roundId);
+
+    if (!registration) {
       return c.json({ error: 'Registration not found' }, 404);
     }
-    
-    const registration = registrations[regIndex];
-    
-    // ✅ VERIFICATION: Allow confirmation if status is 'registered', 'confirmed', 'matched', or 'completed'
-    // This makes the operation idempotent and handles race conditions with auto-matching
+
+    // Allow confirmation if status is 'registered', 'confirmed', 'matched', or 'completed'
     const allowedStatuses = ['registered', 'confirmed', 'matched', 'completed', 'unconfirmed'];
     if (!allowedStatuses.includes(registration.status)) {
       debugLog(`⚠️ Cannot confirm: current status is "${registration.status}" (allowed: ${allowedStatuses.join(', ')})`);
-      return c.json({ 
+      return c.json({
         error: 'Cannot confirm',
         message: `Round status is "${registration.status}". Only "registered" rounds can be confirmed.`,
         currentStatus: registration.status
       }, 400);
     }
-    
+
     // If already confirmed or later status, just return success (idempotent)
     if (['confirmed', 'matched', 'completed'].includes(registration.status)) {
       debugLog(`✅ Round already in status "${registration.status}", returning success (idempotent)`);
@@ -530,44 +484,25 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
         message: 'Attendance already confirmed'
       });
     }
-    
-    // 🔥 CRITICAL: Set confirmedAt timestamp to mark this as user-initiated confirmation
+
     const now = new Date().toISOString();
-    registrations[regIndex] = {
-      ...registration,
-      status: 'confirmed',
+
+    await db.updateRegistrationStatus(participantId, sessionId, roundId, 'confirmed', {
       confirmedAt: now,
-      lastStatusUpdate: now
-    };
-    
-    await kv.set(`participant_registrations:${participantId}`, registrations);
-    
-    // Update participant entry in round
-    const roundParticipantId = registration.roundParticipantId || participantId;
-    const participantKey = `participant:${sessionId}:${roundId}:${roundParticipantId}`;
-    const participantEntry = await kv.get(participantKey);
-    
-    if (participantEntry) {
-      await kv.set(participantKey, {
-        ...participantEntry,
-        status: 'confirmed',
-        confirmedAt: now
-      });
-      debugLog(`✅ Updated participant entry: ${participantKey}`);
-    }
-    
+    });
+
     debugLog(`✅✅✅ VERIFICATION PASSED: Participant confirmed attendance for round ${roundId}`);
-    
+
     return c.json({
       success: true,
       status: 'confirmed',
       confirmedAt: now,
       message: 'Attendance confirmed successfully'
     });
-    
+
   } catch (error) {
     errorLog('Error confirming attendance (via participantId):', error);
-    return c.json({ 
+    return c.json({
       error: 'Failed to confirm attendance',
       details: error instanceof Error ? error.message : String(error)
     }, 500);

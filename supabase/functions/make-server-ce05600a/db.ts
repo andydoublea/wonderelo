@@ -659,6 +659,7 @@ export async function updateRegistrationStatus(
     if (extra.unconfirmedReason !== undefined) dbUpdates.unconfirmed_reason = extra.unconfirmedReason;
     if (extra.team !== undefined) dbUpdates.team = extra.team;
     if (extra.topics !== undefined) dbUpdates.topics = extra.topics;
+    if (extra.notificationsEnabled !== undefined) dbUpdates.notifications_enabled = extra.notificationsEnabled;
   }
 
   const { error } = await db()
