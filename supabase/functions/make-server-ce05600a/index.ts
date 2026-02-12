@@ -14,6 +14,7 @@ import { getCurrentTime } from './time-helpers.tsx';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
 import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail } from './email.tsx';
+import { sendSms, renderSmsTemplate } from './sms.tsx';
 
 const app = new Hono();
 
@@ -660,9 +661,9 @@ app.post('/make-server-ce05600a/participant/send-magic-link', async (c) => {
     // Extract the host for building the frontend URL
     // Magic link goes to the participant dashboard
     const baseUrl = userSlug
-      ? `https://oliwonder.com/${userSlug}`  // Production
+      ? `https://wonderelo.com/${userSlug}`  // Production
       : supabaseUrl;
-    const magicLink = `https://oliwonder.com/p/${token}`;
+    const magicLink = `https://wonderelo.com/p/${token}`;
 
     // Get event name from organizer profile if userSlug is provided
     let eventName = '';
@@ -1014,6 +1015,211 @@ app.get('/make-server-ce05600a/admin/sessions', async (c) => {
   } catch (error) {
     errorLog('Error fetching admin sessions:', error);
     return c.json({ error: 'Failed to fetch sessions' }, 500);
+  }
+});
+
+// ============================================
+// SMS NOTIFICATIONS
+// ============================================
+
+// Send SMS to a single participant
+app.post('/make-server-ce05600a/send-sms', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { to, message, templateKey, variables } = body;
+
+    if (!to) {
+      return c.json({ error: 'Phone number (to) is required' }, 400);
+    }
+
+    let smsBody = message;
+
+    // If templateKey is provided, load template and render it
+    if (templateKey && !message) {
+      const texts = await kv.get('admin:notification_texts');
+      const template = texts?.[templateKey];
+      if (!template) {
+        return c.json({ error: `Template "${templateKey}" not found` }, 404);
+      }
+      smsBody = renderSmsTemplate(template, variables || {});
+    }
+
+    if (!smsBody) {
+      return c.json({ error: 'Message or templateKey is required' }, 400);
+    }
+
+    console.log('📱 SEND SMS');
+    console.log('  To:', to);
+    console.log('  Body:', smsBody.substring(0, 80) + (smsBody.length > 80 ? '...' : ''));
+
+    const result = await sendSms({ to, body: smsBody });
+
+    if (result.success) {
+      return c.json({ success: true, message: 'SMS sent', sid: result.sid });
+    } else if (result.devMode) {
+      return c.json({ success: true, message: 'SMS skipped (no Twilio credentials)', devMode: true });
+    } else {
+      return c.json({ success: false, error: result.error }, 500);
+    }
+
+  } catch (error) {
+    console.error('💥 ERROR in send-sms:', error);
+    return c.json({
+      error: 'Failed to send SMS',
+      details: error instanceof Error ? error.message : String(error)
+    }, 500);
+  }
+});
+
+// Send SMS to multiple participants (bulk)
+app.post('/make-server-ce05600a/send-bulk-sms', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { recipients, templateKey, variables: globalVariables } = body;
+
+    // recipients: Array<{ phone: string, variables?: Record<string, string> }>
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      return c.json({ error: 'recipients array is required' }, 400);
+    }
+
+    // Load template
+    const texts = await kv.get('admin:notification_texts');
+    const template = texts?.[templateKey];
+    if (!templateKey || !template) {
+      return c.json({ error: `Template "${templateKey}" not found` }, 404);
+    }
+
+    console.log(`📱 BULK SMS: Sending to ${recipients.length} recipients using template "${templateKey}"`);
+
+    const results: Array<{ phone: string; success: boolean; sid?: string; error?: string }> = [];
+
+    for (const recipient of recipients) {
+      if (!recipient.phone) {
+        results.push({ phone: '', success: false, error: 'No phone number' });
+        continue;
+      }
+
+      // Merge global variables with per-recipient variables
+      const mergedVariables = { ...globalVariables, ...recipient.variables };
+      const smsBody = renderSmsTemplate(template, mergedVariables);
+
+      const result = await sendSms({ to: recipient.phone, body: smsBody });
+      results.push({
+        phone: recipient.phone,
+        success: result.success,
+        sid: result.sid,
+        error: result.error,
+      });
+    }
+
+    const sent = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    console.log(`📱 BULK SMS DONE: ${sent} sent, ${failed} failed`);
+
+    return c.json({
+      success: true,
+      total: recipients.length,
+      sent,
+      failed,
+      results,
+    });
+
+  } catch (error) {
+    console.error('💥 ERROR in send-bulk-sms:', error);
+    return c.json({
+      error: 'Failed to send bulk SMS',
+      details: error instanceof Error ? error.message : String(error)
+    }, 500);
+  }
+});
+
+// Admin: Get notification texts (SMS & email templates)
+app.get('/make-server-ce05600a/admin/notification-texts', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const texts = await kv.get('admin:notification_texts');
+
+    return c.json({
+      success: true,
+      texts: texts || {}
+    });
+
+  } catch (error) {
+    errorLog('Error fetching notification texts:', error);
+    return c.json({ error: 'Failed to fetch notification texts' }, 500);
+  }
+});
+
+// Admin: Update notification texts (SMS & email templates)
+app.put('/make-server-ce05600a/admin/notification-texts', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { texts } = body;
+
+    if (!texts) {
+      return c.json({ error: 'texts object is required' }, 400);
+    }
+
+    await kv.set('admin:notification_texts', texts);
+
+    debugLog('✅ Notification texts updated by user:', user.id);
+
+    return c.json({
+      success: true,
+      texts
+    });
+
+  } catch (error) {
+    errorLog('Error updating notification texts:', error);
+    return c.json({ error: 'Failed to update notification texts' }, 500);
   }
 });
 

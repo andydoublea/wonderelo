@@ -9,6 +9,7 @@ import { VersionBadge } from './components/VersionBadge';
 import { TimeProvider } from './contexts/TimeContext';
 import { TimeControl } from './components/TimeControl';
 import { QueryProvider } from './components/QueryProvider';
+import { PasswordGate } from './components/PasswordGate';
 import type { NetworkingSession, SignUpData, ServiceType } from './App';
 import { debugLog, errorLog, infoLog } from './utils/debug';
 import { projectId } from './utils/supabase/info';
@@ -1233,9 +1234,11 @@ function BootstrapAdminRoute() {
 
 export default function AppRouter() {
   return (
-    <BrowserRouter>
-      <AppProviderWithRouter />
-    </BrowserRouter>
+    <PasswordGate>
+      <BrowserRouter>
+        <AppProviderWithRouter />
+      </BrowserRouter>
+    </PasswordGate>
   );
 }
 
