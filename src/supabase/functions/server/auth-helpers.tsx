@@ -4,7 +4,7 @@
  */
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import * as kv from './kv_wrapper.tsx';
+import { getOrganizerById } from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
 // IMPORTANT: Create client inline to ensure env vars are read at runtime, not import time
 function getClient() {
@@ -32,7 +32,7 @@ export async function requireAdmin(c: any, next: any) {
     }
     
     // Check if user is admin
-    const userProfile = await kv.get(`user_profile:${user.id}`);
+    const userProfile = await getOrganizerById(user.id);
     
     if (!userProfile || userProfile.role !== 'admin') {
       return c.json({ error: 'Admin access required' }, 403);

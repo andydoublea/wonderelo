@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'npm:hono';
-import * as kv from './kv_wrapper.tsx';
+import * as dbModule from './db.ts';
 import { getSupabase, getAuthenticatedUser } from './auth-helpers.tsx';
 import { errorLog, debugLog } from './debug.tsx';
 
@@ -14,9 +14,9 @@ export function registerAuthRoutes(app: Hono) {
   app.get('/make-server-ce05600a/check-slug/:slug', async (c) => {
     try {
       const slug = c.req.param('slug');
-      const existingMapping = await kv.get(`slug_mapping:${slug}`);
-      
-      return c.json({ available: !existingMapping });
+      const available = await dbModule.isSlugAvailable(slug);
+
+      return c.json({ available });
     } catch (error) {
       errorLog('Error checking slug availability:', error);
       return c.json({ error: 'Failed to check slug availability' }, 500);
@@ -62,18 +62,13 @@ export function registerAuthRoutes(app: Hono) {
       
       const userId = authData.user.id;
       
-      // Store user profile
-      await kv.set(`user_profile:${userId}`, {
+      // Store user profile (slug uniqueness handled by DB constraint)
+      await dbModule.createOrganizerProfile({
         userId,
         email,
         organizerName,
         urlSlug,
-        role: 'organizer',
-        createdAt: new Date().toISOString()
       });
-      
-      // Store slug mapping
-      await kv.set(`slug_mapping:${urlSlug}`, userId);
       
       // Sign in to get access token
       const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
@@ -118,7 +113,7 @@ export function registerAuthRoutes(app: Hono) {
       }
       
       // Get user profile
-      const userProfile = await kv.get(`user_profile:${data.user.id}`);
+      const userProfile = await dbModule.getOrganizerById(data.user.id);
       
       return c.json({
         success: true,
@@ -141,13 +136,13 @@ export function registerAuthRoutes(app: Hono) {
     }
     
     try {
-      const userProfile = await kv.get(`user_profile:${authResult.user.id}`);
-      
+      const userProfile = await dbModule.getOrganizerById(authResult.user.id);
+
       if (!userProfile) {
         errorLog(`Profile not found for user: ${authResult.user.id}`);
         return c.json({ error: 'Profile not found' }, 404);
       }
-      
+
       return c.json({
         success: true,
         profile: userProfile
@@ -173,41 +168,30 @@ export function registerAuthRoutes(app: Hono) {
       const body = await c.req.json();
       const { organizerName, urlSlug, phone, website, description, profileImageUrl } = body;
       
-      const currentProfile = await kv.get(`user_profile:${authResult.user.id}`);
-      
+      const currentProfile = await dbModule.getOrganizerById(authResult.user.id);
+
       if (!currentProfile) {
         return c.json({ error: 'Profile not found' }, 404);
       }
-      
-      // If URL slug changed, update mapping
+
+      // If URL slug changed, check availability
       if (urlSlug && urlSlug !== currentProfile.urlSlug) {
-        // Check if new slug is available
-        const existingMapping = await kv.get(`slug_mapping:${urlSlug}`);
-        if (existingMapping && existingMapping !== authResult.user.id) {
+        const slugAvailable = await dbModule.isSlugAvailable(urlSlug, authResult.user.id);
+        if (!slugAvailable) {
           return c.json({ error: 'URL slug already taken' }, 400);
         }
-        
-        // Delete old mapping
-        await kv.del(`slug_mapping:${currentProfile.urlSlug}`);
-        
-        // Create new mapping
-        await kv.set(`slug_mapping:${urlSlug}`, authResult.user.id);
       }
-      
-      // Update profile
-      const updatedProfile = {
-        ...currentProfile,
+
+      // Update profile (slug uniqueness handled by DB constraint)
+      const updatedProfile = await dbModule.updateOrganizerProfile(authResult.user.id, {
         organizerName: organizerName || currentProfile.organizerName,
         urlSlug: urlSlug || currentProfile.urlSlug,
         phone: phone !== undefined ? phone : currentProfile.phone,
         website: website !== undefined ? website : currentProfile.website,
         description: description !== undefined ? description : currentProfile.description,
         profileImageUrl: profileImageUrl !== undefined ? profileImageUrl : currentProfile.profileImageUrl,
-        updatedAt: new Date().toISOString()
-      };
-      
-      await kv.set(`user_profile:${authResult.user.id}`, updatedProfile);
-      
+      });
+
       return c.json({
         success: true,
         profile: updatedProfile
