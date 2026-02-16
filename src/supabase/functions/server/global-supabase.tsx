@@ -19,8 +19,11 @@ export function getGlobalSupabaseClient() {
     
     console.log('🔧 No cached client, creating new one...');
     
-    // Get URL from environment
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || "https://tpsgnnrkwgvgnsktuicr.supabase.co";
+    // Get URL from environment — NO hardcoded fallback
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    if (!SUPABASE_URL) {
+      throw new Error('SUPABASE_URL environment variable is not set');
+    }
     console.log('📍 URL:', SUPABASE_URL);
     
     // Try to get env var

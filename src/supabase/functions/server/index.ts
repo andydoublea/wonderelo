@@ -624,14 +624,12 @@ app.post('/make-server-ce05600a/participant/send-magic-link', async (c) => {
     const { participantId, token } = participant;
     const firstName = participant.firstName || '';
 
-    // Build magic link URL
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    // Extract the host for building the frontend URL
-    // Magic link goes to the participant dashboard
+    // Build magic link URL using APP_URL env var
+    const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
     const baseUrl = userSlug
-      ? `https://wonderelo.com/${userSlug}`  // Production
-      : supabaseUrl;
-    const magicLink = `https://wonderelo.com/p/${token}`;
+      ? `${appUrl}/${userSlug}`
+      : appUrl;
+    const magicLink = `${appUrl}/p/${token}`;
 
     // Get event name from organizer profile if userSlug is provided
     let eventName = '';
