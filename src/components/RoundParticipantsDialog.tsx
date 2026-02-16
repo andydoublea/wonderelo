@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Users, MapPin, Check, X, Clock, UserCheck, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { projectId } from '../utils/supabase/info';
+import { errorLog } from '../utils/debug';
 
 interface RoundParticipant {
   id: string;
@@ -79,7 +80,7 @@ export function RoundParticipantsDialog({
         toast.error(errorData.error || 'Failed to fetch participants');
       }
     } catch (err) {
-      console.error('Error fetching round participants:', err);
+      errorLog('Error fetching round participants:', err);
       setError('Network error while fetching participants');
       toast.error('Network error while fetching participants');
     } finally {

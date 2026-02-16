@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { ArrowLeft, Search, ChevronDown, ChevronRight, ExternalLink, Users, Calendar, Clock } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { ArrowLeft, Search, ChevronDown, ChevronRight, ExternalLink, Users, Calendar, Clock, Loader2 } from 'lucide-react';
 import { OrganizerStatusBadge } from '../utils/statusBadge';
-
-const debugLog = (...args: any[]) => {
-  console.log('[AdminSessions]', ...args);
-};
+import { useAdminSessions } from '../hooks/useAdminQueries';
 
 interface SessionListItem {
   sessionId: string;
@@ -26,76 +21,30 @@ interface SessionListItem {
   organizerUrlSlug: string;
 }
 
-interface SessionDetail {
-  id: string;
-  name: string;
-  status: string;
-  date: string;
-  endTime?: string;
-  registrationStart?: string;
-  organizer: {
-    userId: string;
-    email: string;
-    organizerName: string;
-    urlSlug: string;
-  };
-  rounds: Array<{
-    id: string;
-    name: string;
-    date?: string;
-    startTime: string;
-    duration: number;
-    participants: Array<{
-      participantId: string;
-      email: string;
-      name: string;
-      phone: string;
-      status: string;
-      matchedWith?: Array<{
-        id: string;
-        name: string;
-        email: string;
-        status: string;
-      }>;
-    }>;
-    participantCount: number;
-  }>;
-}
-
 interface AdminSessionsProps {
   onBack: () => void;
   onNavigateToOrganizer?: (organizerId: string) => void;
-  onNavigateToParticipant?: (participantEmail: string) => void;
   onNavigateToParticipants?: () => void;
 }
 
-export function AdminSessions({ onBack, onNavigateToOrganizer, onNavigateToParticipant, onNavigateToParticipants }: AdminSessionsProps) {
-  const [sessions, setSessions] = useState<SessionListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function AdminSessions({ onBack, onNavigateToOrganizer, onNavigateToParticipants }: AdminSessionsProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [showDebug, setShowDebug] = useState(false);
-  const [kvKeysDebug, setKvKeysDebug] = useState<any>(null);
-  const [loadingKvKeys, setLoadingKvKeys] = useState(false);
 
-  useEffect(() => {
-    fetchSessions();
-  }, []);
+  // React Query hook for sessions (gets token automatically)
+  const { data: sessions = [], isLoading: loading, error: queryError, isFetching: isRefetching } = useAdminSessions();
+  const error = queryError?.message || null;
 
   // Auto-expand session from sessionStorage
   useEffect(() => {
     const targetSessionId = sessionStorage.getItem('admin_sessions_filter');
-    
+
     if (targetSessionId && sessions.length > 0) {
-      const targetSession = sessions.find(s => s.sessionId === targetSessionId);
-      
+      const targetSession = sessions.find((s: any) => s.sessionId === targetSessionId);
+
       if (targetSession) {
-        debugLog('Auto-expanding session:', targetSessionId);
         setExpandedSessionId(targetSessionId);
-        // NO FETCH - we already have all the data
-        
+
         // Scroll to the session after a short delay
         setTimeout(() => {
           const element = document.getElementById(`session-row-${targetSessionId}`);
@@ -103,98 +52,13 @@ export function AdminSessions({ onBack, onNavigateToOrganizer, onNavigateToParti
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 300);
-        
+
         // Clear the filter from sessionStorage
         sessionStorage.removeItem('admin_sessions_filter');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions]);
-
-  const fetchSessions = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Get fresh access token
-      const { supabase } = await import('../utils/supabase/client');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.error('Failed to get session:', sessionError);
-        setError('Authentication failed. Please refresh the page.');
-        setDebugInfo({ error: 'Authentication failed', sessionError });
-        return;
-      }
-      
-      debugLog('Fetching sessions with token:', session.access_token.substring(0, 20) + '...');
-      
-      const startTime = Date.now();
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/sessions`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const fetchTime = Date.now() - startTime;
-      debugLog('Response status:', response.status);
-
-      if (response.ok) {
-        const result = await response.json();
-        debugLog('Fetched sessions:', result.sessions?.length || 0);
-        debugLog('Full result:', result);
-        
-        // Transform sessions to match SessionListItem interface
-        const transformedSessions = (result.sessions || []).map((s: any) => ({
-          sessionId: s.id,
-          sessionName: s.name,
-          status: s.status,
-          date: s.date,
-          endTime: s.endTime,
-          registrationStart: s.registrationStart,
-          rounds: s.rounds || [],
-          organizerId: s.userId,
-          organizerName: 'Loading...', // Backend should include this
-          organizerEmail: '',
-          organizerUrlSlug: ''
-        }));
-        
-        setSessions(transformedSessions);
-        setDebugInfo({
-          success: true,
-          fetchTime: `${fetchTime}ms`,
-          status: response.status,
-          totalSessions: result.totalSessions,
-          sessionsCount: transformedSessions.length,
-          sessions: transformedSessions,
-          rawResponse: result
-        });
-      } else {
-        const error = await response.json();
-        console.error('Failed to fetch sessions:', error);
-        setError(`Failed to load sessions: ${error.error || error.message || 'Unknown error'}`);
-        setDebugInfo({
-          success: false,
-          fetchTime: `${fetchTime}ms`,
-          status: response.status,
-          error: error
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-      setError(`Error: ${error instanceof Error ? error.message : String(error)}`);
-      setDebugInfo({
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSessionClick = (sessionId: string) => {
     if (expandedSessionId === sessionId) {
@@ -210,49 +74,6 @@ export function AdminSessions({ onBack, onNavigateToOrganizer, onNavigateToParti
       // Store current view state
       sessionStorage.setItem('admin_return_to_sessions', 'true');
       onNavigateToOrganizer(organizerId);
-    }
-  };
-
-  const handleNavigateToParticipant = (participantEmail: string) => {
-    if (onNavigateToParticipant) {
-      // Store current view state
-      sessionStorage.setItem('admin_return_to_sessions', 'true');
-      onNavigateToParticipant(participantEmail);
-    }
-  };
-
-  const fetchKvKeys = async () => {
-    setLoadingKvKeys(true);
-    try {
-      const { supabase } = await import('../utils/supabase/client');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.error('Failed to get session:', sessionError);
-        return;
-      }
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/kv-keys`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setKvKeysDebug(result);
-      } else {
-        const error = await response.json();
-        console.error('Failed to fetch KV keys:', error);
-      }
-    } catch (error) {
-      console.error('Error fetching KV keys:', error);
-    } finally {
-      setLoadingKvKeys(false);
     }
   };
 
@@ -272,7 +93,10 @@ export function AdminSessions({ onBack, onNavigateToOrganizer, onNavigateToParti
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Session management</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle>Session management</CardTitle>
+                {isRefetching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
               <CardDescription>
                 All sessions across all organizers
               </CardDescription>
@@ -304,44 +128,6 @@ export function AdminSessions({ onBack, onNavigateToOrganizer, onNavigateToParti
             </div>
           </div>
 
-          {/* Debug Panel */}
-          {debugInfo && (
-            <div className="mb-4 space-y-2">
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDebug(!showDebug)}
-                >
-                  {showDebug ? 'Hide' : 'Show'} API response
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchKvKeys}
-                  disabled={loadingKvKeys}
-                >
-                  {loadingKvKeys ? 'Loading...' : 'Show database keys'}
-                </Button>
-              </div>
-              {showDebug && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-2">
-                  <div className="font-semibold text-sm">Backend Response Debug:</div>
-                  <pre className="text-xs overflow-auto max-h-96 bg-white p-3 rounded border">
-                    {JSON.stringify(debugInfo, null, 2)}
-                  </pre>
-                </div>
-              )}
-              {kvKeysDebug && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                  <div className="font-semibold text-sm">Database Keys Debug:</div>
-                  <pre className="text-xs overflow-auto max-h-96 bg-white p-3 rounded border">
-                    {JSON.stringify(kvKeysDebug, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Sessions Table */}
           {loading ? (

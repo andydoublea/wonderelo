@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { ArrowLeft, Clock, Settings as SettingsIcon, Save, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { ArrowLeft, Clock, Settings as SettingsIcon, Save, RefreshCw, Loader2 } from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
 import { TimelineVisualization } from './TimelineVisualization';
+import { useAdminParameters, useSaveParameters } from '../hooks/useAdminQueries';
 
 interface AdminParametersProps {
   accessToken: string;
@@ -61,93 +61,57 @@ const DEFAULT_PARAMETERS: SystemParameters = {
 };
 
 export function AdminParameters({ accessToken, onBack }: AdminParametersProps) {
-  const [parameters, setParameters] = useState<SystemParameters>(DEFAULT_PARAMETERS);
-  const [originalParameters, setOriginalParameters] = useState<SystemParameters>(DEFAULT_PARAMETERS);
-  const [baselineParameters, setBaselineParameters] = useState<SystemParameters | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  // React Query hooks
+  const { data: serverParameters, isLoading: isFetching, isFetching: isRefetching } = useAdminParameters(accessToken);
+  const saveMutation = useSaveParameters(accessToken);
 
-  useEffect(() => {
-    fetchParameters();
-    // Load baseline from localStorage
+  // Merge server data with defaults
+  const loadedParams: SystemParameters = serverParameters
+    ? { ...DEFAULT_PARAMETERS, ...serverParameters }
+    : DEFAULT_PARAMETERS;
+
+  const [localParameters, setLocalParameters] = useState<SystemParameters | null>(null);
+  const [baselineParameters, setBaselineParameters] = useState<SystemParameters | null>(() => {
     const savedBaseline = localStorage.getItem('admin-parameters-baseline');
     if (savedBaseline) {
       try {
-        setBaselineParameters(JSON.parse(savedBaseline));
+        return JSON.parse(savedBaseline);
       } catch (e) {
-        console.error('Failed to parse baseline parameters', e);
+        return null;
       }
     }
-  }, []);
+    return null;
+  });
 
-  const fetchParameters = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/parameters`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
+  // Use local edits if present, otherwise server/default data
+  const parameters = localParameters ?? loadedParams;
+  const originalParameters = loadedParams;
 
-      if (response.ok) {
-        const data = await response.json();
-        // Merge loaded params with defaults to ensure all fields exist
-        const loadedParams = { ...DEFAULT_PARAMETERS, ...(data.parameters || {}) };
-        setParameters(loadedParams);
-        setOriginalParameters(loadedParams);
-      } else {
-        toast.error('Failed to load parameters');
-      }
-    } catch (error) {
-      console.error('Error fetching parameters:', error);
-      toast.error('Failed to load parameters');
-    } finally {
-      setIsLoading(false);
+  const setParameters = (value: SystemParameters | ((prev: SystemParameters) => SystemParameters)) => {
+    if (typeof value === 'function') {
+      setLocalParameters(prev => value(prev ?? parameters));
+    } else {
+      setLocalParameters(value);
     }
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/parameters`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ parameters }),
-        }
-      );
-
-      if (response.ok) {
-        setOriginalParameters(parameters); // Update original after successful save
-        toast.success('Parameters saved and applied immediately');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to save parameters');
-      }
-    } catch (error) {
-      console.error('Error saving parameters:', error);
-      toast.error('Failed to save parameters');
-    } finally {
-      setIsSaving(false);
-    }
+    saveMutation.mutate(parameters, {
+      onSuccess: () => {
+        setLocalParameters(null); // Reset local edits
+      },
+    });
   };
 
   const handleReset = () => {
     if (confirm('Are you sure you want to reset all parameters to defaults?')) {
-      setParameters(DEFAULT_PARAMETERS);
+      setLocalParameters(DEFAULT_PARAMETERS);
       toast.info('Parameters reset to defaults (not saved yet)');
     }
   };
 
   const handleRevert = () => {
-    setParameters(originalParameters);
+    setLocalParameters(null);
     toast.info('Reverted to last saved values');
   };
 
@@ -196,16 +160,7 @@ export function AdminParameters({ accessToken, onBack }: AdminParametersProps) {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading parameters...</p>
-        </div>
-      </div>
-    );
-  }
+  const isSaving = saveMutation.isPending;
 
   return (
     <div className="min-h-screen bg-background">
@@ -219,7 +174,12 @@ export function AdminParameters({ accessToken, onBack }: AdminParametersProps) {
                 Back
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">Parameters</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold">Parameters</h1>
+                  {(isFetching || isRefetching) && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">Configure system-wide settings and defaults</p>
               </div>
             </div>

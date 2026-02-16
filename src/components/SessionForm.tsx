@@ -753,7 +753,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           const roundDateString = roundDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
           rounds.push({
-            id: `round-${i + 1}`,
+            id: `round-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${i + 1}`,
             name: roundStartTime,
             startTime: roundStartTime,
             date: roundDateString,
@@ -791,7 +791,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       const roundDateString = roundDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
       rounds.push({
-        id: `round-${i + 1}`,
+        id: `round-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${i + 1}`,
         name: roundStartTime,
         startTime: roundStartTime,
         date: roundDateString,

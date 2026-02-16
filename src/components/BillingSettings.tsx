@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/
 import { Badge } from './ui/badge';
 import { Slider } from './ui/slider';
 import { Check, Loader2, CreditCard, Calendar, AlertCircle, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { projectId } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
 import { PRICING_TIERS, CAPACITY_OPTIONS, formatPrice, getTierForCapacity, type CapacityTier } from '../config/pricing';

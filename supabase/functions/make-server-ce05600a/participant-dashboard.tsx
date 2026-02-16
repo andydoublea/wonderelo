@@ -174,7 +174,7 @@ function updateSessionStatusBasedOnRounds(session: any, now: Date = new Date()):
   }
 }
 
-// OPTIMIZED: Get everything for participant dashboard using SQL JOINs instead of N+1 KV calls
+// OPTIMIZED: Get everything for participant dashboard using SQL JOINs
 export async function getParticipantDashboard(token: string, getCurrentTime: (c: any) => Date, c: any) {
   try {
     console.log('🟢 getParticipantDashboard called with token:', token?.substring(0, 20) + '...');

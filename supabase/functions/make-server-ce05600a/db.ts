@@ -1,6 +1,6 @@
 /**
  * Database Access Layer
- * Replaces kv_wrapper.tsx with proper PostgreSQL table queries
+ * PostgreSQL database access layer
  * Uses Supabase PostgREST client via getGlobalSupabaseClient()
  */
 
@@ -279,7 +279,10 @@ export async function createSession(session: any) {
   // Insert rounds if provided
   if (rounds && rounds.length > 0) {
     for (let i = 0; i < rounds.length; i++) {
-      await createRound({ ...rounds[i], sessionId: sessionData.id, sortOrder: i });
+      const roundId = rounds[i].id && rounds[i].id.startsWith('round-') && rounds[i].id.length > 10
+        ? rounds[i].id
+        : `round-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${i}`;
+      await createRound({ ...rounds[i], id: roundId, sessionId: sessionData.id, sortOrder: i });
     }
   }
 }
@@ -788,6 +791,48 @@ export async function getMatchingLock(sessionId: string, roundId: string) {
   } : null;
 }
 
+/**
+ * Atomically try to acquire matching lock. Returns true if acquired, false if already exists.
+ * Uses INSERT with ON CONFLICT to prevent race conditions.
+ */
+export async function tryAcquireMatchingLock(sessionId: string, roundId: string): Promise<boolean> {
+  const { error } = await db()
+    .from('matching_locks')
+    .insert({
+      session_id: sessionId,
+      round_id: roundId,
+      completed_at: new Date().toISOString(),
+      match_count: 0,
+      unmatched_count: 0,
+      solo_participant: false,
+    });
+  // If insert fails due to unique constraint (23505), lock already exists
+  if (error) {
+    if (error.code === '23505') return false; // duplicate key = already locked
+    throw error;
+  }
+  return true;
+}
+
+export async function updateMatchingLock(sessionId: string, roundId: string, update: {
+  matchCount: number;
+  unmatchedCount: number;
+  soloParticipant?: boolean;
+}) {
+  const { error } = await db()
+    .from('matching_locks')
+    .update({
+      completed_at: new Date().toISOString(),
+      match_count: update.matchCount,
+      unmatched_count: update.unmatchedCount,
+      solo_participant: update.soloParticipant || false,
+    })
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/** @deprecated Use tryAcquireMatchingLock + updateMatchingLock instead */
 export async function setMatchingLock(lock: {
   sessionId: string;
   roundId: string;
@@ -835,8 +880,151 @@ export async function setContactSharing(matchId: string, participantId: string, 
   if (error) throw error;
 }
 
+export async function getAllContactSharingForMatch(matchId: string) {
+  const { data, error } = await db()
+    .from('contact_sharing')
+    .select('participant_id, preferences')
+    .eq('match_id', matchId);
+  if (error) throw error;
+  return (data || []).map(row => ({
+    participantId: row.participant_id,
+    preferences: row.preferences,
+  }));
+}
+
 // ============================================================
 // DASHBOARD (OPTIMIZED JOINED QUERIES)
+// ============================================================
+// All Participants (admin)
+// ============================================================
+
+export async function getAllParticipants() {
+  const { data, error } = await db()
+    .from('participants')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapParticipantFromDb);
+}
+
+export async function getParticipantWithRegistrations(participantId: string) {
+  const participant = await getParticipantById(participantId);
+  if (!participant) return null;
+
+  const { data, error } = await db()
+    .from('registrations')
+    .select(`
+      *,
+      sessions!inner(id, name, date, status),
+      rounds!inner(id, name, date, start_time, duration, status),
+      organizer_profiles!inner(id, organizer_name, url_slug)
+    `)
+    .eq('participant_id', participantId)
+    .order('registered_at', { ascending: false });
+
+  if (error) throw error;
+
+  const registrations = (data || []).map(r => ({
+    ...mapRegistrationFromDb(r),
+    sessionName: r.sessions?.name,
+    sessionDate: r.sessions?.date,
+    sessionStatus: r.sessions?.status,
+    roundName: r.rounds?.name,
+    roundDate: r.rounds?.date,
+    startTime: r.rounds?.start_time,
+    duration: r.rounds?.duration,
+    roundStatus: r.rounds?.status,
+    organizerName: r.organizer_profiles?.organizer_name,
+    organizerUrlSlug: r.organizer_profiles?.url_slug,
+  }));
+
+  return { participant, registrations };
+}
+
+export async function deleteParticipant(participantId: string) {
+  // Delete registrations first (FK constraint)
+  const { error: regError } = await db()
+    .from('registrations')
+    .delete()
+    .eq('participant_id', participantId);
+  if (regError) throw regError;
+
+  // Delete contact sharing
+  const { error: csError } = await db()
+    .from('contact_sharing')
+    .delete()
+    .eq('participant_id', participantId);
+  if (csError) throw csError;
+
+  // Delete audit log
+  const { error: auditError } = await db()
+    .from('participant_audit_log')
+    .delete()
+    .eq('participant_id', participantId);
+  if (auditError) throw auditError;
+
+  // Delete participant
+  const { error } = await db()
+    .from('participants')
+    .delete()
+    .eq('id', participantId);
+  if (error) throw error;
+}
+
+export async function getParticipantAuditLog(participantId: string) {
+  const { data, error } = await db()
+    .from('participant_audit_log')
+    .select('*')
+    .eq('participant_id', participantId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(entry => ({
+    participantId: entry.participant_id,
+    action: entry.action,
+    details: entry.details,
+    timestamp: entry.created_at,
+  }));
+}
+
+// ============================================================
+// Gift Cards
+// ============================================================
+
+export async function getAllGiftCards() {
+  const cards = await getAdminSetting('gift_cards');
+  return cards || [];
+}
+
+export async function saveGiftCards(cards: any[]) {
+  await setAdminSetting('gift_cards', cards);
+}
+
+// ============================================================
+// Blog Posts
+// ============================================================
+
+export async function getAllBlogPosts() {
+  const posts = await getAdminSetting('blog_posts');
+  return posts || [];
+}
+
+export async function saveBlogPosts(posts: any[]) {
+  await setAdminSetting('blog_posts', posts);
+}
+
+// ============================================================
+// Default Round Rules
+// ============================================================
+
+export async function getDefaultRoundRules() {
+  const rules = await getAdminSetting('default_round_rules');
+  return rules || null;
+}
+
+export async function saveDefaultRoundRules(rules: any) {
+  await setAdminSetting('default_round_rules', rules);
+}
+
 // ============================================================
 
 export async function getParticipantDashboardData(token: string) {

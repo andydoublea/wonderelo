@@ -33,11 +33,11 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
 
     console.log(`📋 Round details: name="${round.name}", groupSize=${round.groupSize || 2}`);
 
-    // 2. Check if matching already happened (idempotency)
-    const existingLock = await db.getMatchingLock(sessionId, roundId);
+    // 2. Atomically acquire matching lock (prevents race conditions)
+    const lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
 
-    if (existingLock) {
-      console.log(`⚠️ Matching already completed for this round`);
+    if (!lockAcquired) {
+      console.log(`⚠️ Matching already completed or in progress for this round`);
       return { success: true, message: 'Matching already completed', matches: [] };
     }
 
@@ -51,7 +51,7 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
 
     if (confirmedRegs.length === 0) {
       console.log(`⚠️ No confirmed participants to match`);
-      await db.setMatchingLock({ sessionId, roundId, matchCount: 0, unmatchedCount: 0 });
+      await db.updateMatchingLock(sessionId, roundId, { matchCount: 0, unmatchedCount: 0 });
       return { success: true, message: 'No participants to match', matches: [] };
     }
 
@@ -71,7 +71,7 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
       await db.updateRegistrationStatus(solo.participantId, sessionId, roundId, 'no-match', {
         noMatchReason: 'You were the only participant who confirmed attendance',
       });
-      await db.setMatchingLock({ sessionId, roundId, matchCount: 0, unmatchedCount: 0, soloParticipant: true });
+      await db.updateMatchingLock(sessionId, roundId, { matchCount: 0, unmatchedCount: 0, soloParticipant: true });
       return { success: true, message: 'Solo participant marked as no-match', matches: [] };
     }
 
@@ -179,10 +179,8 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
 
     console.log(`❌ Unmatched participants: ${unmatchedRegs.length}`);
 
-    // 10. Set matching lock to prevent re-running
-    await db.setMatchingLock({
-      sessionId,
-      roundId,
+    // 10. Update matching lock with final counts
+    await db.updateMatchingLock(sessionId, roundId, {
       matchCount: matches.length,
       unmatchedCount: unmatchedRegs.length,
     });
@@ -254,7 +252,7 @@ async function runMatchingAlgorithm(participants: any[], groupSize: number, sess
 
 /**
  * Get meeting history for participants in this session
- * Uses matches + registrations tables instead of KV getByPrefix
+ * Uses matches + registrations tables
  */
 async function getMeetingHistory(sessionId: string, participants: any[]) {
   const history: Record<string, Set<string>> = {};

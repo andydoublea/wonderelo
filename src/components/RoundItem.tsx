@@ -7,7 +7,7 @@ import { useTime } from '../contexts/TimeContext';
 import { getParticipantStatusBadge } from '../utils/statusBadge';
 import { getParametersOrDefault } from '../utils/systemParameters';
 import { useParams, useNavigate } from 'react-router';
-import { debugLog } from '../utils/debug';
+import { debugLog, errorLog } from '../utils/debug';
 
 interface RoundItemProps {
   round: Round;
@@ -100,10 +100,10 @@ export function RoundItem({
       // Only reset isConfirming if status is confirmed OR if status is unconfirmed (confirmation window passed)
       if (participantStatus === 'confirmed') {
         setIsConfirming(false);
-        console.log(`✅ [RoundItem] Reset isConfirming for round "${round.name}" (status now confirmed)`);
+        debugLog(`✅ [RoundItem] Reset isConfirming for round "${round.name}" (status now confirmed)`);
       } else if (participantStatus === 'unconfirmed') {
         setIsConfirming(false);
-        console.log(`⚠️ [RoundItem] Reset isConfirming for round "${round.name}" (confirmation window passed, now unconfirmed)`);
+        debugLog(`⚠️ [RoundItem] Reset isConfirming for round "${round.name}" (confirmation window passed, now unconfirmed)`);
       }
       // If status is still 'registered', KEEP isConfirming=true (optimistic update in progress)
     }
@@ -112,7 +112,7 @@ export function RoundItem({
   // Auto-redirect to match page when participant has 'no-match' status
   useEffect(() => {
     if (participantStatus === 'no-match' && token && isRegistered) {
-      console.log(`🔀 [RoundItem] Participant has 'no-match' status, redirecting to match page...`);
+      debugLog(`🔀 [RoundItem] Participant has 'no-match' status, redirecting to match page...`);
       navigate(`/p/${token}/match`);
     }
   }, [participantStatus, token, isRegistered, navigate]);
@@ -121,7 +121,7 @@ export function RoundItem({
   useEffect(() => {
     // If matchDetails prop is provided, use it directly
     if (matchDetails && participantStatus === 'matched') {
-      console.log(`✅ [RoundItem] Using provided matchDetails for round ${round.id}:`, matchDetails);
+      debugLog(`✅ [RoundItem] Using provided matchDetails for round ${round.id}:`, matchDetails);
       setMatchData({
         success: true,
         match: {
@@ -145,7 +145,7 @@ export function RoundItem({
     const fetchMatchData = async () => {
       try {
         const { projectId, publicAnonKey } = await import('../utils/supabase/info');
-        console.log(`🔍 [RoundItem] Fetching match data for participant ${participantId} in round ${round.id}`);
+        debugLog(`🔍 [RoundItem] Fetching match data for participant ${participantId} in round ${round.id}`);
         
         const response = await fetch(
           `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${round.id}/participant/${participantId}/match?sessionId=${session?.id}`,
@@ -158,14 +158,14 @@ export function RoundItem({
         
         if (response.ok) {
           const data = await response.json();
-          console.log(`✅ [RoundItem] Match data received:`, data);
+          debugLog(`✅ [RoundItem] Match data received:`, data);
           setMatchData(data);
         } else {
           const errorText = await response.text();
-          console.log(`⚠️ [RoundItem] No match data yet (${response.status}):`, errorText);
+          debugLog(`⚠️ [RoundItem] No match data yet (${response.status}):`, errorText);
         }
       } catch (error) {
-        console.error('❌ [RoundItem] Error fetching match data:', error);
+        errorLog('❌ [RoundItem] Error fetching match data:', error);
       }
     };
 
@@ -177,7 +177,7 @@ export function RoundItem({
 
   useEffect(() => {
     // DEBUG: Check what we receive
-    console.log(`🔍 [RoundItem Countdown PRE-CHECK] Round "${round.name}":`, {
+    debugLog(`🔍 [RoundItem Countdown PRE-CHECK] Round "${round.name}":`, {
       isRegistered,
       hasSession: !!session,
       sessionDate: session?.date,
@@ -191,12 +191,12 @@ export function RoundItem({
     }
     
     // DEBUG: Log participant status
-    console.log(`🔍 [RoundItem Countdown] Round "${round.name}" - participantStatus:`, participantStatus);
+    debugLog(`🔍 [RoundItem Countdown] Round "${round.name}" - participantStatus:`, participantStatus);
     
     // IMPORTANT: Unconfirmed participants cannot participate in matching
     // They should NOT see countdown or matching status
     if (participantStatus === 'unconfirmed') {
-      console.log(`⛔ [RoundItem] Blocking countdown for UNCONFIRMED participant in round "${round.name}"`);
+      debugLog(`⛔ [RoundItem] Blocking countdown for UNCONFIRMED participant in round "${round.name}"`);
       setCountdown('');
       setCountdownPhase('before-confirmation');
       setShowConfirmButton(false);
@@ -271,7 +271,7 @@ export function RoundItem({
         if (participantStatus === 'registered') {
           // Participant didn't confirm in time - should be unconfirmed
           // Don't show matching status, wait for backend to update status
-          console.log(`⚠️ [RoundItem] Participant still "registered" after T-0, waiting for backend to update to "unconfirmed"...`);
+          debugLog(`⚠️ [RoundItem] Participant still "registered" after T-0, waiting for backend to update to "unconfirmed"...`);
           setCountdownPhase('before-confirmation');
           setCountdown('');
           setShowConfirmButton(false);
@@ -354,11 +354,11 @@ export function RoundItem({
       // Only trigger once per round
       const triggerKey = `matching_triggered_${round.id}`;
       if (sessionStorage.getItem(triggerKey)) {
-        console.log('🔄 Matching already triggered for this round, skipping...');
+        debugLog('🔄 Matching already triggered for this round, skipping...');
         return;
       }
       
-      console.log('🚀 Auto-triggering matching at T-0 for round:', round.name);
+      debugLog('🚀 Auto-triggering matching at T-0 for round:', round.name);
       
       const triggerMatching = async () => {
         try {
@@ -381,17 +381,17 @@ export function RoundItem({
           if (response.ok) {
             const data = await response.json();
             if (data.alreadyCompleted) {
-              console.log('✅ Matching was already completed at:', data.completedAt);
+              debugLog('✅ Matching was already completed at:', data.completedAt);
             } else {
-              console.log('✅ Matching triggered successfully:', data.matchCount, 'groups created');
+              debugLog('✅ Matching triggered successfully:', data.matchCount, 'groups created');
             }
             // Mark as triggered
             sessionStorage.setItem(triggerKey, 'true');
           } else {
-            console.error('❌ Failed to trigger matching:', await response.text());
+            errorLog('❌ Failed to trigger matching:', await response.text());
           }
         } catch (error) {
-          console.error('❌ Error triggering matching:', error);
+          errorLog('❌ Error triggering matching:', error);
         }
       };
       
@@ -402,7 +402,7 @@ export function RoundItem({
   // REMOVED: Auto-enter confirmation window endpoint call
   // This is no longer needed because 'waiting-for-attendance-confirmation' is now a VIRTUAL status
   // calculated dynamically by the participant-dashboard endpoint based on time.
-  // No need to persist this status to KV anymore - it's purely for display purposes.
+  // No need to persist this status - it's purely for display purposes.
   
   // Registration closes countdown for event page
   useEffect(() => {
@@ -609,7 +609,7 @@ export function RoundItem({
                               
                               // Prevent double-click
                               if (isConfirming) {
-                                console.log(`⚠️ [RoundItem] Double-click prevented for round "${round.name}"`);
+                                debugLog(`⚠️ [RoundItem] Double-click prevented for round "${round.name}"`);
                                 return;
                               }
                               
@@ -775,7 +775,7 @@ export function RoundItem({
                     }
                   }
                 } catch (error) {
-                  console.error('Error confirming meet:', error);
+                  errorLog('Error confirming meet:', error);
                 }
               }}
             >

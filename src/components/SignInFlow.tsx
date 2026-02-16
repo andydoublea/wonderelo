@@ -716,7 +716,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                         e.preventDefault();
                         e.stopPropagation();
                         setFormData({
-                          email: 'admin@wonderelo.com',
+                          email: 'admin@oliwonder.com',
                           password: 'Rukuku'
                         });
                         setError('');
@@ -729,7 +729,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                       disabled={isLoading}
                       className="text-xs w-full"
                     >
-                      Quick test login (admin@wonderelo.com)
+                      Quick test login (admin@oliwonder.com)
                     </Button>
                   </div>
                 </TabsContent>

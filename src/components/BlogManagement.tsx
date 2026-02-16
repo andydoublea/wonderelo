@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { errorLog } from '../utils/debug';
+import { useBlogPosts, useSaveBlogPost, useDeleteBlogPost } from '../hooks/useAdminQueries';
 
 interface BlogPost {
   id: string;
@@ -28,12 +28,13 @@ interface BlogManagementProps {
 }
 
 export function BlogManagement({ accessToken }: BlogManagementProps) {
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [loading, setLoading] = useState(true);
+  // React Query hooks
+  const { data: blogPosts = [], isLoading: loading, isFetching: isRefetching } = useBlogPosts(accessToken);
+  const saveMutation = useSaveBlogPost(accessToken);
+  const deleteMutation = useDeleteBlogPost(accessToken);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -44,37 +45,8 @@ export function BlogManagement({ accessToken }: BlogManagementProps) {
   const [readTime, setReadTime] = useState('');
   const [published, setPublished] = useState(true);
 
-  useEffect(() => {
-    fetchBlogPosts();
-  }, []);
-
-  const fetchBlogPosts = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/blog/posts`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        debugLog('All blog posts (including unpublished):', data);
-        setBlogPosts(data.posts || []);
-      } else {
-        errorLog('Failed to fetch blog posts:', response.status);
-        toast.error('Failed to load blog posts');
-      }
-    } catch (error) {
-      errorLog('Error fetching blog posts:', error);
-      toast.error('Network error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isSaving = saveMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
 
   const openCreateDialog = () => {
     setEditingPost(null);
@@ -106,79 +78,31 @@ export function BlogManagement({ accessToken }: BlogManagementProps) {
       return;
     }
 
-    try {
-      setIsSaving(true);
+    const postData = {
+      title: title.trim(),
+      slug: slug.trim(),
+      excerpt: excerpt.trim(),
+      content: content.trim(),
+      imageUrl: imageUrl.trim(),
+      readTime: readTime.trim(),
+      published,
+    };
 
-      const postData = {
-        title: title.trim(),
-        slug: slug.trim(),
-        excerpt: excerpt.trim(),
-        content: content.trim(),
-        imageUrl: imageUrl.trim(),
-        readTime: readTime.trim(),
-        published,
-      };
-
-      const url = editingPost
-        ? `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/blog/posts/${editingPost.id}`
-        : `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/blog/posts`;
-
-      const response = await fetch(url, {
-        method: editingPost ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+    saveMutation.mutate(
+      { id: editingPost?.id, data: postData },
+      {
+        onSuccess: () => {
+          setDialogOpen(false);
         },
-        body: JSON.stringify(postData),
-      });
-
-      if (response.ok) {
-        toast.success(editingPost ? 'Blog post updated' : 'Blog post created');
-        setDialogOpen(false);
-        fetchBlogPosts();
-      } else {
-        const data = await response.json();
-        toast.error(data.error || 'Failed to save blog post');
       }
-    } catch (error) {
-      errorLog('Error saving blog post:', error);
-      toast.error('Network error');
-    } finally {
-      setIsSaving(false);
-    }
+    );
   };
 
   const handleDelete = async (postId: string) => {
     if (!confirm('Are you sure you want to delete this blog post?')) {
       return;
     }
-
-    try {
-      setIsDeleting(true);
-
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/blog/posts/${postId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        toast.success('Blog post deleted');
-        fetchBlogPosts();
-      } else {
-        const data = await response.json();
-        toast.error(data.error || 'Failed to delete blog post');
-      }
-    } catch (error) {
-      errorLog('Error deleting blog post:', error);
-      toast.error('Network error');
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(postId);
   };
 
   const generateSlugFromTitle = (title: string) => {
@@ -194,7 +118,10 @@ export function BlogManagement({ accessToken }: BlogManagementProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2>Blog management</h2>
+          <div className="flex items-center gap-2">
+            <h2>Blog management</h2>
+            {isRefetching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
           <p className="text-muted-foreground">Create and manage your blog posts</p>
         </div>
         <Button onClick={openCreateDialog}>

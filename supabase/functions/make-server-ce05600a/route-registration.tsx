@@ -6,6 +6,7 @@
 import { Context } from 'npm:hono';
 import * as db from './db.ts';
 import { debugLog, errorLog } from './debug.tsx';
+import { sendEmail, buildRegistrationEmail } from './email.tsx';
 
 export async function registerParticipant(c: Context) {
   try {
@@ -146,6 +147,46 @@ export async function registerParticipant(c: Context) {
 
     // Determine if email verification is needed
     const requiresVerification = isNewParticipant;
+
+    // Send registration email for NEW participants (so they get a magic link to their dashboard)
+    if (isNewParticipant && newRegistrations.length > 0) {
+      try {
+        const origin = c.req.header('Origin') || c.req.header('Referer')?.replace(/\/[^/]*$/, '') || 'https://wonderelo.com';
+        const myRoundsUrl = `${origin}/p/${token}`;
+        const eventUrl = `${origin}/${organizerUrlSlug}`;
+
+        // Build sessions list for email
+        const emailSessions = [];
+        for (const sessionData of sessions) {
+          const session = await db.getSessionById(sessionData.sessionId);
+          if (session) {
+            const roundNames = (sessionData.rounds || []).map((r: any) => {
+              const round = session.rounds?.find((sr: any) => sr.id === r.roundId);
+              return round?.name || round?.startTime || 'Round';
+            });
+            emailSessions.push({
+              sessionName: session.name,
+              rounds: roundNames.map((name: string) => ({ roundName: name })),
+            });
+          }
+        }
+
+        const { subject, html } = buildRegistrationEmail({
+          firstName,
+          lastName,
+          eventName: organizerName,
+          myRoundsUrl,
+          eventUrl,
+          sessions: emailSessions,
+        });
+
+        await sendEmail({ to: normalizedEmail, subject, html });
+        debugLog(`📧 Registration email sent to ${normalizedEmail}`);
+      } catch (emailError) {
+        // Don't fail registration if email fails
+        errorLog('Failed to send registration email:', emailError);
+      }
+    }
 
     console.log('🎉 Registration successful!');
     console.log('📊 Stats:', {

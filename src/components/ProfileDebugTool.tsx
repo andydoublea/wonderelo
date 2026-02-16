@@ -34,7 +34,7 @@ export function ProfileDebugTool({ accessToken, userSlug }: ProfileDebugToolProp
 
       if (response.ok) {
         const data = await response.json();
-        debugLog('📋 Profile data from KV store:', data);
+        debugLog('📋 Profile data:', data);
         setProfileData(data);
         
         if (data.userProfile?.organizerName) {

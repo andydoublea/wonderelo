@@ -589,5 +589,79 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
     }
   });
 
+  // ========================================
+  // PUBLIC: Get shared contacts (bilateral verification)
+  // ========================================
+  app.get('/make-server-ce05600a/participant/:token/shared-contacts', async (c) => {
+    try {
+      const token = c.req.param('token');
+
+      if (!token) {
+        return c.json({ error: 'Token required' }, 400);
+      }
+
+      const participant = await db.getParticipantByToken(token);
+      if (!participant) {
+        return c.json({ error: 'Invalid token' }, 404);
+      }
+
+      // Get participant registrations to find matches
+      const registrations = await db.getRegistrationsByParticipant(participant.participantId);
+
+      // Find all registrations with a matchId
+      const matchedRegs = registrations.filter((r: any) => r.matchId);
+
+      const sharedContacts: any[] = [];
+
+      for (const reg of matchedRegs) {
+        // Get all contact sharing preferences for this match
+        const allPrefs = await db.getAllContactSharingForMatch(reg.matchId);
+
+        // Get my preferences
+        const myPrefs = allPrefs.find(p => p.participantId === participant.participantId);
+
+        // Get match participants
+        const matchParticipants = await db.getMatchParticipants(reg.matchId);
+        const partners = matchParticipants.filter(p => p.participantId !== participant.participantId);
+
+        for (const partner of partners) {
+          const partnerPrefs = allPrefs.find(p => p.participantId === partner.participantId);
+
+          // Check bilateral consent: I shared with them AND they shared with me
+          const iSharedWithPartner = myPrefs?.preferences?.[partner.participantId] === true;
+          const partnerSharedWithMe = partnerPrefs?.preferences?.[participant.participantId] === true;
+
+          if (iSharedWithPartner && partnerSharedWithMe) {
+            // Both agreed — share contact info
+            sharedContacts.push({
+              matchId: reg.matchId,
+              roundName: reg.roundName || 'Round',
+              partner: {
+                firstName: partner.firstName,
+                lastName: partner.lastName,
+                email: partner.email,
+                phone: partner.phone,
+              },
+              sharedAt: partnerPrefs?.updatedAt || myPrefs?.updatedAt,
+            });
+          }
+        }
+      }
+
+      return c.json({
+        success: true,
+        sharedContacts,
+        totalMatches: matchedRegs.length,
+      });
+
+    } catch (error) {
+      errorLog('Error fetching shared contacts:', error);
+      return c.json({
+        error: 'Failed to fetch shared contacts',
+        details: error instanceof Error ? error.message : String(error)
+      }, 500);
+    }
+  });
+
   debugLog('✅ Participant routes registered');
 }

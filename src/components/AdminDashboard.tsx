@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, Bug, TestTube2, ListOrdered, Search, Database, Calendar, Palette, Eye, Settings, Mail, Gift } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -34,46 +34,6 @@ const adminTools = [
     route: '/admin/sessions',
     color: 'bg-orange-500',
     category: 'user-management',
-  },
-  {
-    id: 'participant-preview',
-    title: 'Participant preview tool',
-    icon: Eye,
-    route: '/admin/participant-preview',
-    color: 'bg-teal-500',
-    category: 'debugging',
-  },
-  {
-    id: 'debug',
-    title: 'Debug tools',
-    icon: Bug,
-    route: '/admin/debug',
-    color: 'bg-red-500',
-    category: 'debugging',
-  },
-  {
-    id: 'debug-data',
-    title: 'Debug event data',
-    icon: Search,
-    route: '/admin/debug-data',
-    color: 'bg-purple-500',
-    category: 'debugging',
-  },
-  {
-    id: 'full-dump',
-    title: 'Full database dump',
-    icon: Database,
-    route: '/admin/full-dump',
-    color: 'bg-indigo-500',
-    category: 'debugging',
-  },
-  {
-    id: 'tests',
-    title: 'Test panel',
-    icon: TestTube2,
-    route: '/admin/tests',
-    color: 'bg-cyan-500',
-    category: 'debugging',
   },
   {
     id: 'theme',
@@ -151,7 +111,6 @@ const adminTools = [
 
 const categories = [
   { id: 'user-management', title: 'User management' },
-  { id: 'debugging', title: 'Debugging' },
   { id: 'settings', title: 'Settings' },
   { id: 'documentation', title: 'Documentation' },
 ];

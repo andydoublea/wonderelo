@@ -43,7 +43,7 @@ interface Registration {
   sessionDate?: string;
   roundStartTime?: string;
   roundDuration?: number;
-  roundParticipantId?: string; // Round-specific participant ID for KV key lookups
+  roundParticipantId?: string; // Round-specific participant ID
   // Match details (present when participant is matched)
   matchId?: string;
   matchPartnerIds?: string[];
@@ -641,9 +641,9 @@ export function ParticipantDashboard() {
 
   const handleConfirmAttendance = async (roundId: string) => {
     try {
-      console.log('=== CONFIRM START ===');
-      console.log('Round ID:', roundId);
-      console.log('1. Current status:', registrations.find(r => r.roundId === roundId)?.status);
+      debugLog('=== CONFIRM START ===');
+      debugLog('Round ID:', roundId);
+      debugLog('1. Current status:', registrations.find(r => r.roundId === roundId)?.status);
       
       if (!token) {
         toast.error('Not authenticated');
@@ -658,14 +658,14 @@ export function ParticipantDashboard() {
       }
       
       const sessionId = registration.sessionId;
-      console.log('Session ID:', sessionId);
+      debugLog('Session ID:', sessionId);
       
       // Check if already confirmed in localStorage (prevents double-confirm)
       const confirmKey = `confirmed_${token}_${roundId}`;
       const alreadyConfirmed = localStorage.getItem(confirmKey);
       
       if (alreadyConfirmed === 'true') {
-        console.log('⚠️ Already confirmed in localStorage, skipping');
+        debugLog('⚠️ Already confirmed in localStorage, skipping');
         toast.info('You already confirmed attendance for this round');
         return;
       }
@@ -683,7 +683,7 @@ export function ParticipantDashboard() {
             ? { ...reg, status: 'confirmed' }
             : reg
         );
-        console.log('2. After optimistic update:', updated.find(r => r.roundId === roundId)?.status);
+        debugLog('2. After optimistic update:', updated.find(r => r.roundId === roundId)?.status);
         return updated;
       });
       
@@ -705,7 +705,7 @@ export function ParticipantDashboard() {
         return updated;
       });
       
-      console.log('🚀 SENDING CONFIRM REQUEST');
+      debugLog('🚀 SENDING CONFIRM REQUEST');
       
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/confirm/${roundId}`,
@@ -719,7 +719,7 @@ export function ParticipantDashboard() {
         }
       );
       
-      console.log('📡 RECEIVED RESPONSE:', response.status);
+      debugLog('📡 RECEIVED RESPONSE:', response.status);
       
       if (!response.ok) {
         let errorData;
@@ -728,7 +728,7 @@ export function ParticipantDashboard() {
         } catch (e) {
           errorData = { error: 'Server returned ' + response.status };
         }
-        console.error('❌ CONFIRM FAILED:', errorData);
+        errorLog('❌ CONFIRM FAILED:', errorData);
         
         // Remove localStorage flag on error so user can try again
         localStorage.removeItem(confirmKey);
@@ -744,8 +744,8 @@ export function ParticipantDashboard() {
       }
       
       const data = await response.json();
-      console.log('✅ CONFIRM SUCCESS - Backend response:', data);
-      console.log('3. Backend says status:', data.status);
+      debugLog('✅ CONFIRM SUCCESS - Backend response:', data);
+      debugLog('3. Backend says status:', data.status);
       
       // Update status based on what backend returned
       const backendStatus = data.status;
@@ -758,20 +758,20 @@ export function ParticipantDashboard() {
             ? { ...reg, status: backendStatus }
             : reg
         );
-        console.log('💾 Updated status from backend response:', backendStatus);
+        debugLog('💾 Updated status from backend response:', backendStatus);
         return updated;
       });
       
       toast.success('Attendance confirmed! You will be matched at the start time.');
       
       // Also refetch to get any other changes (like matchId, etc.)
-      console.log('🔄 Fetching full dashboard data...');
+      debugLog('🔄 Fetching full dashboard data...');
       await fetchData();
       
-      console.log('=== CONFIRM END ===');
+      debugLog('=== CONFIRM END ===');
       
     } catch (error) {
-      console.error('❌ EXCEPTION:', error);
+      errorLog('❌ EXCEPTION:', error);
       
       // Remove localStorage flag so user can try again
       const confirmKey = `confirmed_${token}_${roundId}`;

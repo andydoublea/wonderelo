@@ -14,6 +14,7 @@ import { getCurrentTime } from './time-helpers.tsx';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
 import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail } from './email.tsx';
+import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
 
 const app = new Hono();
@@ -391,17 +392,6 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
 
     console.log('📋 Current registration status:', registration.status);
 
-    // Allow confirmation if status is 'registered', 'confirmed', 'matched', or 'completed'
-    const allowedStatuses = ['registered', 'confirmed', 'matched', 'completed', 'unconfirmed'];
-    if (!allowedStatuses.includes(registration.status)) {
-      console.log('❌ Cannot confirm - status not allowed');
-      return c.json({
-        error: 'Cannot confirm',
-        message: `Round status is "${registration.status}". Cannot confirm this round.`,
-        currentStatus: registration.status
-      }, 400);
-    }
-
     // If already confirmed or later status, just return success (idempotent)
     if (['confirmed', 'matched', 'completed'].includes(registration.status)) {
       console.log(`✅ Round already in status "${registration.status}", returning success (idempotent)`);
@@ -411,6 +401,32 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
         confirmedAt: registration.confirmedAt || registration.lastStatusUpdate,
         message: 'Attendance already confirmed'
       });
+    }
+
+    // Only 'registered' status can be confirmed (reject 'unconfirmed', 'no-match', etc.)
+    if (registration.status !== 'registered') {
+      console.log('❌ Cannot confirm - status not allowed:', registration.status);
+      return c.json({
+        error: 'Cannot confirm',
+        message: `Round status is "${registration.status}". Cannot confirm this round.`,
+        currentStatus: registration.status
+      }, 400);
+    }
+
+    // Validate confirmation window — reject if round already started
+    const session = await db.getSessionById(sessionId);
+    const round = session?.rounds?.find((r: any) => r.id === roundId);
+    if (round && session?.date && round.startTime) {
+      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const now = getCurrentTime(c);
+      if (now > roundStartTime) {
+        console.log('❌ Confirmation window closed - round already started');
+        return c.json({
+          error: 'Confirmation window closed',
+          message: 'The round has already started. You can no longer confirm attendance.',
+          currentStatus: registration.status
+        }, 400);
+      }
     }
 
     const now = new Date().toISOString();
@@ -504,6 +520,45 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
     errorLog('Error confirming attendance (via participantId):', error);
     return c.json({
       error: 'Failed to confirm attendance',
+      details: error instanceof Error ? error.message : String(error)
+    }, 500);
+  }
+});
+
+// Auto-trigger matching for a round at T-0
+app.post('/make-server-ce05600a/rounds/:roundId/auto-match', async (c) => {
+  try {
+    const roundId = c.req.param('roundId');
+    const body = await c.req.json();
+    const { sessionId } = body;
+
+    if (!sessionId || !roundId) {
+      return c.json({ error: 'sessionId and roundId are required' }, 400);
+    }
+
+    debugLog('🎯 AUTO-MATCH triggered', { sessionId, roundId });
+
+    const result = await createMatchesForRound(sessionId, roundId);
+
+    if (result.message === 'Matching already completed') {
+      return c.json({
+        success: true,
+        alreadyCompleted: true,
+        message: 'Matching already completed'
+      });
+    }
+
+    return c.json({
+      success: true,
+      alreadyCompleted: false,
+      matchCount: result.matches?.length || 0,
+      message: result.message || 'Matching completed'
+    });
+
+  } catch (error) {
+    errorLog('Error in auto-match:', error);
+    return c.json({
+      error: 'Failed to run matching',
       details: error instanceof Error ? error.message : String(error)
     }, 500);
   }
@@ -1123,6 +1178,605 @@ app.put('/make-server-ce05600a/admin/notification-texts', async (c) => {
   } catch (error) {
     errorLog('Error updating notification texts:', error);
     return c.json({ error: 'Failed to update notification texts' }, 500);
+  }
+});
+
+// ============================================
+// ADMIN: User Management
+// ============================================
+
+// Admin: Get all users (organizers)
+app.get('/make-server-ce05600a/admin/users', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    // Get all auth users
+    const { data: authUsers, error: listError } = await getSupabase().auth.admin.listUsers();
+
+    if (listError) {
+      return c.json({ error: 'Failed to list users' }, 500);
+    }
+
+    // Get all organizer profiles from DB
+    const supabase = getGlobalSupabaseClient();
+    const { data: profiles } = await supabase
+      .from('organizer_profiles')
+      .select('*');
+
+    const profileMap = new Map();
+    for (const p of (profiles || [])) {
+      profileMap.set(p.id, p);
+    }
+
+    // Merge auth users with profiles
+    const users = (authUsers?.users || []).map((authUser: any) => {
+      const profile = profileMap.get(authUser.id);
+      return {
+        id: authUser.id,
+        email: authUser.email || '',
+        name: profile?.organizer_name || 'Not set',
+        urlSlug: profile?.url_slug || 'Not set',
+        phone: profile?.phone || '',
+        website: profile?.website || '',
+        role: profile?.role || 'organizer',
+        createdAt: authUser.created_at,
+        lastSignInAt: authUser.last_sign_in_at,
+        emailConfirmed: !!authUser.email_confirmed_at,
+        serviceType: '',
+        userRole: profile?.role || 'organizer',
+        companySize: '',
+        discoverySource: '',
+      };
+    });
+
+    return c.json({ success: true, users });
+
+  } catch (error) {
+    errorLog('Error fetching admin users:', error);
+    return c.json({ error: 'Failed to fetch users' }, 500);
+  }
+});
+
+// Admin: Get stats
+app.get('/make-server-ce05600a/admin/stats', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const supabase = getGlobalSupabaseClient();
+
+    // Count organizers
+    const { count: organizerCount } = await supabase
+      .from('organizer_profiles')
+      .select('*', { count: 'exact', head: true });
+
+    // Count sessions
+    const { count: sessionCount } = await supabase
+      .from('sessions')
+      .select('*', { count: 'exact', head: true });
+
+    // Count participants
+    const { count: participantCount } = await supabase
+      .from('participants')
+      .select('*', { count: 'exact', head: true });
+
+    // Count registrations
+    const { count: registrationCount } = await supabase
+      .from('registrations')
+      .select('*', { count: 'exact', head: true });
+
+    return c.json({
+      success: true,
+      stats: {
+        totalOrganizers: organizerCount || 0,
+        totalSessions: sessionCount || 0,
+        totalParticipants: participantCount || 0,
+        totalRegistrations: registrationCount || 0,
+      }
+    });
+
+  } catch (error) {
+    errorLog('Error fetching admin stats:', error);
+    return c.json({ error: 'Failed to fetch stats' }, 500);
+  }
+});
+
+// Admin: Delete user
+app.delete('/make-server-ce05600a/admin/users/:userId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+
+    // Delete from auth
+    const { error: deleteError } = await getSupabase().auth.admin.deleteUser(userId);
+
+    if (deleteError) {
+      return c.json({ error: 'Failed to delete user: ' + deleteError.message }, 500);
+    }
+
+    // Delete profile
+    const supabase = getGlobalSupabaseClient();
+    await supabase.from('organizer_profiles').delete().eq('id', userId);
+
+    return c.json({ success: true, message: 'User deleted' });
+
+  } catch (error) {
+    errorLog('Error deleting user:', error);
+    return c.json({ error: 'Failed to delete user' }, 500);
+  }
+});
+
+// Admin: Update user
+app.put('/make-server-ce05600a/admin/users/:userId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const body = await c.req.json();
+
+    // Update profile
+    await db.updateOrganizerProfile(userId, {
+      organizerName: body.name || body.organizerName,
+      urlSlug: body.urlSlug,
+      phone: body.phone,
+      website: body.website,
+    });
+
+    return c.json({ success: true, message: 'User updated' });
+
+  } catch (error) {
+    errorLog('Error updating user:', error);
+    return c.json({ error: 'Failed to update user' }, 500);
+  }
+});
+
+// ============================================================
+// Admin: Participant management
+// ============================================================
+
+app.get('/make-server-ce05600a/admin/participants', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const participants = await db.getAllParticipants();
+
+    // Get registration counts for each participant
+    const enriched = [];
+    for (const p of participants) {
+      const regs = await db.getRegistrationsByParticipant(p.participantId);
+      const sessionNames = [...new Set(regs.map((r: any) => r.sessionId))];
+      enriched.push({
+        id: p.participantId,
+        firstName: p.firstName || '',
+        lastName: p.lastName || '',
+        email: p.email,
+        phone: p.phone || '',
+        events: [],
+        sessionIds: sessionNames,
+        totalRegistrations: regs.length,
+        createdAt: p.createdAt,
+      });
+    }
+
+    return c.json({ participants: enriched });
+  } catch (error) {
+    errorLog('Error listing participants:', error);
+    return c.json({ error: 'Failed to list participants' }, 500);
+  }
+});
+
+app.get('/make-server-ce05600a/admin/participants/:participantId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const participantId = c.req.param('participantId');
+    const result = await db.getParticipantWithRegistrations(participantId);
+
+    if (!result) {
+      return c.json({ error: 'Participant not found' }, 404);
+    }
+
+    const registrations = result.registrations.map((r: any) => ({
+      registrationId: r.id,
+      sessionId: r.sessionId,
+      sessionName: r.sessionName || 'Unknown',
+      sessionStatus: r.sessionStatus || 'unknown',
+      roundId: r.roundId,
+      roundName: r.roundName || 'Unknown',
+      roundStatus: r.roundStatus || 'unknown',
+      organizerName: r.organizerName || 'Unknown',
+      organizerUrlSlug: r.organizerUrlSlug || '',
+      status: r.status,
+      date: r.roundDate || r.sessionDate,
+      startTime: r.startTime,
+      duration: r.duration,
+      registeredAt: r.registeredAt,
+      matchedWith: [],
+    }));
+
+    return c.json({
+      participant: {
+        id: result.participant.participantId,
+        firstName: result.participant.firstName,
+        lastName: result.participant.lastName,
+        email: result.participant.email,
+        phone: result.participant.phone,
+        token: result.participant.token,
+        createdAt: result.participant.createdAt,
+      },
+      registrations,
+    });
+  } catch (error) {
+    errorLog('Error getting participant detail:', error);
+    return c.json({ error: 'Failed to get participant' }, 500);
+  }
+});
+
+app.get('/make-server-ce05600a/admin/participants/:participantId/audit-log', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const participantId = c.req.param('participantId');
+    const auditLog = await db.getParticipantAuditLog(participantId);
+
+    return c.json({ auditLog });
+  } catch (error) {
+    errorLog('Error getting audit log:', error);
+    return c.json({ error: 'Failed to get audit log' }, 500);
+  }
+});
+
+app.delete('/make-server-ce05600a/admin/participants/:participantId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const participantId = c.req.param('participantId');
+    await db.deleteParticipant(participantId);
+
+    return c.json({ success: true, message: 'Participant deleted' });
+  } catch (error) {
+    errorLog('Error deleting participant:', error);
+    return c.json({ error: 'Failed to delete participant' }, 500);
+  }
+});
+
+app.delete('/make-server-ce05600a/admin/participants/:participantId/registrations/:roundId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const participantId = c.req.param('participantId');
+    const roundId = c.req.param('roundId');
+
+    // Find the registration to get sessionId
+    const regs = await db.getRegistrationsByParticipant(participantId);
+    const reg = regs.find((r: any) => r.roundId === roundId);
+    if (!reg) {
+      return c.json({ error: 'Registration not found' }, 404);
+    }
+
+    await db.deleteRegistration(participantId, reg.sessionId, roundId);
+
+    return c.json({ success: true, message: 'Registration deleted' });
+  } catch (error) {
+    errorLog('Error deleting registration:', error);
+    return c.json({ error: 'Failed to delete registration' }, 500);
+  }
+});
+
+// ============================================================
+// Admin: Ice breakers
+// ============================================================
+
+app.get('/make-server-ce05600a/admin/ice-breakers', async (c) => {
+  try {
+    const iceBreakers = await db.getAdminSetting('ice_breakers');
+    return c.json({ iceBreakers: iceBreakers || [] });
+  } catch (error) {
+    errorLog('Error fetching ice breakers:', error);
+    return c.json({ error: 'Failed to fetch ice breakers' }, 500);
+  }
+});
+
+app.put('/make-server-ce05600a/admin/ice-breakers', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const body = await c.req.json();
+    await db.setAdminSetting('ice_breakers', body.iceBreakers || body);
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error updating ice breakers:', error);
+    return c.json({ error: 'Failed to update ice breakers' }, 500);
+  }
+});
+
+// ============================================================
+// Admin: Gift cards
+// ============================================================
+
+app.get('/make-server-ce05600a/admin/gift-cards/list', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const cards = await db.getAllGiftCards();
+    return c.json({ giftCards: cards });
+  } catch (error) {
+    errorLog('Error listing gift cards:', error);
+    return c.json({ error: 'Failed to list gift cards' }, 500);
+  }
+});
+
+app.post('/make-server-ce05600a/admin/gift-cards/create', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const body = await c.req.json();
+    const cards = await db.getAllGiftCards();
+
+    const newCard = {
+      code: body.code,
+      description: body.description || '',
+      credits: body.credits || 0,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      usedBy: null,
+      usedAt: null,
+    };
+
+    cards.push(newCard);
+    await db.saveGiftCards(cards);
+
+    return c.json({ success: true, giftCard: newCard });
+  } catch (error) {
+    errorLog('Error creating gift card:', error);
+    return c.json({ error: 'Failed to create gift card' }, 500);
+  }
+});
+
+app.put('/make-server-ce05600a/admin/gift-cards/:code/toggle', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const code = c.req.param('code');
+    const cards = await db.getAllGiftCards();
+    const card = cards.find((card: any) => card.code === code);
+
+    if (!card) {
+      return c.json({ error: 'Gift card not found' }, 404);
+    }
+
+    card.isActive = !card.isActive;
+    await db.saveGiftCards(cards);
+
+    return c.json({ success: true, giftCard: card });
+  } catch (error) {
+    errorLog('Error toggling gift card:', error);
+    return c.json({ error: 'Failed to toggle gift card' }, 500);
+  }
+});
+
+app.delete('/make-server-ce05600a/admin/gift-cards/:code', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const code = c.req.param('code');
+    const cards = await db.getAllGiftCards();
+    const filtered = cards.filter((card: any) => card.code !== code);
+
+    if (filtered.length === cards.length) {
+      return c.json({ error: 'Gift card not found' }, 404);
+    }
+
+    await db.saveGiftCards(filtered);
+
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error deleting gift card:', error);
+    return c.json({ error: 'Failed to delete gift card' }, 500);
+  }
+});
+
+// ============================================================
+// Admin: Default round rules
+// ============================================================
+
+app.get('/make-server-ce05600a/admin/default-round-rules', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const rules = await db.getDefaultRoundRules();
+    return c.json({ rules: rules || {} });
+  } catch (error) {
+    errorLog('Error fetching default round rules:', error);
+    return c.json({ error: 'Failed to fetch round rules' }, 500);
+  }
+});
+
+app.post('/make-server-ce05600a/admin/default-round-rules', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const body = await c.req.json();
+    await db.saveDefaultRoundRules(body.rules || body);
+
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error saving default round rules:', error);
+    return c.json({ error: 'Failed to save round rules' }, 500);
+  }
+});
+
+// ============================================================
+// Admin: Blog management
+// ============================================================
+
+app.get('/make-server-ce05600a/admin/blog/posts', async (c) => {
+  try {
+    const posts = await db.getAllBlogPosts();
+    return c.json({ posts });
+  } catch (error) {
+    errorLog('Error listing blog posts:', error);
+    return c.json({ error: 'Failed to list blog posts' }, 500);
+  }
+});
+
+app.post('/make-server-ce05600a/admin/blog/posts', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const body = await c.req.json();
+    const posts = await db.getAllBlogPosts();
+
+    const newPost = {
+      id: `post-${Date.now()}`,
+      title: body.title,
+      slug: body.slug,
+      content: body.content,
+      excerpt: body.excerpt || '',
+      author: body.author || 'Admin',
+      status: body.status || 'draft',
+      tags: body.tags || [],
+      coverImage: body.coverImage || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    posts.push(newPost);
+    await db.saveBlogPosts(posts);
+
+    return c.json({ success: true, post: newPost });
+  } catch (error) {
+    errorLog('Error creating blog post:', error);
+    return c.json({ error: 'Failed to create blog post' }, 500);
+  }
+});
+
+app.put('/make-server-ce05600a/admin/blog/posts/:postId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const postId = c.req.param('postId');
+    const body = await c.req.json();
+    const posts = await db.getAllBlogPosts();
+    const index = posts.findIndex((p: any) => p.id === postId);
+
+    if (index === -1) {
+      return c.json({ error: 'Post not found' }, 404);
+    }
+
+    posts[index] = { ...posts[index], ...body, updatedAt: new Date().toISOString() };
+    await db.saveBlogPosts(posts);
+
+    return c.json({ success: true, post: posts[index] });
+  } catch (error) {
+    errorLog('Error updating blog post:', error);
+    return c.json({ error: 'Failed to update blog post' }, 500);
+  }
+});
+
+app.delete('/make-server-ce05600a/admin/blog/posts/:postId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const postId = c.req.param('postId');
+    const posts = await db.getAllBlogPosts();
+    const filtered = posts.filter((p: any) => p.id !== postId);
+
+    if (filtered.length === posts.length) {
+      return c.json({ error: 'Post not found' }, 404);
+    }
+
+    await db.saveBlogPosts(filtered);
+
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error deleting blog post:', error);
+    return c.json({ error: 'Failed to delete blog post' }, 500);
   }
 });
 

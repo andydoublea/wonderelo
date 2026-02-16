@@ -16,7 +16,7 @@ import { UserPublicPage } from './UserPublicPage';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Calendar, Users, Clock, Globe, Copy, Check, QrCode, Download, Wrench, UserCheck, Edit, Play, CheckCircle2, LayoutGrid, Table as TableIcon, MoreVertical, Trash2, BarChart3, ArrowUpDown, Search, X, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
-import { errorLog } from '../utils/debug';
+import { debugLog, errorLog } from '../utils/debug';
 import { ServiceType } from '../App';
 
 interface NetworkingDashboardProps {
@@ -170,38 +170,37 @@ export function NetworkingDashboard({
 
   // Sort sessions
   const sortedSessions = [...filteredSessions].sort((a, b) => {
-    console.log('Sorting with sortBy:', sortBy); // DEBUG
+    debugLog('Sorting with sortBy:', sortBy); // DEBUG
     switch (sortBy) {
       case 'date-asc': {
-        console.log('Comparing dates:', { aName: a.name, aDate: a.date, bName: b.name, bDate: b.date }); // DEBUG
         if (!a.date) return 1;
         if (!b.date) return -1;
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
-        console.log('Date timestamps:', { aName: a.name, dateA, bName: b.name, dateB, result: dateA - dateB }); // DEBUG
-        // If dates are equal, sort by time (earliest first)
         if (dateA === dateB) {
-          return a.startTime.localeCompare(b.startTime);
+          // Sort by first round startTime if dates are equal
+          const aTime = a.rounds?.[0]?.startTime || '';
+          const bTime = b.rounds?.[0]?.startTime || '';
+          return aTime.localeCompare(bTime);
         }
         return dateA - dateB;
       }
       case 'date-desc': {
-        console.log('Comparing dates:', { aName: a.name, aDate: a.date, bName: b.name, bDate: b.date }); // DEBUG
         if (!a.date) return 1;
         if (!b.date) return -1;
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
-        console.log('Date timestamps:', { aName: a.name, dateA, bName: b.name, dateB, result: dateB - dateA }); // DEBUG
-        // If dates are equal, sort by time (latest first)
         if (dateA === dateB) {
-          return b.startTime.localeCompare(a.startTime);
+          const aTime = a.rounds?.[0]?.startTime || '';
+          const bTime = b.rounds?.[0]?.startTime || '';
+          return bTime.localeCompare(aTime);
         }
         return dateB - dateA;
       }
       case 'status-asc':
-        return a.status.localeCompare(b.status);
+        return (a.status || '').localeCompare(b.status || '');
       case 'status-desc':
-        return b.status.localeCompare(a.status);
+        return (b.status || '').localeCompare(a.status || '');
       case 'name-asc':
         return a.name.localeCompare(b.name);
       case 'name-desc':
@@ -211,9 +210,9 @@ export function NetworkingDashboard({
     }
   });
 
-  console.log('Current sortBy state:', sortBy); // DEBUG
-  console.log('Sorted sessions count:', sortedSessions.length); // DEBUG
-  console.log('Sorted sessions order:', sortedSessions.map(s => ({ name: s.name, date: s.date }))); // DEBUG
+  debugLog('Current sortBy state:', sortBy); // DEBUG
+  debugLog('Sorted sessions count:', sortedSessions.length); // DEBUG
+  debugLog('Sorted sessions order:', sortedSessions.map(s => ({ name: s.name, date: s.date }))); // DEBUG
 
   // Pagination
   const totalPages = Math.ceil(sortedSessions.length / ITEMS_PER_PAGE);
@@ -241,8 +240,8 @@ export function NetworkingDashboard({
   if (showSessionForm) {
     return (
       <SessionForm
-        session={editingSession}
-        onSave={(session) => {
+        initialData={editingSession}
+        onSubmit={(session) => {
           if (editingSession) {
             handleUpdateSession(editingSession.id, session);
           } else {
@@ -315,7 +314,7 @@ export function NetworkingDashboard({
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(value: any) => {
-                console.log('onValueChange called with:', value); // DEBUG
+                debugLog('onValueChange called with:', value); // DEBUG
                 setSortBy(value);
               }}>
                 <SelectTrigger className="w-full md:w-[220px]">
@@ -449,7 +448,7 @@ export function NetworkingDashboard({
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={(value: any) => {
-              console.log('onValueChange called with:', value); // DEBUG
+              debugLog('onValueChange called with:', value); // DEBUG
               setSortBy(value);
             }}>
               <SelectTrigger className="w-full md:w-[220px]">

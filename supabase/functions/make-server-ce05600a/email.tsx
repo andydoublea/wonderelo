@@ -11,7 +11,7 @@ const FROM_EMAIL_DEV = 'Wonderelo <onboarding@resend.dev>';
 const FROM_EMAIL_PROD = 'Wonderelo <noreply@wonderelo.com>';
 
 function getFromEmail(): string {
-  // Check if oliwonder.com domain is verified by checking env var
+  // Check if wonderelo.com domain is verified by checking env var
   const useProductionEmail = Deno.env.get('RESEND_USE_PRODUCTION_EMAIL') === 'true';
   return useProductionEmail ? FROM_EMAIL_PROD : FROM_EMAIL_DEV;
 }

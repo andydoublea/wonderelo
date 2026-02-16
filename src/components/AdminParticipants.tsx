@@ -6,13 +6,13 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { ArrowLeft, Search, Download, RefreshCw, User, Mail, Phone, Calendar, Users, ChevronUp, ChevronDown, UserPlus, UserCheck, Edit, History, Send, Globe, Trash2, AlertTriangle, Check, X, Eye, LogIn, UserX, Clock, MailPlus, Home, Shield, Ban, Activity, Terminal } from 'lucide-react';
+import { ArrowLeft, Search, RefreshCw, Mail, Phone, Calendar, Users, ChevronUp, ChevronDown, UserPlus, UserCheck, Edit, History, Send, Globe, Trash2, AlertTriangle, Check, X, Eye, LogIn, UserX, Clock, MailPlus, Activity, Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { projectId } from '../utils/supabase/info';
 import { getStatusBadgeVariant } from '../utils/statusBadge';
 import { useTime } from '../contexts/TimeContext';
-import { copyToClipboard } from '../utils/clipboard';
+import { useAdminParticipants } from '../hooks/useAdminQueries';
 
 interface Participant {
   id: string;
@@ -63,18 +63,18 @@ interface AdminParticipantsProps {
 }
 
 export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: AdminParticipantsProps) {
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  // React Query for participant list (cached)
+  const { data: participants = [], isLoading, isFetching: isRefetching, refetch: refetchParticipants } = useAdminParticipants(accessToken);
   const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([]);
   const [expandedParticipantId, setExpandedParticipantId] = useState<string | null>(null);
   const [participantRegistrations, setParticipantRegistrations] = useState<ParticipantRegistration[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isLoadingAuditLog, setIsLoadingAuditLog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sessionFilter, setSessionFilter] = useState<string | null>(null);
   const [roundFilter, setRoundFilter] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'registrations' | 'audit' | 'raw'>('registrations');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'audit'>('registrations');
   
   // Delete dialogs
   const [deleteParticipantDialogOpen, setDeleteParticipantDialogOpen] = useState(false);
@@ -83,25 +83,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
   const [registrationToDelete, setRegistrationToDelete] = useState<ParticipantRegistration | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Debug tools
-  const [showDebugTools, setShowDebugTools] = useState(false);
-  const [orphanedParticipants, setOrphanedParticipants] = useState<any[]>([]);
-  const [isLoadingOrphaned, setIsLoadingOrphaned] = useState(false);
-  
-  // Raw data debug
-  const [showRawData, setShowRawData] = useState(false);
-  const [rawRegistrations, setRawRegistrations] = useState<any[]>([]);
-  const [isLoadingRawData, setIsLoadingRawData] = useState(false);
-  
-  // Session diagnostics
-  const [sessionDiagnostics, setSessionDiagnostics] = useState<any>(null);
-  const [showSessionDiagnostics, setShowSessionDiagnostics] = useState(false);
-  
-  // Server logs
-  const [serverLogs, setServerLogs] = useState<string[]>([]);
-  const [showServerLogs, setShowServerLogs] = useState(false);
-  const [isLoadingServerLogs, setIsLoadingServerLogs] = useState(false);
-
   // Get current time from TimeContext
   const { getCurrentTime, simulatedTime } = useTime();
   
@@ -117,69 +98,35 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
     return url;
   };
   
-  // Fetch participants on mount and apply filters from sessionStorage
+  // Apply filters from sessionStorage on mount
   React.useEffect(() => {
-    const loadData = async () => {
-      await fetchParticipants();
-      
-      // Check for session/round filters from Session Management
-      const filterSession = sessionStorage.getItem('admin_participant_filter_session');
-      const filterRound = sessionStorage.getItem('admin_participant_filter_round');
-      
-      if (filterSession && filterRound) {
-        debugLog('Applying session/round filter from Session Management:', { filterSession, filterRound });
-        toast.info(`Filtering participants for session ${filterSession.substring(0, 8)}... and round ${filterRound.substring(0, 8)}...`);
-        // Set session and round filters (NOT search query)
-        setSessionFilter(filterSession);
-        setRoundFilter(filterRound);
-        
-        // Clean up filter from sessionStorage
-        sessionStorage.removeItem('admin_participant_filter_session');
-        sessionStorage.removeItem('admin_participant_filter_round');
-      }
-      
-      // Check for email filter from other views
-      const filterEmail = sessionStorage.getItem('admin_participant_filter');
-      if (filterEmail) {
-        debugLog('Applying email filter:', filterEmail);
-        setSearchQuery(filterEmail);
-        sessionStorage.removeItem('admin_participant_filter');
-      }
-    };
-    
-    loadData();
+    // Check for session/round filters from Session Management
+    const filterSession = sessionStorage.getItem('admin_participant_filter_session');
+    const filterRound = sessionStorage.getItem('admin_participant_filter_round');
+
+    if (filterSession && filterRound) {
+      debugLog('Applying session/round filter from Session Management:', { filterSession, filterRound });
+      toast.info(`Filtering participants for session ${filterSession.substring(0, 8)}... and round ${filterRound.substring(0, 8)}...`);
+      setSessionFilter(filterSession);
+      setRoundFilter(filterRound);
+      sessionStorage.removeItem('admin_participant_filter_session');
+      sessionStorage.removeItem('admin_participant_filter_round');
+    }
+
+    // Check for email filter from other views
+    const filterEmail = sessionStorage.getItem('admin_participant_filter');
+    if (filterEmail) {
+      debugLog('Applying email filter:', filterEmail);
+      setSearchQuery(filterEmail);
+      sessionStorage.removeItem('admin_participant_filter');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  
-  const fetchParticipants = async () => {
-    try {
-      setIsLoading(true);
-      
-      const response = await fetch(
-        addSimulatedTimeParam(`https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/participants`),
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
 
-      if (response.ok) {
-        const result = await response.json();
-        setParticipants(result.participants || []);
-        setFilteredParticipants(result.participants || []);
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to fetch participants');
-      }
-    } catch (error) {
-      errorLog('Error fetching participants:', error);
-      toast.error('Network error while fetching participants');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Update filteredParticipants when participants data changes
+  React.useEffect(() => {
+    setFilteredParticipants(participants);
+  }, [participants]);
 
   const fetchParticipantDetail = async (participantId: string) => {
     try {
@@ -237,35 +184,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
     }
   };
   
-  const fetchRawRegistrations = async (email: string) => {
-    try {
-      setIsLoadingRawData(true);
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/raw-registrations/${encodeURIComponent(email)}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setRawRegistrations(result.rawRegistrations || []);
-        setShowRawData(true);
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to fetch raw registrations');
-      }
-    } catch (error) {
-      errorLog('Error fetching raw registrations:', error);
-      toast.error('Network error while fetching raw registrations');
-    } finally {
-      setIsLoadingRawData(false);
-    }
-  };
-
   // Apply all filters when participants, searchQuery, sessionFilter, or roundFilter change
   React.useEffect(() => {
     let filtered = [...participants];
@@ -342,7 +260,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
   };
 
   useEffect(() => {
-    fetchParticipants();
+    refetchParticipants();
   }, []);
 
   // Auto-expand and scroll to participant from sessionStorage
@@ -375,7 +293,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
   // Refetch when simulated time changes
   useEffect(() => {
     if (simulatedTime !== null) {
-      fetchParticipants();
+      refetchParticipants();
       // Also refetch detail if a participant is expanded
       if (expandedParticipantId) {
         fetchParticipantDetail(expandedParticipantId);
@@ -532,344 +450,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
     }
   };
 
-  const fixParticipantKeys = async () => {
-    try {
-      const confirmed = confirm(
-        'This will fix all participant keys that are missing sessionId.\n\n' +
-        'This is safe and will resolve the issue where participants are not visible in Organizer Management.\n\n' +
-        'Do you want to proceed?'
-      );
-      
-      if (!confirmed) return;
-      
-      toast.info('Fixing participant keys...');
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/fix-participant-keys`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        toast.success(`Fixed ${result.fixed} participant keys! (Skipped: ${result.skipped}, Errors: ${result.errors})`);
-        console.log('Fix results:', result.results);
-        console.log('Full result:', result);
-        
-        // Refresh the list
-        fetchParticipants();
-      } else {
-        const error = await response.json();
-        console.error('Error response:', error);
-        toast.error(error.error || 'Failed to fix participant keys');
-      }
-    } catch (error) {
-      errorLog('Error fixing participant keys:', error);
-      console.error('Full error:', error);
-      toast.error('Network error while fixing participant keys');
-    }
-  };
-
-  const findOrphanedParticipants = async () => {
-    try {
-      setIsLoadingOrphaned(true);
-      debugLog('Fetching orphaned participants...');
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/orphaned-participants`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        debugLog('Orphaned participants result:', result);
-        debugLog('Setting orphanedParticipants to:', result.orphanedParticipants);
-        setOrphanedParticipants(result.orphanedParticipants || []);
-        toast.success(`Found ${result.orphanedCount} orphaned participant(s)`);
-      } else {
-        const error = await response.json();
-        errorLog('Failed to find orphaned participants:', error);
-        toast.error(error.error || 'Failed to find orphaned participants');
-      }
-    } catch (error) {
-      errorLog('Error finding orphaned participants:', error);
-      toast.error('Network error');
-    } finally {
-      setIsLoadingOrphaned(false);
-    }
-  };
-
-  const diagnoseSession = async (sessionId: string) => {
-    try {
-      toast.info('Diagnosing session...');
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/session-structure/${sessionId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setSessionDiagnostics(result);
-        setShowSessionDiagnostics(true);
-        toast.success('Session diagnostics loaded');
-      } else {
-        const error = await response.json();
-        errorLog('Failed to diagnose session:', error);
-        toast.error(error.error || 'Failed to diagnose session');
-      }
-    } catch (error) {
-      errorLog('Error diagnosing session:', error);
-      toast.error('Network error');
-    }
-  };
-
-  const copySessionDiagnostics = () => {
-    if (!sessionDiagnostics) return;
-    const text = JSON.stringify(sessionDiagnostics, null, 2);
-    copyToClipboard(text, 'Session diagnostics copied!');
-  };
-
-  const fetchServerLogs = async () => {
-    try {
-      setIsLoadingServerLogs(true);
-      toast.info('Loading server logs...');
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/server-logs?limit=200`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Server logs response:', result);
-        console.log('Logs array:', result.logs);
-        setServerLogs(result.logs || []);
-        setShowServerLogs(true);
-        toast.success(`Loaded ${result.count} log entries`);
-      } else {
-        const error = await response.json();
-        errorLog('Failed to load server logs:', error);
-        toast.error(error.error || 'Failed to load server logs');
-      }
-    } catch (error) {
-      errorLog('Error loading server logs:', error);
-      toast.error('Network error');
-    } finally {
-      setIsLoadingServerLogs(false);
-    }
-  };
-
-  const copyServerLogs = () => {
-    if (!serverLogs || serverLogs.length === 0) return;
-    const text = serverLogs.join('\n');
-    copyToClipboard(text, 'Server logs copied!');
-  };
-
-  const forceDeleteParticipant = async (participantId: string) => {
-    if (!confirm(`Are you sure you want to FORCE DELETE participant ${participantId}? This will remove ALL related data.`)) {
-      return;
-    }
-    
-    try {
-      debugLog('Force deleting participant by ID:', participantId);
-      const endpoint = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/force-delete-participant/${participantId}`;
-      debugLog('DELETE endpoint:', endpoint);
-      
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        debugLog('Force delete result:', result);
-        toast.success(`Force deleted participant - removed ${result.deletedCount} keys`);
-        await fetchParticipants();
-        await findOrphanedParticipants();
-      } else {
-        const error = await response.json();
-        errorLog('Force delete failed:', error);
-        toast.error(error.error || 'Failed to force delete participant');
-      }
-    } catch (error) {
-      errorLog('Error force deleting participant:', error);
-      toast.error('Network error');
-    }
-  };
-
-  const forceDeleteOrphanedRecord = async (orphan: any) => {
-    if (!confirm(`Are you sure you want to FORCE DELETE this orphaned record?`)) {
-      return;
-    }
-    
-    try {
-      debugLog('Deleting orphaned record:', orphan);
-      let endpoint = '';
-      
-      // If has participant ID, use participant delete
-      if (orphan.participantId) {
-        debugLog('Using participant delete endpoint for ID:', orphan.participantId);
-        endpoint = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/force-delete-participant/${orphan.participantId}`;
-      } 
-      // Otherwise, delete by key
-      else {
-        const fullKey = orphan.key || orphan.emailKey;
-        if (!fullKey) {
-          toast.error('Cannot delete - no valid key found');
-          errorLog('Orphan object missing key:', orphan);
-          return;
-        }
-        
-        debugLog('Using orphaned delete endpoint for key:', fullKey);
-        const parts = fullKey.split(':');
-        const keyType = parts[0];
-        const keyValue = parts.slice(1).join(':');
-        endpoint = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/force-delete-orphaned/${encodeURIComponent(keyType)}/${encodeURIComponent(keyValue)}`;
-      }
-
-      debugLog('DELETE endpoint:', endpoint);
-
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        debugLog('Delete result:', result);
-        toast.success(`Force deleted orphaned record - removed ${result.deletedCount} keys`);
-        await fetchParticipants();
-        await findOrphanedParticipants();
-      } else {
-        const error = await response.json();
-        errorLog('Delete failed:', error);
-        toast.error(error.error || 'Failed to force delete orphaned record');
-      }
-    } catch (error) {
-      errorLog('Error force deleting orphaned record:', error);
-      toast.error('Network error');
-    }
-  };
-
-  const forceDeleteAllOrphaned = async () => {
-    if (!confirm(`⚠️ DANGER: Are you sure you want to FORCE DELETE ALL ${orphanedParticipants.length} orphaned participants?\n\nThis will permanently remove all orphaned records and cannot be undone!`)) {
-      return;
-    }
-    
-    try {
-      debugLog('Force deleting ALL orphaned participants...');
-      const endpoint = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/force-delete-all-orphaned`;
-      debugLog('DELETE endpoint:', endpoint);
-      
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        debugLog('Force delete all result:', result);
-        toast.success(`Force deleted all orphaned participants - removed ${result.deletedCount} keys`);
-        await fetchParticipants();
-        await findOrphanedParticipants();
-      } else {
-        const error = await response.json();
-        errorLog('Force delete all failed:', error);
-        toast.error(error.error || 'Failed to force delete all orphaned participants');
-      }
-    } catch (error) {
-      errorLog('Error force deleting all orphaned participants:', error);
-      toast.error('Network error');
-    }
-  };
-
-  const forceDeleteAllOrphanedLoop = async () => {
-    if (!confirm(`⚠️ DANGER: Are you sure you want to FORCE DELETE ALL orphaned participants in a loop?\n\nThis will keep deleting until no orphaned records remain. This cannot be undone!`)) {
-      return;
-    }
-    
-    try {
-      let round = 1;
-      let totalDeleted = 0;
-      
-      while (true) {
-        debugLog(`Force delete round ${round}...`);
-        const endpoint = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/debug/force-delete-all-orphaned`;
-        
-        const response = await fetch(endpoint, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          errorLog('Force delete all failed:', error);
-          toast.error(error.error || 'Failed to force delete all orphaned participants');
-          break;
-        }
-
-        const result = await response.json();
-        debugLog(`Round ${round} result:`, result);
-        totalDeleted += result.deletedCount;
-        
-        // If no orphaned participants were found, we're done
-        if (result.orphanedCount === 0) {
-          debugLog('No more orphaned participants found. Done!');
-          toast.success(`Cleanup complete! Removed ${totalDeleted} keys in ${round} round(s)`);
-          break;
-        }
-        
-        round++;
-        
-        // Safety limit to prevent infinite loop
-        if (round > 10) {
-          debugLog('Reached safety limit of 10 rounds');
-          toast.warning(`Stopped after 10 rounds - removed ${totalDeleted} keys. ${result.orphanedCount} orphans may remain.`);
-          break;
-        }
-      }
-      
-      await fetchParticipants();
-      await findOrphanedParticipants();
-    } catch (error) {
-      errorLog('Error in force delete loop:', error);
-      toast.error('Network error');
-    }
-  };
-
   const handleDeleteParticipant = async () => {
     if (!participantToDelete) return;
     
@@ -893,7 +473,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
         setDeleteParticipantDialogOpen(false);
         setParticipantToDelete(null);
         setExpandedParticipantId(null);
-        await fetchParticipants();
+        await refetchParticipants();
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to delete participant');
@@ -930,7 +510,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
         setRegistrationToDelete(null);
         await fetchParticipantDetail(expandedParticipantId);
         await fetchAuditLog(expandedParticipantId);
-        await fetchParticipants();
+        await refetchParticipants();
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to delete registration');
@@ -953,23 +533,16 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
                   Participant management
+                  {isRefetching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </CardTitle>
                 <CardDescription>
                   Manage all participants across all events
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={fetchParticipants}>
+                <Button variant="outline" size="sm" onClick={() => refetchParticipants()}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
-                </Button>
-                <Button 
-                  variant={showDebugTools ? "default" : "outline"} 
-                  size="sm" 
-                  onClick={() => setShowDebugTools(!showDebugTools)}
-                >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Debug tools
                 </Button>
                 <Button variant="outline" onClick={onBack}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -1016,144 +589,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
                 </div>
               )}
             </div>
-
-            {/* Debug Tools Panel */}
-            {showDebugTools && (
-              <Card className="mb-4 bg-yellow-50 dark:bg-yellow-950 border-yellow-300">
-                <CardHeader>
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Debug tools - Data integrity
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Fix data inconsistencies and remove orphaned records
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2 mb-4 flex-wrap">
-                    <Button 
-                      size="sm" 
-                      onClick={fixParticipantKeys}
-                      variant="default"
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Fix participant keys
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={findOrphanedParticipants}
-                      disabled={isLoadingOrphaned}
-                    >
-                      {isLoadingOrphaned ? 'Scanning...' : 'Find orphaned participants'}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={fetchServerLogs}
-                      variant="outline"
-                      className="border-purple-600 text-purple-600 hover:bg-purple-50"
-                      disabled={isLoadingServerLogs}
-                    >
-                      <Terminal className="w-4 h-4 mr-2" />
-                      {isLoadingServerLogs ? 'Loading...' : 'View server logs'}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={() => diagnoseSession('1765256878465')}
-                      variant="outline"
-                      className="border-green-600 text-green-600 hover:bg-green-50"
-                    >
-                      <Activity className="w-4 h-4 mr-2" />
-                      Diagnose Test Session A
-                    </Button>
-                    {orphanedParticipants.length > 0 && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={forceDeleteAllOrphaned}
-                        >
-                          Force delete all (1 pass)
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={forceDeleteAllOrphanedLoop}
-                          className="bg-red-700 hover:bg-red-800"
-                        >
-                          Force delete all (loop)
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                  
-                  {/* Info Alert for Server Logs */}
-                  <div className="text-xs text-muted-foreground bg-purple-50 p-3 rounded border border-purple-200 mb-4">
-                    <p className="font-semibold text-purple-900 mb-1 flex items-center gap-1">
-                      <Terminal className="w-3 h-3" />
-                      💡 How to view server logs:
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 text-purple-800">
-                      <li>Click <strong>"View server logs"</strong> button above to open log viewer dialog</li>
-                      <li>Or open <strong>Browser Console (F12)</strong> to see real-time logs</li>
-                      <li>Use <strong>Refresh</strong> button in the dialog to reload latest logs</li>
-                      <li>All errors from migrations will be logged with detailed information</li>
-                    </ul>
-                  </div>
-                  
-                  {orphanedParticipants.length > 0 && (
-                    <div className="rounded-md border bg-background">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Participant ID</TableHead>
-                            <TableHead>Details</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {orphanedParticipants.map((orphan, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell>
-                                <Badge variant="destructive">{orphan.type}</Badge>
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {orphan.participantId || 'N/A'}
-                              </TableCell>
-                              <TableCell className="text-xs">
-                                {orphan.email || orphan.emailKey || JSON.stringify(orphan.data || {}).substring(0, 50)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {orphan.participantId && (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => forceDeleteParticipant(orphan.participantId)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Force delete
-                                  </Button>
-                                )}
-                                {!orphan.participantId && (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => forceDeleteOrphanedRecord(orphan)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Force delete
-                                  </Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
 
             {/* Table */}
             <div className="rounded-md border">
@@ -1273,20 +708,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
                                       <History className="h-4 w-4 mr-2" />
                                       Activity log ({auditLog.length})
                                     </Button>
-                                    <Button
-                                      variant={activeTab === 'raw' ? 'default' : 'ghost'}
-                                      size="sm"
-                                      onClick={() => {
-                                        setActiveTab('raw');
-                                        if (!showRawData) {
-                                          fetchRawRegistrations(participant.email);
-                                        }
-                                      }}
-                                      className="rounded-b-none"
-                                    >
-                                      <Activity className="h-4 w-4 mr-2" />
-                                      Raw data ({rawRegistrations.length})
-                                    </Button>
                                   </div>
 
                                   {/* Registrations Table */}
@@ -1323,15 +744,8 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
                                               </TableCell>
                                             </TableRow>
                                           ) : (
-                                            participantRegistrations.flatMap((reg, idx) => [
-                                              // Debug row
-                                              <TableRow key={`debug-${idx}`}>
-                                                <TableCell colSpan={8} className="bg-blue-50 dark:bg-blue-950 p-2 text-xs">
-                                                  <strong>DEBUG:</strong> Session ID: {reg.sessionId} | Round ID: {reg.roundId}
-                                                </TableCell>
-                                              </TableRow>,
-                                              // Data row
-                                              <TableRow key={`data-${idx}`}>
+                                            participantRegistrations.map((reg, idx) => (
+                                              <TableRow key={idx}>
                                                 <TableCell>
                                                   <div className="flex items-center gap-2">
                                                     <Globe className="h-4 w-4 text-muted-foreground" />
@@ -1420,7 +834,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
                                                   </Button>
                                                 </TableCell>
                                               </TableRow>
-                                            ])
+                                            ))
                                           )}
                                         </TableBody>
                                       </Table>
@@ -1481,73 +895,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
                                   </div>
                                   )}
                                   
-                                  {/* Raw Data Tab */}
-                                  {activeTab === 'raw' && (
-                                  <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                      <Label className="text-sm text-muted-foreground">
-                                        Raw participant_registrations data ({rawRegistrations.length} total)
-                                      </Label>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={async () => {
-                                          const rawData = JSON.stringify(rawRegistrations, null, 2);
-                                          try {
-                                            await copyToClipboard(rawData);
-                                            toast.success('Raw data copied to clipboard');
-                                          } catch (error) {
-                                            toast.error('Failed to copy to clipboard');
-                                          }
-                                        }}
-                                      >
-                                        Copy all
-                                      </Button>
-                                    </div>
-                                    <div className="rounded-md border bg-background">
-                                      {isLoadingRawData ? (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                          Loading raw data...
-                                        </div>
-                                      ) : rawRegistrations.length === 0 ? (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                          No registrations found
-                                        </div>
-                                      ) : (
-                                        <div className="divide-y max-h-96 overflow-y-auto">
-                                          {rawRegistrations.map((reg, idx) => (
-                                            <div key={idx} className="p-3">
-                                              <div className="flex items-center justify-between mb-2">
-                                                <Badge variant="outline" className="text-xs">
-                                                  Registration #{idx + 1}
-                                                </Badge>
-                                                <Button
-                                                  size="sm"
-                                                  variant="ghost"
-                                                  onClick={async () => {
-                                                    const regData = JSON.stringify(reg, null, 2);
-                                                    try {
-                                                      await copyToClipboard(regData);
-                                                      toast.success('Registration copied');
-                                                    } catch (error) {
-                                                      toast.error('Failed to copy to clipboard');
-                                                    }
-                                                  }}
-                                                >
-                                                  Copy
-                                                </Button>
-                                              </div>
-                                              <pre className="text-xs bg-muted p-2 rounded overflow-auto font-mono">
-                                                {JSON.stringify(reg, null, 2)}
-                                              </pre>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  )}
-
                                   {/* Delete Participant Button */}
                                   <div className="pt-4 border-t">
                                     <Button
@@ -1641,87 +988,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
           </DialogContent>
         </Dialog>
 
-        {/* Session Diagnostics Dialog */}
-        <Dialog open={showSessionDiagnostics} onOpenChange={setShowSessionDiagnostics}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-green-600" />
-                Session diagnostics - {sessionDiagnostics?.sessionId}
-              </DialogTitle>
-              <DialogDescription>
-                Complete database structure for this session
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded border border-gray-200 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto">
-                {sessionDiagnostics ? JSON.stringify(sessionDiagnostics, null, 2) : 'Loading...'}
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowSessionDiagnostics(false)}
-              >
-                Close
-              </Button>
-              <Button
-                onClick={copySessionDiagnostics}
-              >
-                Copy to clipboard
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Server Logs Dialog */}
-        <Dialog open={showServerLogs} onOpenChange={setShowServerLogs}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Terminal className="h-5 w-5 text-purple-600" />
-                Server logs (last 200 entries)
-              </DialogTitle>
-              <DialogDescription>
-                Real-time server logs from backend
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="bg-gray-900 text-green-400 p-4 rounded border border-gray-700 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto">
-                {serverLogs && serverLogs.length > 0 ? (
-                  serverLogs.map((log, index) => (
-                    <div key={index} className="mb-1">
-                      {log}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-gray-500">No logs available</div>
-                )}
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowServerLogs(false)}
-              >
-                Close
-              </Button>
-              <Button
-                onClick={copyServerLogs}
-                disabled={!serverLogs || serverLogs.length === 0}
-              >
-                Copy to clipboard
-              </Button>
-              <Button
-                onClick={fetchServerLogs}
-                variant="secondary"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );

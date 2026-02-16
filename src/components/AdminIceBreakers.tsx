@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
-import { MessageCircle, Plus, Edit2, Trash2, Check, X, ArrowLeft } from 'lucide-react';
+import { MessageCircle, Plus, Edit2, Trash2, Check, X, ArrowLeft, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { toast } from 'sonner@2.0.3';
-import { projectId } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
+import { useIceBreakers, useSaveIceBreakers } from '../hooks/useAdminQueries';
 
 interface AdminIceBreakersProps {
   accessToken: string;
@@ -14,35 +14,13 @@ interface AdminIceBreakersProps {
 }
 
 export function AdminIceBreakers({ accessToken, onBack }: AdminIceBreakersProps) {
-  const [iceBreakers, setIceBreakers] = useState<string[]>([]);
   const [newIceBreaker, setNewIceBreaker] = useState('');
   const [editingIceBreakerIndex, setEditingIceBreakerIndex] = useState<number | null>(null);
   const [editingIceBreakerText, setEditingIceBreakerText] = useState('');
 
-  const fetchIceBreakers = async () => {
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/ice-breakers`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setIceBreakers(result.iceBreakers || []);
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to fetch ice breakers');
-      }
-    } catch (error) {
-      errorLog('Error fetching ice breakers:', error);
-      toast.error('Network error while fetching ice breakers');
-    }
-  };
+  // React Query hooks
+  const { data: iceBreakers = [], isLoading: isFetching, isFetching: isRefetching } = useIceBreakers(accessToken);
+  const saveMutation = useSaveIceBreakers(accessToken);
 
   const handleAddIceBreaker = async () => {
     if (!newIceBreaker.trim()) {
@@ -50,33 +28,13 @@ export function AdminIceBreakers({ accessToken, onBack }: AdminIceBreakersProps)
       return;
     }
 
-    try {
-      const updatedIceBreakers = [...iceBreakers, newIceBreaker.trim()];
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/ice-breakers`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ iceBreakers: updatedIceBreakers }),
-        }
-      );
-
-      if (response.ok) {
-        setIceBreakers(updatedIceBreakers);
+    const updatedIceBreakers = [...iceBreakers, newIceBreaker.trim()];
+    saveMutation.mutate(updatedIceBreakers, {
+      onSuccess: () => {
         setNewIceBreaker('');
         toast.success('Ice breaker added successfully');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to add ice breaker');
-      }
-    } catch (error) {
-      errorLog('Error adding ice breaker:', error);
-      toast.error('Network error while adding ice breaker');
-    }
+      },
+    });
   };
 
   const handleUpdateIceBreaker = async (index: number) => {
@@ -85,69 +43,26 @@ export function AdminIceBreakers({ accessToken, onBack }: AdminIceBreakersProps)
       return;
     }
 
-    try {
-      const updatedIceBreakers = [...iceBreakers];
-      updatedIceBreakers[index] = editingIceBreakerText.trim();
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/ice-breakers`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ iceBreakers: updatedIceBreakers }),
-        }
-      );
+    const updatedIceBreakers = [...iceBreakers];
+    updatedIceBreakers[index] = editingIceBreakerText.trim();
 
-      if (response.ok) {
-        setIceBreakers(updatedIceBreakers);
+    saveMutation.mutate(updatedIceBreakers, {
+      onSuccess: () => {
         setEditingIceBreakerIndex(null);
         setEditingIceBreakerText('');
         toast.success('Ice breaker updated successfully');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to update ice breaker');
-      }
-    } catch (error) {
-      errorLog('Error updating ice breaker:', error);
-      toast.error('Network error while updating ice breaker');
-    }
+      },
+    });
   };
 
   const handleDeleteIceBreaker = async (index: number) => {
-    try {
-      const updatedIceBreakers = iceBreakers.filter((_, i) => i !== index);
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/ice-breakers`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ iceBreakers: updatedIceBreakers }),
-        }
-      );
-
-      if (response.ok) {
-        setIceBreakers(updatedIceBreakers);
+    const updatedIceBreakers = iceBreakers.filter((_: string, i: number) => i !== index);
+    saveMutation.mutate(updatedIceBreakers, {
+      onSuccess: () => {
         toast.success('Ice breaker deleted successfully');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to delete ice breaker');
-      }
-    } catch (error) {
-      errorLog('Error deleting ice breaker:', error);
-      toast.error('Network error while deleting ice breaker');
-    }
+      },
+    });
   };
-
-  useEffect(() => {
-    fetchIceBreakers();
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,6 +74,9 @@ export function AdminIceBreakers({ accessToken, onBack }: AdminIceBreakersProps)
                 <CardTitle className="flex items-center gap-2">
                   <MessageCircle className="h-5 w-5" />
                   Ice breaker questions
+                  {(isFetching || isRefetching) && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                 </CardTitle>
                 <CardDescription>
                   Manage the pool of ice breaker questions available to event organizers
@@ -181,10 +99,10 @@ export function AdminIceBreakers({ accessToken, onBack }: AdminIceBreakersProps)
                   className="flex-1"
                   maxLength={60}
                 />
-                <Button 
+                <Button
                   onClick={handleAddIceBreaker}
                   className="shrink-0"
-                  disabled={!newIceBreaker.trim()}
+                  disabled={!newIceBreaker.trim() || saveMutation.isPending}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add
@@ -194,7 +112,7 @@ export function AdminIceBreakers({ accessToken, onBack }: AdminIceBreakersProps)
               {/* List of ice breakers */}
               {iceBreakers.length > 0 ? (
                 <div className="space-y-2">
-                  {iceBreakers.map((iceBreaker, index) => (
+                  {iceBreakers.map((iceBreaker: string, index: number) => (
                     <div key={index} className="flex items-center gap-2 p-3 border rounded-lg">
                       {editingIceBreakerIndex === index ? (
                         <>
@@ -211,6 +129,7 @@ export function AdminIceBreakers({ accessToken, onBack }: AdminIceBreakersProps)
                               variant="ghost"
                               onClick={() => handleUpdateIceBreaker(index)}
                               className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                              disabled={saveMutation.isPending}
                             >
                               <Check className="h-4 w-4" />
                             </Button>

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { ArrowLeft, Mail, MessageSquare, Save, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { ArrowLeft, Mail, MessageSquare, Save, RefreshCw, Loader2 } from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
+import { useNotificationTexts, useSaveNotificationTexts } from '../hooks/useAdminQueries';
 
 interface AdminNotificationTextsProps {
   accessToken: string;
@@ -16,7 +16,7 @@ interface NotificationTexts {
   // SMS Templates
   smsConfirmationReminder: string;
   smsRoundStartingSoon: string;
-  
+
   // Email Templates
   emailWelcomeSubject: string;
   emailWelcomeBody: string;
@@ -28,7 +28,7 @@ const DEFAULT_TEXTS: NotificationTexts = {
   // SMS
   smsConfirmationReminder: 'Hi {name}! Please confirm your attendance for "{sessionName}" round starting at {time}. Confirm here: {link}',
   smsRoundStartingSoon: '⏰ Reminder: "{sessionName}" round starts in {minutes} minutes at {location}!',
-  
+
   // Email
   emailWelcomeSubject: '{eventName} - Oliwonder round details',
   emailWelcomeBody: `Hi {firstName}!
@@ -69,71 +69,29 @@ Oliwonder Team`,
 };
 
 export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificationTextsProps) {
-  const [texts, setTexts] = useState<NotificationTexts>(DEFAULT_TEXTS);
-  const [originalTexts, setOriginalTexts] = useState<NotificationTexts>(DEFAULT_TEXTS);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  // React Query - fetch with cache
+  const { data: serverTexts, isLoading: isFetching, isFetching: isRefetching } = useNotificationTexts(accessToken);
+  const saveMutation = useSaveNotificationTexts(accessToken);
 
-  useEffect(() => {
-    fetchTexts();
-  }, []);
+  // Local editing state - initialized from server data or defaults
+  const loadedTexts: NotificationTexts = serverTexts
+    ? { ...DEFAULT_TEXTS, ...serverTexts }
+    : DEFAULT_TEXTS;
 
-  const fetchTexts = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/notification-texts`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
+  const [texts, setTexts] = useState<NotificationTexts | null>(null);
 
-      if (response.ok) {
-        const data = await response.json();
-        const loadedTexts = data.texts || DEFAULT_TEXTS;
-        setTexts(loadedTexts);
-        setOriginalTexts(loadedTexts);
-      } else {
-        toast.error('Failed to load notification texts');
-      }
-    } catch (error) {
-      console.error('Error fetching notification texts:', error);
-      toast.error('Failed to load notification texts');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Use local edits if user has changed something, otherwise use loaded data
+  const currentTexts = texts ?? loadedTexts;
+  const originalTexts = loadedTexts;
+
+  const hasChanges = JSON.stringify(currentTexts) !== JSON.stringify(originalTexts);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/notification-texts`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ texts }),
-        }
-      );
-
-      if (response.ok) {
-        setOriginalTexts(texts);
-        toast.success('Notification texts saved successfully');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to save notification texts');
-      }
-    } catch (error) {
-      console.error('Error saving notification texts:', error);
-      toast.error('Failed to save notification texts');
-    } finally {
-      setIsSaving(false);
-    }
+    saveMutation.mutate(currentTexts, {
+      onSuccess: () => {
+        setTexts(null); // Reset local edits, rely on cache
+      },
+    });
   };
 
   const handleReset = () => {
@@ -144,33 +102,20 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
   };
 
   const handleRevert = () => {
-    setTexts(originalTexts);
+    setTexts(null);
     toast.info('Reverted to last saved values');
   };
 
-  const hasChanges = JSON.stringify(texts) !== JSON.stringify(originalTexts);
-
   const isFieldChanged = <K extends keyof NotificationTexts>(key: K): boolean => {
-    return texts[key] !== originalTexts[key];
+    return currentTexts[key] !== originalTexts[key];
   };
 
   const updateText = <K extends keyof NotificationTexts>(
     key: K,
     value: NotificationTexts[K]
   ) => {
-    setTexts(prev => ({ ...prev, [key]: value }));
+    setTexts(prev => ({ ...(prev ?? currentTexts), [key]: value }));
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading notification texts...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,7 +129,12 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 Back
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">Notification texts</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold">Notification texts</h1>
+                  {(isFetching || isRefetching) && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">Customize SMS and email notification templates</p>
               </div>
             </div>
@@ -197,9 +147,9 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Revert changes
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button onClick={handleSave} disabled={saveMutation.isPending || !hasChanges}>
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? 'Saving...' : 'Save changes'}
+                {saveMutation.isPending ? 'Saving...' : 'Save changes'}
               </Button>
             </div>
           </div>
@@ -209,7 +159,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
       {/* Main Content */}
       <div className="container mx-auto px-6 py-8 max-w-5xl">
         <div className="space-y-6">
-          
+
           {/* Available Variables Info */}
           <Card className="border-blue-200 bg-blue-50">
             <CardContent className="pt-6">
@@ -255,7 +205,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              
+
               {/* SMS Confirmation Reminder */}
               <div className="space-y-2">
                 <Label htmlFor="smsConfirmationReminder">
@@ -266,13 +216,13 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 </Label>
                 <Textarea
                   id="smsConfirmationReminder"
-                  value={texts.smsConfirmationReminder}
+                  value={currentTexts.smsConfirmationReminder}
                   onChange={(e) => updateText('smsConfirmationReminder', e.target.value)}
                   rows={3}
                   className={isFieldChanged('smsConfirmationReminder') ? 'border-amber-400 border-2' : ''}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {texts.smsConfirmationReminder.length} characters
+                  {currentTexts.smsConfirmationReminder.length} characters
                   {isFieldChanged('smsConfirmationReminder') && (
                     <span className="text-amber-600 ml-2">(modified)</span>
                   )}
@@ -289,13 +239,13 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 </Label>
                 <Textarea
                   id="smsRoundStartingSoon"
-                  value={texts.smsRoundStartingSoon}
+                  value={currentTexts.smsRoundStartingSoon}
                   onChange={(e) => updateText('smsRoundStartingSoon', e.target.value)}
                   rows={3}
                   className={isFieldChanged('smsRoundStartingSoon') ? 'border-amber-400 border-2' : ''}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {texts.smsRoundStartingSoon.length} characters
+                  {currentTexts.smsRoundStartingSoon.length} characters
                   {isFieldChanged('smsRoundStartingSoon') && (
                     <span className="text-amber-600 ml-2">(modified)</span>
                   )}
@@ -319,7 +269,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              
+
               {/* Email Welcome */}
               <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
                 <h4 className="font-medium">Welcome email</h4>
@@ -327,7 +277,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                   <Label htmlFor="emailWelcomeSubject">Subject line</Label>
                   <Textarea
                     id="emailWelcomeSubject"
-                    value={texts.emailWelcomeSubject}
+                    value={currentTexts.emailWelcomeSubject}
                     onChange={(e) => updateText('emailWelcomeSubject', e.target.value)}
                     rows={1}
                     className={isFieldChanged('emailWelcomeSubject') ? 'border-amber-400 border-2' : ''}
@@ -340,7 +290,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                   <Label htmlFor="emailWelcomeBody">Email body</Label>
                   <Textarea
                     id="emailWelcomeBody"
-                    value={texts.emailWelcomeBody}
+                    value={currentTexts.emailWelcomeBody}
                     onChange={(e) => updateText('emailWelcomeBody', e.target.value)}
                     rows={20}
                     className={`font-mono text-sm ${isFieldChanged('emailWelcomeBody') ? 'border-amber-400 border-2' : ''}`}
@@ -358,7 +308,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                   <Label htmlFor="emailConfirmationReminderSubject">Subject line</Label>
                   <Textarea
                     id="emailConfirmationReminderSubject"
-                    value={texts.emailConfirmationReminderSubject}
+                    value={currentTexts.emailConfirmationReminderSubject}
                     onChange={(e) => updateText('emailConfirmationReminderSubject', e.target.value)}
                     rows={1}
                     className={isFieldChanged('emailConfirmationReminderSubject') ? 'border-amber-400 border-2' : ''}
@@ -371,7 +321,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                   <Label htmlFor="emailConfirmationReminderBody">Email body</Label>
                   <Textarea
                     id="emailConfirmationReminderBody"
-                    value={texts.emailConfirmationReminderBody}
+                    value={currentTexts.emailConfirmationReminderBody}
                     onChange={(e) => updateText('emailConfirmationReminderBody', e.target.value)}
                     rows={8}
                     className={`font-mono text-sm ${isFieldChanged('emailConfirmationReminderBody') ? 'border-amber-400 border-2' : ''}`}
@@ -395,7 +345,7 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 <div className="space-y-2 text-sm">
                   <p className="font-medium text-purple-900">Template preview:</p>
                   <p className="text-purple-800">
-                    Variables like {'{name}'} and {'{sessionName}'} will be automatically replaced with actual values when notifications are sent. 
+                    Variables like {'{name}'} and {'{sessionName}'} will be automatically replaced with actual values when notifications are sent.
                     Keep SMS messages concise (under 160 characters recommended) to avoid splitting into multiple messages.
                   </p>
                 </div>

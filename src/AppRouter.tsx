@@ -1,9 +1,5 @@
 import React, { lazy, Suspense, createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router';
-import { DebugParticipant } from './components/DebugParticipant';
-import DuplicateRegistrationTest from './pages/duplicate-registration-test';
-import { DebugSessionLookup } from './pages/debug-session-lookup';
-import DebugParticipantCheck from './components/DebugParticipantCheck';
 import { Toaster } from './components/ui/sonner';
 import { VersionBadge } from './components/VersionBadge';
 import { TimeProvider } from './contexts/TimeContext';
@@ -57,16 +53,8 @@ const AdminSessions = lazy(() => import('./components/AdminSessions').then(m => 
 const AdminStatusesGuide = lazy(() => import('./components/AdminStatusesGuide').then(m => ({ default: m.AdminStatusesGuide })));
 const AdminParticipantFlow = lazy(() => import('./components/AdminParticipantFlow').then(m => ({ default: m.AdminParticipantFlow })));
 const AdminParameters = lazy(() => import('./components/AdminParameters').then(m => ({ default: m.AdminParameters })));
-const AdminDebug = lazy(() => import('./components/AdminDebug').then(m => ({ default: m.AdminDebug })));
-const AdminTestPanel = lazy(() => import('./components/AdminTestPanel').then(m => ({ default: m.AdminTestPanel })));
 const AdminOrganizerRequests = lazy(() => import('./components/AdminOrganizerRequests').then(m => ({ default: m.AdminOrganizerRequests })));
-const AdminParticipantPreview = lazy(() => import('./components/AdminParticipantPreview').then(m => ({ default: m.AdminParticipantPreview })));
-const DebugDataPage = lazy(() => import('./components/DebugDataPage').then(m => ({ default: m.DebugDataPage })));
-const FullDumpDebugPage = lazy(() => import('./components/FullDumpDebugPage').then(m => ({ default: m.FullDumpDebugPage })));
 const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({ default: m.ThemeManager })));
-
-// Lazy load optimization showcase
-const OptimizationShowcase = lazy(() => import('./components/OptimizationShowcase').then(m => ({ default: m.OptimizationShowcase })));
 
 // Loading component for lazy loaded routes
 const RouteLoader = () => (
@@ -985,11 +973,6 @@ function AdminSessionsRoute() {
             // Store organizer ID to auto-expand after navigation
             sessionStorage.setItem('admin_organizer_id_filter', organizerId);
           }}
-          onNavigateToParticipant={(email) => {
-            navigate('/admin/participants');
-            // Store email to filter by it after navigation
-            sessionStorage.setItem('admin_participant_filter', email);
-          }}
           onNavigateToParticipants={() => {
             navigate('/admin/participants');
             // Filter values are already stored in sessionStorage by AdminSessions
@@ -1047,55 +1030,6 @@ function AdminParametersRoute() {
   );
 }
 
-function AdminDebugRoute() {
-  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <AuthenticatedNav
-        currentView="admin"
-        currentUser={currentUser}
-        isAdminUser={isAdminUser()}
-        onNavigateToDashboard={() => navigate('/dashboard')}
-        onNavigateToRounds={() => navigate('/rounds')}
-        onNavigateToAccountSettings={() => navigate('/account-settings')}
-        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
-        onNavigateToBilling={() => navigate('/billing')}
-        onNavigateToAdmin={() => navigate('/admin')}
-        onSignOut={handleSignOut}
-      />
-      <Suspense fallback={<RouteLoader />}>
-        <AdminDebug accessToken={accessToken} />
-      </Suspense>
-    </>
-  );
-}
-
-function AdminTestPanelRoute() {
-  const { currentUser, isAdminUser, handleSignOut } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <AuthenticatedNav
-        currentView="admin"
-        currentUser={currentUser}
-        isAdminUser={isAdminUser()}
-        onNavigateToDashboard={() => navigate('/dashboard')}
-        onNavigateToRounds={() => navigate('/rounds')}
-        onNavigateToAccountSettings={() => navigate('/account-settings')}
-        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
-        onNavigateToBilling={() => navigate('/billing')}
-        onNavigateToAdmin={() => navigate('/admin')}
-        onSignOut={handleSignOut}
-      />
-      <Suspense fallback={<RouteLoader />}>
-        <AdminTestPanel />
-      </Suspense>
-    </>
-  );
-}
 
 function AdminOrganizerRequestsRoute() {
   const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
@@ -1122,86 +1056,6 @@ function AdminOrganizerRequestsRoute() {
   );
 }
 
-function AdminParticipantPreviewRoute() {
-  const { currentUser, isAdminUser, handleSignOut } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <AuthenticatedNav
-        currentView="admin"
-        currentUser={currentUser}
-        isAdminUser={isAdminUser()}
-        onNavigateToDashboard={() => navigate('/dashboard')}
-        onNavigateToRounds={() => navigate('/rounds')}
-        onNavigateToAccountSettings={() => navigate('/account-settings')}
-        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
-        onNavigateToBilling={() => navigate('/billing')}
-        onNavigateToAdmin={() => navigate('/admin')}
-        onSignOut={handleSignOut}
-      />
-      <Suspense fallback={<RouteLoader />}>
-        <AdminParticipantPreview />
-      </Suspense>
-    </>
-  );
-}
-
-function DebugDataRoute() {
-  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <AuthenticatedNav
-        currentView="admin"
-        currentUser={currentUser}
-        isAdminUser={isAdminUser()}
-        onNavigateToDashboard={() => navigate('/dashboard')}
-        onNavigateToRounds={() => navigate('/rounds')}
-        onNavigateToAccountSettings={() => navigate('/account-settings')}
-        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
-        onNavigateToBilling={() => navigate('/billing')}
-        onNavigateToAdmin={() => navigate('/admin')}
-        onSignOut={handleSignOut}
-      />
-      <Suspense fallback={<RouteLoader />}>
-        <DebugDataPage
-          accessToken={accessToken}
-          onBack={() => navigate('/admin')}
-        />
-      </Suspense>
-    </>
-  );
-}
-
-function FullDumpRoute() {
-  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <AuthenticatedNav
-        currentView="admin"
-        currentUser={currentUser}
-        isAdminUser={isAdminUser()}
-        onNavigateToDashboard={() => navigate('/dashboard')}
-        onNavigateToRounds={() => navigate('/rounds')}
-        onNavigateToAccountSettings={() => navigate('/account-settings')}
-        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
-        onNavigateToBilling={() => navigate('/billing')}
-        onNavigateToAdmin={() => navigate('/admin')}
-        onSignOut={handleSignOut}
-      />
-      <Suspense fallback={<RouteLoader />}>
-        <FullDumpDebugPage
-          accessToken={accessToken}
-          onBack={() => navigate('/admin')}
-        />
-      </Suspense>
-    </>
-  );
-}
 
 function UserPublicPageRoute() {
   const { slug } = useParams<{ slug: string }>();
@@ -1665,7 +1519,7 @@ function AppProviderWithRouter() {
   };
 
   const isAdminUser = () => {
-    const adminEmails = ['jan.sramka+admin@gmail.com', 'jan.sramka@gmail.com', 'admin@wonderelo.com'];
+    const adminEmails = ['jan.sramka+admin@gmail.com', 'jan.sramka@gmail.com', 'admin@oliwonder.com'];
     return currentUser?.email && adminEmails.includes(currentUser.email);
   };
 
@@ -1927,28 +1781,18 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/blog', element: h(AdminRoute, null, h(AdminBlogRoute)) }),
             h(Route, { path: '/admin/organizers', element: h(AdminRoute, null, h(AdminOrganizersRoute)) }),
             h(Route, { path: '/admin/participants', element: h(AdminRoute, null, h(AdminParticipantsRoute)) }),
-            h(Route, { path: '/admin/participant-preview', element: h(AdminRoute, null, h(AdminParticipantPreviewRoute)) }),
             h(Route, { path: '/admin/sessions', element: h(AdminRoute, null, h(AdminSessionsRoute)) }),
             h(Route, { path: '/admin/statuses-guide', element: h(AdminRoute, null, h(AdminStatusesGuideRoute)) }),
             h(Route, { path: '/admin/participant-flow', element: h(AdminRoute, null, h(AdminParticipantFlowRoute)) }),
             h(Route, { path: '/admin/parameters', element: h(AdminRoute, null, h(AdminParametersRoute)) }),
-            h(Route, { path: '/admin/debug', element: h(AdminRoute, null, h(AdminDebugRoute)) }),
-            h(Route, { path: '/admin/debug-data', element: h(AdminRoute, null, h(DebugDataRoute)) }),
-            h(Route, { path: '/admin/full-dump', element: h(AdminRoute, null, h(FullDumpRoute)) }),
-            h(Route, { path: '/admin/tests', element: h(AdminRoute, null, h(AdminTestPanelRoute)) }),
             h(Route, { path: '/admin/organizer-requests', element: h(AdminRoute, null, h(AdminOrganizerRequestsRoute)) }),
-            h(Route, { path: '/admin/optimizations', element: h(AdminRoute, null, h(Suspense, { fallback: h(RouteLoader) }, h(OptimizationShowcase))) }),
             h(Route, { path: '/verify', element: h(EmailVerification) }),
-            h(Route, { path: '/debug-token', element: h(DebugParticipant) }),
-            h(Route, { path: '/debug-session-lookup', element: h(DebugSessionLookup) }),
-            h(Route, { path: '/debug-participant-check', element: h(DebugParticipantCheck) }),
             h(Route, { path: '/p/:token', element: h(ParticipantDashboard) }),
             h(Route, { path: '/p/:token/match', element: h(MatchInfo) }),
             h(Route, { path: '/p/:token/match-partner', element: h(MatchPartner) }),
             h(Route, { path: '/p/:token/networking', element: h(MatchNetworking) }),
             h(Route, { path: '/p/:token/profile', element: h(ParticipantProfile) }),
             h(Route, { path: '/p/:token/r/:roundId', element: h(ParticipantRoundDetail) }),
-            h(Route, { path: '/duplicate-registration-test', element: h(DuplicateRegistrationTest) }),
             h(Route, { path: '/bootstrap-admin', element: h(BootstrapAdminRoute) }),
             h(Route, { path: '/blog', element: h(BlogListingPageRoute) }),
             h(Route, { path: '/blog/:slug', element: h(BlogDetailPageRoute) }),

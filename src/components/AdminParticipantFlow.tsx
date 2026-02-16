@@ -147,16 +147,10 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                     <div>
                       <h3 className="text-sm font-medium mb-2">Backend endpoint: <code className="text-xs bg-muted px-1 py-0.5 rounded">/p/&#123;token&#125;/confirm/&#123;roundId&#125;</code></h3>
                       <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside ml-2">
-                        <li>Loads current participant data from KV store</li>
+                        <li>Loads current participant registration from database</li>
                         <li>Changes status to <Badge variant="outline" className="ml-1">confirmed</Badge></li>
-                        <li>Saves to both database keys:
-                          <ul className="ml-6 mt-1 space-y-1 list-disc list-inside">
-                            <li><code className="text-xs bg-muted px-1 py-0.5 rounded">participant_registrations:&#123;participantId&#125;</code></li>
-                            <li><code className="text-xs bg-muted px-1 py-0.5 rounded">participant:&#123;sessionId&#125;:&#123;roundId&#125;:&#123;participantId&#125;</code> (adds confirmedAt timestamp)</li>
-                          </ul>
-                        </li>
-                        <li>Verifies write by reading back the status</li>
-                        <li>Logs to audit log</li>
+                        <li>Updates registration in <code className="text-xs bg-muted px-1 py-0.5 rounded">registrations</code> table (sets status + confirmedAt)</li>
+                        <li>Validates confirmation window (rejects if round already started)</li>
                       </ol>
                     </div>
 
@@ -164,7 +158,7 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                       <h3 className="text-sm font-medium mb-2">Frontend flow:</h3>
                       <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside ml-2">
                         <li><strong>Optimistic update:</strong> UI immediately updates (button disappears, badge → Confirmed)</li>
-                        <li><strong>Wait 1 second:</strong> Allows KV store to sync</li>
+                        <li><strong>Wait 1 second:</strong> Allows database to sync</li>
                         <li><strong>Refetch:</strong> Loads fresh data from backend</li>
                         <li><strong>Verification:</strong> Checks if status is confirmed
                           <ul className="ml-6 mt-1 space-y-1 list-disc list-inside">

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Gift, Plus, Trash2, ToggleLeft, ToggleRight, Eye, Calendar, Percent, DollarSign, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Gift, Plus, Trash2, ToggleLeft, ToggleRight, Eye, Calendar, Percent, DollarSign, Users, Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { useGiftCards, useCreateGiftCard, useToggleGiftCard, useDeleteGiftCard } from '../hooks/useAdminQueries';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -50,8 +50,6 @@ interface AdminGiftCardsProps {
 }
 
 export function AdminGiftCards({ accessToken }: AdminGiftCardsProps) {
-  const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedCard, setSelectedCard] = useState<GiftCard | null>(null);
@@ -67,36 +65,13 @@ export function AdminGiftCards({ accessToken }: AdminGiftCardsProps) {
     maxUses: '',
   });
 
-  useEffect(() => {
-    fetchGiftCards();
-  }, []);
+  // React Query hooks
+  const { data: giftCards = [], isLoading: isFetching, isFetching: isRefetching } = useGiftCards(accessToken);
+  const createMutation = useCreateGiftCard(accessToken);
+  const toggleMutation = useToggleGiftCard(accessToken);
+  const deleteMutation = useDeleteGiftCard(accessToken);
 
-  const fetchGiftCards = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/gift-cards/list`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setGiftCards(result.giftCards || []);
-      } else {
-        toast.error(result.error || 'Failed to fetch gift cards');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Network error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const isLoading = createMutation.isPending || toggleMutation.isPending || deleteMutation.isPending;
 
   const createGiftCard = async () => {
     if (!formData.code.trim()) {
@@ -114,112 +89,34 @@ export function AdminGiftCards({ accessToken }: AdminGiftCardsProps) {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      toast.loading('Creating gift card...');
-
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/gift-cards/create`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: formData.code.toUpperCase().trim(),
-            discountType: formData.discountType,
-            discountValue: parseFloat(formData.discountValue),
-            applicableTo: formData.applicableTo,
-            validFrom: formData.validFrom,
-            validUntil: formData.validUntil,
-            maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        toast.success('Gift card created successfully!');
-        setShowCreateDialog(false);
-        resetForm();
-        await fetchGiftCards();
-      } else {
-        toast.error(result.error || 'Failed to create gift card');
+    createMutation.mutate(
+      {
+        code: formData.code.toUpperCase().trim(),
+        discountType: formData.discountType,
+        discountValue: parseFloat(formData.discountValue),
+        applicableTo: formData.applicableTo,
+        validFrom: formData.validFrom,
+        validUntil: formData.validUntil,
+        maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
+      },
+      {
+        onSuccess: () => {
+          setShowCreateDialog(false);
+          resetForm();
+        },
       }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Network error');
-    } finally {
-      setIsLoading(false);
-    }
+    );
   };
 
-  const toggleGiftCard = async (code: string, currentStatus: boolean) => {
-    try {
-      setIsLoading(true);
-      toast.loading(currentStatus ? 'Deactivating...' : 'Activating...');
-
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/gift-cards/${code}/toggle`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        toast.success(result.message);
-        await fetchGiftCards();
-      } else {
-        toast.error(result.error || 'Failed to toggle gift card');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Network error');
-    } finally {
-      setIsLoading(false);
-    }
+  const toggleGiftCard = async (code: string, _currentStatus: boolean) => {
+    toggleMutation.mutate({ code });
   };
 
   const deleteGiftCard = async (code: string) => {
     if (!confirm(`Are you sure you want to delete gift card "${code}"?`)) {
       return;
     }
-
-    try {
-      setIsLoading(true);
-      toast.loading('Deleting gift card...');
-
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/gift-cards/${code}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        toast.success('Gift card deleted');
-        await fetchGiftCards();
-      } else {
-        toast.error(result.error || 'Failed to delete gift card');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Network error');
-    } finally {
-      setIsLoading(false);
-    }
+    deleteMutation.mutate(code);
   };
 
   const viewDetails = (card: GiftCard) => {
@@ -277,7 +174,12 @@ export function AdminGiftCards({ accessToken }: AdminGiftCardsProps) {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="mb-2">Gift cards management</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="mb-2">Gift cards management</h2>
+                {(isFetching || isRefetching) && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
               <p className="text-muted-foreground">
                 Create and manage promotional gift cards for organizers
               </p>

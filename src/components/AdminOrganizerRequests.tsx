@@ -1,14 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
 import { ArrowLeft, ListOrdered, Plus, ChevronUp, ChevronDown, X, Loader2, RotateCcw } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
-import { errorLog } from '../utils/debug';
+import { useDefaultRoundRules, useSaveDefaultRoundRules } from '../hooks/useAdminQueries';
 
 export interface RoundRule {
   headline: string;
@@ -22,10 +20,6 @@ interface AdminOrganizerRequestsProps {
 
 export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRequestsProps) {
   const navigate = useNavigate();
-  const [roundRules, setRoundRules] = useState<RoundRule[]>([]);
-  const [originalRoundRules, setOriginalRoundRules] = useState<RoundRule[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
   // Default round rules
   const defaultRoundRules: RoundRule[] = [
@@ -43,128 +37,61 @@ export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRe
     }
   ];
 
-  // Fetch current round rules
-  useEffect(() => {
-    const fetchRoundRules = async () => {
-      try {
-        const { projectId } = await import('../utils/supabase/info');
-        
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/default-round-rules`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+  // React Query hooks
+  const { data: serverRules, isLoading: isFetching, isFetching: isRefetching } = useDefaultRoundRules(accessToken);
+  const saveMutation = useSaveDefaultRoundRules(accessToken);
 
-        if (response.ok) {
-          const data = await response.json();
-          let rules = data.rules || defaultRoundRules;
-          
-          // Handle legacy string format - convert to array
-          if (typeof rules === 'string') {
-            rules = defaultRoundRules;
-          }
-          
-          setRoundRules(rules);
-          setOriginalRoundRules(rules);
-        } else {
-          // Use default if not found
-          setRoundRules(defaultRoundRules);
-          setOriginalRoundRules(defaultRoundRules);
-        }
-      } catch (error) {
-        errorLog('Error fetching round rules:', error);
-        setRoundRules(defaultRoundRules);
-        setOriginalRoundRules(defaultRoundRules);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Loaded rules from server or defaults
+  const loadedRules: RoundRule[] = serverRules ?? defaultRoundRules;
 
-    fetchRoundRules();
-  }, [accessToken]);
+  // Local editing state
+  const [localRules, setLocalRules] = useState<RoundRule[] | null>(null);
 
-  const hasChanges = JSON.stringify(roundRules) !== JSON.stringify(originalRoundRules);
+  // Use local edits if present, otherwise server/default data
+  const roundRules = localRules ?? loadedRules;
+
+  const hasChanges = JSON.stringify(roundRules) !== JSON.stringify(loadedRules);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    
-    try {
-      const { projectId } = await import('../utils/supabase/info');
-
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/default-round-rules`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ rules: roundRules }),
-        }
-      );
-
-      if (response.ok) {
-        setOriginalRoundRules(roundRules);
-        toast.success('Default round rules updated successfully!');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || 'Failed to update round rules');
-      }
-    } catch (error) {
-      errorLog('Error saving round rules:', error);
-      toast.error('Failed to update round rules');
-    } finally {
-      setIsSaving(false);
-    }
+    saveMutation.mutate(roundRules, {
+      onSuccess: () => {
+        setLocalRules(null);
+      },
+    });
   };
 
   const handleReset = () => {
-    setRoundRules(defaultRoundRules);
+    setLocalRules(defaultRoundRules);
   };
 
   const addRule = () => {
-    setRoundRules([...roundRules, { headline: '', text: '' }]);
+    setLocalRules([...roundRules, { headline: '', text: '' }]);
   };
 
   const updateRule = (index: number, field: 'headline' | 'text', value: string) => {
     const newRules = [...roundRules];
-    newRules[index][field] = value;
-    setRoundRules(newRules);
+    newRules[index] = { ...newRules[index], [field]: value };
+    setLocalRules(newRules);
   };
 
   const removeRule = (index: number) => {
     const newRules = roundRules.filter((_, i) => i !== index);
-    setRoundRules(newRules);
+    setLocalRules(newRules);
   };
 
   const moveRuleUp = (index: number) => {
     if (index === 0) return;
     const newRules = [...roundRules];
     [newRules[index - 1], newRules[index]] = [newRules[index], newRules[index - 1]];
-    setRoundRules(newRules);
+    setLocalRules(newRules);
   };
 
   const moveRuleDown = (index: number) => {
     if (index === roundRules.length - 1) return;
     const newRules = [...roundRules];
     [newRules[index], newRules[index + 1]] = [newRules[index + 1], newRules[index]];
-    setRoundRules(newRules);
+    setLocalRules(newRules);
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading round rules...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -178,6 +105,9 @@ export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRe
               <div className="flex items-center gap-2 mb-1">
                 <ListOrdered className="h-5 w-5 text-primary" />
                 <h1>Default round rules</h1>
+                {(isFetching || isRefetching) && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
               </div>
               <p className="text-muted-foreground text-sm">
                 Manage default round rules shown to participants on event pages
@@ -201,7 +131,7 @@ export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRe
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm mt-1">
                       {index + 1}
                     </div>
-                    
+
                     <div className="flex-1 space-y-3">
                       <div className="space-y-1">
                         <Label htmlFor={`rule-headline-${index}`}>Headline</Label>
@@ -212,7 +142,7 @@ export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRe
                           placeholder="Enter rule headline"
                         />
                       </div>
-                      
+
                       <div className="space-y-1">
                         <Label htmlFor={`rule-text-${index}`}>Description</Label>
                         <Textarea
@@ -269,11 +199,11 @@ export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRe
             </Button>
 
             <div className="flex gap-3 pt-4">
-              <Button 
-                onClick={handleSave} 
-                disabled={!hasChanges || isSaving}
+              <Button
+                onClick={handleSave}
+                disabled={!hasChanges || saveMutation.isPending}
               >
-                {isSaving ? (
+                {saveMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Saving...
@@ -282,9 +212,9 @@ export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRe
                   'Save changes'
                 )}
               </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={handleReset}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
