@@ -345,10 +345,7 @@ export function SessionDisplayCard({
   };
 
   const getStatusLabel = (status: NetworkingSession['status']) => {
-    // Show "Published on event page" only if session is published AND has active rounds
-    if (status === 'published') {
-      return hasActiveRounds() ? 'Published on event page' : null;
-    }
+    if (status === 'published') return 'Published';
     if (status === 'draft') return 'Draft';
     if (status === 'scheduled') return 'Scheduled';
     if (status === 'completed') return 'Completed';

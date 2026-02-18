@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Save, Loader2 } from 'lucide-react';
+import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
 
@@ -224,18 +225,6 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto p-6">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 max-w-3xl">
@@ -243,6 +232,12 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
           <h1 className="mb-2">Account settings</h1>
         </div>
 
+        {isLoading ? (
+          <div className="space-y-6">
+            <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div></CardContent></Card>
+            <Card><CardHeader><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-10 w-full" /></CardContent></Card>
+          </div>
+        ) : (
         <div className="space-y-6">
           {/* Account Information */}
           <Card>
@@ -439,6 +434,7 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
             </Button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

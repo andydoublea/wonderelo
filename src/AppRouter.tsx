@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, usePa
 import { Toaster } from './components/ui/sonner';
 import { VersionBadge } from './components/VersionBadge';
 import { TimeProvider } from './contexts/TimeContext';
-import { TimeControl } from './components/TimeControl';
+
 import { QueryProvider } from './components/QueryProvider';
 import { queryClient, queryKeys } from './utils/queryClient';
 import { PasswordGate } from './components/PasswordGate';
@@ -688,13 +688,17 @@ function EventPageSettingsRoute() {
 }
 
 function EventPromoPageRoute() {
-  const { eventSlug } = useApp();
+  const { eventSlug, sessions, currentUser } = useApp();
   const navigate = useNavigate();
 
   return (
-    <EventPromoPage 
-      eventSlug={eventSlug} 
-      onBack={() => navigate('/dashboard')} 
+    <EventPromoPage
+      eventSlug={eventSlug}
+      sessions={sessions}
+      organizerName={currentUser?.organizerName}
+      eventName={currentUser?.eventName}
+      profileImageUrl={currentUser?.profileImageUrl}
+      onBack={() => navigate('/dashboard')}
     />
   );
 }
@@ -1830,10 +1834,6 @@ function AppProviderWithRouter() {
             h(Route, { path: '*', element: h(NotFoundRoute) })
           )}
           <Toaster />
-          {/* Bottom right tools */}
-          <div className="fixed bottom-4 right-4 z-50">
-            <TimeControl />
-          </div>
         </QueryProvider>
       </TimeProvider>
     </AppContext.Provider>

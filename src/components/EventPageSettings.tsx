@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Save, Loader2, Check, X, Upload, ImageIcon } from 'lucide-react';
+import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { debugLog, errorLog } from '../utils/debug';
@@ -369,24 +370,19 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto p-6">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 max-w-3xl">
         <div className="mb-8">
           <h1 className="mb-2">Event page settings</h1>
         </div>
+
+        {isLoading ? (
+          <div className="space-y-6">
+            <Card><CardHeader><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-24 w-24 rounded-full" /></div></CardContent></Card>
+          </div>
+        ) : (
+        <>
 
         <div className="space-y-6">
           {/* Public Profile Settings */}
@@ -544,6 +540,8 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
             </Button>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

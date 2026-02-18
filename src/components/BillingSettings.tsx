@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/
 import { Badge } from './ui/badge';
 import { Slider } from './ui/slider';
 import { Check, Loader2, CreditCard, Calendar, AlertCircle, Sparkles } from 'lucide-react';
+import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { projectId } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
@@ -221,8 +222,9 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="space-y-8">
+          <Card><CardHeader><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-3"><Skeleton className="h-6 w-32" /><Skeleton className="h-4 w-48" /><Skeleton className="h-4 w-40" /></div></CardContent></Card>
+          <Card><CardHeader><Skeleton className="h-5 w-36" /></CardHeader><CardContent><Skeleton className="h-32 w-full" /></CardContent></Card>
         </div>
       ) : (
         <>

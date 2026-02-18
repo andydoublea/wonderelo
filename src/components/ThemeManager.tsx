@@ -487,6 +487,44 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Default (no style) option — first */}
+                  <Card
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      selectedVisualStyle === 'none' ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedVisualStyle('none');
+                      removeVisualStyle();
+                    }}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">Default (original)</CardTitle>
+                        {selectedVisualStyle === 'none' && (
+                          <Check className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                      <CardDescription className="text-xs">
+                        Base styling without any visual style overlay
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="border rounded-lg p-3 bg-card space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-semibold">Sample Round</div>
+                          <Badge variant="secondary" className="text-[10px]">Preview</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">Mon, Jan 20 • 15 min</div>
+                        <div className="space-y-1">
+                          <div className="border rounded px-2 py-1 text-xs flex items-center gap-1">
+                            <div className="w-3 h-3 border rounded-full border-muted-foreground/30"></div>
+                            Round 1 — 14:00
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {VISUAL_STYLES.map((style) => (
                     <Card
                       key={style.id}
@@ -536,29 +574,6 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
                       </CardContent>
                     </Card>
                   ))}
-
-                  {/* No visual style option */}
-                  <Card
-                    className={`cursor-pointer transition-all hover:shadow-lg ${
-                      selectedVisualStyle === 'none' ? 'ring-2 ring-primary' : ''
-                    }`}
-                    onClick={() => {
-                      setSelectedVisualStyle('none');
-                      removeVisualStyle();
-                    }}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">Default (no style)</CardTitle>
-                        {selectedVisualStyle === 'none' && (
-                          <Check className="h-5 w-5 text-primary" />
-                        )}
-                      </div>
-                      <CardDescription className="text-xs">
-                        Use the base Tailwind styling without any visual style overlay
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
                 </div>
               </CardContent>
             </Card>
