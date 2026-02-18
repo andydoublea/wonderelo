@@ -39,7 +39,12 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
               }}>
                 Features
               </Button>
-              <Button variant="ghost">
+              <Button variant="ghost" onClick={() => {
+                navigate('/');
+                setTimeout(() => {
+                  document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+              }}>
                 How it works
               </Button>
               <Button variant="ghost">

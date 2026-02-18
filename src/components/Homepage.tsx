@@ -532,8 +532,63 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
         </div>
       </section>
 
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-6">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-16">
+            <h2 className="mb-4">How it works</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Three simple steps — from setup to connections made
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Step 1 */}
+            <div className="text-center">
+              <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
+                <span className="text-2xl font-bold text-primary">1</span>
+              </div>
+              <h3 className="mb-3">Create a session</h3>
+              <p className="text-sm text-muted-foreground">
+                Set up a networking round in minutes. Choose date, time, group size and define your meeting points. Share a QR code or link with your audience.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="text-center">
+              <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
+                <span className="text-2xl font-bold text-primary">2</span>
+              </div>
+              <h3 className="mb-3">Participants sign up</h3>
+              <p className="text-sm text-muted-foreground">
+                Attendees scan the QR code, pick the rounds that suit them and confirm their attendance a few minutes before the start. No app download needed.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="text-center">
+              <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
+                <span className="text-2xl font-bold text-primary">3</span>
+              </div>
+              <h3 className="mb-3">Matches happen automatically</h3>
+              <p className="text-sm text-muted-foreground">
+                When the round starts, Wonderelo pairs everyone and sends them to a meeting point. After the conversation, participants decide whether to exchange contacts.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-center mt-12">
+            <Button onClick={onGetStarted} className="bg-primary text-primary-foreground" size="lg">
+              <Calendar className="mr-2 h-5 w-5" />
+              Try it now — it's free
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Who is it for */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="mb-4">Every event is better when people really connect</h2>
