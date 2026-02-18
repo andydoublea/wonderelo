@@ -988,3 +988,280 @@
   border: 3px solid var(--foreground) !important;
   box-shadow: 6px 6px 0 0 var(--foreground) !important;
 }
+
+
+/* ==========================================================================
+   9. JASPER (vs-jasper)
+   Inspired by Jasper.ai — elegant serif headlines, vanilla/cream backgrounds,
+   warm orange accents, dark green headings, generous whitespace.
+   ========================================================================== */
+
+.vs-jasper {
+  --vs-radius: 0.625rem;
+  --vs-radius-lg: 0.875rem;
+  --vs-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --vs-shadow-hover: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  --vs-border-width: 1px;
+  --vs-card-padding: 1.75rem;
+  --vs-transition: 200ms ease;
+  --vs-serif: 'Georgia', 'Times New Roman', 'Palatino', serif;
+  --vs-green-dark: #1a3a2a;
+  --vs-green-heading: #0d2b1a;
+  --vs-orange: #e8552e;
+  --vs-orange-hover: #d14a25;
+  --vs-orange-light: #fef0eb;
+  --vs-vanilla: #fffdf7;
+  --vs-vanilla-warm: #fef8ed;
+  --vs-vanilla-muted: #f5f0e8;
+  --vs-text-dark: #1a1a1a;
+  --vs-text-body: #3d3d3d;
+  --vs-text-muted: #777;
+  --vs-border-light: #e8e2d8;
+}
+
+/* ---- Global background & text overrides ---- */
+.vs-jasper {
+  background-color: var(--vs-vanilla) !important;
+  color: var(--vs-text-dark) !important;
+}
+
+.vs-jasper .bg-background {
+  background-color: var(--vs-vanilla) !important;
+}
+
+.vs-jasper .bg-muted\/30 {
+  background-color: var(--vs-vanilla-warm) !important;
+}
+
+/* ---- Serif typography for headings ---- */
+.vs-jasper h1 {
+  font-family: var(--vs-serif) !important;
+  color: var(--vs-green-heading) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.05 !important;
+  font-size: 3.2rem !important;
+}
+
+.vs-jasper h2 {
+  font-family: var(--vs-serif) !important;
+  color: var(--vs-green-heading) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.15 !important;
+  font-size: 2.25rem !important;
+}
+
+.vs-jasper h3 {
+  font-family: var(--vs-serif) !important;
+  color: var(--vs-green-dark) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.25 !important;
+}
+
+/* ---- Body text ---- */
+.vs-jasper p,
+.vs-jasper .text-sm,
+.vs-jasper .text-xs {
+  color: var(--vs-text-body) !important;
+}
+
+.vs-jasper .text-muted-foreground {
+  color: var(--vs-text-muted) !important;
+}
+
+/* ---- Section labels / eyebrows ---- */
+.vs-jasper .uppercase {
+  letter-spacing: 0.15em !important;
+  font-size: 0.75rem !important;
+  color: var(--vs-orange) !important;
+  font-weight: 500 !important;
+}
+
+/* ---- Cards ---- */
+.vs-jasper [data-slot="card"] {
+  border-radius: var(--vs-radius-lg) !important;
+  box-shadow: var(--vs-shadow);
+  border: var(--vs-border-width) solid var(--vs-border-light) !important;
+  background-color: white !important;
+  transition: box-shadow var(--vs-transition), transform var(--vs-transition);
+}
+
+.vs-jasper [data-slot="card"]:hover {
+  box-shadow: var(--vs-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.vs-jasper [data-slot="card-header"] {
+  padding: var(--vs-card-padding);
+  padding-bottom: 0;
+}
+
+.vs-jasper [data-slot="card-content"] {
+  padding-left: var(--vs-card-padding);
+  padding-right: var(--vs-card-padding);
+}
+
+.vs-jasper [data-slot="card-footer"] {
+  padding: var(--vs-card-padding);
+  padding-top: 0;
+}
+
+.vs-jasper [data-slot="card-title"] {
+  font-family: var(--vs-serif) !important;
+  color: var(--vs-green-dark) !important;
+  font-weight: 400 !important;
+}
+
+/* ---- Logo (h2.text-primary in nav & footer) ---- */
+.vs-jasper .text-primary {
+  color: var(--vs-orange) !important;
+}
+
+/* ---- Buttons ---- */
+.vs-jasper .bg-primary {
+  background-color: var(--vs-orange) !important;
+  border-color: var(--vs-orange) !important;
+}
+
+.vs-jasper .bg-primary:hover {
+  background-color: var(--vs-orange-hover) !important;
+}
+
+.vs-jasper .text-primary-foreground {
+  color: white !important;
+}
+
+.vs-jasper button[data-slot="button"],
+.vs-jasper a[data-slot="button"] {
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+  transition: all var(--vs-transition);
+}
+
+/* Ghost buttons */
+.vs-jasper [data-variant="ghost"] {
+  color: var(--vs-text-dark) !important;
+}
+
+.vs-jasper [data-variant="ghost"]:hover {
+  background-color: var(--vs-vanilla-muted) !important;
+}
+
+/* Outline buttons */
+.vs-jasper [data-variant="outline"] {
+  border-color: var(--vs-border-light) !important;
+  color: var(--vs-text-dark) !important;
+}
+
+.vs-jasper [data-variant="outline"]:hover {
+  background-color: var(--vs-vanilla-muted) !important;
+}
+
+/* ---- Badges ---- */
+.vs-jasper [data-slot="badge"] {
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* ---- Icon containers (bg-primary/10, bg-destructive/10) ---- */
+.vs-jasper .bg-primary\/10 {
+  background-color: var(--vs-orange-light) !important;
+}
+
+.vs-jasper .bg-destructive\/10 {
+  background-color: #fef2f2 !important;
+}
+
+/* ---- Stars in testimonials ---- */
+.vs-jasper .fill-primary {
+  fill: var(--vs-orange) !important;
+}
+
+.vs-jasper .text-primary {
+  color: var(--vs-orange) !important;
+}
+
+/* ---- Borders ---- */
+.vs-jasper .border-border {
+  border-color: var(--vs-border-light) !important;
+}
+
+.vs-jasper .border-border\/40 {
+  border-color: rgba(232, 226, 216, 0.5) !important;
+}
+
+.vs-jasper .border-b {
+  border-color: var(--vs-border-light) !important;
+}
+
+/* ---- Navigation ---- */
+.vs-jasper nav {
+  background-color: var(--vs-vanilla) !important;
+  border-color: var(--vs-border-light) !important;
+}
+
+/* ---- Footer ---- */
+.vs-jasper footer {
+  background-color: var(--vs-vanilla-warm) !important;
+  border-color: var(--vs-border-light) !important;
+}
+
+.vs-jasper footer h3 {
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: var(--vs-text-dark) !important;
+}
+
+/* ---- Images ---- */
+.vs-jasper .rounded-lg {
+  border-radius: var(--vs-radius-lg) !important;
+}
+
+/* ---- Inputs ---- */
+.vs-jasper input,
+.vs-jasper select,
+.vs-jasper textarea {
+  border-color: var(--vs-border-light) !important;
+  background-color: white !important;
+  border-radius: var(--vs-radius) !important;
+}
+
+.vs-jasper input:focus,
+.vs-jasper select:focus,
+.vs-jasper textarea:focus {
+  border-color: var(--vs-orange) !important;
+  box-shadow: 0 0 0 2px var(--vs-orange-light) !important;
+}
+
+/* ---- Dialogs ---- */
+.vs-jasper [data-slot="dialog-content"],
+.vs-jasper [role="dialog"] {
+  border-radius: var(--vs-radius-lg) !important;
+  background-color: white !important;
+}
+
+/* ---- Hero section extra spacing ---- */
+.vs-jasper section.relative {
+  padding-top: 5rem !important;
+  padding-bottom: 5rem !important;
+}
+
+/* ---- Links ---- */
+.vs-jasper a:not([data-slot="button"]):not([class]) {
+  color: var(--vs-orange) !important;
+}
+
+/* ---- Responsive headline sizing ---- */
+@media (max-width: 768px) {
+  .vs-jasper h1 {
+    font-size: 2.2rem !important;
+  }
+  .vs-jasper h2 {
+    font-size: 1.75rem !important;
+  }
+}

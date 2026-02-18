@@ -40,6 +40,7 @@ export const VISUAL_STYLES = [
   { id: 'retro-terminal', name: 'Retro Terminal', description: 'Monospace font, terminal vibes, hacker aesthetic' },
   { id: 'glassmorphism', name: 'Glassmorphism', description: 'Frosted glass effect, translucent cards, modern blur' },
   { id: 'neo-brutalist', name: 'Neo Brutalist', description: 'Thick borders, offset shadows, raw bold typography' },
+  { id: 'jasper', name: 'Jasper', description: 'Serif headlines, vanilla backgrounds, warm orange accents' },
 ] as const;
 
 export type VisualStyleId = typeof VISUAL_STYLES[number]['id'];
