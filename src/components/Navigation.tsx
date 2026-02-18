@@ -47,7 +47,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
               }}>
                 How it works
               </Button>
-              <Button variant="ghost">
+              <Button variant="ghost" onClick={() => navigate('/pricing')}>
                 Pricing
               </Button>
             </div>

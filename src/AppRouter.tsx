@@ -35,6 +35,7 @@ import { UserPublicPage } from './components/UserPublicPage';
 import { EventPromoPage } from './components/EventPromoPage';
 import { BlogListingPage } from './components/BlogListingPage';
 import { BlogDetailPage } from './components/BlogDetailPage';
+import { PricingPage } from './components/PricingPage';
 import { BlogManagement } from './components/BlogManagement';
 import ParticipantProfile from './pages/ParticipantProfile';
 import { BootstrapAdmin } from './components/BootstrapAdmin';
@@ -1095,6 +1096,10 @@ function BlogListingPageRoute() {
   return <BlogListingPage />;
 }
 
+function PricingPageRoute() {
+  return <PricingPage />;
+}
+
 function BlogDetailPageRoute() {
   return <BlogDetailPage />;
 }
@@ -1823,6 +1828,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '/p/:token/profile', element: h(ParticipantProfile) }),
             h(Route, { path: '/p/:token/r/:roundId', element: h(ParticipantRoundDetail) }),
             h(Route, { path: '/bootstrap-admin', element: h(BootstrapAdminRoute) }),
+            h(Route, { path: '/pricing', element: h(PricingPageRoute) }),
             h(Route, { path: '/blog', element: h(BlogListingPageRoute) }),
             h(Route, { path: '/blog/:slug', element: h(BlogDetailPageRoute) }),
             
