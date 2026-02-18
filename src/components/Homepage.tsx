@@ -1013,8 +1013,8 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-8">
             {/* Logo */}
             <div className="col-span-2 md:col-span-1">
-              <h2 
-                className="text-primary cursor-pointer hover:opacity-80 transition-opacity mb-4" 
+              <h2
+                className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity mb-4"
                 onClick={() => navigate('/')}
               >
                 Wonderelo

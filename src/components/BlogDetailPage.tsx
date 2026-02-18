@@ -78,7 +78,7 @@ export function BlogDetailPage() {
         <nav className="border-b border-border">
           <div className="container mx-auto max-w-4xl px-6 py-4">
             <h2 
-              className="text-primary cursor-pointer hover:opacity-80 transition-opacity" 
+              className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate('/')}
             >
               Wonderelo

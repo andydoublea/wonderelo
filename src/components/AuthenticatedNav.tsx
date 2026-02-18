@@ -88,7 +88,7 @@ export function AuthenticatedNav({
             className="text-2xl font-semibold text-primary cursor-pointer hover:opacity-80 transition-opacity"
             onClick={onNavigateToDashboard || onNavigateToRounds}
           >
-            <h2>Wonderelo</h2>
+            <h2 className="wonderelo-logo">Wonderelo</h2>
           </div>
           
           {/* Navigation */}

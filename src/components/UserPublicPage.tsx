@@ -613,7 +613,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
             <div className="container mx-auto max-w-4xl px-4 py-4">
               <div className="flex items-center justify-between">
                 <h2 
-                  className="text-primary cursor-pointer hover:opacity-80 transition-opacity" 
+                  className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => navigate('/')}
                 >
                   Wonderelo
@@ -760,7 +760,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
             <div className="container mx-auto max-w-4xl px-4 py-4">
               <div className="flex items-center justify-between">
                 <h2 
-                  className="text-primary cursor-pointer hover:opacity-80 transition-opacity" 
+                  className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => navigate('/')}
                 >
                   Wonderelo
@@ -883,14 +883,14 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
         <nav className="border-b border-border">
           <div className="container mx-auto max-w-4xl px-4 py-4">
             <div className="flex items-center justify-between">
-              <h2 
-                className="text-primary cursor-pointer hover:opacity-80 transition-opacity" 
+              <h2
+                className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => navigate('/')}
               >
                 Wonderelo
               </h2>
               <div className="flex items-center space-x-4">
-                <Button 
+                <Button
                   onClick={() => setMagicLinkDialogOpen(true)}
                   variant="outline"
                   size="sm"

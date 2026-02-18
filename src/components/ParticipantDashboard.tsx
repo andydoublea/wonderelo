@@ -255,6 +255,17 @@ export function ParticipantDashboard() {
 
   // Proactive T-0 navigation: navigate to /match immediately when the next round starts
   useEffect(() => {
+    // Skip auto-redirects if user just came back from /match page
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('from') === 'match') {
+      debugLog('🚫 [T-0] Skipping redirect — user came back from /match');
+      // Clean up the URL parameter without triggering navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete('from');
+      window.history.replaceState({}, '', url.toString());
+      return;
+    }
+
     if (!token || !globalNextUpcomingRoundId) return;
 
     // Find the round details
@@ -318,7 +329,14 @@ export function ParticipantDashboard() {
   // Auto-redirect to match page when 'no-match' or 'matched' status is first detected
   useEffect(() => {
     if (!token || !registrations || registrations.length === 0) return;
-    
+
+    // Skip auto-redirects if user just came back from /match page
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('from') === 'match') {
+      debugLog('🚫 [AUTO-REDIRECT] Skipping — user came back from /match');
+      return;
+    }
+
     // Check if any registration has 'no-match' status that hasn't been shown yet
     const noMatchRegistration = registrations.find((reg: any) => {
       if (reg.status !== 'no-match') return false;

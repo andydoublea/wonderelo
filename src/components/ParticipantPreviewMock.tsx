@@ -134,7 +134,7 @@ export function ParticipantPreviewMock({ mockData, scenarioName, view = 'dashboa
         {/* Logo */}
         <nav className="border-b border-border">
           <div className="container mx-auto max-w-6xl px-6 py-4">
-            <button className="text-xl font-semibold text-primary hover:opacity-80 transition-opacity">
+            <button className="text-xl font-semibold text-primary wonderelo-logo hover:opacity-80 transition-opacity">
               Wonderelo
             </button>
           </div>

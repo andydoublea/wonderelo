@@ -1038,9 +1038,17 @@
   font-family: var(--vs-serif) !important;
   color: var(--vs-green-heading) !important;
   font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.15 !important;
+  font-size: 1.75rem !important;
+}
+
+/* Large hero headings on homepage & marketing pages */
+.vs-jasper h1.text-4xl,
+.vs-jasper h1.text-3xl {
+  font-size: 3.2rem !important;
   letter-spacing: -0.03em !important;
   line-height: 1.05 !important;
-  font-size: 3.2rem !important;
 }
 
 .vs-jasper h2 {
@@ -1117,6 +1125,14 @@
 /* ---- Logo (h2.text-primary in nav & footer) ---- */
 .vs-jasper .text-primary {
   color: var(--vs-orange) !important;
+}
+
+/* ---- Wonderelo logo: orange serif everywhere ---- */
+.vs-jasper .wonderelo-logo {
+  font-family: var(--vs-serif) !important;
+  color: var(--vs-orange) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
 }
 
 /* ---- Buttons ---- */
@@ -1259,6 +1275,10 @@
 /* ---- Responsive headline sizing ---- */
 @media (max-width: 768px) {
   .vs-jasper h1 {
+    font-size: 1.5rem !important;
+  }
+  .vs-jasper h1.text-4xl,
+  .vs-jasper h1.text-3xl {
     font-size: 2.2rem !important;
   }
   .vs-jasper h2 {

@@ -24,8 +24,8 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
       <div className="container mx-auto max-w-6xl px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <h2 
-              className="text-primary cursor-pointer hover:opacity-80 transition-opacity"
+            <h2
+              className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate('/')}
             >
               Wonderelo

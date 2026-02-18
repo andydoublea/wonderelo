@@ -120,7 +120,7 @@ export function MatchNetworking() {
       debugLog('[MatchNetworking] Contact preferences saved successfully');
       
       // Navigate back to dashboard
-      navigate(`/p/${token}`);
+      navigate(`/p/${token}?from=match`);
       
     } catch (err) {
       errorLog('[MatchNetworking] Error saving contact preferences:', err);
@@ -150,7 +150,7 @@ export function MatchNetworking() {
             <div className="text-6xl mb-4">⚠️</div>
             <h2 className="text-2xl font-bold mb-2">Error</h2>
             <p className="text-muted-foreground mb-6">{error || 'Failed to load networking data'}</p>
-            <Button onClick={() => navigate(`/p/${token}`)}>
+            <Button onClick={() => navigate(`/p/${token}?from=match`)}>
               Back to dashboard
             </Button>
           </CardContent>
@@ -280,7 +280,7 @@ export function MatchNetworking() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigate(`/p/${token}`)}
+                  onClick={() => navigate(`/p/${token}?from=match`)}
                 >
                   Back to dashboard
                 </Button>
@@ -294,7 +294,7 @@ export function MatchNetworking() {
           <div className="text-center">
             <Button
               variant="ghost"
-              onClick={() => navigate(`/p/${token}`)}
+              onClick={() => navigate(`/p/${token}?from=match`)}
             >
               Back to dashboard
             </Button>

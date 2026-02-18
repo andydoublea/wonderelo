@@ -221,12 +221,12 @@ export function MatchInfo() {
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">😞</div>
+            <div className="text-6xl mb-4">😳</div>
             <h2 className="text-2xl font-bold mb-2">No match found</h2>
             <p className="text-muted-foreground mb-6">
               No one else registered for this round.
             </p>
-            <Button onClick={() => navigate(`/p/${token}`)}>
+            <Button onClick={() => navigate(`/p/${token}?from=match`)}>
               Back to dashboard
             </Button>
           </CardContent>
@@ -243,7 +243,7 @@ export function MatchInfo() {
             <div className="text-6xl mb-4">⚠️</div>
             <h2 className="text-2xl font-bold mb-2">Error</h2>
             <p className="text-muted-foreground mb-6">{error || 'Failed to load match data'}</p>
-            <Button onClick={() => navigate(`/p/${token}`)}>
+            <Button onClick={() => navigate(`/p/${token}?from=match`)}>
               Back to dashboard
             </Button>
           </CardContent>

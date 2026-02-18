@@ -291,7 +291,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
           <div className="container mx-auto max-w-6xl px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-8">
-                <h2 className="text-primary cursor-pointer" onClick={onBack}>Wonderelo</h2>
+                <h2 className="text-primary wonderelo-logo cursor-pointer" onClick={onBack}>Wonderelo</h2>
               </div>
               <div className="flex items-center space-x-4">
                 <Button variant="ghost" onClick={onBack}>
@@ -419,7 +419,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
         <div className="container mx-auto max-w-6xl px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <h2 className="text-primary cursor-pointer" onClick={onBack}>Wonderelo</h2>
+              <h2 className="text-primary wonderelo-logo cursor-pointer" onClick={onBack}>Wonderelo</h2>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" onClick={onBack}>

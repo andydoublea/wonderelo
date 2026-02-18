@@ -20,9 +20,9 @@ export function ParticipantNav({ participantToken, firstName, lastName, onLogoCl
     <nav className="border-b border-border">
       <div className="container mx-auto max-w-6xl px-6 py-4">
         <div className="flex items-center justify-between">
-          <button 
+          <button
             onClick={onLogoClick}
-            className="text-xl font-semibold text-primary hover:opacity-80 transition-opacity"
+            className="text-xl font-semibold text-primary wonderelo-logo hover:opacity-80 transition-opacity"
           >
             Wonderelo
           </button>
