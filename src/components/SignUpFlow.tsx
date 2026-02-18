@@ -19,6 +19,8 @@ interface SignUpData {
   companySize: string;
   userRole: string;
   organizerName: string;
+  eventType: string;
+  eventTypeOther: string;
 }
 
 interface SignUpFlowProps {
@@ -47,6 +49,20 @@ const roleOptions = [
   { value: 'other', label: 'Other' }
 ];
 
+const eventTypeOptions = [
+  { value: 'conference', label: 'Conference or barcamp' },
+  { value: 'community-meetup', label: 'Community meetup' },
+  { value: 'student-hall', label: 'Student hall networking' },
+  { value: 'party', label: 'Party' },
+  { value: 'festival', label: 'Festival' },
+  { value: 'company-event', label: 'Company event' },
+  { value: 'company-team', label: 'Company team networking' },
+  { value: 'wedding', label: 'Wedding' },
+  { value: 'dating', label: 'Dating' },
+  { value: 'bar-cafe', label: 'Bar or Café event (e.g. board game night)' },
+  { value: 'other', label: 'Other (please describe)' }
+];
+
 const discoveryOptions = [
   { value: 'search', label: 'Google search' },
   { value: 'social', label: 'Social media' },
@@ -73,7 +89,9 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     discoverySource: '',
     companySize: '',
     userRole: '',
-    organizerName: ''
+    organizerName: '',
+    eventType: '',
+    eventTypeOther: ''
   });
 
   const totalSteps = 4;
@@ -237,7 +255,8 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       case 3:
         return formData.discoverySource;
       case 4:
-        return formData.companySize && formData.userRole;
+        const eventTypeValid = formData.eventType && (formData.eventType !== 'other' || formData.eventTypeOther.trim().length > 0);
+        return formData.companySize && formData.userRole && eventTypeValid;
       default:
         return false;
     }
@@ -524,6 +543,29 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
 
               {currentStep === 4 && (
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="eventType">What best describes what you organise?</Label>
+                    <Select value={formData.eventType} onValueChange={(value) => updateFormData('eventType', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select event type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {eventTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.eventType === 'other' && (
+                      <Input
+                        placeholder="Please describe your event type"
+                        value={formData.eventTypeOther}
+                        onChange={(e) => updateFormData('eventTypeOther', e.target.value)}
+                      />
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="companySize">Company size</Label>
                     <Select value={formData.companySize} onValueChange={(value) => updateFormData('companySize', value)}>

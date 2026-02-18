@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -73,6 +73,14 @@ const adminTools = [
     icon: Gift,
     route: '/admin/gift-cards',
     color: 'bg-pink-500',
+    category: 'settings',
+  },
+  {
+    id: 'leads',
+    title: 'Lead magnet submissions',
+    icon: FileText,
+    route: '/admin/leads',
+    color: 'bg-teal-500',
     category: 'settings',
   },
   {

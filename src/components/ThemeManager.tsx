@@ -5,9 +5,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
-import { ArrowLeft, Palette, Eye, Save, RotateCcw, Check } from 'lucide-react';
+import { ArrowLeft, Palette, Eye, Save, RotateCcw, Check, Layers } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
+import { VISUAL_STYLES, applyVisualStyle, removeVisualStyle } from '../utils/themeLoader';
+import type { VisualStyleId } from '../utils/themeLoader';
 
 interface ThemeManagerProps {
   accessToken: string;
@@ -204,6 +206,7 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(predefinedThemes[0]);
   const [selectedThemeId, setSelectedThemeId] = useState<string>('default');
   const [customColors, setCustomColors] = useState<ThemeConfig['colors']>(predefinedThemes[0].colors);
+  const [selectedVisualStyle, setSelectedVisualStyle] = useState<string>('clean-modern');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
@@ -223,18 +226,28 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
         const data = await response.json();
         if (data.theme) {
           setSelectedThemeId(data.theme.id);
-          setCustomColors(data.theme.colors);
-          
+          if (data.theme.colors) {
+            setCustomColors(data.theme.colors);
+          }
+          if (data.theme.visualStyle) {
+            setSelectedVisualStyle(data.theme.visualStyle);
+          }
+
           // Find predefined theme or use custom
           const predefined = predefinedThemes.find(t => t.id === data.theme.id);
           if (predefined) {
-            setCurrentTheme({ ...predefined, colors: data.theme.colors });
+            setCurrentTheme({ ...predefined, colors: data.theme.colors || predefined.colors });
           } else {
             setCurrentTheme(data.theme);
           }
-          
+
           // Apply theme immediately
-          applyThemeToDocument(data.theme.colors);
+          if (data.theme.colors) {
+            applyThemeToDocument(data.theme.colors);
+          }
+          if (data.theme.visualStyle) {
+            applyVisualStyle(data.theme.visualStyle);
+          }
         }
       }
     } catch (error) {
@@ -293,7 +306,8 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
       const themeData = {
         id: selectedThemeId,
         name: currentTheme.name,
-        colors: customColors
+        colors: customColors,
+        visualStyle: selectedVisualStyle
       };
 
       const response = await authenticatedFetch(
@@ -307,6 +321,7 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
 
       if (response.ok) {
         applyThemeToDocument(customColors);
+        applyVisualStyle(selectedVisualStyle);
         toast.success('Theme saved and applied successfully!');
       } else {
         const errorData = await response.json();
@@ -394,7 +409,8 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
       <div className="container mx-auto px-6 py-8 max-w-7xl">
         <Tabs defaultValue="themes" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="themes">Predefined themes</TabsTrigger>
+            <TabsTrigger value="themes">Color themes</TabsTrigger>
+            <TabsTrigger value="styles">Visual styles</TabsTrigger>
             <TabsTrigger value="customize">Customize colors</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
@@ -455,6 +471,94 @@ export function ThemeManager({ accessToken, onBack }: ThemeManagerProps) {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Visual Styles Tab */}
+          <TabsContent value="styles" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Select a visual style</CardTitle>
+                <CardDescription>
+                  Visual styles control card appearance, spacing, typography, shadows, and borders — independent of colors
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {VISUAL_STYLES.map((style) => (
+                    <Card
+                      key={style.id}
+                      className={`cursor-pointer transition-all hover:shadow-lg ${
+                        selectedVisualStyle === style.id ? 'ring-2 ring-primary' : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedVisualStyle(style.id);
+                        applyVisualStyle(style.id);
+                      }}
+                    >
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Layers className="h-4 w-4" />
+                            {style.name}
+                          </CardTitle>
+                          {selectedVisualStyle === style.id && (
+                            <Check className="h-5 w-5 text-primary" />
+                          )}
+                        </div>
+                        <CardDescription className="text-xs">
+                          {style.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {/* Visual preview mini-card */}
+                        <div className={`vs-${style.id}`}>
+                          <div className="border rounded-lg p-3 bg-card space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-semibold">Sample Round</div>
+                              <Badge variant="secondary" className="text-[10px]">Preview</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">Mon, Jan 20 • 15 min</div>
+                            <div className="space-y-1">
+                              <div className="border rounded px-2 py-1 text-xs flex items-center gap-1">
+                                <div className="w-3 h-3 border rounded-full border-muted-foreground/30"></div>
+                                Round 1 — 14:00
+                              </div>
+                              <div className="border rounded px-2 py-1 text-xs flex items-center gap-1 border-primary bg-primary/5">
+                                <div className="w-3 h-3 border rounded-full bg-primary border-primary"></div>
+                                Round 2 — 14:30
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  {/* No visual style option */}
+                  <Card
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      selectedVisualStyle === 'none' ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedVisualStyle('none');
+                      removeVisualStyle();
+                    }}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">Default (no style)</CardTitle>
+                        {selectedVisualStyle === 'none' && (
+                          <Check className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                      <CardDescription className="text-xs">
+                        Use the base Tailwind styling without any visual style overlay
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
                 </div>
               </CardContent>
             </Card>

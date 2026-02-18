@@ -13,7 +13,7 @@ import { getParticipantDashboard } from './participant-dashboard.tsx';
 import { getCurrentTime } from './time-helpers.tsx';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
-import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail } from './email.tsx';
+import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail } from './email.tsx';
 import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
 
@@ -66,21 +66,24 @@ app.get('/make-server-ce05600a/check-email/:email', async (c) => {
 app.post('/make-server-ce05600a/signup', async (c) => {
   try {
     const body = await c.req.json();
-    const { email, password, organizerName, urlSlug } = body;
-    
+    const { email, password, organizerName, urlSlug, eventType, eventTypeOther } = body;
+
     const { data: authData, error: authError } = await getSupabase().auth.admin.createUser({
       email,
       password,
       email_confirm: true
     });
-    
+
     if (authError || !authData.user) {
       return c.json({ error: authError?.message || 'Failed to create user' }, 400);
     }
-    
+
     const userId = authData.user.id;
-    
-    await db.createOrganizerProfile({ userId, email, organizerName, urlSlug });
+
+    // Combine eventType: if "other" was selected, use the custom description
+    const resolvedEventType = eventType === 'other' && eventTypeOther ? `other: ${eventTypeOther}` : eventType;
+
+    await db.createOrganizerProfile({ userId, email, organizerName, urlSlug, eventType: resolvedEventType });
     
     const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
       email,
@@ -316,6 +319,11 @@ app.get('/make-server-ce05600a/public/user/:slug', async (c) => {
     const profile = await db.getOrganizerBySlug(slug);
 
     if (!profile) {
+      // Check slug history for redirect
+      const currentSlug = await db.getRedirectSlug(slug);
+      if (currentSlug) {
+        return c.json({ redirect: true, newSlug: currentSlug }, 301);
+      }
       return c.json({ error: 'Organizer not found' }, 404);
     }
 
@@ -847,12 +855,22 @@ app.put('/make-server-ce05600a/profile', async (c) => {
       return c.json({ error: 'Profile not found' }, 404);
     }
 
-    // If URL slug changed, check availability
-    if (urlSlug && urlSlug !== currentProfile.urlSlug) {
+    // If URL slug changed, check availability and rate limit
+    const slugIsChanging = urlSlug && urlSlug !== currentProfile.urlSlug;
+    if (slugIsChanging) {
+      // Rate limit: max 3 slug changes per 30 days
+      const recentChanges = await db.getSlugChangeCount(user.id, 30);
+      if (recentChanges >= 3) {
+        return c.json({ error: 'You can only change your URL slug 3 times per 30 days' }, 429);
+      }
+
       const slugAvailable = await db.isSlugAvailable(urlSlug, user.id);
       if (!slugAvailable) {
         return c.json({ error: 'URL slug already taken' }, 400);
       }
+
+      // Record old slug in history for redirects
+      await db.recordSlugHistory(user.id, currentProfile.urlSlug);
     }
 
     const updatedProfile = await db.updateOrganizerProfile(user.id, {
@@ -1775,6 +1793,102 @@ app.delete('/make-server-ce05600a/admin/blog/posts/:postId', async (c) => {
   } catch (error) {
     errorLog('Error deleting blog post:', error);
     return c.json({ error: 'Failed to delete blog post' }, 500);
+  }
+});
+
+// ============================================================
+// Theme management
+// ============================================================
+
+// Admin: Get theme settings
+app.get('/make-server-ce05600a/admin/theme', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const theme = await db.getAdminSetting('theme');
+    return c.json({ theme: theme || null });
+  } catch (error) {
+    errorLog('Error getting theme:', error);
+    return c.json({ error: 'Failed to get theme' }, 500);
+  }
+});
+
+// Admin: Save theme settings (colors + visual style)
+app.post('/make-server-ce05600a/admin/theme', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { theme } = body;
+
+    if (!theme) {
+      return c.json({ error: 'Theme data required' }, 400);
+    }
+
+    await db.setAdminSetting('theme', theme);
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error saving theme:', error);
+    return c.json({ error: 'Failed to save theme' }, 500);
+  }
+});
+
+// Public: Lead magnet submission (no auth required)
+app.post('/make-server-ce05600a/public/lead-magnet', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { email, name, eventType, participantCount } = body;
+
+    if (!email || !name) {
+      return c.json({ error: 'Email and name are required' }, 400);
+    }
+
+    // Save to DB
+    const submission = await db.createLeadMagnetSubmission({
+      email,
+      name,
+      eventType,
+      participantCount,
+    });
+
+    // Send ebook email
+    const ebookUrl = 'https://wonderelo.com/guide'; // Placeholder URL for the ebook
+    const emailContent = buildLeadMagnetEmail({ name, ebookUrl });
+    await sendEmail({ to: email, ...emailContent });
+
+    debugLog('Lead magnet submission saved:', email);
+    return c.json({ success: true, id: submission.id });
+  } catch (error) {
+    errorLog('Error saving lead magnet submission:', error);
+    return c.json({ error: 'Failed to save submission' }, 500);
+  }
+});
+
+// Admin: Get lead magnet submissions
+app.get('/make-server-ce05600a/admin/leads', async (c) => {
+  try {
+    const submissions = await db.getLeadMagnetSubmissions();
+    return c.json({ submissions });
+  } catch (error) {
+    errorLog('Error getting lead submissions:', error);
+    return c.json({ error: 'Failed to get submissions' }, 500);
+  }
+});
+
+// Public: Get theme for event pages (no auth required)
+app.get('/make-server-ce05600a/public/theme', async (c) => {
+  try {
+    const theme = await db.getAdminSetting('theme');
+    return c.json({ theme: theme || null });
+  } catch (error) {
+    errorLog('Error getting public theme:', error);
+    return c.json({ error: 'Failed to get theme' }, 500);
   }
 });
 

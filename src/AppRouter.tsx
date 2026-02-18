@@ -5,6 +5,7 @@ import { VersionBadge } from './components/VersionBadge';
 import { TimeProvider } from './contexts/TimeContext';
 import { TimeControl } from './components/TimeControl';
 import { QueryProvider } from './components/QueryProvider';
+import { queryClient, queryKeys } from './utils/queryClient';
 import { PasswordGate } from './components/PasswordGate';
 import type { NetworkingSession, SignUpData, ServiceType } from './App';
 import { debugLog, errorLog, infoLog } from './utils/debug';
@@ -55,6 +56,7 @@ const AdminParticipantFlow = lazy(() => import('./components/AdminParticipantFlo
 const AdminParameters = lazy(() => import('./components/AdminParameters').then(m => ({ default: m.AdminParameters })));
 const AdminOrganizerRequests = lazy(() => import('./components/AdminOrganizerRequests').then(m => ({ default: m.AdminOrganizerRequests })));
 const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({ default: m.ThemeManager })));
+const AdminLeads = lazy(() => import('./components/AdminLeads').then(m => ({ default: m.AdminLeads })));
 
 // Loading component for lazy loaded routes
 const RouteLoader = () => (
@@ -1057,6 +1059,17 @@ function AdminOrganizerRequestsRoute() {
 }
 
 
+function AdminLeadsRoute() {
+  const { accessToken } = useApp();
+  const navigate = useNavigate();
+
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <AdminLeads accessToken={accessToken} onBack={() => navigate('/admin')} />
+    </Suspense>
+  );
+}
+
 function UserPublicPageRoute() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -1134,7 +1147,9 @@ function AppProviderWithRouter() {
   const [eventSlug, setEventSlug] = useState(() => {
     return localStorage.getItem('oliwonder_event_slug') || 'event3';
   });
-  const [sessions, setSessions] = useState<NetworkingSession[]>([]);
+  // Initialize sessions from React Query cache for instant display on page revisits
+  const cachedSessions = queryClient.getQueryData<NetworkingSession[]>(queryKeys.session.all);
+  const [sessions, setSessions] = useState<NetworkingSession[]>(cachedSessions || []);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const isLoadingSessionsRef = useRef(false);
   const isInitializingAuthRef = useRef(false); // Prevent duplicate auth initialization
@@ -1284,7 +1299,11 @@ function AppProviderWithRouter() {
     }
 
     isLoadingSessionsRef.current = true;
-    setIsLoadingSessions(true);
+    // Only show loading skeleton if we don't have cached sessions
+    const hasCachedData = queryClient.getQueryData(queryKeys.session.all) !== undefined || sessions.length > 0;
+    if (!hasCachedData) {
+      setIsLoadingSessions(true);
+    }
 
     try {
       debugLog('Making authenticated request to sessions endpoint...');
@@ -1325,6 +1344,8 @@ function AppProviderWithRouter() {
         }, [] as NetworkingSession[]);
         
         setSessions(uniqueSessions);
+        // Persist to React Query cache so page revisits are instant
+        queryClient.setQueryData(queryKeys.session.all, uniqueSessions);
         debugLog('✅ Sessions state updated with', uniqueSessions.length, 'sessions (', convertedSessions.length, 'before dedup)');
       } else {
         debugLog('❌ Failed to load sessions:', response.status);
@@ -1539,6 +1560,9 @@ function AppProviderWithRouter() {
     lastSessionLoadPathRef.current = '';
     isLoadingSessionsRef.current = false;
     isInitializingAuthRef.current = false;
+
+    // Clear React Query cache
+    queryClient.clear();
 
     // Clear any stored state (Supabase session is already cleared by signOut())
     localStorage.removeItem('oliwonder_authenticated');
@@ -1786,6 +1810,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/participant-flow', element: h(AdminRoute, null, h(AdminParticipantFlowRoute)) }),
             h(Route, { path: '/admin/parameters', element: h(AdminRoute, null, h(AdminParametersRoute)) }),
             h(Route, { path: '/admin/organizer-requests', element: h(AdminRoute, null, h(AdminOrganizerRequestsRoute)) }),
+            h(Route, { path: '/admin/leads', element: h(AdminRoute, null, h(AdminLeadsRoute)) }),
             h(Route, { path: '/verify', element: h(EmailVerification) }),
             h(Route, { path: '/p/:token', element: h(ParticipantDashboard) }),
             h(Route, { path: '/p/:token/match', element: h(MatchInfo) }),

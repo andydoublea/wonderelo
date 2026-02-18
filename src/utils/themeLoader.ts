@@ -27,12 +27,24 @@ export interface Theme {
   id: string;
   name: string;
   colors: ThemeColors;
+  visualStyle?: string; // Visual style ID: 'clean-modern' | 'bold-gradient' | 'minimal-flat' | 'elegant-classic' | 'vibrant-playful'
 }
+
+// Valid visual style IDs
+export const VISUAL_STYLES = [
+  { id: 'clean-modern', name: 'Clean Modern', description: 'Clean lines, subtle shadows, professional feel' },
+  { id: 'bold-gradient', name: 'Bold Gradient', description: 'Eye-catching gradients and prominent elements' },
+  { id: 'minimal-flat', name: 'Minimal Flat', description: 'Ultra clean, no shadows, maximum density' },
+  { id: 'elegant-classic', name: 'Elegant Classic', description: 'Sophisticated with serif accents' },
+  { id: 'vibrant-playful', name: 'Vibrant Playful', description: 'Fun, colorful, rounded elements' },
+] as const;
+
+export type VisualStyleId = typeof VISUAL_STYLES[number]['id'];
 
 export const loadAndApplyTheme = async (): Promise<void> => {
   try {
     debugLog('Loading theme from server...');
-    
+
     const response = await fetch(
       `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/public/theme`,
       {
@@ -41,12 +53,17 @@ export const loadAndApplyTheme = async (): Promise<void> => {
         },
       }
     );
-    
+
     if (response.ok) {
       const data = await response.json();
-      if (data.theme && data.theme.colors) {
-        applyTheme(data.theme.colors);
-        debugLog('Theme applied successfully:', data.theme.id);
+      if (data.theme) {
+        if (data.theme.colors) {
+          applyTheme(data.theme.colors);
+        }
+        if (data.theme.visualStyle) {
+          applyVisualStyle(data.theme.visualStyle);
+        }
+        debugLog('Theme applied successfully:', data.theme.id, 'style:', data.theme.visualStyle);
       } else {
         debugLog('No custom theme found, using default');
       }
@@ -59,7 +76,7 @@ export const loadAndApplyTheme = async (): Promise<void> => {
 
 export const applyTheme = (colors: ThemeColors): void => {
   const root = document.documentElement;
-  
+
   // Map theme colors to CSS custom properties
   const colorMap: Record<string, string> = {
     'primary': colors.primary,
@@ -82,14 +99,33 @@ export const applyTheme = (colors: ThemeColors): void => {
     'destructive': colors.destructive,
     'destructive-foreground': colors.destructiveForeground,
   };
-  
+
   // Apply colors to root element
   Object.entries(colorMap).forEach(([key, value]) => {
-    // Convert HSL string to the format CSS expects
-    // HSL format from backend: "240 5.9% 10%"
-    // CSS expects: hsl(240 5.9% 10%)
     root.style.setProperty(`--${key}`, `hsl(${value})`);
   });
-  
+
   debugLog('Theme colors applied to document');
+};
+
+export const applyVisualStyle = (styleId: string): void => {
+  const root = document.documentElement;
+
+  // Remove any existing visual style classes
+  VISUAL_STYLES.forEach(style => {
+    root.classList.remove(`vs-${style.id}`);
+  });
+
+  // Apply the new visual style class
+  if (styleId && styleId !== 'none') {
+    root.classList.add(`vs-${styleId}`);
+    debugLog('Visual style applied:', styleId);
+  }
+};
+
+export const removeVisualStyle = (): void => {
+  const root = document.documentElement;
+  VISUAL_STYLES.forEach(style => {
+    root.classList.remove(`vs-${style.id}`);
+  });
 };

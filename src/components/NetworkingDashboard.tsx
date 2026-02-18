@@ -64,7 +64,7 @@ export function NetworkingDashboard({
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Check URL params for view and status filter
+  // Check URL params for view, status filter, and success page
   useEffect(() => {
     const view = searchParams.get('view');
     if (view === 'calendar') {
@@ -80,7 +80,17 @@ export function NetworkingDashboard({
     if (status && ['draft', 'scheduled', 'published', 'completed'].includes(status)) {
       setFilterStatus(status);
     }
-  }, [searchParams]);
+
+    // Show success page for newly created session
+    const successSessionId = searchParams.get('success');
+    if (successSessionId) {
+      const session = sessions.find(s => s.id === successSessionId);
+      if (session) {
+        setLastCreatedSession(session);
+        setShowSuccessPage(true);
+      }
+    }
+  }, [searchParams, sessions]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -138,6 +148,7 @@ export function NetworkingDashboard({
   const handleBackFromSuccess = () => {
     setShowSuccessPage(false);
     setLastCreatedSession(null);
+    navigate('/rounds');
   };
 
   const handleManageSession = (session: NetworkingSession) => {
@@ -230,7 +241,9 @@ export function NetworkingDashboard({
     return (
       <SessionSuccessPage
         session={lastCreatedSession}
+        eventSlug={eventSlug}
         onBack={handleBackFromSuccess}
+        onGoToDashboard={() => navigate('/dashboard')}
         onManageParticipants={() => handleManageSession(lastCreatedSession)}
       />
     );

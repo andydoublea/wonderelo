@@ -1,11 +1,11 @@
 import { useParams, useNavigate } from 'react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { debugLog, errorLog } from '../utils/debug';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
-import { MapPin, Clock } from 'lucide-react';
+import { MapPin, Clock, Loader2 } from 'lucide-react';
 
 interface MatchData {
   matchId: string;
@@ -26,23 +26,22 @@ export function MatchInfo() {
   const navigate = useNavigate();
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWaitingForMatch, setIsWaitingForMatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCountRef = useRef(0);
+  const MAX_POLL_ATTEMPTS = 30; // 30 * 2s = 60s max wait
 
-  useEffect(() => {
-    loadMatchData();
-  }, [token]);
-
-  const loadMatchData = async () => {
-    if (!token) {
-      setError('Invalid participant token');
-      setIsLoading(false);
-      return;
+  const stopPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
+  };
 
+  const fetchMatch = async (): Promise<'matched' | 'no-match' | 'not-ready' | 'error'> => {
     try {
-      debugLog('[MatchInfo] Loading match data for token:', token);
-      
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/match`,
         {
@@ -58,25 +57,90 @@ export function MatchInfo() {
           if (errorData.reason === 'no-match') {
             setError('no-match');
             setIsLoading(false);
-            return;
+            setIsWaitingForMatch(false);
+            return 'no-match';
           }
+          // 404 without no-match = matching hasn't run yet
+          return 'not-ready';
         }
-        
         const errorText = await response.text();
         throw new Error(`Failed to load match data: ${errorText}`);
       }
 
       const data = await response.json();
       debugLog('[MatchInfo] Match data loaded:', data);
-
       setMatchData(data.matchData);
       setIsLoading(false);
+      setIsWaitingForMatch(false);
+      return 'matched';
     } catch (err) {
-      errorLog('[MatchInfo] Error loading match data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load match data');
-      setIsLoading(false);
+      errorLog('[MatchInfo] Error:', err);
+      return 'error';
     }
   };
+
+  useEffect(() => {
+    if (!token) {
+      setError('Invalid participant token');
+      setIsLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
+    const init = async () => {
+      debugLog('[MatchInfo] Loading match data for token:', token);
+      const result = await fetchMatch();
+
+      if (!mounted) return;
+
+      if (result === 'matched' || result === 'no-match') {
+        stopPolling();
+        return;
+      }
+
+      if (result === 'not-ready') {
+        // Match not ready yet — show waiting UI and start polling
+        debugLog('[MatchInfo] Match not ready yet, starting to poll...');
+        setIsWaitingForMatch(true);
+        setIsLoading(false);
+
+        pollCountRef.current = 0;
+        pollIntervalRef.current = setInterval(async () => {
+          if (!mounted) return;
+          pollCountRef.current++;
+          debugLog(`[MatchInfo] Polling for match... (attempt ${pollCountRef.current}/${MAX_POLL_ATTEMPTS})`);
+
+          if (pollCountRef.current >= MAX_POLL_ATTEMPTS) {
+            stopPolling();
+            setError('Matching is taking longer than expected. Please go back and try again.');
+            setIsWaitingForMatch(false);
+            return;
+          }
+
+          const pollResult = await fetchMatch();
+          if (!mounted) return;
+
+          if (pollResult === 'matched' || pollResult === 'no-match') {
+            stopPolling();
+          }
+          // 'not-ready' and 'error' during poll: keep polling
+        }, 2000);
+        return;
+      }
+
+      // error on initial load
+      setError('Failed to load match data');
+      setIsLoading(false);
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+      stopPolling();
+    };
+  }, [token]);
 
   const handleImHere = async () => {
     if (!token || !matchData) return;
@@ -84,7 +148,7 @@ export function MatchInfo() {
     setIsSubmitting(true);
     try {
       debugLog('[MatchInfo] Checking in at meeting point');
-      
+
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/check-in`,
         {
@@ -105,10 +169,10 @@ export function MatchInfo() {
       }
 
       debugLog('[MatchInfo] Check-in successful, navigating to match-partner');
-      
+
       // Redirect to match-partner page
       navigate(`/p/${token}/match-partner`);
-      
+
     } catch (err) {
       errorLog('[MatchInfo] Error checking in:', err);
       setIsSubmitting(false);
@@ -118,6 +182,7 @@ export function MatchInfo() {
     }
   };
 
+  // Loading state (initial load)
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
@@ -125,6 +190,26 @@ export function MatchInfo() {
           <CardContent className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading your match...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Waiting for match (backend matching in progress)
+  if (isWaitingForMatch) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <Loader2 className="h-16 w-16 text-primary animate-spin mx-auto mb-6" />
+            <h2 className="text-2xl font-bold mb-2">Finding your match...</h2>
+            <p className="text-muted-foreground mb-2">
+              We're pairing you with someone right now.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This usually takes just a few seconds.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -203,7 +288,7 @@ export function MatchInfo() {
               <MapPin className="h-5 w-5 text-primary" />
               Now go to
             </h2>
-            
+
             {matchData.meetingPointImageUrl && (
               <div className="mb-4 rounded-lg overflow-hidden">
                 <img
@@ -213,7 +298,7 @@ export function MatchInfo() {
                 />
               </div>
             )}
-            
+
             <p className="text-2xl font-bold text-center mb-2">{matchData.meetingPointName}</p>
             <p className="text-sm text-muted-foreground text-center">
               Head to this location to meet your networking partner{matchData.participants.length > 2 ? 's' : ''}

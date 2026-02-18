@@ -4,11 +4,12 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { ArrowRight, Users, Calendar, Clock, QrCode, Heart, Shield, Zap, Star, Coffee, MessageCircle, UserCheck, Shuffle, MapPin, Palette, HandHeart, Lightbulb, Target, Mic, Monitor, GitBranch, Music, Cake } from 'lucide-react';
+import { ArrowRight, Users, Calendar, Clock, QrCode, Heart, Shield, Zap, Star, Coffee, MessageCircle, UserCheck, Shuffle, MapPin, Palette, HandHeart, Lightbulb, Target, Mic, Monitor, GitBranch, Music, Cake, BookOpen, CheckCircle, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Navigation } from './Navigation';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
+import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 interface HomepageProps {
   onGetStarted: () => void;
@@ -21,6 +22,48 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
   const navigate = useNavigate();
   const location = useLocation();
   const [participantCode, setParticipantCode] = useState('');
+
+  // Lead magnet form state
+  const [leadName, setLeadName] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadEventType, setLeadEventType] = useState('');
+  const [leadParticipantCount, setLeadParticipantCount] = useState('');
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadEmail.trim() || !leadName.trim()) return;
+
+    setLeadSubmitting(true);
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/public/lead-magnet`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: leadEmail.trim(),
+            name: leadName.trim(),
+            eventType: leadEventType || undefined,
+            participantCount: leadParticipantCount || undefined,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setLeadSubmitted(true);
+        debugLog('Lead magnet submitted successfully');
+      }
+    } catch (err) {
+      debugLog('Error submitting lead magnet:', err);
+    } finally {
+      setLeadSubmitting(false);
+    }
+  };
   
   // Check authentication and redirect logic
   useEffect(() => {
@@ -137,6 +180,47 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           </div>
 
 
+        </div>
+      </section>
+
+      {/* Customer Logos - Trusted By */}
+      <section className="py-12 px-6 border-y border-border/40">
+        <div className="container mx-auto max-w-5xl">
+          <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
+            Trusted by event organizers at
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-12 opacity-60">
+            {/* TechFuture Conference */}
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Zap className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">TechFuture</span>
+            </div>
+            {/* CreativeMinds */}
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Lightbulb className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">CreativeMinds</span>
+            </div>
+            {/* BrightPath Consulting */}
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Star className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">BrightPath</span>
+            </div>
+            {/* Caffè Centrale */}
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Coffee className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">Caffè Centrale</span>
+            </div>
+            {/* EuroSummit */}
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Calendar className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">EuroSummit</span>
+            </div>
+            {/* NovaTech */}
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Monitor className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">NovaTech</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -668,6 +752,27 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
         </div>
       </section>
 
+      {/* Media Logos - As Seen In */}
+      <section className="py-12 px-6">
+        <div className="container mx-auto max-w-5xl">
+          <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
+            As seen in
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-12 opacity-50 grayscale hover:opacity-70 hover:grayscale-0 transition-all duration-500">
+            {/* Forbes */}
+            <span className="text-2xl font-bold tracking-tight text-foreground/80 italic" style={{ fontFamily: 'Georgia, serif' }}>Forbes</span>
+            {/* TechCrunch */}
+            <span className="text-2xl font-bold tracking-tight text-foreground/80" style={{ fontFamily: 'system-ui, sans-serif' }}>TechCrunch</span>
+            {/* CNBC */}
+            <span className="text-2xl font-bold tracking-tight text-foreground/80 uppercase" style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.1em' }}>CNBC</span>
+            {/* Eventbrite Blog */}
+            <span className="text-2xl font-bold tracking-tight text-foreground/80" style={{ fontFamily: 'system-ui, sans-serif' }}>Eventbrite</span>
+            {/* The Next Web */}
+            <span className="text-2xl font-bold tracking-tight text-foreground/80 uppercase" style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.05em' }}>TNW</span>
+          </div>
+        </div>
+      </section>
+
       {/* Blog Section */}
       <section className="py-20 px-6">
         <div className="container mx-auto max-w-6xl">
@@ -774,6 +879,130 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               <Star className="h-4 w-4 fill-current" />
               <span className="text-sm">Instant results</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Lead Magnet */}
+      <section className="py-20 px-6 bg-muted/30">
+        <div className="container mx-auto max-w-4xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <BookOpen className="h-6 w-6 text-primary" />
+                <span className="text-sm font-medium text-primary uppercase tracking-wide">Free guide</span>
+              </div>
+              <h2 className="mb-4">The Ultimate Guide to Event Networking</h2>
+              <p className="text-muted-foreground mb-6">
+                Learn proven strategies to turn networking from an afterthought into the highlight of your event. Includes templates, timelines, and real examples.
+              </p>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                  How to structure networking sessions
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                  Ice breaker questions that actually work
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                  Timing and group size best practices
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                  Post-event follow-up templates
+                </li>
+              </ul>
+            </div>
+
+            <Card>
+              <CardContent className="p-6">
+                {leadSubmitted ? (
+                  <div className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4" />
+                    <h3 className="text-xl font-bold mb-2">Check your inbox!</h3>
+                    <p className="text-muted-foreground">
+                      We've sent the guide to <strong>{leadEmail}</strong>. Enjoy!
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleLeadSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Name</label>
+                      <Input
+                        type="text"
+                        placeholder="Your name"
+                        value={leadName}
+                        onChange={(e) => setLeadName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Email</label>
+                      <Input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={leadEmail}
+                        onChange={(e) => setLeadEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">What type of events do you organize?</label>
+                      <select
+                        value={leadEventType}
+                        onChange={(e) => setLeadEventType(e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select (optional)</option>
+                        <option value="conference">Conference or barcamp</option>
+                        <option value="meetup">Community meetup</option>
+                        <option value="company">Company event</option>
+                        <option value="university">University or school</option>
+                        <option value="party">Party or festival</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Expected participants</label>
+                      <select
+                        value={leadParticipantCount}
+                        onChange={(e) => setLeadParticipantCount(e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select (optional)</option>
+                        <option value="10-30">10–30</option>
+                        <option value="30-100">30–100</option>
+                        <option value="100-500">100–500</option>
+                        <option value="500+">500+</option>
+                      </select>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      size="lg"
+                      disabled={leadSubmitting || !leadName.trim() || !leadEmail.trim()}
+                    >
+                      {leadSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          Get the free guide
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-center text-muted-foreground">
+                      No spam, ever. We only send useful content.
+                    </p>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>

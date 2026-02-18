@@ -33,6 +33,7 @@ export async function getOrganizerById(id: string) {
     website: data.website,
     description: data.description,
     profileImageUrl: data.profile_image_url,
+    eventType: data.event_type,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -56,6 +57,7 @@ export async function getOrganizerBySlug(slug: string) {
     website: data.website,
     description: data.description,
     profileImageUrl: data.profile_image_url,
+    eventType: data.event_type,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -81,6 +83,7 @@ export async function createOrganizerProfile(profile: {
   website?: string;
   description?: string;
   profileImageUrl?: string;
+  eventType?: string;
 }) {
   const { error } = await db()
     .from('organizer_profiles')
@@ -94,6 +97,7 @@ export async function createOrganizerProfile(profile: {
       website: profile.website || null,
       description: profile.description || null,
       profile_image_url: profile.profileImageUrl || null,
+      event_type: profile.eventType || null,
     });
   if (error) throw error;
 }
@@ -142,15 +146,67 @@ export async function updateOrganizerProfile(
 }
 
 export async function isSlugAvailable(slug: string, excludeUserId?: string): Promise<boolean> {
+  // Check active organizer profiles
   const { data, error } = await db()
     .from('organizer_profiles')
     .select('id')
     .eq('url_slug', slug)
     .maybeSingle();
   if (error) throw error;
-  if (!data) return true;
-  if (excludeUserId && data.id === excludeUserId) return true;
-  return false;
+  if (data && !(excludeUserId && data.id === excludeUserId)) return false;
+
+  // Check slug history (old slugs are reserved for redirects)
+  const { data: historyData, error: historyError } = await db()
+    .from('slug_history')
+    .select('id, organizer_id')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (historyError) throw historyError;
+  // If slug is in history, it's only available if it belongs to the same user
+  if (historyData && !(excludeUserId && historyData.organizer_id === excludeUserId)) return false;
+
+  return true;
+}
+
+// Record old slug in history when organizer changes their slug
+export async function recordSlugHistory(organizerId: string, oldSlug: string): Promise<void> {
+  const { error } = await db()
+    .from('slug_history')
+    .insert({ organizer_id: organizerId, slug: oldSlug });
+  if (error) throw error;
+}
+
+// Get slug change count in the last N days (for rate limiting)
+export async function getSlugChangeCount(organizerId: string, days: number): Promise<number> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const { data, error } = await db()
+    .from('slug_history')
+    .select('id')
+    .eq('organizer_id', organizerId)
+    .gte('created_at', since.toISOString());
+  if (error) throw error;
+  return data?.length || 0;
+}
+
+// Look up current slug from an old slug in history (for redirects)
+export async function getRedirectSlug(oldSlug: string): Promise<string | null> {
+  const { data, error } = await db()
+    .from('slug_history')
+    .select('organizer_id')
+    .eq('slug', oldSlug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  // Get the current slug for this organizer
+  const { data: profile, error: profileError } = await db()
+    .from('organizer_profiles')
+    .select('url_slug')
+    .eq('id', data.organizer_id)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  return profile?.url_slug || null;
 }
 
 // ============================================================
@@ -1061,4 +1117,37 @@ export async function getParticipantDashboardData(token: string) {
   }));
 
   return { participant, registrations };
+}
+
+// ============================================================
+// LEAD MAGNET SUBMISSIONS
+// ============================================================
+
+export async function createLeadMagnetSubmission(data: {
+  email: string;
+  name: string;
+  eventType?: string;
+  participantCount?: string;
+}) {
+  const { data: result, error } = await db()
+    .from('lead_magnet_submissions')
+    .insert({
+      email: data.email,
+      name: data.name,
+      event_type: data.eventType || null,
+      participant_count: data.participantCount || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return result;
+}
+
+export async function getLeadMagnetSubmissions() {
+  const { data, error } = await db()
+    .from('lead_magnet_submissions')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
 }

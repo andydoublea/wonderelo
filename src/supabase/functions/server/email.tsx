@@ -177,3 +177,49 @@ export function buildMagicLinkEmail(params: {
 
   return { subject, html };
 }
+
+/**
+ * Generate lead magnet ebook delivery email HTML
+ */
+export function buildLeadMagnetEmail(params: {
+  name: string;
+  ebookUrl: string;
+}): { subject: string; html: string } {
+  const { name, ebookUrl } = params;
+
+  const subject = 'Your free networking guide from Wonderelo';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;">
+  <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h1 style="font-size: 24px; margin: 0 0 8px 0;">Your free guide is here! 📘</h1>
+    <p style="color: #666; margin: 0 0 24px 0;">Hi ${name}, thanks for your interest in better event networking.</p>
+
+    <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+      <p style="margin: 0; font-weight: 600;">The Ultimate Guide to Event Networking</p>
+      <p style="margin: 8px 0 0 0; color: #555; font-size: 14px;">
+        Learn how to turn networking from an afterthought into the highlight of your event.
+      </p>
+    </div>
+
+    <a href="${ebookUrl}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Download Your Guide</a>
+
+    <p style="margin: 24px 0 0 0; color: #666; font-size: 14px;">
+      Ready to put these ideas into action? <a href="https://wonderelo.com" style="color: #1a1a1a; font-weight: 500;">Try Wonderelo free</a> and set up your first networking session in minutes.
+    </p>
+  </div>
+
+  <p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">
+    Sent by Wonderelo · Networking made simple
+  </p>
+</body>
+</html>`;
+
+  return { subject, html };
+}

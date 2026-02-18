@@ -68,7 +68,7 @@ export function RoundFormPage({
     } else {
       // Creating new session or duplicating
       const newSession = await onAddSession(sessionData);
-      navigate(`/rounds?highlight=${newSession.id}`);
+      navigate(`/rounds?success=${newSession.id}`);
     }
   };
 

@@ -253,6 +253,63 @@ export function ParticipantDashboard() {
     return () => clearInterval(interval);
   }, [sessions, getCurrentTime, simulatedTime]);
 
+  // Proactive T-0 navigation: navigate to /match immediately when the next round starts
+  useEffect(() => {
+    if (!token || !globalNextUpcomingRoundId) return;
+
+    // Find the round details
+    const [sessionId, roundId] = globalNextUpcomingRoundId.split(':');
+    const sessionData = sessions.find(s => s.session.id === sessionId);
+    if (!sessionData) return;
+
+    const round = sessionData.session.rounds?.find(r => r.id === roundId);
+    if (!round || !round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') return;
+
+    // Only trigger for confirmed registrations (participant said they'll attend)
+    const regStatus = sessionData.registrationStatusMap?.get(roundId);
+    if (regStatus !== 'confirmed') return;
+
+    // Calculate time until T-0
+    const [hours, minutes] = round.startTime.split(':').map(Number);
+    const roundStart = new Date(round.date || sessionData.session.date);
+    roundStart.setHours(hours, minutes, 0, 0);
+
+    const now = getCurrentTime();
+    const msUntilStart = roundStart.getTime() - now.getTime();
+
+    // If round already started (T-0 passed), navigate immediately
+    if (msUntilStart <= 0) {
+      // Check we haven't already redirected for this round
+      const redirectKey = `t0_redirect_${token}_${roundId}`;
+      if (localStorage.getItem(redirectKey) !== 'true') {
+        localStorage.setItem(redirectKey, 'true');
+        debugLog(`🚀 [T-0] Round ${roundId} has started! Navigating to /match immediately`);
+        navigate(`/p/${token}/match`);
+      }
+      return;
+    }
+
+    // If round starts within 60 seconds, set a precise timer
+    if (msUntilStart <= 60000) {
+      const redirectKey = `t0_redirect_${token}_${roundId}`;
+      if (localStorage.getItem(redirectKey) === 'true') return; // Already redirected
+
+      debugLog(`⏳ [T-0] Round ${roundId} starts in ${Math.round(msUntilStart / 1000)}s, setting precise timer`);
+
+      const timer = setTimeout(() => {
+        if (localStorage.getItem(redirectKey) !== 'true') {
+          localStorage.setItem(redirectKey, 'true');
+          debugLog(`🚀 [T-0] Timer fired! Navigating to /match for round ${roundId}`);
+          navigate(`/p/${token}/match`);
+        }
+      }, msUntilStart);
+
+      return () => clearTimeout(timer);
+    }
+
+    // For rounds > 60s away, we'll check again on next render (globalNextUpcomingRoundId updates)
+  }, [globalNextUpcomingRoundId, sessions, token, navigate, getCurrentTime]);
+
   // Version identifier for debugging
   useEffect(() => {
     // debugLog('🎯 ParticipantDashboard v6.3.0 (round-based sections) loaded - Build time: 2024-11-03 18:15');

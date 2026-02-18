@@ -238,6 +238,15 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
         
         setUserProfile(result.user);
         setSessions(result.sessions || []);
+      } else if (response.status === 301) {
+        // Slug was changed — redirect to the new slug
+        const redirectData = await response.json();
+        if (redirectData.redirect && redirectData.newSlug) {
+          debugLog('🔀 Slug redirect: old slug', userSlug, '→ new slug', redirectData.newSlug);
+          navigate(`/${redirectData.newSlug}`, { replace: true });
+          return;
+        }
+        setError('User not found');
       } else if (response.status === 404) {
         const errorData = await response.json();
         debugLog('404 Error response:', errorData);
