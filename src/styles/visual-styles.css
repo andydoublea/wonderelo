@@ -1131,8 +1131,9 @@
 .vs-jasper .wonderelo-logo {
   font-family: var(--vs-serif) !important;
   color: var(--vs-orange) !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.01em !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.03em !important;
+  font-size: 1.0em !important;
 }
 
 /* ---- Buttons ---- */

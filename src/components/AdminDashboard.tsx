@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -97,6 +97,14 @@ const adminTools = [
     icon: ListOrdered,
     route: '/admin/organizer-requests',
     color: 'bg-pink-500',
+    category: 'settings',
+  },
+  {
+    id: 'page-preview',
+    title: 'Page preview',
+    icon: Eye,
+    route: '/admin/page-preview',
+    color: 'bg-cyan-500',
     category: 'settings',
   },
   {

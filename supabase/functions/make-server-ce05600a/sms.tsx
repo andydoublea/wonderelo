@@ -3,16 +3,17 @@
  * https://www.twilio.com/docs/messaging/api/message-resource#create-a-message-resource
  */
 
-function getTwilioCredentials(): { accountSid: string; authToken: string; messagingServiceSid: string } | null {
+const SENDER_ID = 'Wonderelo';
+
+function getTwilioCredentials(): { accountSid: string; authToken: string } | null {
   const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
   const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-  const messagingServiceSid = Deno.env.get('TWILIO_MESSAGING_SERVICE_SID');
 
-  if (!accountSid || !authToken || !messagingServiceSid) {
+  if (!accountSid || !authToken) {
     return null;
   }
 
-  return { accountSid, authToken, messagingServiceSid };
+  return { accountSid, authToken };
 }
 
 interface SendSmsParams {
@@ -66,7 +67,7 @@ export async function sendSms(params: SendSmsParams): Promise<SendSmsResult> {
     return { success: false, error: 'Twilio credentials not configured', devMode: true };
   }
 
-  const { accountSid, authToken, messagingServiceSid } = credentials;
+  const { accountSid, authToken } = credentials;
   const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
 
   // Normalize the phone number
@@ -81,7 +82,7 @@ export async function sendSms(params: SendSmsParams): Promise<SendSmsResult> {
       },
       body: new URLSearchParams({
         To: toNumber,
-        MessagingServiceSid: messagingServiceSid,
+        From: SENDER_ID,
         Body: params.body,
       }).toString(),
     });

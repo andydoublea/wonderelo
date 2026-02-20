@@ -8,6 +8,7 @@ import { toast } from 'sonner@2.0.3';
 import { SessionDisplayCard } from './SessionDisplayCard';
 import { debugLog } from '../utils/debug';
 import QRCode from 'qrcode';
+import confetti from 'canvas-confetti';
 
 interface SessionSuccessPageProps {
   session: NetworkingSession;
@@ -27,26 +28,41 @@ export function SessionSuccessPage({
   const isDraft = session.status === 'draft';
   const isPublished = session.status === 'published';
   const [copied, setCopied] = useState(false);
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const eventUrl = `${window.location.origin}/${eventSlug}`;
   const presenterSlideUrl = `${window.location.origin}/promo/${eventSlug}`;
   const blogPostUrl = 'https://wonderelo.com/blog/how-to-promote-event'; // placeholder
 
-  // Generate QR code on mount
-  useEffect(() => {
-    if (qrCanvasRef.current && eventUrl) {
-      QRCode.toCanvas(qrCanvasRef.current, eventUrl, {
-        width: 200,
-        margin: 2,
-        color: { dark: '#000000', light: '#ffffff' }
-      });
-    }
-  }, [eventUrl]);
-
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, []);
+
+  // Fire confetti on mount
+  useEffect(() => {
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.6 },
+        colors: ['#ff6b35', '#ffd700', '#ff4500', '#32cd32', '#1e90ff'],
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.6 },
+        colors: ['#ff6b35', '#ffd700', '#ff4500', '#32cd32', '#1e90ff'],
+      });
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+    frame();
   }, []);
 
   const handleCopyUrl = async () => {
@@ -116,7 +132,7 @@ export function SessionSuccessPage({
         {/* Published: Share your event section */}
         {!isDraft && (
           <div className="flex justify-center">
-            <div className="w-full md:w-2/3 xl:w-1/2">
+            <div className="w-full md:w-1/2 xl:w-1/3">
               <Card>
                 <CardContent className="pt-6 space-y-6">
                   <div className="text-center">
@@ -129,40 +145,39 @@ export function SessionSuccessPage({
                     <label className="text-sm font-medium">Your event page URL</label>
                     <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
                       <code className="flex-1 text-sm break-all">{eventUrl}</code>
-                      <Button variant="outline" size="sm" onClick={handleCopyUrl} className="shrink-0">
-                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        {copied ? 'Copied' : 'Copy'}
-                      </Button>
                     </div>
                   </div>
 
-                  {/* QR Code */}
-                  <div className="flex flex-col items-center gap-3">
-                    <canvas ref={qrCanvasRef} className="rounded-lg" />
-                    <Button variant="outline" size="sm" onClick={handleDownloadQR}>
-                      <QrCode className="h-4 w-4 mr-2" />
+                  {/* Action buttons — stacked, same style */}
+                  <div className="flex flex-col gap-3">
+                    <Button variant="outline" onClick={handleCopyUrl} className="flex items-center justify-center gap-2 w-full">
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? 'Copied!' : 'Copy URL'}
+                    </Button>
+                    <Button variant="outline" onClick={handleDownloadQR} className="flex items-center justify-center gap-2 w-full">
+                      <QrCode className="h-4 w-4" />
                       Download QR code
                     </Button>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Button
                       variant="outline"
                       onClick={() => window.open(presenterSlideUrl, '_blank')}
-                      className="flex items-center gap-2"
+                      className="flex items-center justify-center gap-2 w-full"
                     >
                       <Presentation className="h-4 w-4" />
-                      Open Presenter Slide
+                      Open Promo Slide
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => window.open(blogPostUrl, '_blank')}
-                      className="flex items-center gap-2"
+                  </div>
+
+                  {/* How to promote — text link */}
+                  <div className="text-center">
+                    <a
+                      href={blogPostUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-muted-foreground hover:text-foreground underline"
                     >
-                      <BookOpen className="h-4 w-4" />
-                      How to promote your event
-                    </Button>
+                      How to promote your event →
+                    </a>
                   </div>
                 </CardContent>
               </Card>
@@ -171,17 +186,11 @@ export function SessionSuccessPage({
         )}
 
         {/* Bottom actions */}
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center">
           <Button variant="outline" onClick={onBack} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to rounds
           </Button>
-          {onGoToDashboard && (
-            <Button onClick={onGoToDashboard} className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              Go to Dashboard
-            </Button>
-          )}
         </div>
       </div>
     </div>

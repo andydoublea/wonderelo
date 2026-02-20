@@ -181,7 +181,7 @@ export function Dashboard({
               title="Event promo page"
             >
               <Presentation className="h-4 w-4 mr-2" />
-              Promo page
+              Promo slide
             </Button>
           </div>
         </CardContent>

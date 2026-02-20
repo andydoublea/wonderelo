@@ -54,6 +54,7 @@ const AdminParticipants = lazy(() => import('./components/AdminParticipants').th
 const AdminSessions = lazy(() => import('./components/AdminSessions').then(m => ({ default: m.AdminSessions })));
 const AdminStatusesGuide = lazy(() => import('./components/AdminStatusesGuide').then(m => ({ default: m.AdminStatusesGuide })));
 const AdminParticipantFlow = lazy(() => import('./components/AdminParticipantFlow').then(m => ({ default: m.AdminParticipantFlow })));
+const AdminPagePreview = lazy(() => import('./components/AdminPagePreview').then(m => ({ default: m.AdminPagePreview })));
 const AdminParameters = lazy(() => import('./components/AdminParameters').then(m => ({ default: m.AdminParameters })));
 const AdminOrganizerRequests = lazy(() => import('./components/AdminOrganizerRequests').then(m => ({ default: m.AdminOrganizerRequests })));
 const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({ default: m.ThemeManager })));
@@ -1026,6 +1027,16 @@ function AdminParticipantFlowRoute() {
   );
 }
 
+function AdminPagePreviewRoute() {
+  const navigate = useNavigate();
+
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <AdminPagePreview onBack={() => navigate('/admin')} />
+    </Suspense>
+  );
+}
+
 function AdminParametersRoute() {
   const { accessToken } = useApp();
   const navigate = useNavigate();
@@ -1817,6 +1828,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/sessions', element: h(AdminRoute, null, h(AdminSessionsRoute)) }),
             h(Route, { path: '/admin/statuses-guide', element: h(AdminRoute, null, h(AdminStatusesGuideRoute)) }),
             h(Route, { path: '/admin/participant-flow', element: h(AdminRoute, null, h(AdminParticipantFlowRoute)) }),
+            h(Route, { path: '/admin/page-preview', element: h(AdminRoute, null, h(AdminPagePreviewRoute)) }),
             h(Route, { path: '/admin/parameters', element: h(AdminRoute, null, h(AdminParametersRoute)) }),
             h(Route, { path: '/admin/organizer-requests', element: h(AdminRoute, null, h(AdminOrganizerRequestsRoute)) }),
             h(Route, { path: '/admin/leads', element: h(AdminRoute, null, h(AdminLeadsRoute)) }),
