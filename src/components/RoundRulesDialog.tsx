@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Info } from 'lucide-react';
+import { getParametersOrDefault } from '../utils/systemParameters';
 
 export interface RoundRule {
   headline: string;
@@ -24,7 +25,7 @@ export function RoundRulesDialog({ open, onOpenChange, rules }: RoundRulesDialog
     },
     {
       headline: 'Do not ask for contacts',
-      text: 'After the round, you\'ll be asked if you want to exchange contacts. Sharing happens 30 minutes later, only if both parties agree.'
+      text: `After the round, you'll be asked if you want to exchange contacts. Sharing happens ${getParametersOrDefault().networkingDurationMinutes || 15} minutes later, only if both parties agree.`
     }
   ];
 

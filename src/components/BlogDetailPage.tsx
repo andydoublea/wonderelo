@@ -13,9 +13,12 @@ interface BlogPost {
   title: string;
   excerpt: string;
   content: string;
-  imageUrl: string;
-  readTime: string;
-  published: boolean;
+  imageUrl?: string;
+  coverImage?: string;
+  readTime?: string;
+  author?: string;
+  published?: boolean;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -107,18 +110,22 @@ export function BlogDetailPage() {
       <article className="py-12 px-6">
         <div className="container mx-auto max-w-3xl">
           {/* Featured Image */}
-          <ImageWithFallback 
-            src={blogPost.imageUrl}
-            alt={blogPost.title}
-            className="w-full h-64 md:h-96 object-cover rounded-lg mb-8"
-          />
+          {(blogPost.imageUrl || blogPost.coverImage) && (
+            <ImageWithFallback
+              src={(blogPost.imageUrl || blogPost.coverImage)!}
+              alt={blogPost.title}
+              className="w-full h-64 md:h-96 object-cover rounded-lg mb-8"
+            />
+          )}
 
           {/* Meta */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              <span>{blogPost.readTime}</span>
-            </div>
+            {blogPost.readTime && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                <span>{blogPost.readTime}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
               <span>{new Date(blogPost.createdAt).toLocaleDateString('en-US', { 

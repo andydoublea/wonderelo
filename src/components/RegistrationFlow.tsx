@@ -159,7 +159,7 @@ export function RegistrationFlow({ serviceType, onComplete, onBack }: Registrati
               <HelpCircle className="h-12 w-12 text-primary mx-auto mb-4" />
               <h2>How did you hear about us?</h2>
               <p className="text-muted-foreground">
-                Help us understand how people discover Oliwonder
+                Help us understand how people discover Wonderelo
               </p>
             </div>
             <RadioGroup
@@ -275,7 +275,7 @@ export function RegistrationFlow({ serviceType, onComplete, onBack }: Registrati
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2">
               <span className="text-2xl">🎯</span>
-              Oliwonder
+              Wonderelo
             </CardTitle>
           </CardHeader>
           <CardContent>

@@ -181,6 +181,81 @@ export function buildMagicLinkEmail(params: {
 /**
  * Generate lead magnet ebook delivery email HTML
  */
+/**
+ * Generate welcome email for new organizer after registration
+ */
+export function buildWelcomeEmail(params: {
+  firstName: string;
+  dashboardUrl: string;
+  eventPageUrl?: string;
+}): { subject: string; html: string } {
+  const { firstName, dashboardUrl, eventPageUrl } = params;
+
+  const subject = 'Welcome to Wonderelo! 🎉 Let\'s set up your first event';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;">
+  <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h1 style="font-size: 24px; margin: 0 0 8px 0;">Welcome aboard, ${firstName}! 🎉</h1>
+    <p style="color: #666; margin: 0 0 24px 0;">Your Wonderelo account is ready. Here's how to get started in 3 simple steps.</p>
+
+    <div style="margin-bottom: 24px;">
+      <div style="display: flex; align-items: flex-start; margin-bottom: 16px;">
+        <div style="min-width: 28px; height: 28px; background: #1a1a1a; color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; margin-right: 12px;">1</div>
+        <div>
+          <p style="margin: 0; font-weight: 600;">Create your first networking round</p>
+          <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">Set the date, time, duration, and number of rounds. It takes less than 2 minutes.</p>
+        </div>
+      </div>
+      <div style="display: flex; align-items: flex-start; margin-bottom: 16px;">
+        <div style="min-width: 28px; height: 28px; background: #1a1a1a; color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; margin-right: 12px;">2</div>
+        <div>
+          <p style="margin: 0; font-weight: 600;">Share your event page</p>
+          <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">Every event gets a unique URL. Share it with your participants or display the QR code at the venue.</p>
+        </div>
+      </div>
+      <div style="display: flex; align-items: flex-start; margin-bottom: 16px;">
+        <div style="min-width: 28px; height: 28px; background: #1a1a1a; color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; margin-right: 12px;">3</div>
+        <div>
+          <p style="margin: 0; font-weight: 600;">Watch the magic happen</p>
+          <p style="margin: 4px 0 0 0; color: #555; font-size: 14px;">Wonderelo matches participants randomly, guides them to meeting points, and handles the entire networking flow.</p>
+        </div>
+      </div>
+    </div>
+
+    <a href="${dashboardUrl}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Go to my dashboard</a>
+
+    <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-top: 24px;">
+      <p style="margin: 0; font-weight: 600; font-size: 14px;">💡 Pro tip</p>
+      <p style="margin: 8px 0 0 0; color: #555; font-size: 14px;">
+        Test rounds with up to 10 participants are always free. Create one, invite a few colleagues, and see how it works before your real event.
+      </p>
+    </div>
+${eventPageUrl ? `
+    <p style="margin: 24px 0 0 0; color: #888; font-size: 13px;">
+      Your event page: <a href="${eventPageUrl}" style="color: #666;">${eventPageUrl}</a>
+    </p>
+` : ''}
+  </div>
+
+  <p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">
+    Sent by Wonderelo · Networking made simple
+  </p>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+/**
+ * Generate lead magnet (ebook) email HTML
+ */
 export function buildLeadMagnetEmail(params: {
   name: string;
   ebookUrl: string;
@@ -221,5 +296,53 @@ export function buildLeadMagnetEmail(params: {
 </body>
 </html>`;
 
+  return { subject, html };
+}
+
+// ============================================================
+// Onboarding email sequence templates
+// ============================================================
+
+export function buildOnboardingEmail1_CreateRound(params: {
+  firstName: string;
+  dashboardUrl: string;
+}): { subject: string; html: string } {
+  const { firstName, dashboardUrl } = params;
+  const subject = `${firstName}, ready to create your first networking round?`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;"><div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><h1 style="font-size: 24px; margin: 0 0 8px 0;">Time to create your first round!</h1><p style="color: #666; margin: 0 0 24px 0;">Hi ${firstName}, we noticed you haven't created a networking round yet. It only takes 2 minutes!</p><div style="margin-bottom: 24px;"><p style="margin: 0 0 12px 0; font-weight: 600;">Here's how simple it is:</p><ol style="margin: 0; padding-left: 20px; color: #555; line-height: 1.8;"><li>Pick a date and time</li><li>Set the round duration (we recommend 15-20 min)</li><li>Choose how many meeting points you need</li><li>Hit publish - done!</li></ol></div><a href="${dashboardUrl}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Create my first round</a><div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-top: 24px;"><p style="margin: 0; font-weight: 600; font-size: 14px;">Did you know?</p><p style="margin: 8px 0 0 0; color: #555; font-size: 14px;">Test rounds with up to 10 participants are always free. Try it out with your team!</p></div></div><p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">Sent by Wonderelo</p></body></html>`;
+  return { subject, html };
+}
+
+export function buildOnboardingEmail2_CustomizeUrl(params: {
+  firstName: string;
+  dashboardUrl: string;
+  currentUrl: string;
+}): { subject: string; html: string } {
+  const { firstName, dashboardUrl, currentUrl } = params;
+  const subject = `${firstName}, make your event page easy to share`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;"><div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><h1 style="font-size: 24px; margin: 0 0 8px 0;">Your event page needs a memorable URL</h1><p style="color: #666; margin: 0 0 24px 0;">Hi ${firstName}, right now your event page is at:</p><div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;"><code style="font-size: 14px; color: #555; word-break: break-all;">${currentUrl}</code></div><p style="margin: 0 0 16px 0;">A custom URL like <strong>wonderelo.com/your-company</strong> is easier for participants to remember and more professional on your materials.</p><a href="${dashboardUrl}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Customize my URL</a></div><p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">Sent by Wonderelo</p></body></html>`;
+  return { subject, html };
+}
+
+export function buildOnboardingEmail3_PublishRound(params: {
+  firstName: string;
+  dashboardUrl: string;
+  sessionName: string;
+}): { subject: string; html: string } {
+  const { firstName, dashboardUrl, sessionName } = params;
+  const subject = `${firstName}, your round "${sessionName}" is ready to publish!`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;"><div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><h1 style="font-size: 24px; margin: 0 0 8px 0;">Almost there!</h1><p style="color: #666; margin: 0 0 24px 0;">Hi ${firstName}, you created <strong>"${sessionName}"</strong> - now let participants join!</p><div style="margin-bottom: 24px;"><p style="margin: 0 0 12px 0; font-weight: 600;">What happens when you publish:</p><ul style="margin: 0; padding-left: 20px; color: #555; line-height: 1.8;"><li>Your round appears on your event page</li><li>Participants can register via the link or QR code</li><li>You can track registrations in real-time</li></ul></div><a href="${dashboardUrl}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Publish my round</a><p style="margin: 24px 0 0 0; color: #888; font-size: 13px;">You can unpublish anytime if you need to make changes.</p></div><p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">Sent by Wonderelo</p></body></html>`;
+  return { subject, html };
+}
+
+export function buildOnboardingEmail4_FirstParticipant(params: {
+  firstName: string;
+  dashboardUrl: string;
+  participantName: string;
+  sessionName: string;
+}): { subject: string; html: string } {
+  const { firstName, dashboardUrl, participantName, sessionName } = params;
+  const subject = `${firstName}, your first participant just registered!`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;"><div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><h1 style="font-size: 24px; margin: 0 0 8px 0;">Your first participant is here!</h1><p style="color: #666; margin: 0 0 24px 0;">Hi ${firstName}, <strong>${participantName}</strong> just registered for <strong>"${sessionName}"</strong>. Your networking event is coming to life!</p><div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-weight: 600; font-size: 14px;">Tips to get more participants:</p><ul style="margin: 8px 0 0 0; padding-left: 20px; color: #555; font-size: 14px; line-height: 1.8;"><li>Share the event page link on social media</li><li>Display the QR code on a screen at your venue</li><li>Add it to your event newsletter</li><li>Download our rollup banner from your dashboard</li></ul></div><a href="${dashboardUrl}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">View my dashboard</a></div><p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">Sent by Wonderelo</p></body></html>`;
   return { subject, html };
 }

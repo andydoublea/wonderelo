@@ -2,6 +2,7 @@ import React, { lazy, Suspense, createContext, useContext, useState, useEffect, 
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router';
 import { Toaster } from './components/ui/sonner';
 import { VersionBadge } from './components/VersionBadge';
+import { AnalyticsTracker } from './components/AnalyticsTracker';
 import { TimeProvider } from './contexts/TimeContext';
 
 import { QueryProvider } from './components/QueryProvider';
@@ -31,6 +32,7 @@ import { ParticipantRoundDetail } from './components/ParticipantRoundDetail';
 import { MatchInfo } from './components/MatchInfo';
 import { MatchPartner } from './components/MatchPartner';
 import { MatchNetworking } from './components/MatchNetworking';
+import { ContactSharing } from './components/ContactSharing';
 import { UserPublicPage } from './components/UserPublicPage';
 import { EventPromoPage } from './components/EventPromoPage';
 import { BlogListingPage } from './components/BlogListingPage';
@@ -38,6 +40,8 @@ import { BlogDetailPage } from './components/BlogDetailPage';
 import { PricingPage } from './components/PricingPage';
 import { BlogManagement } from './components/BlogManagement';
 import ParticipantProfile from './pages/ParticipantProfile';
+import { AddressBook } from './components/AddressBook';
+import { AdminRegistrationFunnel } from './components/AdminRegistrationFunnel';
 import { BootstrapAdmin } from './components/BootstrapAdmin';
 
 // Zustand stores
@@ -59,6 +63,8 @@ const AdminParameters = lazy(() => import('./components/AdminParameters').then(m
 const AdminOrganizerRequests = lazy(() => import('./components/AdminOrganizerRequests').then(m => ({ default: m.AdminOrganizerRequests })));
 const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({ default: m.ThemeManager })));
 const AdminLeads = lazy(() => import('./components/AdminLeads').then(m => ({ default: m.AdminLeads })));
+const UseCaseLandingPage = lazy(() => import('./components/UseCaseLandingPage').then(m => ({ default: m.UseCaseLandingPage })));
+const OurStoryPage = lazy(() => import('./components/OurStoryPage').then(m => ({ default: m.OurStoryPage })));
 
 // Loading component for lazy loaded routes
 const RouteLoader = () => (
@@ -1086,6 +1092,17 @@ function AdminLeadsRoute() {
   );
 }
 
+function AdminRegistrationFunnelRoute() {
+  const { accessToken } = useApp();
+  const navigate = useNavigate();
+
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <AdminRegistrationFunnel accessToken={accessToken} onBack={() => navigate('/admin')} />
+    </Suspense>
+  );
+}
+
 function UserPublicPageRoute() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -1113,6 +1130,30 @@ function PricingPageRoute() {
 
 function BlogDetailPageRoute() {
   return <BlogDetailPage />;
+}
+
+function UseCaseLandingPageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <UseCaseLandingPage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
+}
+
+function OurStoryPageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <OurStoryPage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
 }
 
 function BootstrapAdminRoute() {
@@ -1832,18 +1873,25 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/parameters', element: h(AdminRoute, null, h(AdminParametersRoute)) }),
             h(Route, { path: '/admin/organizer-requests', element: h(AdminRoute, null, h(AdminOrganizerRequestsRoute)) }),
             h(Route, { path: '/admin/leads', element: h(AdminRoute, null, h(AdminLeadsRoute)) }),
+            h(Route, { path: '/admin/registration-funnel', element: h(AdminRoute, null, h(AdminRegistrationFunnelRoute)) }),
             h(Route, { path: '/verify', element: h(EmailVerification) }),
             h(Route, { path: '/p/:token', element: h(ParticipantDashboard) }),
             h(Route, { path: '/p/:token/match', element: h(MatchInfo) }),
             h(Route, { path: '/p/:token/match-partner', element: h(MatchPartner) }),
             h(Route, { path: '/p/:token/networking', element: h(MatchNetworking) }),
+            h(Route, { path: '/p/:token/contact-sharing', element: h(ContactSharing) }),
             h(Route, { path: '/p/:token/profile', element: h(ParticipantProfile) }),
+            h(Route, { path: '/p/:token/address-book', element: h(AddressBook) }),
             h(Route, { path: '/p/:token/r/:roundId', element: h(ParticipantRoundDetail) }),
             h(Route, { path: '/bootstrap-admin', element: h(BootstrapAdminRoute) }),
             h(Route, { path: '/pricing', element: h(PricingPageRoute) }),
             h(Route, { path: '/blog', element: h(BlogListingPageRoute) }),
             h(Route, { path: '/blog/:slug', element: h(BlogDetailPageRoute) }),
-            
+            h(Route, { path: '/our-story', element: h(OurStoryPageRoute) }),
+
+            // Use case landing pages
+            h(Route, { path: '/for/:useCase', element: h(UseCaseLandingPageRoute) }),
+
             // User public pages (must be near end to avoid catching other routes)
             h(Route, { path: '/:slug', element: h(UserPublicPageRoute) }),
             h(Route, { path: '/:slug/:view', element: h(UserPublicPageRoute) }),
@@ -1852,6 +1900,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '*', element: h(NotFoundRoute) })
           )}
           <Toaster />
+          <AnalyticsTracker />
         </QueryProvider>
       </TimeProvider>
     </AppContext.Provider>

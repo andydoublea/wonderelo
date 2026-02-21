@@ -94,7 +94,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     eventTypeOther: ''
   });
 
-  const totalSteps = 4;
+  const totalSteps = 3;
 
   // Function to remove diacritics and convert to URL-friendly slug
   const removeDiacritics = (str: string): string => {
@@ -230,9 +230,29 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     }
   };
 
+  // Save registration draft to backend (non-blocking)
+  const saveRegistrationDraft = (step: number) => {
+    if (!formData.email) return;
+    // Don't save password to the draft — only non-sensitive fields
+    const { password, ...safeFormData } = formData;
+    fetch(
+      `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/registration-draft`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: formData.email, currentStep: step, formData: safeFormData }),
+      }
+    ).catch(() => {}); // Silently fail — this is a best-effort save
+  };
+
   const nextStep = () => {
     if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
+      const nextStepNum = currentStep + 1;
+      setCurrentStep(nextStepNum);
+      saveRegistrationDraft(nextStepNum);
     }
   };
 
@@ -251,10 +271,8 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
         const organizerNameValid = formData.organizerName && formData.organizerName.trim().length > 0;
         return emailValid && passwordValid && organizerNameValid;
       case 2:
-        return formData.urlSlug && formData.urlSlug.length >= 3 && slugCheckStatus === 'available';
-      case 3:
         return formData.discoverySource;
-      case 4:
+      case 3:
         const eventTypeValid = formData.eventType && (formData.eventType !== 'other' || formData.eventTypeOther.trim().length > 0);
         return formData.companySize && formData.userRole && eventTypeValid;
       default:
@@ -299,32 +317,30 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Create your account';
-      case 2: return 'Choose your URL';
-      case 3: return 'How did you hear about us?';
-      case 4: return 'About your organization';
+      case 2: return 'How did you hear about us?';
+      case 3: return 'About your organization';
       default: return '';
     }
   };
 
   const getStepDescription = () => {
     switch (currentStep) {
-      case 1: return 'Get started with your Oliwonder account';
-      case 2: return 'Your unique URL for participants to join';
-      case 3: return 'Help us understand how you discovered Oliwonder';
-      case 4: return 'Tell us about your organization and role';
+      case 1: return 'Get started with your Wonderelo account';
+      case 2: return 'Help us understand how you discovered Wonderelo';
+      case 3: return 'Tell us about your organization and role';
       default: return '';
     }
   };
 
-  // Auto-populate URL slug from organizer name when entering Step 2
+  // Auto-generate URL slug from organizer name (sent to backend)
   useEffect(() => {
-    if (currentStep === 2 && !formData.urlSlug && formData.organizerName) {
-      const suggestedSlug = removeDiacritics(formData.organizerName);
-      if (suggestedSlug) {
-        updateFormData('urlSlug', suggestedSlug);
+    if (formData.organizerName && formData.organizerName.trim()) {
+      const autoSlug = removeDiacritics(formData.organizerName);
+      if (autoSlug && autoSlug.length >= 3) {
+        setFormData(prev => ({ ...prev, urlSlug: autoSlug }));
       }
     }
-  }, [currentStep]);
+  }, [formData.organizerName]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -342,7 +358,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
         <div className="container mx-auto max-w-6xl px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <h2 className="text-primary cursor-pointer" onClick={onBack}>Oliwonder</h2>
+              <h2 className="text-primary cursor-pointer" onClick={onBack}>Wonderelo</h2>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" onClick={onBack}>
@@ -476,51 +492,6 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
 
               {currentStep === 2 && (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="urlSlug">URL slug</Label>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-muted-foreground text-sm">wonderelo.com/</span>
-                      <Input
-                        id="urlSlug"
-                        placeholder="my-awesome-venue"
-                        value={formData.urlSlug}
-                        onChange={(e) => updateFormData('urlSlug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-                        className="flex-1"
-                      />
-                    </div>
-                    {formData.urlSlug && formData.urlSlug.length < 3 && (
-                      <p className="text-sm text-muted-foreground">
-                        URL must be at least 3 characters
-                      </p>
-                    )}
-                    {formData.urlSlug && formData.urlSlug.length >= 3 && (
-                      <div className="text-sm">
-                        {slugCheckStatus === 'checking' && (
-                          <p className="text-muted-foreground flex items-center">
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            Checking availability...
-                          </p>
-                        )}
-                        {slugCheckStatus === 'available' && (
-                          <p className="text-green-600 flex items-center">
-                            <Check className="h-3 w-3 mr-1" />
-                            wonderelo.com/{formData.urlSlug} is available
-                          </p>
-                        )}
-                        {slugCheckStatus === 'taken' && (
-                          <p className="text-destructive flex items-center">
-                            <X className="h-3 w-3 mr-1" />
-                            wonderelo.com/{formData.urlSlug} is already taken
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {currentStep === 3 && (
-                <div className="space-y-4">
                   <RadioGroup
                     value={formData.discoverySource}
                     onValueChange={(value) => updateFormData('discoverySource', value)}
@@ -541,7 +512,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                 </div>
               )}
 
-              {currentStep === 4 && (
+              {currentStep === 3 && (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="eventType">What best describes what you organise?</Label>
@@ -600,42 +571,48 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                 </div>
               )}
 
-              <div className="flex justify-between pt-4">
-                {currentStep > 1 ? (
-                  <Button variant="outline" onClick={prevStep}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                ) : (
-                  <Button variant="outline" onClick={onBack}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Home
-                  </Button>
-                )}
-
-                {currentStep < totalSteps ? (
-                  <Button onClick={nextStep} disabled={!isStepValid()}>
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button onClick={handleSubmit} disabled={!isStepValid() || isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      <>
-                        Create account
-                        <Check className="h-4 w-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
+              {/* Spacer for sticky bottom buttons */}
+              <div className="h-20" />
             </CardContent>
           </Card>
+        </div>
+      </div>
+
+      {/* Sticky bottom buttons */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
+        <div className="max-w-md mx-auto flex justify-between gap-3">
+          {currentStep > 1 ? (
+            <Button variant="outline" onClick={prevStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Home
+            </Button>
+          )}
+
+          {currentStep < totalSteps ? (
+            <Button onClick={nextStep} disabled={!isStepValid()} className="flex-1">
+              Next
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={!isStepValid() || isLoading} className="flex-1">
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  Create account
+                  <Check className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>

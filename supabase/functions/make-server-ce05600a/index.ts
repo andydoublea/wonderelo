@@ -10,12 +10,13 @@ import { getGlobalSupabaseClient } from './global-supabase.tsx';
 import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
 import { getParticipantDashboard } from './participant-dashboard.tsx';
-import { getCurrentTime } from './time-helpers.tsx';
+import { getCurrentTime, parseRoundStartTime } from './time-helpers.tsx';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
-import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail } from './email.tsx';
+import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
 import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
+import { registerStripeRoutes } from './route-stripe.tsx';
 
 const app = new Hono();
 
@@ -62,11 +63,37 @@ app.get('/make-server-ce05600a/check-email/:email', async (c) => {
   return c.json({ available: !emailExists });
 });
 
+// Save registration draft (progressive save)
+app.post('/make-server-ce05600a/registration-draft', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { email, currentStep, formData } = body;
+    if (!email) return c.json({ error: 'Email required' }, 400);
+    await db.upsertRegistrationDraft({ email, currentStep, formData });
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error saving registration draft:', error);
+    return c.json({ error: 'Failed to save draft' }, 500);
+  }
+});
+
+// Load registration draft
+app.get('/make-server-ce05600a/registration-draft/:email', async (c) => {
+  try {
+    const email = decodeURIComponent(c.req.param('email'));
+    const draft = await db.getRegistrationDraft(email);
+    return c.json({ draft });
+  } catch (error) {
+    errorLog('Error loading registration draft:', error);
+    return c.json({ error: 'Failed to load draft' }, 500);
+  }
+});
+
 // Sign up
 app.post('/make-server-ce05600a/signup', async (c) => {
   try {
     const body = await c.req.json();
-    const { email, password, organizerName, urlSlug, eventType, eventTypeOther } = body;
+    const { email, password, organizerName, urlSlug: requestedSlug, eventType, eventTypeOther } = body;
 
     const { data: authData, error: authError } = await getSupabase().auth.admin.createUser({
       email,
@@ -80,27 +107,100 @@ app.post('/make-server-ce05600a/signup', async (c) => {
 
     const userId = authData.user.id;
 
+    // Auto-generate URL slug from organizer name if not provided
+    let finalSlug = requestedSlug;
+    if (!finalSlug || finalSlug.length < 3) {
+      // Generate slug from organizer name: remove diacritics, lowercase, alphanumeric only
+      const baseName = (organizerName || 'user')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove diacritics
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[^a-z0-9]/g, '');
+      finalSlug = baseName.length >= 3 ? baseName : baseName + Math.random().toString(36).substring(2, 6);
+    }
+
+    // Ensure slug uniqueness by checking DB and appending random suffix if taken
+    let slugAttempt = finalSlug;
+    let attempts = 0;
+    while (attempts < 5) {
+      const existing = await db.getOrganizerBySlug(slugAttempt);
+      if (!existing) break;
+      slugAttempt = `${finalSlug}${Math.random().toString(36).substring(2, 6)}`;
+      attempts++;
+    }
+    finalSlug = slugAttempt;
+
     // Combine eventType: if "other" was selected, use the custom description
     const resolvedEventType = eventType === 'other' && eventTypeOther ? `other: ${eventTypeOther}` : eventType;
 
-    await db.createOrganizerProfile({ userId, email, organizerName, urlSlug, eventType: resolvedEventType });
-    
+    await db.createOrganizerProfile({ userId, email, organizerName, urlSlug: finalSlug, eventType: resolvedEventType });
+
+    // Delete registration draft (non-blocking)
+    db.deleteRegistrationDraft(email).catch(() => {});
+
+    // Send welcome email (non-blocking)
+    const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+    const dashboardUrl = `${appUrl}/dashboard`;
+    const eventPageUrl = urlSlug ? `${appUrl}/${urlSlug}` : undefined;
+    const welcomeEmail = buildWelcomeEmail({
+      firstName: organizerName?.split(' ')[0] || 'there',
+      dashboardUrl,
+      eventPageUrl,
+    });
+    sendEmail({ to: email, subject: welcomeEmail.subject, html: welcomeEmail.html })
+      .then(result => {
+        if (result.success) {
+          console.log('✅ Welcome email sent to', email);
+        } else {
+          console.log('⚠️ Welcome email failed:', result.error);
+        }
+      })
+      .catch(err => console.log('⚠️ Welcome email error:', err));
+
+    // Auto-create sample draft session (non-blocking)
+    const firstName = organizerName?.split(' ')[0] || 'My';
+    const sampleSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const sampleDate = nextWeek.toISOString().split('T')[0];
+    db.createSession({
+      id: sampleSessionId,
+      userId,
+      name: `${firstName}'s First Networking`,
+      description: 'This is a sample round to help you explore Wonderelo. Feel free to edit or delete it.',
+      date: sampleDate,
+      status: 'draft',
+      limitParticipants: false,
+      maxParticipants: 10,
+      groupSize: 2,
+      enableTeams: false,
+      enableTopics: false,
+      meetingPoints: ['Table 1', 'Table 2', 'Table 3'],
+      iceBreakers: ['What do you do?', 'What brought you here today?', 'What\'s the most interesting project you\'re working on?'],
+      rounds: [
+        { id: `round-sample-1-${Date.now()}`, startTime: '10:00', duration: 5, name: 'Round 1' },
+        { id: `round-sample-2-${Date.now()}`, startTime: '10:10', duration: 5, name: 'Round 2' },
+        { id: `round-sample-3-${Date.now()}`, startTime: '10:20', duration: 5, name: 'Round 3' },
+      ],
+    }).then(() => console.log('✅ Sample session created for', email))
+      .catch(err => console.log('⚠️ Sample session creation error:', err));
+
     const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
       email,
       password
     });
-    
+
     if (signInError || !signInData.session) {
       return c.json({ error: 'User created but failed to sign in' }, 500);
     }
-    
+
     return c.json({
       success: true,
       user: authData.user,
       accessToken: signInData.session.access_token,
-      urlSlug
+      urlSlug: finalSlug
     });
-    
+
   } catch (error) {
     errorLog('Error in signup:', error);
     return c.json({ error: 'Failed to sign up' }, 500);
@@ -332,7 +432,27 @@ app.get('/make-server-ce05600a/public/user/:slug', async (c) => {
     // Get user's sessions (only published ones for public page)
     const allSessions = await db.getSessionsByUser(userId);
     const publishedSessions = allSessions.filter((s: any) => s.status === 'published');
-    
+
+    // Fetch registration counts per round for all published sessions
+    const roundIds = publishedSessions.flatMap((s: any) => (s.rounds || []).map((r: any) => r.id));
+    let registrationCounts: Record<string, number> = {};
+    if (roundIds.length > 0) {
+      try {
+        registrationCounts = await db.getRegistrationCountsByRounds(roundIds);
+      } catch (e) {
+        // Non-critical, continue without counts
+      }
+    }
+
+    // Attach registeredCount to each round
+    const sessionsWithCounts = publishedSessions.map((s: any) => ({
+      ...s,
+      rounds: (s.rounds || []).map((r: any) => ({
+        ...r,
+        registeredCount: registrationCounts[r.id] || 0
+      }))
+    }));
+
     return c.json({
       success: true,
       user: {
@@ -344,7 +464,7 @@ app.get('/make-server-ce05600a/public/user/:slug', async (c) => {
         email: profile.email,
         id: userId
       },
-      sessions: publishedSessions
+      sessions: sessionsWithCounts
     });
   } catch (error) {
     errorLog('Error fetching public user data:', error);
@@ -614,7 +734,7 @@ app.post('/make-server-ce05600a/send-registration-email', async (c) => {
 app.post('/make-server-ce05600a/participant/send-magic-link', async (c) => {
   try {
     const body = await c.req.json();
-    const { email, userSlug, continueRegistration } = body;
+    const { email, userSlug, continueRegistration, appUrl: clientAppUrl } = body;
 
     if (!email) {
       return c.json({ error: 'Email is required' }, 400);
@@ -632,8 +752,8 @@ app.post('/make-server-ce05600a/participant/send-magic-link', async (c) => {
     const { participantId, token } = participant;
     const firstName = participant.firstName || '';
 
-    // Build magic link URL using APP_URL env var
-    const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+    // Build magic link URL — prefer client-provided appUrl, then env var, then default
+    const appUrl = clientAppUrl || Deno.env.get('APP_URL') || 'https://wonderelo.com';
     const baseUrl = userSlug
       ? `${appUrl}/${userSlug}`
       : appUrl;
@@ -718,6 +838,8 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         confirmationWindowMinutes: 5,
         safetyWindowMinutes: 6,
         walkingTimeMinutes: 3,
+        findingTimeMinutes: 1,
+        networkingDurationMinutes: 15,
         notificationEarlyMinutes: 10,
         notificationEarlyEnabled: true,
         notificationLateMinutes: 5,
@@ -726,6 +848,9 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         minimalRoundDuration: 5,
         maximalRoundDuration: 240,
         minimalTimeToFirstRound: 10,
+        fireThreshold1: 5,
+        fireThreshold2: 10,
+        fireThreshold3: 15,
         defaultRoundDuration: 10,
         defaultGapBetweenRounds: 10,
         defaultNumberOfRounds: 1,
@@ -735,7 +860,7 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         defaultLimitGroups: false,
       });
     }
-    
+
     return c.json(parameters);
   } catch (error) {
     errorLog('Error fetching system parameters:', error);
@@ -744,6 +869,8 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
       confirmationWindowMinutes: 5,
       safetyWindowMinutes: 6,
       walkingTimeMinutes: 3,
+      findingTimeMinutes: 1,
+      networkingDurationMinutes: 15,
       notificationEarlyMinutes: 10,
       notificationEarlyEnabled: true,
       notificationLateMinutes: 5,
@@ -752,6 +879,9 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
       minimalRoundDuration: 5,
       maximalRoundDuration: 240,
       minimalTimeToFirstRound: 10,
+      fireThreshold1: 5,
+      fireThreshold2: 10,
+      fireThreshold3: 15,
       defaultRoundDuration: 10,
       defaultGapBetweenRounds: 10,
       defaultNumberOfRounds: 1,
@@ -1316,6 +1446,59 @@ app.get('/make-server-ce05600a/admin/stats', async (c) => {
   }
 });
 
+// Admin: Registration funnel data
+app.get('/make-server-ce05600a/admin/registration-funnel', async (c) => {
+  try {
+    const supabase = db.getClient();
+
+    // Get all registration drafts (incomplete registrations)
+    const { data: drafts, error: draftsError } = await supabase
+      .from('registration_drafts')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    // Get total completed organizers
+    const { count: totalCompleted } = await supabase
+      .from('organizer_profiles')
+      .select('*', { count: 'exact', head: true });
+
+    // Build funnel steps from drafts
+    const stepCounts: Record<number, number> = {};
+    const incompleteDrafts: any[] = [];
+
+    if (drafts) {
+      for (const draft of drafts) {
+        const step = draft.current_step || 1;
+        // Count all drafts at each step (they passed through earlier steps)
+        for (let s = 1; s <= step; s++) {
+          stepCounts[s] = (stepCounts[s] || 0) + 1;
+        }
+        incompleteDrafts.push({
+          email: draft.email,
+          currentStep: draft.current_step,
+          formData: draft.form_data,
+          updatedAt: draft.updated_at,
+        });
+      }
+    }
+
+    // Add completed count to all steps
+    const completed = totalCompleted || 0;
+    for (let s = 1; s <= 3; s++) {
+      stepCounts[s] = (stepCounts[s] || 0) + completed;
+    }
+
+    const funnelSteps = Object.entries(stepCounts)
+      .map(([step, count]) => ({ step: parseInt(step), label: `Step ${step}`, count }))
+      .sort((a, b) => a.step - b.step);
+
+    return c.json({ funnelSteps, incompleteDrafts, totalCompleted: completed });
+  } catch (error) {
+    errorLog('Error fetching registration funnel:', error);
+    return c.json({ error: 'Failed to fetch funnel data' }, 500);
+  }
+});
+
 // Admin: Delete user
 app.delete('/make-server-ce05600a/admin/users/:userId', async (c) => {
   try {
@@ -1699,6 +1882,64 @@ app.post('/make-server-ce05600a/admin/default-round-rules', async (c) => {
 });
 
 // ============================================================
+// Public: Analytics Events
+// ============================================================
+
+app.post('/make-server-ce05600a/events', async (c) => {
+  try {
+    const body = await c.req.json();
+    const events = body.events || [];
+
+    if (events.length === 0) {
+      return c.json({ success: true, received: 0 });
+    }
+
+    // Store events in event_logs admin setting (append to existing)
+    const existing = await db.getAdminSetting('event_logs') || [];
+    // Keep last 5000 events to avoid unbounded growth
+    const combined = [...existing, ...events].slice(-5000);
+    await db.setAdminSetting('event_logs', combined);
+
+    debugLog(`[Events] Received ${events.length} analytics events`);
+    return c.json({ success: true, received: events.length });
+  } catch (error) {
+    errorLog('Error saving analytics events:', error);
+    return c.json({ success: true, received: 0 }); // Don't fail client on analytics errors
+  }
+});
+
+// ============================================================
+// Public: Blog (read-only)
+// ============================================================
+
+app.get('/make-server-ce05600a/blog/posts', async (c) => {
+  try {
+    const posts = await db.getAllBlogPosts();
+    // Only return published posts for public view
+    const published = posts.filter((p: any) => p.status === 'published');
+    return c.json({ posts: published });
+  } catch (error) {
+    errorLog('Error listing public blog posts:', error);
+    return c.json({ error: 'Failed to list blog posts' }, 500);
+  }
+});
+
+app.get('/make-server-ce05600a/blog/posts/:slug', async (c) => {
+  try {
+    const slug = c.req.param('slug');
+    const posts = await db.getAllBlogPosts();
+    const post = posts.find((p: any) => p.slug === slug && p.status === 'published');
+    if (!post) {
+      return c.json({ error: 'Post not found' }, 404);
+    }
+    return c.json({ post });
+  } catch (error) {
+    errorLog('Error fetching blog post:', error);
+    return c.json({ error: 'Failed to fetch blog post' }, 500);
+  }
+});
+
+// ============================================================
 // Admin: Blog management
 // ============================================================
 
@@ -1892,7 +2133,233 @@ app.get('/make-server-ce05600a/public/theme', async (c) => {
   }
 });
 
+// ============================================
+// CRON: Automatic round reminders (SMS)
+// ============================================
+
+app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
+  try {
+    // Auth: verify cron secret
+    const cronSecret = c.req.header('X-Cron-Secret');
+    const expectedSecret = Deno.env.get('CRON_SECRET');
+    if (!expectedSecret || cronSecret !== expectedSecret) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const now = new Date();
+    const WINDOW_MINUTES = 7; // 7-min window for cron jitter reliability
+    const windowEnd = new Date(now.getTime() + WINDOW_MINUTES * 60000);
+
+    // Get all scheduled rounds with published sessions that haven't had reminders sent
+    const candidateRounds = await db.getRoundsNeedingReminder();
+
+    // Filter by time window: round starts between now and now+7min
+    const roundsToNotify = candidateRounds.filter((r: any) => {
+      if (!r.date || !r.startTime) return false;
+      const roundStartUtc = parseRoundStartTime(r.date, r.startTime);
+      return roundStartUtc >= now && roundStartUtc <= windowEnd;
+    });
+
+    if (roundsToNotify.length === 0) {
+      return c.json({ success: true, message: 'No rounds need reminders', roundsChecked: candidateRounds.length });
+    }
+
+    // Load SMS template
+    const texts = await db.getAdminSetting('notification_texts');
+    const template = texts?.smsRoundStartingSoon;
+    if (!template) {
+      console.log('⚠️ No smsRoundStartingSoon template configured');
+      return c.json({ success: false, error: 'SMS template not configured' }, 500);
+    }
+
+    let totalSmsSent = 0;
+    let totalSmsFailed = 0;
+    const roundResults: any[] = [];
+
+    for (const round of roundsToNotify) {
+      const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
+      const minutesUntilStart = Math.round((roundStartUtc.getTime() - now.getTime()) / 60000);
+
+      // Get registrations for this round (confirmed + registered with notifications enabled)
+      const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
+      const eligibleRegs = registrations.filter((reg: any) =>
+        ['registered', 'confirmed'].includes(reg.status) &&
+        reg.notificationsEnabled !== false &&
+        reg.phone
+      );
+
+      let sent = 0;
+      let failed = 0;
+
+      // Determine location from round meeting points or session meeting points
+      const meetingPoints = round.meetingPoints?.length > 0
+        ? round.meetingPoints
+        : round.sessionMeetingPoints || [];
+      const location = meetingPoints.length > 0
+        ? (meetingPoints[0]?.name || meetingPoints[0] || '')
+        : '';
+
+      for (const reg of eligibleRegs) {
+        const smsBody = renderSmsTemplate(template, {
+          sessionName: round.sessionName || round.name || '',
+          minutes: String(minutesUntilStart),
+          location,
+          firstName: reg.firstName || '',
+          name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
+          time: round.startTime || '',
+          date: round.date || '',
+        });
+
+        const result = await sendSms({ to: reg.phone, body: smsBody });
+        if (result.success) {
+          sent++;
+        } else {
+          failed++;
+          console.error(`❌ SMS failed for ${reg.phone}: ${result.error}`);
+        }
+      }
+
+      // Mark round as reminded (idempotent)
+      await db.markRoundReminderSent(round.id);
+
+      totalSmsSent += sent;
+      totalSmsFailed += failed;
+      roundResults.push({
+        roundId: round.id,
+        roundName: round.name,
+        sessionName: round.sessionName,
+        startsIn: `${minutesUntilStart}min`,
+        eligibleParticipants: eligibleRegs.length,
+        smsSent: sent,
+        smsFailed: failed,
+      });
+    }
+
+    console.log(`📱 CRON ROUND REMINDERS: ${roundsToNotify.length} rounds, ${totalSmsSent} SMS sent, ${totalSmsFailed} failed`);
+
+    return c.json({
+      success: true,
+      roundsProcessed: roundsToNotify.length,
+      totalSmsSent,
+      totalSmsFailed,
+      rounds: roundResults,
+    });
+
+  } catch (error) {
+    console.error('💥 CRON send-round-reminders error:', error);
+    const details = error instanceof Error ? error.message : (typeof error === 'object' ? JSON.stringify(error) : String(error));
+    return c.json({
+      error: 'Failed to send round reminders',
+      details,
+    }, 500);
+  }
+});
+
+// ============================================================
+// CRON: Onboarding email sequence
+// ============================================================
+// Call this periodically (e.g., every hour via Supabase CRON or external scheduler)
+// It checks all organizers and sends context-appropriate onboarding emails
+
+app.post('/make-server-ce05600a/cron/onboarding-emails', async (c) => {
+  try {
+    const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+
+    // Get all organizer profiles
+    const supabase = getGlobalSupabaseClient();
+    const { data: profiles, error: profilesError } = await supabase
+      .from('organizer_profiles')
+      .select('*');
+
+    if (profilesError || !profiles) {
+      return c.json({ error: 'Failed to fetch organizer profiles' }, 500);
+    }
+
+    // Get sent onboarding emails tracking
+    const sentEmails: Record<string, string[]> = await db.getAdminSetting('onboarding_emails_sent') || {};
+
+    const results: any[] = [];
+    const now = Date.now();
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+
+    for (const profile of profiles) {
+      const userId = profile.id || profile.user_id;
+      const email = profile.email;
+      const firstName = (profile.organizer_name || 'there').split(' ')[0];
+      const urlSlug = profile.url_slug || '';
+      const createdAt = new Date(profile.created_at).getTime();
+      const dashboardUrl = `${appUrl}/dashboard`;
+      const eventPageUrl = urlSlug ? `${appUrl}/${urlSlug}` : '';
+
+      // Get organizer's sent emails list
+      const sent = sentEmails[userId] || [];
+
+      // Get organizer's sessions
+      const sessions = await db.getSessionsByUser(userId);
+      const hasSessions = sessions.length > 0;
+      const hasPublishedSession = sessions.some((s: any) => s.status === 'published');
+      const draftSession = sessions.find((s: any) => s.status === 'draft');
+
+      // Check if URL slug looks auto-generated (contains random chars)
+      const isAutoSlug = urlSlug.match(/^[a-z0-9]{8,}$/) || urlSlug === '';
+
+      // Count total participants across all sessions
+      let totalParticipants = 0;
+      for (const session of sessions) {
+        const rounds = session.rounds || [];
+        for (const round of rounds) {
+          totalParticipants += (round.participants || []).length;
+        }
+      }
+
+      // Email 1: Create your first round (1+ day after signup, no sessions created)
+      if (!sent.includes('onboarding_1') && !hasSessions && (now - createdAt) > ONE_DAY) {
+        const emailContent = buildOnboardingEmail1_CreateRound({ firstName, dashboardUrl });
+        const result = await sendEmail({ to: email, subject: emailContent.subject, html: emailContent.html });
+        sent.push('onboarding_1');
+        results.push({ userId, email: 'onboarding_1', sent: result.success });
+      }
+
+      // Email 2: Customize URL (2+ days after signup, URL still auto-generated)
+      else if (!sent.includes('onboarding_2') && isAutoSlug && (now - createdAt) > 2 * ONE_DAY) {
+        const emailContent = buildOnboardingEmail2_CustomizeUrl({ firstName, dashboardUrl, currentUrl: eventPageUrl || `${appUrl}/${urlSlug}` });
+        const result = await sendEmail({ to: email, subject: emailContent.subject, html: emailContent.html });
+        sent.push('onboarding_2');
+        results.push({ userId, email: 'onboarding_2', sent: result.success });
+      }
+
+      // Email 3: Publish your round (has draft session, no published, 1+ day after creation)
+      else if (!sent.includes('onboarding_3') && draftSession && !hasPublishedSession && (now - createdAt) > ONE_DAY) {
+        const emailContent = buildOnboardingEmail3_PublishRound({ firstName, dashboardUrl, sessionName: draftSession.name || 'your round' });
+        const result = await sendEmail({ to: email, subject: emailContent.subject, html: emailContent.html });
+        sent.push('onboarding_3');
+        results.push({ userId, email: 'onboarding_3', sent: result.success });
+      }
+
+      // Update tracking
+      sentEmails[userId] = sent;
+    }
+
+    // Save updated tracking
+    await db.setAdminSetting('onboarding_emails_sent', sentEmails);
+
+    debugLog(`[Onboarding CRON] Processed ${profiles.length} organizers, sent ${results.length} emails`);
+    return c.json({
+      processed: profiles.length,
+      emailsSent: results.length,
+      details: results
+    });
+
+  } catch (error) {
+    errorLog('CRON onboarding-emails error:', error);
+    return c.json({ error: 'Failed to process onboarding emails' }, 500);
+  }
+});
+
 // Register participant routes
 registerParticipantRoutes(app, getCurrentTime);
+
+// Register Stripe payment routes
+registerStripeRoutes(app);
 
 Deno.serve(app.fetch);

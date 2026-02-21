@@ -1133,7 +1133,10 @@
   color: var(--vs-orange) !important;
   font-weight: 400 !important;
   letter-spacing: -0.03em !important;
-  font-size: 1.0em !important;
+  font-size: 1.5rem !important;
+}
+.vs-jasper .wonderelo-logo-large {
+  font-size: 2.5rem !important;
 }
 
 /* ---- Buttons ---- */
@@ -1285,4 +1288,12 @@
   .vs-jasper h2 {
     font-size: 1.75rem !important;
   }
+}
+
+/* ---- Button hover override ---- */
+.btn-hover-white {
+  transition: background-color 0.2s ease !important;
+}
+.btn-hover-white:hover {
+  background-color: #ffffff !important;
 }

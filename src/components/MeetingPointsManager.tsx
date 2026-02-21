@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card } from './ui/card';
 import { Checkbox } from './ui/checkbox';
-import { MapPin, X, Upload, Image as ImageIcon, Loader2, Plus } from 'lucide-react';
+import { MapPin, X, Upload, Image as ImageIcon, Loader2, Plus, Video, Building2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -69,6 +69,23 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
   const updateMeetingPointName = (index: number, name: string) => {
     const updated = [...normalizedPoints];
     updated[index] = { ...updated[index], name };
+    onChange(updated);
+  };
+
+  const updateMeetingPointType = (index: number, type: 'physical' | 'virtual') => {
+    const updated = [...normalizedPoints];
+    updated[index] = {
+      ...updated[index],
+      type,
+      // Clear irrelevant fields when switching type
+      ...(type === 'virtual' ? { imageUrl: undefined, originalImageUrl: undefined } : { videoCallUrl: undefined })
+    };
+    onChange(updated);
+  };
+
+  const updateMeetingPointVideoUrl = (index: number, videoCallUrl: string) => {
+    const updated = [...normalizedPoints];
+    updated[index] = { ...updated[index], videoCallUrl };
     onChange(updated);
   };
 
@@ -248,7 +265,54 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
                   </Button>
                 </div>
 
-                {/* Image upload section */}
+                {/* Type toggle: Physical / Virtual */}
+                <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
+                  <button
+                    type="button"
+                    onClick={() => updateMeetingPointType(index, 'physical')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      (!point.type || point.type === 'physical')
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    Physical
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateMeetingPointType(index, 'virtual')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      point.type === 'virtual'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Video className="h-3.5 w-3.5" />
+                    Virtual
+                  </button>
+                </div>
+
+                {/* Video call URL (virtual only) */}
+                {point.type === 'virtual' && (
+                  <div className="space-y-1">
+                    <Label htmlFor={`video-url-${point.id}`} className="text-sm">
+                      Video call link
+                    </Label>
+                    <Input
+                      id={`video-url-${point.id}`}
+                      placeholder="e.g. https://meet.google.com/abc-defg-hij"
+                      value={point.videoCallUrl || ''}
+                      onChange={(e) => updateMeetingPointVideoUrl(index, e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Participants will see this link instead of a physical location
+                    </p>
+                  </div>
+                )}
+
+                {/* Image upload section (physical only) */}
+                {(!point.type || point.type === 'physical') && (
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -325,6 +389,7 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
                     </>
                   )}
                 </div>
+                )}
               </div>
             </Card>
           ))}

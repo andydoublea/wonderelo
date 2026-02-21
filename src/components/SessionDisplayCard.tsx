@@ -362,7 +362,7 @@ export function SessionDisplayCard({
     if (session.limitParticipants && session.maxParticipants) {
       return Math.ceil(session.maxParticipants / session.groupSize);
     }
-    return '∞';
+    return 'Unlimited';
   })();
 
   // Debug session data for dashboard
@@ -717,17 +717,17 @@ export function SessionDisplayCard({
     return (
       <Card className={`${className} transition-all hover:border-muted-foreground/20`}>
         <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-          <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start justify-between mb-1">
             <div className="flex-1">
-              <h3 className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
                 {session.name}
               </h3>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {session.date ? new Date(session.date).toLocaleDateString('en-US', {
                     weekday: 'short',
-                    month: 'short', 
+                    month: 'short',
                     day: 'numeric'
                   }) : 'Date To be set'}
                 </div>
@@ -739,14 +739,14 @@ export function SessionDisplayCard({
             </div>
 
           </div>
-          
-          <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+
+          <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
             <Users className="h-4 w-4" />
-            {session.limitParticipants ? `Max ${session.maxParticipants}` : '∞'} participants • Groups of {session.groupSize}
+            {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
           </div>
 
           {/* Meeting Points and Round Rules Links */}
-          <div id="meeting-points" className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+          <div id="meeting-points" className="flex items-center gap-4 text-sm text-muted-foreground mb-1">
             <button
               type="button"
               onClick={() => {
@@ -806,6 +806,7 @@ export function SessionDisplayCard({
                       isRegisterable={canRegister}
                       onSelect={toggleRoundSelection}
                       generateRoundTimeDisplay={generateRoundTimeDisplay}
+                      registeredCount={round.registeredCount}
                     />
                   );
                 })}
@@ -879,7 +880,7 @@ export function SessionDisplayCard({
         {/* Participants and Groups */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4" />
-          {session.limitParticipants ? `Max ${session.maxParticipants}` : '∞'} participants • {session.limitGroups ? `Max ${session.maxGroups}` : (typeof estimatedGroups === 'number' ? `${estimatedGroups}` : '∞')} groups of {session.groupSize}
+          {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • {session.limitGroups ? `Max ${session.maxGroups}` : (typeof estimatedGroups === 'number' ? `${estimatedGroups}` : 'Unlimited')} groups of {session.groupSize}
         </div>
 
         {/* Additional info (overview mode) */}

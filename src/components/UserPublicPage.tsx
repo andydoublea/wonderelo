@@ -5,7 +5,7 @@ import { toast } from 'sonner@2.0.3';
 import { hasUpcomingRounds } from '../utils/sessionStatus';
 import { debugLog, errorLog } from '../utils/debug';
 import { APP_VERSION } from '../utils/version';
-import { fetchSystemParameters } from '../utils/systemParameters';
+import { fetchSystemParameters, getParametersOrDefault } from '../utils/systemParameters';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -520,7 +520,8 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
           },
           body: JSON.stringify({
             email: magicLinkEmail,
-            userSlug
+            userSlug,
+            appUrl: window.location.origin
           }),
         }
       );
@@ -619,10 +620,11 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
                   Wonderelo
                 </h2>
                 <div className="flex items-center space-x-4">
-                  <Button 
+                  <Button
                     onClick={() => setMagicLinkDialogOpen(true)}
                     variant="outline"
                     size="sm"
+                    className="btn-hover-white"
                   >
                     <LogIn className="h-4 w-4 mr-2" />
                     Manage my rounds
@@ -766,10 +768,11 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
                   Wonderelo
                 </h2>
                 <div className="flex items-center space-x-4">
-                  <Button 
+                  <Button
                     onClick={() => setMagicLinkDialogOpen(true)}
                     variant="outline"
                     size="sm"
+                    className="btn-hover-white"
                   >
                     <LogIn className="h-4 w-4 mr-2" />
                     Manage my rounds
@@ -894,6 +897,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
                   onClick={() => setMagicLinkDialogOpen(true)}
                   variant="outline"
                   size="sm"
+                  className="btn-hover-white"
                 >
                   <LogIn className="h-4 w-4 mr-2" />
                   Manage my rounds
@@ -926,11 +930,11 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
 
           {registrationStep === 'select-rounds' && (
             <div className="text-center pt-4">
-              <h1 className="text-3xl font-bold">When can we mix you in?</h1>
+              <h1 className="text-2xl font-bold">When can we mix you in?</h1>
             </div>
           )}
 
-          <SessionRegistration 
+          <SessionRegistration
             sessions={availableForRegistration}
             userSlug={userSlug}
             eventName={userProfile?.eventName || userProfile?.organizerName || ''}
@@ -941,6 +945,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
             participantToken={participantToken}
             participantStatusMap={participantStatusMap}
             onStepChange={setRegistrationStep}
+            noWrapper
           />
         </div>
 
@@ -1065,8 +1070,8 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
                 4
               </div>
               <div className="flex-1">
-                <p className="font-medium mb-1">Decide whether to go on</p>
-                <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will send it to you 30 minutes after the meeting.</p>
+                <p className="font-medium mb-1">Exchange contacts... or not</p>
+                <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().networkingDurationMinutes || 15} minutes after the meeting.</p>
               </div>
             </div>
           </div>

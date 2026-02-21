@@ -352,6 +352,125 @@ export function AdminParameters({ accessToken, onBack }: AdminParametersProps) {
                 </div>
               </div>
 
+              {/* Finding Time */}
+              <div className="space-y-2">
+                <Label htmlFor="findingTime">
+                  Finding time
+                  {getBaselineTag('findingTimeMinutes')}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Time participants have to find each other after arriving at the meeting point
+                </p>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="findingTime"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={parameters.findingTimeMinutes}
+                    onChange={(e) => updateParameter('findingTimeMinutes', parseInt(e.target.value) || 1)}
+                    className={`max-w-[120px] ${isFieldChanged('findingTimeMinutes') ? 'border-amber-400 border-2' : ''}`}
+                  />
+                  <span className="text-sm text-muted-foreground">minutes</span>
+                  {isFieldChanged('findingTimeMinutes') && (
+                    <span className="text-xs text-amber-600">
+                      (saved: {originalParameters.findingTimeMinutes})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Networking Duration */}
+              <div className="space-y-2">
+                <Label htmlFor="networkingDuration">
+                  Networking duration
+                  {getBaselineTag('networkingDurationMinutes')}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Duration of the networking conversation (shown in "How it works" text)
+                </p>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="networkingDuration"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={parameters.networkingDurationMinutes}
+                    onChange={(e) => updateParameter('networkingDurationMinutes', parseInt(e.target.value) || 15)}
+                    className={`max-w-[120px] ${isFieldChanged('networkingDurationMinutes') ? 'border-amber-400 border-2' : ''}`}
+                  />
+                  <span className="text-sm text-muted-foreground">minutes</span>
+                  {isFieldChanged('networkingDurationMinutes') && (
+                    <span className="text-xs text-amber-600">
+                      (saved: {originalParameters.networkingDurationMinutes})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Popularity Indicators */}
+              <div className="space-y-2">
+                <Label>
+                  Popularity indicators (🔥 thresholds)
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Number of registered participants needed to show fire emojis on round rows
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm w-16">🔥</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={parameters.fireThreshold1}
+                      onChange={(e) => updateParameter('fireThreshold1', parseInt(e.target.value) || 5)}
+                      className={`max-w-[120px] ${isFieldChanged('fireThreshold1') ? 'border-amber-400 border-2' : ''}`}
+                    />
+                    <span className="text-sm text-muted-foreground">participants</span>
+                    {isFieldChanged('fireThreshold1') && (
+                      <span className="text-xs text-amber-600">
+                        (saved: {originalParameters.fireThreshold1})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm w-16">🔥🔥</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={parameters.fireThreshold2}
+                      onChange={(e) => updateParameter('fireThreshold2', parseInt(e.target.value) || 10)}
+                      className={`max-w-[120px] ${isFieldChanged('fireThreshold2') ? 'border-amber-400 border-2' : ''}`}
+                    />
+                    <span className="text-sm text-muted-foreground">participants</span>
+                    {isFieldChanged('fireThreshold2') && (
+                      <span className="text-xs text-amber-600">
+                        (saved: {originalParameters.fireThreshold2})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm w-16">🔥🔥🔥</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={parameters.fireThreshold3}
+                      onChange={(e) => updateParameter('fireThreshold3', parseInt(e.target.value) || 15)}
+                      className={`max-w-[120px] ${isFieldChanged('fireThreshold3') ? 'border-amber-400 border-2' : ''}`}
+                    />
+                    <span className="text-sm text-muted-foreground">participants</span>
+                    {isFieldChanged('fireThreshold3') && (
+                      <span className="text-xs text-amber-600">
+                        (saved: {originalParameters.fireThreshold3})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Notification Early */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

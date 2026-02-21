@@ -50,6 +50,12 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
               <Button variant="ghost" onClick={() => navigate('/pricing')}>
                 Pricing
               </Button>
+              <Button variant="ghost" onClick={() => navigate('/blog')}>
+                Blog
+              </Button>
+              <Button variant="ghost" onClick={() => navigate('/our-story')}>
+                Our story
+              </Button>
             </div>
           </div>
           <div className="flex items-center space-x-4">

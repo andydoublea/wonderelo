@@ -5,6 +5,9 @@ import { Card, CardContent } from './ui/card';
 import { debugLog, errorLog } from '../utils/debug';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { CheckCircle2, Circle } from 'lucide-react';
+import { CountdownTimer } from './CountdownTimer';
+import { GeometricIdentification } from './GeometricIdentification';
+import { getParametersOrDefault } from '../utils/systemParameters';
 
 interface Partner {
   id: string;
@@ -31,6 +34,10 @@ export function MatchPartner() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [findingDeadline] = useState<string>(() => {
+    const mins = getParametersOrDefault().findingTimeMinutes || 1;
+    return new Date(Date.now() + mins * 60000).toISOString();
+  });
 
   useEffect(() => {
     loadMatchPartnerData();
@@ -164,113 +171,102 @@ export function MatchPartner() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 p-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        {/* My Identification Card */}
-        <Card className="mb-8">
-          <CardContent className="p-8">
-            <h2 className="text-lg font-semibold mb-4 text-center">Have this image visible</h2>
-            
-            <div 
-              className="relative rounded-xl overflow-hidden mb-4 aspect-square max-w-sm mx-auto"
-              style={{
-                backgroundImage: matchData.backgroundImageUrl 
-                  ? `url(${matchData.backgroundImageUrl})` 
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            >
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                <div className="text-8xl font-bold mb-4">{matchData.myIdentificationNumber}</div>
-                <div className="text-2xl font-semibold">{matchData.myName}</div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        {/* Countdown Timer */}
+        <div className="mb-8">
+          <CountdownTimer
+            targetDate={findingDeadline}
+            variant="large"
+            onComplete={() => {
+              debugLog('[MatchPartner] Finding time expired');
+            }}
+          />
+        </div>
+
+        {/* Headline */}
+        <h1 className="text-4xl font-bold mb-12">
+          Now, find each other!
+        </h1>
+
+        {/* Identification image with number */}
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
+          <legend className="px-3 text-xl text-muted-foreground">
+            Show this so {matchData.partners.length === 1
+              ? `${matchData.partners[0].firstName} can find you`
+              : 'they can find you'}
+          </legend>
+          <div className="relative inline-block">
+            <GeometricIdentification
+              matchId={matchData.matchId}
+              className="rounded-lg shadow-lg max-w-md w-full"
+            />
+            {/* Name and number overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+              <h3 className="text-6xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                {matchData.myName}
+              </h3>
+              <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg">
+                <span className="text-3xl font-bold text-foreground">
+                  {matchData.myIdentificationNumber}
+                </span>
               </div>
             </div>
+          </div>
+        </fieldset>
 
-            <p className="text-sm text-muted-foreground text-center">
-              Show this to your networking partner{matchData.partners.length > 1 ? 's' : ''}
-            </p>
-          </CardContent>
-        </Card>
+        {/* Partner names */}
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
+          <legend className="px-3 text-xl text-muted-foreground">
+            Look for
+          </legend>
+          <div className="space-y-3">
+            {matchData.partners.map((partner) => (
+              <div key={partner.id} className="flex items-center justify-center gap-3">
+                <h2 className="text-4xl font-bold">{partner.firstName}</h2>
+                {partner.isCheckedIn ? (
+                  <CheckCircle2 className="h-6 w-6 text-green-500" />
+                ) : (
+                  <Circle className="h-6 w-6 text-muted-foreground/30" />
+                )}
+              </div>
+            ))}
+          </div>
+        </fieldset>
 
-        {/* Partners List */}
-        <Card>
-          <CardContent className="p-8">
-            <h2 className="text-xl font-semibold mb-6">Look for</h2>
-            
-            <div className="space-y-6">
-              {matchData.partners.map((partner) => (
-                <div key={partner.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        {partner.firstName} {partner.lastName}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {partner.isCheckedIn ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                            <span className="text-sm text-green-600">At meeting point</span>
-                          </>
-                        ) : (
-                          <>
-                            <Circle className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">Not yet arrived</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Number Selection */}
-                  {selectedPartner === partner.id ? (
-                    <div>
-                      <p className="text-sm mb-3 font-medium">Select the number they're showing:</p>
-                      <div className="flex gap-3 justify-center">
-                        {matchData.availableNumbers.map((num) => (
-                          <button
-                            key={num}
-                            onClick={() => handleNumberSelection(partner.id, num)}
-                            disabled={isSubmitting}
-                            className="w-16 h-16 rounded-full border-2 border-primary bg-background hover:bg-primary hover:text-primary-foreground font-bold text-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {num}
-                          </button>
-                        ))}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedPartner(null)}
-                        className="w-full mt-3"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setSelectedPartner(partner.id)}
-                    >
-                      Confirm you met
-                    </Button>
-                  )}
-                </div>
+        {/* Number confirmation sections — one for each partner */}
+        {matchData.partners.map((partner) => (
+          <fieldset key={partner.id} className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
+            <legend className="px-3 text-xl text-muted-foreground">
+              To confirm meeting select
+            </legend>
+            <h2 className="text-3xl font-bold mb-8">
+              {partner.firstName}'s number
+            </h2>
+            <div className="flex items-center justify-center gap-6">
+              {matchData.availableNumbers.map((num) => (
+                <button
+                  key={num}
+                  onClick={() => handleNumberSelection(partner.id, num)}
+                  disabled={isSubmitting}
+                  className="w-24 h-24 rounded-full border-2 border-border bg-background hover:bg-accent hover:border-foreground transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="text-4xl font-bold">{num}</span>
+                </button>
               ))}
             </div>
+          </fieldset>
+        ))}
 
-            <div className="mt-8 pt-6 border-t">
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => navigate(`/p/${token}`)}
-              >
-                Back to dashboard
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Back to dashboard link */}
+        <div>
+          <button
+            onClick={() => navigate(`/p/${token}`)}
+            className="text-muted-foreground hover:text-foreground underline transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
       </div>
     </div>
   );

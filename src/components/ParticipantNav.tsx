@@ -1,6 +1,6 @@
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { User, LogOut, Home, UserCircle, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Home, UserCircle, LayoutDashboard, BookUser } from 'lucide-react';
 
 interface ParticipantNavProps {
   participantToken?: string;
@@ -10,10 +10,11 @@ interface ParticipantNavProps {
   onHomeClick: () => void;
   onDashboardClick: () => void;
   onProfileClick: () => void;
+  onAddressBookClick: () => void;
   onLogout: () => void;
 }
 
-export function ParticipantNav({ participantToken, firstName, lastName, onLogoClick, onHomeClick, onDashboardClick, onProfileClick, onLogout }: ParticipantNavProps) {
+export function ParticipantNav({ participantToken, firstName, lastName, onLogoClick, onHomeClick, onDashboardClick, onProfileClick, onAddressBookClick, onLogout }: ParticipantNavProps) {
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : firstName || 'Participant';
 
   return (
@@ -47,6 +48,10 @@ export function ParticipantNav({ participantToken, firstName, lastName, onLogoCl
                 <DropdownMenuItem onClick={onProfileClick}>
                   <UserCircle className="h-4 w-4 mr-2" />
                   Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onAddressBookClick}>
+                  <BookUser className="h-4 w-4 mr-2" />
+                  Address Book
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onLogout}>
                   <LogOut className="h-4 w-4 mr-2" />

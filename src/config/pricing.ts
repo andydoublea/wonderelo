@@ -1,4 +1,4 @@
-// Pricing configuration for Oliwonder frontend
+// Pricing configuration for Wonderelo frontend
 // All prices in USD cents
 
 export type CapacityTier = 'free' | '50' | '200' | '500' | '1000' | '5000';

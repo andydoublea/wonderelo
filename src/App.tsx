@@ -37,6 +37,8 @@ export interface MeetingPoint {
   name: string;
   imageUrl?: string;
   originalImageUrl?: string;
+  type?: 'physical' | 'virtual';
+  videoCallUrl?: string;
 }
 
 export interface IceBreaker {
@@ -53,6 +55,7 @@ export interface Round {
   confirmationSentAt?: string;
   matchingCompletedAt?: string;
   status?: 'draft' | 'scheduled' | 'open-to-registration' | 'registration-safety-window' | 'matching' | 'running' | 'completed';
+  registeredCount?: number; // Number of registered participants for this round
 }
 
 export interface NetworkingSession {

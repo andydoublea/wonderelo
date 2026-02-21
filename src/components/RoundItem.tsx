@@ -39,6 +39,7 @@ interface RoundItemProps {
     meetingPointId?: string;
     identificationImageUrl?: string;
   };
+  registeredCount?: number; // Number of registered participants for this round
 }
 
 export function RoundItem({ 
@@ -66,6 +67,7 @@ export function RoundItem({
   className = '',
   lastConfirmTimestamp,
   matchDetails,
+  registeredCount,
 }: RoundItemProps) {
   
   // DEBUG: Log every render with all props
@@ -540,6 +542,20 @@ export function RoundItem({
               </span>
             )}
           </span>
+          {registeredCount != null && registeredCount > 0 && (() => {
+            const params = getParametersOrDefault();
+            const fireEmoji = registeredCount >= params.fireThreshold3 ? '🔥🔥🔥'
+              : registeredCount >= params.fireThreshold2 ? '🔥🔥'
+              : registeredCount >= params.fireThreshold1 ? '🔥'
+              : '';
+            return (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                {fireEmoji && <span>{fireEmoji}</span>}
+                <Users className="h-3 w-3" />
+                {registeredCount}
+              </span>
+            );
+          })()}
           {!isRegisterable && !isRegistered && (
             <Badge variant="secondary" className="text-xs text-muted-foreground">
               Registration closed

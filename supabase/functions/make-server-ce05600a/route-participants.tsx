@@ -134,11 +134,21 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       const matchedAt = activeRegistration.matchedAt || activeRegistration.lastStatusUpdate || new Date().toISOString();
       const walkingDeadline = new Date(new Date(matchedAt).getTime() + walkingTimeMinutes * 60000).toISOString();
 
+      // Look up the full meeting point object from the session/round
+      const allMeetingPoints = round?.meetingPoints?.length > 0
+        ? round.meetingPoints
+        : (session?.meetingPoints || []);
+      const meetingPointObj = allMeetingPoints.find((mp: any) =>
+        (mp.name === match.meetingPoint) || (mp.id === match.meetingPoint)
+      );
+
       // Build match data response
       const matchData = {
         matchId: match.matchId,
         meetingPointName: match.meetingPoint || 'TBD',
-        meetingPointImageUrl: null,
+        meetingPointImageUrl: meetingPointObj?.imageUrl || null,
+        meetingPointType: meetingPointObj?.type || 'physical',
+        meetingPointVideoCallUrl: meetingPointObj?.videoCallUrl || null,
         identificationImageUrl: null,
         participants: matchParticipants.map((p: any) => ({
           id: p.participantId,
@@ -660,6 +670,52 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         error: 'Failed to fetch shared contacts',
         details: error instanceof Error ? error.message : String(error)
       }, 500);
+    }
+  });
+
+  // ========================================
+  // PUBLIC: Submit missed round feedback
+  // ========================================
+  app.post('/make-server-ce05600a/participant/:token/missed-feedback', async (c) => {
+    try {
+      const token = c.req.param('token');
+      const body = await c.req.json();
+      const { roundId, feedback } = body;
+
+      if (!token) {
+        return c.json({ error: 'Token required' }, 400);
+      }
+
+      const participant = await db.getParticipantByToken(token);
+      if (!participant) {
+        return c.json({ error: 'Invalid token' }, 404);
+      }
+
+      debugLog('[POST /missed-feedback] Saving feedback:', { participantId: participant.participantId, roundId, feedback });
+
+      // Store feedback — try event_logs first, fall back to logging only
+      try {
+        const supabase = db.getClient();
+        await supabase
+          .from('event_logs')
+          .insert({
+            event_type: 'missed_round_feedback',
+            user_id: participant.participantId,
+            event_data: {
+              roundId,
+              feedback,
+              timestamp: new Date().toISOString(),
+            },
+          });
+      } catch (dbError) {
+        // Table may not exist yet — just log it
+        debugLog('[POST /missed-feedback] Could not store in DB, logging only:', { participantId: participant.participantId, roundId, feedback });
+      }
+
+      return c.json({ success: true });
+    } catch (error) {
+      errorLog('Error saving missed feedback:', error);
+      return c.json({ error: 'Failed to save feedback' }, 500);
     }
   });
 

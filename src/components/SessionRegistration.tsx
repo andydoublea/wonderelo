@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -9,7 +9,7 @@ import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
-import { CheckCircle, Clock, Users, Calendar, Phone, Mail, User, ArrowLeft, ArrowRight, ChevronsUpDown, Check, Link2, Facebook, Linkedin, Copy, MapPin, FileText } from 'lucide-react';
+import { CheckCircle, Clock, Users, Calendar, Phone, Mail, User, ArrowLeft, ArrowRight, ChevronsUpDown, Check, Link2, Facebook, Linkedin, Copy, MapPin, FileText, PartyPopper, Video } from 'lucide-react';
 import { NetworkingSession } from '../App';
 import { toast } from 'sonner@2.0.3';
 import { RoundItem } from './RoundItem';
@@ -21,6 +21,8 @@ import { debugLog, errorLog } from '../utils/debug';
 import { validateEmail, getEmailError } from '../utils/validation';
 import { useTime } from '../contexts/TimeContext';
 import { getParametersOrDefault } from '../utils/systemParameters';
+import confetti from 'canvas-confetti';
+import { COUNTRY_CODES } from '../utils/countryCodes';
 
 interface SessionRegistrationProps {
   sessions: NetworkingSession[];
@@ -64,71 +66,6 @@ interface RegistrationData {
   acceptTerms: boolean;
   allowMarketing: boolean;
 }
-
-// Country codes with phone prefixes and placeholder formats
-const COUNTRY_CODES = [
-  { code: 'SK', name: 'Slovakia', prefix: '+421', placeholder: '912 345 678' },
-  { code: 'CZ', name: 'Czech Republic', prefix: '+420', placeholder: '601 234 567' },
-  { code: 'AT', name: 'Austria', prefix: '+43', placeholder: '664 1234567' },
-  { code: 'DE', name: 'Germany', prefix: '+49', placeholder: '151 23456789' },
-  { code: 'PL', name: 'Poland', prefix: '+48', placeholder: '601 234 567' },
-  { code: 'HU', name: 'Hungary', prefix: '+36', placeholder: '20 123 4567' },
-  { code: 'US', name: 'United States', prefix: '+1', placeholder: '(555) 123-4567' },
-  { code: 'GB', name: 'United Kingdom', prefix: '+44', placeholder: '7400 123456' },
-  { code: 'FR', name: 'France', prefix: '+33', placeholder: '6 12 34 56 78' },
-  { code: 'ES', name: 'Spain', prefix: '+34', placeholder: '612 34 56 78' },
-  { code: 'IT', name: 'Italy', prefix: '+39', placeholder: '312 345 6789' },
-  { code: 'NL', name: 'Netherlands', prefix: '+31', placeholder: '6 12345678' },
-  { code: 'BE', name: 'Belgium', prefix: '+32', placeholder: '470 12 34 56' },
-  { code: 'CH', name: 'Switzerland', prefix: '+41', placeholder: '78 123 45 67' },
-  { code: 'SE', name: 'Sweden', prefix: '+46', placeholder: '70 123 45 67' },
-  { code: 'NO', name: 'Norway', prefix: '+47', placeholder: '406 12 345' },
-  { code: 'DK', name: 'Denmark', prefix: '+45', placeholder: '32 12 34 56' },
-  { code: 'FI', name: 'Finland', prefix: '+358', placeholder: '40 1234567' },
-  { code: 'IE', name: 'Ireland', prefix: '+353', placeholder: '85 123 4567' },
-  { code: 'PT', name: 'Portugal', prefix: '+351', placeholder: '912 345 678' },
-  { code: 'GR', name: 'Greece', prefix: '+30', placeholder: '691 234 5678' },
-  { code: 'CA', name: 'Canada', prefix: '+1', placeholder: '(555) 123-4567' },
-  { code: 'AU', name: 'Australia', prefix: '+61', placeholder: '412 345 678' },
-  { code: 'NZ', name: 'New Zealand', prefix: '+64', placeholder: '21 123 4567' },
-  { code: 'JP', name: 'Japan', prefix: '+81', placeholder: '90-1234-5678' },
-  { code: 'KR', name: 'South Korea', prefix: '+82', placeholder: '10-1234-5678' },
-  { code: 'CN', name: 'China', prefix: '+86', placeholder: '131 2345 6789' },
-  { code: 'IN', name: 'India', prefix: '+91', placeholder: '81234 56789' },
-  { code: 'BR', name: 'Brazil', prefix: '+55', placeholder: '11 91234-5678' },
-  { code: 'MX', name: 'Mexico', prefix: '+52', placeholder: '55 1234 5678' },
-  { code: 'AR', name: 'Argentina', prefix: '+54', placeholder: '11 2345-6789' },
-  { code: 'RU', name: 'Russia', prefix: '+7', placeholder: '912 345-67-89' },
-  { code: 'UA', name: 'Ukraine', prefix: '+380', placeholder: '50 123 4567' },
-  { code: 'RO', name: 'Romania', prefix: '+40', placeholder: '712 345 678' },
-  { code: 'BG', name: 'Bulgaria', prefix: '+359', placeholder: '87 123 4567' },
-  { code: 'HR', name: 'Croatia', prefix: '+385', placeholder: '91 234 5678' },
-  { code: 'RS', name: 'Serbia', prefix: '+381', placeholder: '60 1234567' },
-  { code: 'SI', name: 'Slovenia', prefix: '+386', placeholder: '31 234 567' },
-  { code: 'LT', name: 'Lithuania', prefix: '+370', placeholder: '612 34567' },
-  { code: 'LV', name: 'Latvia', prefix: '+371', placeholder: '21 234 567' },
-  { code: 'EE', name: 'Estonia', prefix: '+372', placeholder: '5123 4567' },
-  { code: 'TR', name: 'Turkey', prefix: '+90', placeholder: '532 123 4567' },
-  { code: 'IL', name: 'Israel', prefix: '+972', placeholder: '50-123-4567' },
-  { code: 'AE', name: 'United Arab Emirates', prefix: '+971', placeholder: '50 123 4567' },
-  { code: 'SA', name: 'Saudi Arabia', prefix: '+966', placeholder: '50 123 4567' },
-  { code: 'ZA', name: 'South Africa', prefix: '+27', placeholder: '71 123 4567' },
-  { code: 'EG', name: 'Egypt', prefix: '+20', placeholder: '100 123 4567' },
-  { code: 'NG', name: 'Nigeria', prefix: '+234', placeholder: '802 123 4567' },
-  { code: 'KE', name: 'Kenya', prefix: '+254', placeholder: '712 345678' },
-  { code: 'SG', name: 'Singapore', prefix: '+65', placeholder: '8123 4567' },
-  { code: 'MY', name: 'Malaysia', prefix: '+60', placeholder: '12-345 6789' },
-  { code: 'TH', name: 'Thailand', prefix: '+66', placeholder: '81 234 5678' },
-  { code: 'VN', name: 'Vietnam', prefix: '+84', placeholder: '91 234 5678' },
-  { code: 'PH', name: 'Philippines', prefix: '+63', placeholder: '905 123 4567' },
-  { code: 'ID', name: 'Indonesia', prefix: '+62', placeholder: '812-3456-7890' },
-  { code: 'HK', name: 'Hong Kong', prefix: '+852', placeholder: '5123 4567' },
-  { code: 'TW', name: 'Taiwan', prefix: '+886', placeholder: '912 345 678' },
-  { code: 'CL', name: 'Chile', prefix: '+56', placeholder: '9 1234 5678' },
-  { code: 'CO', name: 'Colombia', prefix: '+57', placeholder: '321 1234567' },
-  { code: 'PE', name: 'Peru', prefix: '+51', placeholder: '912 345 678' },
-  { code: 'VE', name: 'Venezuela', prefix: '+58', placeholder: '412-1234567' },
-];
 
 // X (Twitter) logo icon component
 const XIcon = ({ className }: { className?: string }) => (
@@ -940,7 +877,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     const lines: string[] = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Oliwonder//Networking Rounds//EN',
+      'PRODID:-//Wonderelo//Networking Rounds//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ];
@@ -989,9 +926,9 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     
-    // Create filename: [EventName]-Oliwonder-rounds.ics
+    // Create filename: [EventName]-Wonderelo-rounds.ics
     const organizerPart = eventName ? eventName.replace(/[^a-zA-Z0-9]/g, '_') : 'Event';
-    link.download = `${organizerPart}-Oliwonder-rounds.ics`;
+    link.download = `${organizerPart}-Wonderelo-rounds.ics`;
     
     document.body.appendChild(link);
     link.click();
@@ -1451,7 +1388,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
           // Clear dashboard cache to force refresh with new registration
           localStorage.removeItem(`participant_dashboard_${result.token}`);
           shouldResetSubmitting = false;
-          window.location.href = `/p/${result.token}`;
+          window.location.href = `/p/${result.token}?registered=true`;
         } else {
           const errorData = await response.json();
           errorLog('❌ Registration failed - Status:', response.status);
@@ -1494,77 +1431,102 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
             </p>
           </div>
 
-          <Card>
-            <CardContent className="pt-6">
-              {sessionsWithMeetingPoints.length > 0 ? (
-                <div className="space-y-8 mb-6">
-                  {sessionsWithMeetingPoints.map((session) => (
-                    <div key={session.sessionId}>
-                      {/* Session Headline */}
-                      <h2 className="mb-3">{session.sessionName}</h2>
-                      
-                      {/* Meeting Points Box for this session */}
-                      <div className="border rounded-lg p-4 bg-muted/30">
-                        <div className="space-y-4">
-                          {session.meetingPoints.map((point) => (
-                            <div key={point.id} className="space-y-3">
-                              {point.imageUrl && (
-                                <div className="w-full aspect-video overflow-hidden rounded-lg bg-muted flex items-center justify-center">
-                                  <ImageWithFallback
-                                    src={point.imageUrl}
-                                    alt={point.name || 'Meeting point'}
-                                    className="w-full h-auto object-cover"
-                                  />
-                                </div>
-                              )}
-                              <p>{point.name}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground mb-6">No meeting points added yet.</p>
-              )}
+          {sessionsWithMeetingPoints.length > 0 ? (
+            <div className="space-y-6 mb-6">
+              {sessionsWithMeetingPoints.map((session) => (
+                <div key={session.sessionId}>
+                  {sessionsWithMeetingPoints.length > 1 && (
+                    <h2 className="mb-3">{session.sessionName}</h2>
+                  )}
 
-              <div className="flex gap-2">
-                <Button 
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    // If participant has token, skip back to round selection
-                    // If no token, go to auth choice
-                    setCurrentStep(participantToken ? 'select-rounds' : 'auth-choice');
-                    window.scrollTo(0, 0);
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleFinalizeRegistration}
-                  className="flex-1"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting 
-                    ? `Processing${'.'.repeat(processingDots)}` 
-                    : participantToken 
-                      ? 'Finalise my registration!' 
-                      : 'Continue'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="grid grid-cols-2 gap-3">
+                    {session.meetingPoints.map((point) => (
+                      <Card key={point.id} className="overflow-hidden">
+                        {point.imageUrl && (!point.type || point.type === 'physical') && (
+                          <div className="aspect-square overflow-hidden bg-muted">
+                            <ImageWithFallback
+                              src={point.imageUrl}
+                              alt={point.name || 'Meeting point'}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <CardContent className={point.imageUrl && (!point.type || point.type === 'physical') ? 'p-3' : 'p-4'}>
+                          <div className="flex items-center gap-2">
+                            {point.type === 'virtual' ? (
+                              <Video className="h-4 w-4 text-primary flex-shrink-0" />
+                            ) : (
+                              <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                            )}
+                            <p className="text-sm font-medium">{point.name}</p>
+                          </div>
+                          {point.type === 'virtual' && (
+                            <p className="text-xs text-muted-foreground mt-1 ml-6">Video call</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mb-6">No meeting points added yet.</p>
+          )}
+
+          {/* Spacer for sticky bottom */}
+          <div className="h-24" />
+
+          {/* Sticky bottom buttons */}
+          <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
+            <div className="max-w-md mx-auto flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCurrentStep(participantToken ? 'select-rounds' : 'auth-choice');
+                  window.scrollTo(0, 0);
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <Button
+                onClick={handleFinalizeRegistration}
+                className="flex-1"
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? `Processing${'.'.repeat(processingDots)}`
+                  : participantToken
+                    ? 'Finalise my registration!'
+                    : 'Continue'}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Step 5: Confirmation (combined with share)
+  // Step 5: Confirmation (combined with share) — with confetti 🎉
   if (currentStep === 'confirmation') {
     const eventUrl = `${window.location.origin}/${userSlug}`;
+
+    // Fire confetti on mount
+    const confettiFired = useRef(false);
+    useEffect(() => {
+      if (confettiFired.current) return;
+      confettiFired.current = true;
+      const duration = 2500;
+      const end = Date.now() + duration;
+      const frame = () => {
+        confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+        confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
+    }, []);
     
     // Find the earliest round across all sessions to show countdown
     const earliestRound = selectedSessions.reduce((earliest: { date: string, time: string, name: string, sessionName: string } | null, session) => {
@@ -1633,13 +1595,13 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Clock className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+              <PartyPopper className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle>You successfully registered!</CardTitle>
+            <CardTitle className="text-2xl">You're in! 🎉</CardTitle>
             <CardDescription>
-              {earliestRound 
-                ? `Next round: ${earliestRound.name}` 
+              {earliestRound
+                ? `Next round: ${earliestRound.name}`
                 : 'Check your email for details'}
             </CardDescription>
           </CardHeader>
@@ -2132,17 +2094,17 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
                     className="transition-all hover:border-muted-foreground/20"
                   >
                     <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-1">
                         <div className="flex-1">
-                          <h3 className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold flex items-center gap-2">
                             {session.name}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
                             <div className="flex items-center gap-1">
                               <Calendar className="h-4 w-4" />
                               {new Date(session.date).toLocaleDateString('en-US', {
                                 weekday: 'short',
-                                month: 'short', 
+                                month: 'short',
                                 day: 'numeric'
                               })}
                             </div>
@@ -2155,17 +2117,16 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
 
                       </div>
                       
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                         <Users className="h-4 w-4" />
-                        {session.limitParticipants ? `Max ${session.maxParticipants}` : '∞'} participants • Groups of {session.groupSize}
+                        {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
                       </div>
 
                       {/* Meeting Points and Round Rules Links */}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-1">
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedSessionForDialog(session);
                             setShowMeetingPoints(true);
                           }}
                           className="flex items-center gap-1 text-foreground underline hover:text-primary"
@@ -2256,6 +2217,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
                                   showUnregisterButton={isRegisteredRound && !!participantToken}
                                   onUnregister={() => handleUnregister(round.id, round.name)}
                                   onConfirmAttendance={handleConfirmAttendance}
+                                  registeredCount={round.registeredCount}
                                 />
                               );
                             })}
@@ -2277,12 +2239,12 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
           </div>
 
           {/* Add padding to prevent content from being hidden under sticky button */}
-          {!noWrapper && <div className="h-32" />}
+          <div className="h-32" />
 
-          {/* Continue button and text - Only show when NOT in promo mode (noWrapper=false) */}
-          {!noWrapper && (
-            <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 space-y-3 shadow-lg z-10">
-              <div className="container mx-auto max-w-md">
+          {/* Continue button and text */}
+          {(
+            <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10" style={{ minHeight: '100px' }}>
+              <div className="container mx-auto max-w-md space-y-3">
                 <Button
                   onClick={handleContinue}
                   className="w-full"

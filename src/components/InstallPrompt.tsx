@@ -22,7 +22,7 @@ interface InstallPromptProps {
 export function InstallPrompt({
   autoShowDelay = 3000,
   allowDismiss = true,
-  installText = 'Install Oliwonder',
+  installText = 'Install Wonderelo',
   position = 'bottom'
 }: InstallPromptProps) {
   const [canInstall, setCanInstall] = useState(false);
@@ -241,7 +241,7 @@ export function IOSInstallInstructions() {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-md w-full p-6">
         <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-semibold">Install Oliwonder</h3>
+          <h3 className="text-lg font-semibold">Install Wonderelo</h3>
           <button
             onClick={() => setIsVisible(false)}
             className="text-gray-400 hover:text-gray-600"

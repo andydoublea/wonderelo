@@ -14,9 +14,12 @@ interface BlogPost {
   title: string;
   excerpt: string;
   content: string;
-  imageUrl: string;
-  readTime: string;
-  published: boolean;
+  imageUrl?: string;
+  coverImage?: string;
+  readTime?: string;
+  author?: string;
+  published?: boolean;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,13 +93,18 @@ export function BlogListingPage() {
                   className="cursor-pointer hover:shadow-lg transition-shadow" 
                   onClick={() => navigate(`/blog/${post.slug}`)}
                 >
-                  <ImageWithFallback 
-                    src={post.imageUrl}
-                    alt={post.title}
-                    className="w-full h-48 object-cover rounded-t-lg"
-                  />
+                  {(post.imageUrl || post.coverImage) && (
+                    <ImageWithFallback
+                      src={(post.imageUrl || post.coverImage)!}
+                      alt={post.title}
+                      className="w-full h-48 object-cover rounded-t-lg"
+                    />
+                  )}
                   <CardContent className="pt-6">
-                    <div className="text-xs text-muted-foreground mb-2">{post.readTime}</div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                      {post.readTime && <span>{post.readTime}</span>}
+                      {post.author && <span>By {post.author}</span>}
+                    </div>
                     <h3 className="text-lg mb-2">{post.title}</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       {post.excerpt}

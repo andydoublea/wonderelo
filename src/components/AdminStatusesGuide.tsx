@@ -10,7 +10,7 @@ export function AdminStatusesGuide() {
         <div>
           <h1 className="text-gray-900 mb-2">Statuses and flags guide</h1>
           <p className="text-gray-600">
-            Complete reference for all statuses and dynamic flags in the Oliwonder system
+            Complete reference for all statuses and dynamic flags in the Wonderelo system
           </p>
         </div>
 

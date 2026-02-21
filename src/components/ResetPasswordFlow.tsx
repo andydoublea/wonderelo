@@ -119,7 +119,7 @@ export function ResetPasswordFlow({ onComplete, onBack }: ResetPasswordFlowProps
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <h1 className="mb-2 cursor-pointer hover:text-primary/80 transition-colors" onClick={onBack}>
-              Oliwonder
+              Wonderelo
             </h1>
             <p className="text-muted-foreground">
               Password updated successfully
@@ -163,7 +163,7 @@ export function ResetPasswordFlow({ onComplete, onBack }: ResetPasswordFlowProps
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <h1 className="mb-2 cursor-pointer hover:text-primary/80 transition-colors" onClick={onBack}>
-            Oliwonder
+            Wonderelo
           </h1>
           <p className="text-muted-foreground">
             Create your new password

@@ -18,7 +18,6 @@ interface Subscription {
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   cancelAtPeriodEnd?: boolean;
-  isYearly?: boolean;
 }
 
 interface BillingSettingsProps {
@@ -30,7 +29,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedCapacity, setSelectedCapacity] = useState(50); // Default to 50
-  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
+  // Only monthly billing - no yearly option
 
   useEffect(() => {
     loadSubscription();
@@ -95,7 +94,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
         : '/create-event-payment';
 
       const body = paymentType === 'subscription'
-        ? { capacity, interval: billingInterval }
+        ? { capacity, interval: 'monthly' }
         : { capacity };
 
       const response = await fetch(
@@ -182,10 +181,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
   const currentPricing = PRICING_TIERS[currentTier];
   const isFree = currentTier === 'free';
 
-  // Calculate yearly pricing (10 months instead of 12)
-  const yearlyPrice = currentPricing.premiumMonthlyPrice * 10;
-  const yearlySavings = currentPricing.premiumMonthlyPrice * 2;
-  const displayedPrice = billingInterval === 'yearly' ? yearlyPrice : currentPricing.premiumMonthlyPrice;
+  const displayedPrice = currentPricing.premiumMonthlyPrice;
 
   // Map capacity to slider value (0-5)
   const getSliderValue = (capacity: number): number => {
@@ -215,7 +211,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
               Events up to 10 participants free for testing purposes
             </h3>
             <p className="text-sm text-green-700 dark:text-green-300">
-              Try Oliwonder for free with events up to 10 participants. Perfect for testing the platform before scaling up!
+              Try Wonderelo for free with events up to 10 participants. Perfect for testing the platform before scaling up!
             </p>
           </div>
         </div>
@@ -354,33 +350,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
               {/* Pricing Display */}
               {!isFree && (
                 <>
-                  {/* Billing Interval Toggle */}
-                  <div className="flex items-center justify-center gap-3 pt-4 border-t">
-                    <span className={`text-sm font-medium transition-colors ${billingInterval === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      Monthly
-                    </span>
-                    <button
-                      onClick={() => setBillingInterval(billingInterval === 'monthly' ? 'yearly' : 'monthly')}
-                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 bg-primary"
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          billingInterval === 'yearly' ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                    <span className={`text-sm font-medium transition-colors ${billingInterval === 'yearly' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      Yearly
-                    </span>
-                    {billingInterval === 'yearly' && (
-                      <Badge variant="secondary" className="ml-1">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        2 months free
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-4 pt-4 border-t">
                     {/* Single Event Payment */}
                     <Card className="border-2">
                       <CardHeader className="pb-4">
@@ -437,19 +407,8 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
                           <div className="text-3xl font-bold">
                             {formatPrice(displayedPrice)}
                           </div>
-                          {billingInterval === 'yearly' ? (
-                            <CardDescription>
-                              per year (billed annually)
-                            </CardDescription>
-                          ) : (
                             <CardDescription>per month</CardDescription>
-                          )}
                         </div>
-                        {billingInterval === 'yearly' && (
-                          <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-                            Save {formatPrice(yearlySavings)} per year
-                          </div>
-                        )}
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="space-y-2 text-sm">
@@ -508,13 +467,13 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
               <div>
                 <h4 className="font-semibold mb-1">What's included in the free tier?</h4>
                 <p className="text-sm text-muted-foreground">
-                  Events with up to 10 participants are completely free - perfect for testing Oliwonder and running smaller networking sessions.
+                  Events with up to 10 participants are completely free - perfect for testing Wonderelo and running smaller networking sessions.
                 </p>
               </div>
               <div>
-                <h4 className="font-semibold mb-1">How does yearly billing work?</h4>
+                <h4 className="font-semibold mb-1">How does the monthly subscription work?</h4>
                 <p className="text-sm text-muted-foreground">
-                  With yearly billing, you pay for 10 months upfront and get 2 months free - that's a 16.7% discount compared to monthly billing!
+                  With a monthly subscription, you get unlimited events at your chosen capacity. You can cancel anytime and keep access until the end of the billing period.
                 </p>
               </div>
               <div>
@@ -532,7 +491,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
               <div>
                 <h4 className="font-semibold mb-1">What's the difference between single event and subscription?</h4>
                 <p className="text-sm text-muted-foreground">
-                  Single event is a one-time payment for a specific event. Premium subscription gives you unlimited events with monthly or yearly billing.
+                  Single event is a one-time payment for a specific event. Premium subscription gives you unlimited events with monthly billing.
                 </p>
               </div>
             </CardContent>

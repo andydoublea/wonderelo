@@ -73,7 +73,7 @@ export async function unregisterServiceWorker(): Promise<boolean> {
 function notifyServiceWorkerUpdate() {
   // You can integrate with your toast/notification system
   const updateAvailable = window.confirm(
-    'A new version of Oliwonder is available. Reload to update?'
+    'A new version of Wonderelo is available. Reload to update?'
   );
   
   if (updateAvailable) {

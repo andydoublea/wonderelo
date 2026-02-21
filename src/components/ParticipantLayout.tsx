@@ -58,11 +58,17 @@ export function ParticipantLayout({ participantToken, onLogout, firstName, lastN
             navigate(`/p/${currentToken}/profile`);
           }
         }}
+        onAddressBookClick={() => {
+          const currentToken = participantToken || token;
+          if (currentToken) {
+            navigate(`/p/${currentToken}/address-book`);
+          }
+        }}
         onLogout={handleLogout}
       />
       
       {/* Main Content */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-8">
         {children || <Outlet />}
       </div>
     </div>

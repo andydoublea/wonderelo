@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner@2.0.3';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -12,6 +12,7 @@ import { MeetingPointsDialog } from './MeetingPointsDialog';
 import { RoundRulesDialog, RoundRule } from './RoundRulesDialog';
 import { ParticipantStatusBadge } from '../utils/statusBadge';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
+import confetti from 'canvas-confetti';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -150,6 +151,26 @@ export function ParticipantDashboard() {
     return url;
   };
   
+  // Fire confetti when arriving from fresh registration
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      // Remove the param from URL to prevent re-firing on refresh
+      searchParams.delete('registered');
+      setSearchParams(searchParams, { replace: true });
+      // Fire confetti
+      const duration = 2500;
+      const end = Date.now() + duration;
+      const frame = () => {
+        confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+        confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
+      toast.success("You're in! 🎉");
+    }
+  }, []);
+
   // State for globally next upcoming round (updates every second)
   const [globalNextUpcomingRoundId, setGlobalNextUpcomingRoundId] = useState<string | null>(null);
   
@@ -1140,7 +1161,7 @@ export function ParticipantDashboard() {
       firstName={firstName}
       lastName={lastName}
     >
-      <div className="space-y-8">
+      <div className="space-y-8 max-w-md mx-auto">
         {/* Upcoming section */}
         <div>
           <h2 className="mb-4">Upcoming rounds</h2>
@@ -1166,7 +1187,7 @@ export function ParticipantDashboard() {
                 return (
                   <Card key={session.id} className="transition-all hover:border-muted-foreground/20 max-w-md">
                     <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-1">
                         <div className="flex-1">
                           <h3 className="mb-2">
                             {organizerReg?.organizerName || 'Unknown organizer'}
@@ -1177,7 +1198,7 @@ export function ParticipantDashboard() {
                             <Calendar className="h-4 w-4" />
                             {session.date ? new Date(session.date).toLocaleDateString('en-US', {
                               weekday: 'short',
-                              month: 'short', 
+                              month: 'short',
                               day: 'numeric'
                             }) : 'Date to be set'}
                           </div>
@@ -1188,10 +1209,10 @@ export function ParticipantDashboard() {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                       <Users className="h-4 w-4" />
-                      {session.limitParticipants ? `Max ${session.maxParticipants}` : '∞'} participants • Groups of {session.groupSize}
+                      {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
                     </div>
 
                     {/* Rounds Selection - Only show registered upcoming rounds */}
@@ -1265,11 +1286,12 @@ export function ParticipantDashboard() {
                                     meetingPointId: roundRegistration.meetingPointId,
                                     identificationImageUrl: roundRegistration.identificationImageUrl
                                   } : undefined}
+                                  registeredCount={round.registeredCount}
                                 />
                               );
                             })}
                           </div>
-                          
+
                           {/* Show all rounds button */}
                           {organizerReg && (
                             <Button
@@ -1317,7 +1339,7 @@ export function ParticipantDashboard() {
               return (
                 <Card key={session.id} className="transition-all hover:border-muted-foreground/20 opacity-60 max-w-md">
                   <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start justify-between mb-1">
                       <div className="flex-1">
                         <h3 className="mb-2">
                           {organizerReg?.organizerName || 'Unknown organizer'}
@@ -1328,7 +1350,7 @@ export function ParticipantDashboard() {
                           <Calendar className="h-4 w-4" />
                           {session.date ? new Date(session.date).toLocaleDateString('en-US', {
                             weekday: 'short',
-                            month: 'short', 
+                            month: 'short',
                             day: 'numeric'
                           }) : 'Date to be set'}
                         </div>
@@ -1339,10 +1361,10 @@ export function ParticipantDashboard() {
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                     <Users className="h-4 w-4" />
-                    {session.limitParticipants ? `Max ${session.maxParticipants}` : '∞'} participants • Groups of {session.groupSize}
+                    {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
                   </div>
 
                   {/* Rounds - Only show registered completed rounds */}

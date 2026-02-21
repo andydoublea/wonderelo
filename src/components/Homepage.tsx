@@ -534,46 +534,78 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
 
       {/* How It Works */}
       <section id="how-it-works" className="py-20 px-6">
-        <div className="container mx-auto max-w-5xl">
+        <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-16">
             <h2 className="mb-4">How it works</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Three simple steps — from setup to connections made
+              Five simple steps from sign-up to new connections
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="space-y-8 max-w-2xl mx-auto">
             {/* Step 1 */}
-            <div className="text-center">
-              <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
-                <span className="text-2xl font-bold text-primary">1</span>
+            <div className="flex items-start gap-5">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
+                <span className="text-xl font-bold text-primary">1</span>
               </div>
-              <h3 className="mb-3">Create a session</h3>
-              <p className="text-sm text-muted-foreground">
-                Set up a networking round in minutes. Choose date, time, group size and define your meeting points. Share a QR code or link with your audience.
-              </p>
+              <div>
+                <h3 className="mb-1">Register</h3>
+                <p className="text-sm text-muted-foreground">
+                  Scan the QR code on a slide, TV screen or rollup banner at the event. Fill in your name and phone number — no app download needed.
+                </p>
+              </div>
             </div>
 
             {/* Step 2 */}
-            <div className="text-center">
-              <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
-                <span className="text-2xl font-bold text-primary">2</span>
+            <div className="flex items-start gap-5">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
+                <span className="text-xl font-bold text-primary">2</span>
               </div>
-              <h3 className="mb-3">Participants sign up</h3>
-              <p className="text-sm text-muted-foreground">
-                Attendees scan the QR code, pick the rounds that suit them and confirm their attendance a few minutes before the start. No app download needed.
-              </p>
+              <div>
+                <h3 className="mb-1">Get notified</h3>
+                <p className="text-sm text-muted-foreground">
+                  A few minutes before each round, you receive an SMS with a link. Tap to confirm you're ready — that's it.
+                </p>
+              </div>
             </div>
 
             {/* Step 3 */}
-            <div className="text-center">
-              <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
-                <span className="text-2xl font-bold text-primary">3</span>
+            <div className="flex items-start gap-5">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
+                <span className="text-xl font-bold text-primary">3</span>
               </div>
-              <h3 className="mb-3">Matches happen automatically</h3>
-              <p className="text-sm text-muted-foreground">
-                When the round starts, Wonderelo pairs everyone and sends them to a meeting point. After the conversation, participants decide whether to exchange contacts.
-              </p>
+              <div>
+                <h3 className="mb-1">Find your match</h3>
+                <p className="text-sm text-muted-foreground">
+                  Wonderelo draws random pairs and assigns each a meeting point and a unique image. Head to your spot and look for someone with the same picture.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 4 */}
+            <div className="flex items-start gap-5">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
+                <span className="text-xl font-bold text-primary">4</span>
+              </div>
+              <div>
+                <h3 className="mb-1">Have a conversation</h3>
+                <p className="text-sm text-muted-foreground">
+                  Chat one-on-one with a countdown timer on screen. Ice-breaker questions help you get started if you need a nudge.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 5 */}
+            <div className="flex items-start gap-5">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
+                <span className="text-xl font-bold text-primary">5</span>
+              </div>
+              <div>
+                <h3 className="mb-1">Exchange contacts</h3>
+                <p className="text-sm text-muted-foreground">
+                  After the round, decide whether to share your contact details. If you both say yes, you get each other's info — simple and private.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -587,128 +619,177 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
         </div>
       </section>
 
-      {/* Who is it for */}
+      {/* Why random matching */}
       <section className="py-20 px-6 bg-muted/30">
+        <div className="container mx-auto max-w-3xl text-center">
+          <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
+            <Shuffle className="h-7 w-7 text-primary" />
+          </div>
+          <h2 className="mb-4">Why random matching?</h2>
+          <p className="text-lg text-muted-foreground mb-6">
+            We pair people at random on purpose. No profiles. No algorithms. No filters.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left mt-10">
+            <div className="p-5 rounded-xl border bg-background">
+              <div className="flex items-center gap-3 mb-3">
+                <Lightbulb className="h-5 w-5 text-primary flex-shrink-0" />
+                <h3 className="text-base">Serendipity creates value</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                The best connections often come from unexpected encounters. Random matching breaks bubbles, sparks cross-industry ideas, and helps introverts meet people they'd never approach on their own.
+              </p>
+            </div>
+            <div className="p-5 rounded-xl border bg-background">
+              <div className="flex items-center gap-3 mb-3">
+                <Zap className="h-5 w-5 text-primary flex-shrink-0" />
+                <h3 className="text-base">Zero friction for participants</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                No lengthy profiles to fill out, no swiping, no waiting for a match. Participants just show up and the system does the rest — so they can focus on the conversation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Who is it for */}
+      <section className="py-20 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4">Every event is better when people really connect</h2>
+            <h2 className="mb-4">Every gathering is better when people really connect</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              From conferences to private parties—Wonderelo helps you bring people together and make your event more impactful
+              Wonderelo works for any setting where you want to bring people together
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Mic className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle>Conferences & barcamps</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Ensure everyone leaves with new contacts—even introverts and solo attendees.
-                </p>
-              </CardContent>
-            </Card>
+          <div className="space-y-12">
+            {/* Events category */}
+            <div>
+              <div className="flex items-center gap-2 mb-5">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Events</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/conferences')}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                        <Mic className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle>Conferences & barcamps</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Ensure everyone leaves with new contacts — even introverts and solo attendees.
+                    </p>
+                    <span className="text-sm text-primary font-medium">Learn more →</span>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <HandHeart className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle>Meetups & communities</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Mix people beyond their usual circles and create fresh conversations.
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/meetups')}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                        <HandHeart className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle>Meetups</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Mix people beyond their usual circles and create fresh conversations every time.
+                    </p>
+                    <span className="text-sm text-primary font-medium">Learn more →</span>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle>Companies & teams</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Help team members build deeper relationships and connect across departments.
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/parties')}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                        <Music className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle>Parties & weddings</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Break the ice between groups, make solo guests feel included, and help everyone actually get to know each other.
+                    </p>
+                    <span className="text-sm text-primary font-medium">Learn more →</span>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Target className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle>Schools & universities</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  From getting to know each other while waiting for a lecture to creating teams for collaboration in classrooms.
-                </p>
-              </CardContent>
-            </Card>
+            {/* Venues category */}
+            <div>
+              <div className="flex items-center gap-2 mb-5">
+                <MapPin className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Venues</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/bars')}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                        <Coffee className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle>Bars & cafés</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Host speed datings, quiz nights, board game evenings or after-work mixers — and give your regulars a reason to come back.
+                    </p>
+                    <span className="text-sm text-primary font-medium">Learn more →</span>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Music className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle>Festivals & parties</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Break the ice, connect people beyond their own groups, and make solo goers feel included.
-                </p>
-              </CardContent>
-            </Card>
+            {/* Teams category */}
+            <div>
+              <div className="flex items-center gap-2 mb-5">
+                <Users className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Teams</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/teams')}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                        <GitBranch className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle>Company teams</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Build deeper relationships across departments and help remote colleagues connect face-to-face.
+                    </p>
+                    <span className="text-sm text-primary font-medium">Learn more →</span>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Coffee className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle>Cafés & bars</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  From quizzes and speed datings to board game evenings and after-work mixers.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2 lg:col-span-1">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Cake className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle>Private events</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  From weddings to birthdays, make your family and friends actually know each other.
-                </p>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <CardTitle>Study groups</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Help students get to know each other, form project teams, or break the ice at the start of a new semester.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
         </div>
       </section>

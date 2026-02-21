@@ -328,7 +328,7 @@ export function ParticipantPreviewMock({ mockData, scenarioName, view = 'dashboa
 
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
                     <Users className="h-4 w-4" />
-                    {mockSession.limitParticipants ? `Max ${mockSession.maxParticipants}` : '∞'} participants • Groups of {mockSession.groupSize}
+                    {mockSession.limitParticipants ? `Max ${mockSession.maxParticipants}` : 'Unlimited'} participants • Groups of {mockSession.groupSize}
                   </div>
 
                   {/* Rounds */}

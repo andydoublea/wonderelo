@@ -619,6 +619,20 @@ export async function getRegistrationsByParticipant(participantId: string) {
   return (data || []).map(mapRegistrationFromDb);
 }
 
+export async function getRegistrationCountsByRounds(roundIds: string[]): Promise<Record<string, number>> {
+  if (roundIds.length === 0) return {};
+  const { data, error } = await db()
+    .from('registrations')
+    .select('round_id')
+    .in('round_id', roundIds);
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const reg of data || []) {
+    counts[reg.round_id] = (counts[reg.round_id] || 0) + 1;
+  }
+  return counts;
+}
+
 export async function getRegistrationsForRound(sessionId: string, roundId: string) {
   const { data, error } = await db()
     .from('registrations')
@@ -639,6 +653,15 @@ export async function getRegistrationsForRound(sessionId: string, roundId: strin
     }
     return reg;
   });
+}
+
+export async function getRegistrationsForSession(sessionId: string) {
+  const { data, error } = await db()
+    .from('registrations')
+    .select('participant_id, round_id, status')
+    .eq('session_id', sessionId);
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getConfirmedForRound(sessionId: string, roundId: string) {
@@ -1120,6 +1143,49 @@ export async function getParticipantDashboardData(token: string) {
 }
 
 // ============================================================
+// ROUND REMINDERS (SMS)
+// ============================================================
+
+/**
+ * Get rounds that need SMS reminders sent.
+ * Returns scheduled rounds (with published sessions) where:
+ *  - reminder_sms_sent_at IS NULL
+ *  - status = 'scheduled'
+ *  - date and start_time are set
+ * Filtering by time window is done in application code using parseRoundStartTime().
+ */
+export async function getRoundsNeedingReminder() {
+  const { data, error } = await db()
+    .from('rounds')
+    .select('*, sessions!rounds_session_id_fkey(id, name, date, status, user_id, meeting_points)')
+    .is('reminder_sms_sent_at', null)
+    .eq('status', 'scheduled')
+    .eq('sessions.status', 'published')
+    .not('date', 'is', null)
+    .not('start_time', 'is', null);
+  if (error) throw error;
+  return (data || []).map((r: any) => ({
+    ...mapRoundFromDb(r),
+    sessionName: r.sessions?.name,
+    sessionDate: r.sessions?.date,
+    sessionStatus: r.sessions?.status,
+    sessionUserId: r.sessions?.user_id,
+    sessionMeetingPoints: r.sessions?.meeting_points,
+  }));
+}
+
+/**
+ * Mark a round's SMS reminder as sent (idempotent deduplication).
+ */
+export async function markRoundReminderSent(roundId: string) {
+  const { error } = await db()
+    .from('rounds')
+    .update({ reminder_sms_sent_at: new Date().toISOString() })
+    .eq('id', roundId);
+  if (error) throw error;
+}
+
+// ============================================================
 // LEAD MAGNET SUBMISSIONS
 // ============================================================
 
@@ -1150,4 +1216,223 @@ export async function getLeadMagnetSubmissions() {
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+// ============================================================
+// SUBSCRIPTIONS (Stripe)
+// ============================================================
+
+export async function getSubscription(userId: string) {
+  const { data, error } = await db()
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    userId: data.user_id,
+    stripeCustomerId: data.stripe_customer_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
+    capacityTier: data.capacity_tier,
+    status: data.status,
+    plan: data.plan,
+    currentPeriodEnd: data.current_period_end,
+    cancelAtPeriodEnd: data.cancel_at_period_end,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+export async function getSubscriptionByStripeId(stripeSubscriptionId: string) {
+  const { data, error } = await db()
+    .from('subscriptions')
+    .select('*')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    userId: data.user_id,
+    stripeCustomerId: data.stripe_customer_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
+    capacityTier: data.capacity_tier,
+    status: data.status,
+    plan: data.plan,
+    currentPeriodEnd: data.current_period_end,
+    cancelAtPeriodEnd: data.cancel_at_period_end,
+  };
+}
+
+export async function upsertSubscription(userId: string, sub: {
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  capacityTier: string;
+  status: string;
+  plan: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+}) {
+  const { error } = await db()
+    .from('subscriptions')
+    .upsert({
+      user_id: userId,
+      stripe_customer_id: sub.stripeCustomerId,
+      stripe_subscription_id: sub.stripeSubscriptionId,
+      capacity_tier: sub.capacityTier,
+      status: sub.status,
+      plan: sub.plan,
+      current_period_end: sub.currentPeriodEnd || null,
+      cancel_at_period_end: sub.cancelAtPeriodEnd,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  if (error) throw error;
+}
+
+export async function updateSubscription(userId: string, updates: {
+  status?: string;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: string;
+  capacityTier?: string;
+}) {
+  const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (updates.status !== undefined) updateData.status = updates.status;
+  if (updates.cancelAtPeriodEnd !== undefined) updateData.cancel_at_period_end = updates.cancelAtPeriodEnd;
+  if (updates.currentPeriodEnd !== undefined) updateData.current_period_end = updates.currentPeriodEnd;
+  if (updates.capacityTier !== undefined) updateData.capacity_tier = updates.capacityTier;
+
+  const { error } = await db()
+    .from('subscriptions')
+    .update(updateData)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+// ============================================================
+// CREDITS (Single Event Payments)
+// ============================================================
+
+export async function getCredits(userId: string): Promise<{ balance: number; capacityTier: string }> {
+  const { data, error } = await db()
+    .from('credits')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return { balance: 0, capacityTier: '50' };
+  return {
+    balance: data.balance || 0,
+    capacityTier: data.capacity_tier || '50',
+  };
+}
+
+export async function addCredits(userId: string, amount: number, metadata: {
+  type: string;
+  capacityTier?: string;
+  stripeSessionId?: string;
+  stripeCustomerId?: string;
+  sessionId?: string;
+  description?: string;
+}) {
+  // Update or create credits balance
+  const existing = await getCredits(userId);
+  const newBalance = existing.balance + amount;
+
+  const { error: upsertError } = await db()
+    .from('credits')
+    .upsert({
+      user_id: userId,
+      balance: newBalance,
+      capacity_tier: metadata.capacityTier || existing.capacityTier,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  if (upsertError) throw upsertError;
+
+  // Record transaction
+  const { error: txError } = await db()
+    .from('credit_transactions')
+    .insert({
+      user_id: userId,
+      amount,
+      type: metadata.type,
+      capacity_tier: metadata.capacityTier || existing.capacityTier,
+      stripe_session_id: metadata.stripeSessionId || null,
+      stripe_customer_id: metadata.stripeCustomerId || null,
+      session_id: metadata.sessionId || null,
+      description: metadata.description || null,
+      created_at: new Date().toISOString(),
+    });
+  if (txError) throw txError;
+}
+
+export async function deductCredit(userId: string, amount: number, metadata: {
+  type: string;
+  sessionId?: string;
+  description?: string;
+}) {
+  await addCredits(userId, -amount, metadata);
+}
+
+export async function getCreditTransactions(userId: string) {
+  const { data, error } = await db()
+    .from('credit_transactions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data || []).map((t: any) => ({
+    id: t.id,
+    userId: t.user_id,
+    amount: t.amount,
+    type: t.type,
+    capacityTier: t.capacity_tier,
+    sessionId: t.session_id,
+    description: t.description,
+    createdAt: t.created_at,
+  }));
+}
+
+// ============================================================
+// Registration Drafts (progressive save during organizer signup)
+// ============================================================
+
+export async function upsertRegistrationDraft(draft: {
+  email: string;
+  currentStep: number;
+  formData: Record<string, any>;
+}) {
+  const { error } = await db()
+    .from('registration_drafts')
+    .upsert({
+      email: draft.email,
+      current_step: draft.currentStep,
+      form_data: draft.formData,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'email' });
+  if (error) throw error;
+}
+
+export async function getRegistrationDraft(email: string) {
+  const { data, error } = await db()
+    .from('registration_drafts')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    email: data.email,
+    currentStep: data.current_step,
+    formData: data.form_data,
+    updatedAt: data.updated_at,
+  };
+}
+
+export async function deleteRegistrationDraft(email: string) {
+  const { error } = await db()
+    .from('registration_drafts')
+    .delete()
+    .eq('email', email);
+  if (error) throw error;
 }

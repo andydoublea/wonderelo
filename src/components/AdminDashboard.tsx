@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -33,6 +33,14 @@ const adminTools = [
     icon: Calendar,
     route: '/admin/sessions',
     color: 'bg-orange-500',
+    category: 'user-management',
+  },
+  {
+    id: 'registration-funnel',
+    title: 'Registration funnel',
+    icon: TrendingDown,
+    route: '/admin/registration-funnel',
+    color: 'bg-red-500',
     category: 'user-management',
   },
   {
@@ -150,9 +158,8 @@ export function AdminDashboard({ accessToken, onBack }: AdminDashboardProps) {
                     className="text-2xl font-bold cursor-pointer hover:text-primary/80 transition-colors" 
                     onClick={onBack}
                   >
-                    Oliwonder admin
+                    Wonderelo admin
                   </h1>
-                  <p className="text-sm text-muted-foreground">Platform administration</p>
                 </div>
               </div>
             </div>

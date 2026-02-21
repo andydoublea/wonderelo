@@ -1,0 +1,153 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { CheckCircle, Circle, ExternalLink, Link2, Edit, Rocket, Eye, Trash2, X } from 'lucide-react';
+import { NetworkingSession } from '../App';
+
+interface OnboardingChecklistProps {
+  eventSlug: string;
+  sessions: NetworkingSession[];
+  organizerName?: string;
+}
+
+interface ChecklistItem {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isComplete: boolean;
+  action?: () => void;
+  actionLabel?: string;
+}
+
+export function OnboardingChecklist({ eventSlug, sessions, organizerName }: OnboardingChecklistProps) {
+  const navigate = useNavigate();
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  // Check dismissal from localStorage
+  useEffect(() => {
+    const dismissed = localStorage.getItem('onboarding_checklist_dismissed');
+    if (dismissed === 'true') {
+      setIsDismissed(true);
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    localStorage.setItem('onboarding_checklist_dismissed', 'true');
+    setIsDismissed(true);
+  };
+
+  // Determine which steps are complete
+  const hasCustomSlug = eventSlug && eventSlug !== 'user' && eventSlug.length >= 3;
+  const hasPublishedSession = sessions.some(s => s.status === 'published' || s.status === 'scheduled');
+  const hasSessions = sessions.length > 0;
+  const hasNonDraftSession = sessions.some(s => s.status !== 'draft');
+  const eventPageUrl = `${window.location.origin}/${eventSlug}`;
+
+  const items: ChecklistItem[] = [
+    {
+      id: 'slug',
+      label: 'Choose your event page URL',
+      description: 'Pick a memorable URL like wonderelo.com/your-name',
+      icon: Link2,
+      isComplete: hasCustomSlug,
+      action: () => navigate('/settings/event-page'),
+      actionLabel: 'Set URL',
+    },
+    {
+      id: 'event-page',
+      label: 'Open your event page',
+      description: 'See what participants will see when they visit your page',
+      icon: Eye,
+      isComplete: false, // can't track this — always show as available action
+      action: () => window.open(eventPageUrl, '_blank'),
+      actionLabel: 'Preview',
+    },
+    {
+      id: 'edit-round',
+      label: 'Edit the sample round',
+      description: 'Customize the pre-created round with your event details',
+      icon: Edit,
+      isComplete: hasSessions && sessions.some(s => s.name && !s.name.includes('First Networking')),
+      action: () => {
+        const firstSession = sessions[0];
+        if (firstSession) navigate(`/rounds/${firstSession.id}`);
+      },
+      actionLabel: 'Edit',
+    },
+    {
+      id: 'publish',
+      label: 'Publish a round',
+      description: 'Make your round visible on your event page',
+      icon: Rocket,
+      isComplete: hasPublishedSession,
+    },
+    {
+      id: 'test-free',
+      label: 'Run a free test round',
+      description: 'Rounds up to 10 participants are always free!',
+      icon: CheckCircle,
+      isComplete: sessions.some(s => s.status === 'completed'),
+    },
+  ];
+
+  const completedCount = items.filter(i => i.isComplete).length;
+  const allComplete = completedCount >= items.length - 1; // -1 because "Open event page" can't be tracked
+
+  // Don't show if dismissed or all complete
+  if (isDismissed || allComplete) return null;
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Rocket className="h-5 w-5 text-primary" />
+            Get started with Wonderelo
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={handleDismiss} className="h-8 w-8 p-0">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {completedCount} of {items.length} steps completed
+        </p>
+        {/* Progress bar */}
+        <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-500"
+            style={{ width: `${(completedCount / items.length) * 100}%` }}
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3 pt-0">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
+              item.isComplete ? 'bg-green-50 dark:bg-green-950/20' : 'bg-background'
+            }`}
+          >
+            {item.isComplete ? (
+              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+            ) : (
+              <Circle className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium ${item.isComplete ? 'line-through text-muted-foreground' : ''}`}>
+                {item.label}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+            </div>
+            {!item.isComplete && item.action && (
+              <Button variant="outline" size="sm" onClick={item.action} className="flex-shrink-0">
+                {item.actionLabel || 'Go'}
+              </Button>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}

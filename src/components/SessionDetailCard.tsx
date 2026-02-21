@@ -31,7 +31,7 @@ export function SessionDetailCard({
     if (session.limitParticipants && session.maxParticipants && session.groupSize) {
       return Math.ceil(session.maxParticipants / session.groupSize);
     }
-    return '∞';
+    return 'Unlimited';
   })();
 
   const formatDateTime = (date: string, time: string) => {
@@ -150,7 +150,7 @@ export function SessionDetailCard({
         
       <div className="flex items-start gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          <span>Groups of {session.groupSize} • {session.limitGroups ? `Max ${session.maxGroups}` : (typeof estimatedGroups === 'number' ? `${estimatedGroups}` : '∞')} groups • {session.limitParticipants ? `Max ${session.maxParticipants}` : '∞'} participants</span>
+          <span>Groups of {session.groupSize} • {session.limitGroups ? `Max ${session.maxGroups}` : (typeof estimatedGroups === 'number' ? `${estimatedGroups}` : 'Unlimited')} groups • {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants</span>
         </div>
 
         <div className="space-y-2">

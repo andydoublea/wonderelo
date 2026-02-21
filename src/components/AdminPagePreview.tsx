@@ -7,7 +7,7 @@ import { ParticipantNav } from './ParticipantNav';
 import { NetworkingSession, Round } from '../App';
 import { RoundItem } from './RoundItem';
 import { GeometricIdentification } from './GeometricIdentification';
-import { Calendar, Clock, Users, MapPin, CheckCircle, AlertTriangle, MessageCircle, Share2, UserCheck } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, CheckCircle } from 'lucide-react';
 
 interface AdminPagePreviewProps {
   onBack: () => void;
@@ -82,24 +82,60 @@ mockSession.rounds = [mockRound];
 
 type PreviewPage =
   | 'participant-dashboard'
-  | 'match-found'
+  | 'meeting-point'
   | 'match-no-match'
   | 'match-partner'
   | 'match-networking'
+  | 'contact-sharing'
   | 'participant-profile'
   | 'session-registration'
   | 'session-success';
 
-const PREVIEW_PAGES: { id: PreviewPage; label: string; description: string }[] = [
-  { id: 'participant-dashboard', label: 'Dashboard', description: 'Participant\'s main dashboard with upcoming rounds' },
-  { id: 'match-found', label: 'Match found', description: 'Participant has been matched — go to meeting point' },
-  { id: 'match-no-match', label: 'No match', description: 'No match available for this round' },
-  { id: 'match-partner', label: 'Partner check-in', description: 'Confirm meeting your match partner' },
-  { id: 'match-networking', label: 'Networking', description: 'Active networking with ice breakers & contact sharing' },
-  { id: 'participant-profile', label: 'Profile', description: 'Participant edits their profile' },
-  { id: 'session-registration', label: 'Registration', description: 'Participant registers for a round' },
-  { id: 'session-success', label: 'Round created', description: 'Organizer sees success after creating a round' },
+interface PreviewPageDef {
+  id: PreviewPage;
+  label: string;
+  description: string;
+}
+
+interface PreviewCategory {
+  name: string;
+  pages: PreviewPageDef[];
+}
+
+const PREVIEW_CATEGORIES: PreviewCategory[] = [
+  {
+    name: 'Registration',
+    pages: [
+      { id: 'session-registration', label: 'Registration', description: 'Participant registers for a round' },
+      { id: 'participant-profile', label: 'Profile', description: 'Participant edits their profile' },
+    ],
+  },
+  {
+    name: 'Dashboard',
+    pages: [
+      { id: 'participant-dashboard', label: 'Dashboard', description: 'Participant\'s main dashboard with upcoming rounds' },
+    ],
+  },
+  {
+    name: 'Matching flow',
+    pages: [
+      { id: 'meeting-point', label: 'Meeting point', description: 'Participant has been matched — go to meeting point' },
+      { id: 'match-no-match', label: 'No match', description: 'No match available for this round' },
+      { id: 'match-partner', label: 'Find each other', description: 'Confirm meeting your match partner' },
+      { id: 'match-networking', label: 'Networking', description: 'Active networking with ice breakers' },
+      { id: 'contact-sharing', label: 'Contact sharing', description: 'Exchange contacts after networking' },
+    ],
+  },
+  {
+    name: 'Organizer',
+    pages: [
+      { id: 'session-success', label: 'Round created', description: 'Organizer sees success after creating a round' },
+    ],
+  },
 ];
+
+// Flat list for lookup
+const PREVIEW_PAGES = PREVIEW_CATEGORIES.flatMap(c => c.pages);
 
 // ============================================================
 // Individual preview renderers
@@ -118,7 +154,7 @@ function PreviewParticipantDashboard() {
         onProfileClick={() => {}}
         onLogout={() => {}}
       />
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-md mx-auto px-6 py-8">
         <div className="space-y-8">
           <div>
             <h1 className="text-3xl font-bold mb-1">Your rounds</h1>
@@ -128,13 +164,13 @@ function PreviewParticipantDashboard() {
           <div>
             <h2 className="mb-4">Upcoming rounds</h2>
             <div className="space-y-4">
-              <Card className="transition-all hover:border-muted-foreground/20 max-w-md">
-                <CardContent className="pt-4 pb-6 px-4">
-                  <div className="flex items-start justify-between mb-3">
+              <Card className="transition-all hover:border-muted-foreground/20">
+                <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
+                  <div className="flex items-start justify-between mb-1">
                     <div className="flex-1">
-                      <h3 className="mb-2">Andyho konfera</h3>
+                      <h3 className="text-lg font-semibold mb-2">Andyho konfera</h3>
                       <Badge variant="outline" className="mb-2">{mockSession.name}</Badge>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {new Date(mockSession.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -174,32 +210,62 @@ function PreviewParticipantDashboard() {
   );
 }
 
-function PreviewMatchFound() {
+function PreviewMeetingPoint() {
   return (
     <div className="min-h-[600px] bg-background">
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <button className="text-xl font-semibold text-primary wonderelo-logo">Wonderelo</button>
-        </div>
-      </nav>
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
         <div className="mb-8 text-2xl font-semibold text-primary">14:32</div>
         <h1 className="text-4xl font-bold mb-12">We have a match for you!</h1>
         <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
           <legend className="px-3 text-xl text-muted-foreground">Now go to</legend>
-          <h2 className="text-5xl font-bold mb-4">Lobby Bar</h2>
+          <h2 className="text-4xl font-bold mb-6">Lobby Bar</h2>
           <div className="mt-4">
             <div className="mx-auto rounded-lg bg-muted w-full max-w-md h-48 flex items-center justify-center text-muted-foreground">
               <MapPin className="h-12 w-12" />
             </div>
           </div>
         </fieldset>
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
-          <legend className="px-3 text-xl text-muted-foreground">Look for</legend>
-          <h2 className="text-5xl font-bold">Marcus</h2>
-        </fieldset>
+        <button className="text-muted-foreground hover:text-foreground underline">Back to dashboard</button>
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10">
+        <div className="max-w-md mx-auto">
+          <Button size="lg" className="w-full">
+            <MapPin className="h-5 w-5 mr-2" />
+            I am here
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewNoMatch() {
+  return (
+    <div className="min-h-[600px] bg-background">
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        <div className="text-6xl mb-6">😳</div>
+        <h1 className="text-4xl font-bold mb-4">No match found</h1>
+        <p className="text-lg text-muted-foreground mb-12">
+          No one else registered for this round.
+        </p>
+        <h2 className="text-2xl font-bold mb-6">Try another round!</h2>
+        <Button size="lg">Back to dashboard</Button>
+      </div>
+    </div>
+  );
+}
+
+function PreviewMatchPartner() {
+  return (
+    <div className="min-h-[600px] bg-background">
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        <h1 className="text-4xl font-bold mb-12">Now, find each other!</h1>
+
+        {/* Identification image */}
         <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
-          <legend className="px-3 text-xl text-muted-foreground">Have this image visible</legend>
+          <legend className="px-3 text-xl text-muted-foreground">
+            Show this so Marcus can find you
+          </legend>
           <div className="relative inline-block">
             <GeometricIdentification matchId="preview-match-1" className="rounded-lg shadow-lg max-w-md w-full" />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
@@ -210,143 +276,148 @@ function PreviewMatchFound() {
             </div>
           </div>
         </fieldset>
+
+        {/* Partner names */}
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
+          <legend className="px-3 text-xl text-muted-foreground">Look for</legend>
+          <h2 className="text-4xl font-bold">Marcus</h2>
+        </fieldset>
+
+        {/* Number confirmation */}
         <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
           <legend className="px-3 text-xl text-muted-foreground">To confirm meeting select</legend>
           <h2 className="text-3xl font-bold mb-8">Marcus's number</h2>
           <div className="flex items-center justify-center gap-6">
             {[17, 42, 63].map((n) => (
-              <button key={n} className="w-24 h-24 rounded-full border-2 border-border bg-background hover:bg-accent transition-all flex items-center justify-center">
+              <button key={n} className="w-24 h-24 rounded-full border-2 border-border bg-background hover:bg-accent hover:border-foreground transition-all flex items-center justify-center">
                 <span className="text-4xl font-bold">{n}</span>
               </button>
             ))}
           </div>
         </fieldset>
+
         <button className="text-muted-foreground hover:text-foreground underline">Back to dashboard</button>
       </div>
     </div>
   );
 }
 
-function PreviewNoMatch() {
-  return (
-    <div className="min-h-[600px] bg-background">
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <button className="text-xl font-semibold text-primary wonderelo-logo">Wonderelo</button>
-        </div>
-      </nav>
-      <div className="max-w-md mx-auto px-6 py-20 text-center">
-        <div className="text-6xl mb-6">😳</div>
-        <h1 className="text-2xl font-bold mb-4">No match this round</h1>
-        <p className="text-muted-foreground mb-8">
-          We couldn't find a match for you this time. Don't worry — you'll be included in the next round automatically.
-        </p>
-        <Button variant="outline">Back to dashboard</Button>
-      </div>
-    </div>
-  );
-}
-
-function PreviewMatchPartner() {
-  return (
-    <div className="min-h-[600px] bg-background">
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <button className="text-xl font-semibold text-primary wonderelo-logo">Wonderelo</button>
-        </div>
-      </nav>
-      <div className="max-w-md mx-auto px-6 py-12 text-center">
-        <h1 className="text-2xl font-bold mb-2">Find your partner</h1>
-        <p className="text-muted-foreground mb-8">Head to <strong>Lobby Bar</strong> and look for Marcus</p>
-
-        <div className="mb-8">
-          <GeometricIdentification matchId="preview-match-1" className="rounded-lg shadow-lg max-w-sm mx-auto w-full" />
-          <div className="mt-4 text-sm text-muted-foreground">Show this image so Marcus can find you</div>
-        </div>
-
-        <Card className="mb-6">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="font-semibold text-primary">M</span>
-                </div>
-                <div className="text-left">
-                  <div className="font-medium">Marcus Rivera</div>
-                  <div className="text-sm text-muted-foreground">Waiting for check-in...</div>
-                </div>
-              </div>
-              <Badge variant="outline">Pending</Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <p className="text-sm text-muted-foreground">When you meet Marcus, both of you confirm the meeting</p>
-      </div>
-    </div>
-  );
-}
-
 function PreviewNetworking() {
-  const [shared, setShared] = useState<Record<string, boolean>>({});
   return (
     <div className="min-h-[600px] bg-background">
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <button className="text-xl font-semibold text-primary wonderelo-logo">Wonderelo</button>
-        </div>
-      </nav>
-      <div className="max-w-md mx-auto px-6 py-12">
-        <div className="text-center mb-8">
-          <div className="text-2xl font-semibold text-primary mb-2">18:42</div>
-          <h1 className="text-2xl font-bold mb-1">Enjoy your conversation!</h1>
-          <p className="text-muted-foreground">Round 1 • {mockSession.name}</p>
-        </div>
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        <div className="mb-8 text-2xl font-semibold text-primary">18:42</div>
+
+        <h1 className="text-4xl font-bold mb-4">
+          Skip the weather talk and jump into deep topics!
+        </h1>
 
         {/* Ice breakers */}
-        <Card className="mb-6">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <MessageCircle className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-sm">Ice breakers</h3>
-            </div>
-            <div className="space-y-2">
-              {MOCK_ICE_BREAKERS.map((q, i) => (
-                <div key={i} className="text-sm p-2 rounded bg-muted/50">💬 {q}</div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mt-12">
+          <p className="text-lg text-muted-foreground mb-6">Take them or leave them</p>
+          <div className="space-y-4 text-left max-w-md mx-auto">
+            {MOCK_ICE_BREAKERS.map((q, i) => (
+              <div key={i} className="flex gap-3 p-4 border rounded-lg">
+                <span className="text-primary font-semibold shrink-0">{i + 1}.</span>
+                <span>{q}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        {/* Contact sharing */}
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Share2 className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-sm">Share your contact?</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="font-semibold text-primary">M</span>
-                  </div>
-                  <span className="font-medium">Marcus Rivera</span>
+        <div className="mt-12">
+          <button className="text-muted-foreground hover:text-foreground underline">Back to dashboard</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const MOCK_FEEDBACK_OPTIONS = [
+  { id: 'nice-talk', label: 'Nice talk', icon: '💬' },
+  { id: 'very-interesting', label: 'Very interesting person', icon: '✨' },
+  { id: 'continue-chat', label: "I'd like to continue the chat", icon: '🔄' },
+  { id: 'very-nice', label: "You're very nice", icon: '😊' },
+];
+
+function PreviewContactSharing() {
+  const [shared, setShared] = useState<Record<string, boolean>>({});
+  const [selectedFeedback, setSelectedFeedback] = useState<Record<string, string[]>>({});
+  return (
+    <div className="min-h-[600px] bg-background">
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
+        <h1 className="text-4xl font-bold mb-4">How was your conversation?</h1>
+        <p className="text-lg text-muted-foreground mb-8">
+          Share a quick reaction and decide whether to exchange contacts.
+        </p>
+
+        {/* Psychological insight */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-10 max-w-md mx-auto text-left">
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Did you know?</span> Research shows we consistently underestimate how much others enjoyed talking to us. Your conversation partner probably liked you more than you think!
+          </p>
+        </div>
+
+        <div className="space-y-6 max-w-md mx-auto">
+          {[MOCK_PARTICIPANTS[1]].map((p) => (
+            <div key={p.id} className="border-2 rounded-2xl overflow-hidden">
+              {/* Partner header with contact toggle */}
+              <div className="flex items-center justify-between p-4">
+                <div className="text-left">
+                  <p className="text-xl font-bold">{p.firstName} {p.lastName}</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant={shared['marcus'] ? 'default' : 'outline'}
-                  onClick={() => setShared(s => ({ ...s, marcus: !s.marcus }))}
+                <button
+                  onClick={() => setShared(s => ({ ...s, [p.id]: !s[p.id] }))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all ${
+                    shared[p.id]
+                      ? 'bg-green-100 text-green-700 border-2 border-green-300'
+                      : 'bg-muted text-muted-foreground border-2 border-border'
+                  }`}
                 >
-                  {shared['marcus'] ? '✓ Shared' : 'Share'}
-                </Button>
+                  {shared[p.id] ? '✓ Share contact' : '✕ Don\'t share'}
+                </button>
+              </div>
+
+              {/* Feedback buttons */}
+              <div className="px-4 pb-4">
+                <p className="text-xs text-muted-foreground mb-2 text-left">Send a quick reaction (optional)</p>
+                <div className="flex flex-wrap gap-2">
+                  {MOCK_FEEDBACK_OPTIONS.map((option) => {
+                    const isSelected = (selectedFeedback[p.id] || []).includes(option.id);
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => setSelectedFeedback(prev => {
+                          const current = prev[p.id] || [];
+                          const updated = current.includes(option.id)
+                            ? current.filter(f => f !== option.id)
+                            : [...current, option.id];
+                          return { ...prev, [p.id]: updated };
+                        })}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all border ${
+                          isSelected
+                            ? 'bg-primary/10 text-primary border-primary/30 font-medium'
+                            : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
+                        }`}
+                      >
+                        <span>{option.icon}</span>
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          ))}
+        </div>
 
-        <div className="text-center mt-6">
-          <button className="text-muted-foreground hover:text-foreground underline text-sm">Back to dashboard</button>
+        <p className="text-sm text-muted-foreground mt-8 max-w-md mx-auto">
+          Contacts will only be shared if <strong>both</strong> of you agree. Shared contacts will become visible after 15 minutes.
+        </p>
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
+        <div className="max-w-md mx-auto">
+          <Button size="lg" className="w-full">Done</Button>
         </div>
       </div>
     </div>
@@ -504,10 +575,11 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
   const renderPreview = () => {
     switch (activePage) {
       case 'participant-dashboard': return <PreviewParticipantDashboard />;
-      case 'match-found': return <PreviewMatchFound />;
+      case 'meeting-point': return <PreviewMeetingPoint />;
       case 'match-no-match': return <PreviewNoMatch />;
       case 'match-partner': return <PreviewMatchPartner />;
       case 'match-networking': return <PreviewNetworking />;
+      case 'contact-sharing': return <PreviewContactSharing />;
       case 'participant-profile': return <PreviewProfile />;
       case 'session-registration': return <PreviewRegistration />;
       case 'session-success': return <PreviewSessionSuccess />;
@@ -528,20 +600,26 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
             </Button>
             <div className="h-6 w-px bg-border shrink-0" />
             <Eye className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              {PREVIEW_PAGES.map((page) => (
-                <button
-                  key={page.id}
-                  onClick={() => setActivePage(page.id)}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-sm transition-colors ${
-                    activePage === page.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                  }`}
-                  title={page.description}
-                >
-                  {page.label}
-                </button>
+            <div className="flex items-center gap-1 overflow-x-auto pb-1">
+              {PREVIEW_CATEGORIES.map((category, catIdx) => (
+                <div key={category.name} className="flex items-center gap-1 shrink-0">
+                  {catIdx > 0 && <div className="h-5 w-px bg-border mx-1 shrink-0" />}
+                  <span className="text-xs text-muted-foreground font-medium px-1 shrink-0">{category.name}:</span>
+                  {category.pages.map((page) => (
+                    <button
+                      key={page.id}
+                      onClick={() => setActivePage(page.id)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-sm transition-colors ${
+                        activePage === page.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                      title={page.description}
+                    >
+                      {page.label}
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
           </div>

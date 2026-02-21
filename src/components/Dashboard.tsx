@@ -8,6 +8,9 @@ import { Skeleton } from './ui/skeleton';
 import { PlusCircle, Download, QrCode, Copy, Search, ExternalLink, Check, Edit, Play, CheckCircle, X, Presentation } from 'lucide-react';
 import { Input } from './ui/input';
 import { NetworkingSession } from '../App';
+import { OnboardingChecklist } from './OnboardingChecklist';
+import { OnboardingTour } from './OnboardingTour';
+import { DownloadableAssets } from './DownloadableAssets';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
 
@@ -31,6 +34,18 @@ export function Dashboard({
   const [copied, setCopied] = useState(false);
   const [downloadingQR, setDownloadingQR] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showTour, setShowTour] = useState(false);
+
+  // Show onboarding tour for first-time users
+  useEffect(() => {
+    const tourCompleted = localStorage.getItem('onboarding_tour_completed');
+    const checklistDismissed = localStorage.getItem('onboarding_checklist_dismissed');
+    if (!tourCompleted && !checklistDismissed && !isLoadingSessions) {
+      // Small delay to let the page render fully
+      const timer = setTimeout(() => setShowTour(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingSessions]);
 
   // Debug logging on mount and when sessions change
   useEffect(() => {
@@ -138,8 +153,13 @@ export function Dashboard({
 
   return (
     <div className="space-y-6 pb-8">
+      {/* Onboarding Checklist - shown for new organizers */}
+      <div data-tour="onboarding-checklist">
+        <OnboardingChecklist eventSlug={eventSlug} sessions={sessions} />
+      </div>
+
       {/* Event Page URL Section */}
-      <Card>
+      <Card data-tour="event-page-url">
         <CardHeader>
           <CardTitle>Your event page URL</CardTitle>
         </CardHeader>
@@ -248,8 +268,14 @@ export function Dashboard({
         )}
       </div>
 
+      {/* Downloadable Assets */}
+      <DownloadableAssets
+        eventSlug={eventSlug}
+        eventPageUrl={publicUrl}
+      />
+
       {/* Published on Event Page Section */}
-      <Card>
+      <Card data-tour="session-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Published on event page</CardTitle>
@@ -273,7 +299,7 @@ export function Dashboard({
                   </Button>
                 )}
               </div>
-              <Button onClick={() => navigate('/rounds')} variant="outline">
+              <Button onClick={() => navigate('/rounds')} variant="outline" data-tour="create-round">
                 Show all rounds
               </Button>
             </div>
@@ -299,6 +325,11 @@ export function Dashboard({
           )}
         </CardContent>
       </Card>
+
+      {/* Onboarding Tour */}
+      {showTour && (
+        <OnboardingTour onComplete={() => setShowTour(false)} />
+      )}
     </div>
   );
 }

@@ -68,7 +68,7 @@ export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, 
 
             {/* Logo below QR Code - Larger */}
             <div className="text-center">
-              <h2 className="text-4xl font-semibold text-primary wonderelo-logo">Wonderelo</h2>
+              <h2 className="text-4xl font-semibold text-primary wonderelo-logo wonderelo-logo-large">Wonderelo</h2>
             </div>
 
             {/* Slug Display */}

@@ -243,7 +243,7 @@ export function OfflineReadyMessage() {
               Ready for offline use
             </h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              You can now use Oliwonder even without internet connection.
+              You can now use Wonderelo even without internet connection.
             </p>
           </div>
           <button

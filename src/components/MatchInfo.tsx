@@ -5,12 +5,14 @@ import { Card, CardContent } from './ui/card';
 import { debugLog, errorLog } from '../utils/debug';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
-import { MapPin, Clock, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
 
 interface MatchData {
   matchId: string;
   meetingPointName: string;
   meetingPointImageUrl?: string;
+  meetingPointType?: 'physical' | 'virtual';
+  meetingPointVideoCallUrl?: string;
   participants: Array<{
     id: string;
     firstName: string;
@@ -218,19 +220,20 @@ export function MatchInfo() {
 
   if (error === 'no-match') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">😳</div>
-            <h2 className="text-2xl font-bold mb-2">No match found</h2>
-            <p className="text-muted-foreground mb-6">
-              No one else registered for this round.
-            </p>
-            <Button onClick={() => navigate(`/p/${token}?from=match`)}>
-              Back to dashboard
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+          <div className="text-6xl mb-6">😳</div>
+          <h1 className="text-4xl font-bold mb-4">No match found</h1>
+          <p className="text-lg text-muted-foreground mb-12">
+            No one else registered for this round.
+          </p>
+
+          <h2 className="text-2xl font-bold mb-6">Try another round!</h2>
+
+          <Button size="lg" onClick={() => navigate(`/p/${token}?from=match`)}>
+            Back to dashboard
+          </Button>
+        </div>
       </div>
     );
   }
@@ -253,59 +256,78 @@ export function MatchInfo() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
-        <CardContent className="p-8">
-          {/* Countdown Timer */}
-          {matchData.walkingDeadline && (
-            <div className="mb-8">
-              <div className="flex items-center justify-center gap-2 mb-2 text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span className="text-sm">Time to arrive at meeting point</span>
-              </div>
-              <CountdownTimer
-                targetDate={matchData.walkingDeadline}
-                variant="large"
-                onComplete={() => {
-                  debugLog('[MatchInfo] Walking deadline reached');
-                }}
-              />
-            </div>
-          )}
-
-          {/* Match Announcement */}
-          <div className="text-center mb-8">
-            <div className="text-6xl mb-4">🎉</div>
-            <h1 className="text-3xl font-bold mb-2">We have a match for you!</h1>
-            <p className="text-muted-foreground">
-              You'll meet with {matchData.participants.length - 1} {matchData.participants.length === 2 ? 'person' : 'people'}
-            </p>
+    <div className="min-h-screen bg-background">
+      {/* Main Content */}
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
+        {/* Countdown Timer */}
+        {matchData.walkingDeadline && (
+          <div className="mb-8">
+            <CountdownTimer
+              targetDate={matchData.walkingDeadline}
+              variant="large"
+              onComplete={() => {
+                debugLog('[MatchInfo] Walking deadline reached');
+              }}
+            />
           </div>
+        )}
 
-          {/* Meeting Point */}
-          <div className="bg-muted/50 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" />
-              Now go to
-            </h2>
+        {/* Match Announcement */}
+        <h1 className="text-4xl font-bold mb-12">
+          We have a match for you!
+        </h1>
 
-            {matchData.meetingPointImageUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden">
+        {/* Meeting Point */}
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
+          <legend className="px-3 text-xl text-muted-foreground">
+            {matchData.meetingPointType === 'virtual' ? 'Join the call' : 'Now go to'}
+          </legend>
+          <h2 className="text-4xl font-bold mb-6">{matchData.meetingPointName}</h2>
+
+          {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
+            <div className="mt-4">
+              <a
+                href={matchData.meetingPointVideoCallUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-xl text-lg font-semibold hover:bg-primary/90 transition-colors shadow-lg"
+              >
+                <Video className="h-6 w-6" />
+                Join video call
+                <ExternalLink className="h-5 w-5" />
+              </a>
+              <p className="text-sm text-muted-foreground mt-3">
+                Opens in a new tab
+              </p>
+            </div>
+          ) : (
+            matchData.meetingPointImageUrl && (
+              <div className="mt-4">
                 <img
                   src={matchData.meetingPointImageUrl}
                   alt={matchData.meetingPointName}
-                  className="w-full h-48 object-cover"
+                  className="mx-auto rounded-lg shadow-lg max-w-md w-full object-cover"
+                  style={{ maxHeight: '400px' }}
                 />
               </div>
-            )}
+            )
+          )}
+        </fieldset>
 
-            <p className="text-2xl font-bold text-center mb-2">{matchData.meetingPointName}</p>
-            <p className="text-sm text-muted-foreground text-center">
-              Head to this location to meet your networking partner{matchData.participants.length > 2 ? 's' : ''}
-            </p>
-          </div>
+        {/* Back to dashboard link */}
+        <div>
+          <button
+            onClick={() => navigate(`/p/${token}?from=match`)}
+            className="text-muted-foreground hover:text-foreground underline transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
 
-          {/* Check-in Button */}
+      {/* Sticky "I am here" button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10">
+        <div className="max-w-md mx-auto">
           <Button
             size="lg"
             className="w-full"
@@ -315,12 +337,8 @@ export function MatchInfo() {
             <MapPin className="h-5 w-5 mr-2" />
             {isSubmitting ? 'Checking in...' : 'I am here'}
           </Button>
-
-          <p className="text-xs text-center text-muted-foreground mt-4">
-            Click when you arrive at the meeting point
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -10,29 +10,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Mail, Phone, Loader2, Check, X, ArrowLeft, User, ChevronsUpDown } from 'lucide-react';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
-
-// Country codes with phone prefixes and placeholder formats
-const COUNTRY_CODES = [
-  { code: 'SK', name: 'Slovakia', prefix: '+421', placeholder: '912 345 678' },
-  { code: 'CZ', name: 'Czech Republic', prefix: '+420', placeholder: '601 234 567' },
-  { code: 'AT', name: 'Austria', prefix: '+43', placeholder: '664 1234567' },
-  { code: 'DE', name: 'Germany', prefix: '+49', placeholder: '151 23456789' },
-  { code: 'PL', name: 'Poland', prefix: '+48', placeholder: '601 234 567' },
-  { code: 'HU', name: 'Hungary', prefix: '+36', placeholder: '20 123 4567' },
-  { code: 'US', name: 'United States', prefix: '+1', placeholder: '(555) 123-4567' },
-  { code: 'GB', name: 'United Kingdom', prefix: '+44', placeholder: '7400 123456' },
-  { code: 'FR', name: 'France', prefix: '+33', placeholder: '6 12 34 56 78' },
-  { code: 'ES', name: 'Spain', prefix: '+34', placeholder: '612 34 56 78' },
-  { code: 'IT', name: 'Italy', prefix: '+39', placeholder: '312 345 6789' },
-  { code: 'NL', name: 'Netherlands', prefix: '+31', placeholder: '6 12345678' },
-  { code: 'BE', name: 'Belgium', prefix: '+32', placeholder: '470 12 34 56' },
-  { code: 'CH', name: 'Switzerland', prefix: '+41', placeholder: '78 123 45 67' },
-  { code: 'SE', name: 'Sweden', prefix: '+46', placeholder: '70 123 45 67' },
-  { code: 'NO', name: 'Norway', prefix: '+47', placeholder: '406 12 345' },
-  { code: 'DK', name: 'Denmark', prefix: '+45', placeholder: '32 12 34 56' },
-  { code: 'FI', name: 'Finland', prefix: '+358', placeholder: '40 1234567' },
-  { code: 'IE', name: 'Ireland', prefix: '+353', placeholder: '85 123 4567' }
-];
+import { COUNTRY_CODES } from '../utils/countryCodes';
 
 export default function ParticipantProfile() {
   const { token } = useParams<{ token: string }>();

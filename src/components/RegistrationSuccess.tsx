@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { CheckCircle, ArrowRight, Mail, Link2 } from 'lucide-react';
+import { CheckCircle, ArrowRight, Mail, Link2, PartyPopper } from 'lucide-react';
 import { ServiceType } from '../App';
+import confetti from 'canvas-confetti';
 
 interface RegistrationData {
   email: string;
@@ -19,15 +21,30 @@ interface RegistrationSuccessProps {
 }
 
 export function RegistrationSuccess({ registrationData, serviceType, onContinue }: RegistrationSuccessProps) {
+  // Fire confetti on mount
+  const confettiFired = useRef(false);
+  useEffect(() => {
+    if (confettiFired.current) return;
+    confettiFired.current = true;
+    const duration = 2500;
+    const end = Date.now() + duration;
+    const frame = () => {
+      confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+      confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
         <Card>
           <CardHeader className="text-center">
             <div className="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <PartyPopper className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle>Welcome to Oliwonder!</CardTitle>
+            <CardTitle>Welcome to Wonderelo! 🎉</CardTitle>
             <p className="text-muted-foreground">
               Your account has been created successfully
             </p>
@@ -61,7 +78,7 @@ export function RegistrationSuccess({ registrationData, serviceType, onContinue 
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs mt-0.5">2</span>
-                  <p>Set up your first networking session</p>
+                  <p>Set up your first networking round</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs mt-0.5">3</span>

@@ -30,7 +30,7 @@ const DEFAULT_TEXTS: NotificationTexts = {
   smsRoundStartingSoon: '⏰ Reminder: "{sessionName}" round starts in {minutes} minutes at {location}!',
 
   // Email
-  emailWelcomeSubject: '{eventName} - Oliwonder round details',
+  emailWelcomeSubject: '{eventName} - Wonderelo round details',
   emailWelcomeBody: `Hi {firstName}!
 
 You've successfully registered for the following rounds:
@@ -52,7 +52,7 @@ Follow <a href="{eventUrl}#round-rules">these rules</a> to make most out of the 
 
 Let the wonder begin! ✨
 
-{eventName} & Oliwonder team`,
+{eventName} & Wonderelo team`,
   emailConfirmationReminderSubject: 'Confirm your registration',
   emailConfirmationReminderBody: `Hi {firstName},
 
@@ -65,7 +65,7 @@ This link expires in 48 hours.
 If you didn't register for this event, please ignore this email.
 
 Best regards,
-Oliwonder Team`,
+Wonderelo Team`,
 };
 
 export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificationTextsProps) {

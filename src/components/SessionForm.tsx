@@ -40,6 +40,7 @@ interface SessionFormProps {
 export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organizerName, profileImageUrl, userSlug, isDuplicate }: SessionFormProps) {
   const [availableIceBreakers, setAvailableIceBreakers] = useState<string[]>([]);
   const [systemParams, setSystemParams] = useState<SystemParameters | null>(null);
+  const [useCustomTimes, setUseCustomTimes] = useState(false);
   
   // Check if first round has already started or passed
   const hasFirstRoundStarted = (): boolean => {
@@ -805,16 +806,16 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     return rounds;
   };
 
-  // Update rounds when relevant fields change for live preview
+  // Update rounds when relevant fields change for live preview (only in auto mode)
   useEffect(() => {
-    if (formData.startTime && formData.roundDuration && formData.numberOfRounds && formData.date) {
+    if (!useCustomTimes && formData.startTime && formData.roundDuration && formData.numberOfRounds && formData.date) {
       const newRounds = generateRounds();
       // Only update if rounds actually changed to avoid infinite loop
       if (JSON.stringify(newRounds) !== JSON.stringify(formData.rounds)) {
         setFormData(prev => ({ ...prev, rounds: newRounds }));
       }
     }
-  }, [formData.startTime, formData.roundDuration, formData.numberOfRounds, formData.gapBetweenRounds, formData.date]);
+  }, [formData.startTime, formData.roundDuration, formData.numberOfRounds, formData.gapBetweenRounds, formData.date, useCustomTimes]);
 
   // Validate time whenever date or time changes
   useEffect(() => {
@@ -1216,6 +1217,118 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
               </div>
             )}
           </div>
+
+          {/* Custom Times Toggle */}
+          {formData.numberOfRounds > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <div>
+                <Label htmlFor="customTimes" className="cursor-pointer">Custom round times</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Set individual start times for each round</p>
+              </div>
+              <Switch
+                id="customTimes"
+                checked={useCustomTimes}
+                onCheckedChange={(checked) => {
+                  setUseCustomTimes(checked);
+                  if (!checked) {
+                    // Regenerate rounds with auto spacing
+                    const newRounds = generateRounds();
+                    setFormData(prev => ({ ...prev, rounds: newRounds }));
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Custom Round Times Editor */}
+          {useCustomTimes && formData.rounds.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <Label>Round start times</Label>
+              <div className="space-y-2">
+                {formData.rounds.map((round, idx) => (
+                  <div key={round.id} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium text-muted-foreground w-20">Round {idx + 1}</span>
+                    <Input
+                      type="time"
+                      value={round.startTime}
+                      className="w-32"
+                      step="300"
+                      onChange={(e) => {
+                        const newTime = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          rounds: prev.rounds.map((r, i) =>
+                            i === idx ? { ...r, startTime: newTime, name: newTime } : r
+                          ),
+                        }));
+                      }}
+                    />
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="240"
+                        value={round.duration}
+                        className="w-20 pr-8"
+                        onChange={(e) => {
+                          const dur = parseInt(e.target.value) || formData.roundDuration;
+                          setFormData(prev => ({
+                            ...prev,
+                            rounds: prev.rounds.map((r, i) =>
+                              i === idx ? { ...r, duration: dur } : r
+                            ),
+                          }));
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground -ml-7">min</span>
+                    </div>
+                    {formData.rounds.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            numberOfRounds: prev.numberOfRounds - 1,
+                            rounds: prev.rounds.filter((_, i) => i !== idx),
+                          }));
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const lastRound = formData.rounds[formData.rounds.length - 1];
+                  const [h, m] = (lastRound?.startTime || '10:00').split(':').map(Number);
+                  const nextTime = h * 60 + m + (lastRound?.duration || 10) + (formData.gapBetweenRounds || 10);
+                  const nh = Math.floor((nextTime % 1440) / 60);
+                  const nm = nextTime % 60;
+                  const newTime = `${nh.toString().padStart(2, '0')}:${(nm - nm % 5).toString().padStart(2, '0')}`;
+                  setFormData(prev => ({
+                    ...prev,
+                    numberOfRounds: prev.numberOfRounds + 1,
+                    rounds: [...prev.rounds, {
+                      id: `round-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+                      name: newTime,
+                      startTime: newTime,
+                      date: formData.date,
+                      duration: formData.roundDuration,
+                    }],
+                  }));
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add round
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

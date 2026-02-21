@@ -17,6 +17,17 @@ export interface SystemParameters {
   maximalRoundDuration: number;
   minimalTimeToFirstRound: number;
   
+  // Finding time
+  findingTimeMinutes: number;
+
+  // Networking duration (shown in "How it works" text)
+  networkingDurationMinutes: number;
+
+  // Popularity indicators (🔥 thresholds)
+  fireThreshold1: number;
+  fireThreshold2: number;
+  fireThreshold3: number;
+
   // Default values
   defaultRoundDuration: number;
   defaultGapBetweenRounds: number;
@@ -46,7 +57,15 @@ const DEFAULT_PARAMETERS: SystemParameters = {
   minimalRoundDuration: 5,
   maximalRoundDuration: 240,
   minimalTimeToFirstRound: 10,
-  
+
+  findingTimeMinutes: 1,
+
+  networkingDurationMinutes: 15,
+
+  fireThreshold1: 5,
+  fireThreshold2: 10,
+  fireThreshold3: 15,
+
   defaultRoundDuration: 10,
   defaultGapBetweenRounds: 10,
   defaultNumberOfRounds: 1,
@@ -103,7 +122,9 @@ export const getCachedParameters = (): SystemParameters | null => {
 
 /**
  * Get system parameters synchronously with default fallback
+ * Merges cached values with defaults so new fields always have values
  */
 export const getParametersOrDefault = (): SystemParameters => {
-  return cachedParameters || DEFAULT_PARAMETERS;
+  if (!cachedParameters) return DEFAULT_PARAMETERS;
+  return { ...DEFAULT_PARAMETERS, ...cachedParameters };
 };

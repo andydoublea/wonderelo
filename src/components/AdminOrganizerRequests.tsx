@@ -33,7 +33,7 @@ export function AdminOrganizerRequests({ accessToken, onBack }: AdminOrganizerRe
     },
     {
       headline: 'Do not ask for contacts',
-      text: "After the round, you'll be asked if you want to exchange contacts. Sharing happens 30 minutes later, only if both parties agree."
+      text: `After the round, you'll be asked if you want to exchange contacts. Sharing happens 15 minutes later, only if both parties agree.`
     }
   ];
 
