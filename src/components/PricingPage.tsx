@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Check, ArrowRight, Calendar, Sparkles, Users } from 'lucide-react';
 import { Navigation } from './Navigation';
+import { Footer } from './Footer';
 import { PRICING_TIERS, formatPrice } from '../config/pricing';
 
 export function PricingPage() {
@@ -276,16 +277,7 @@ export function PricingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 border-t border-border">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center text-sm text-muted-foreground">
-            <p>
-              © {new Date().getFullYear()} Wonderelo. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

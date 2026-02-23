@@ -2,7 +2,8 @@ import { useNavigate, useParams } from 'react-router';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Navigation } from './Navigation';
-import { ArrowRight, Calendar, CheckCircle, Users, Zap, Heart, Coffee, Mic, Monitor, Cake, BookOpen, GitBranch, MapPin, Star } from 'lucide-react';
+import { Footer } from './Footer';
+import { ArrowRight, Calendar, CheckCircle, Users, Zap, Heart, Coffee, Mic, Monitor, Cake, BookOpen, GitBranch, MapPin, Star, Music, GraduationCap } from 'lucide-react';
 
 interface UseCaseData {
   slug: string;
@@ -156,6 +157,46 @@ const useCases: Record<string, UseCaseData> = {
     ],
     cta: 'Make your next party unforgettable',
   },
+  festivals: {
+    slug: 'festivals',
+    title: 'Wonderelo for Festivals & Parties',
+    subtitle: 'Festival & Party Networking',
+    heroHeadline: 'Turn your festival into an experience people never forget',
+    heroDescription: 'Festivals and parties bring people together in one space – but most guests leave without meeting anyone new. Wonderelo adds a social layer that gets people talking, laughing, and connecting.',
+    benefits: [
+      { icon: Music, title: 'Energy booster', description: 'A networking round between sets or during a break adds a fun, unexpected activity that keeps the energy high.' },
+      { icon: Heart, title: 'Mix the crowd', description: 'People come in groups and stay in groups. Wonderelo breaks the pattern and creates cross-group connections.' },
+      { icon: MapPin, title: 'Use the whole venue', description: 'Set meeting points across your festival grounds – at the bar, by a food truck, or near the main stage.' },
+      { icon: Star, title: 'Memorable moments', description: 'Random encounters create stories. Your guests will remember the person they met, not just the lineup.' },
+    ],
+    howItWorks: [
+      'Display QR codes at the entrance, on wristbands, or on screens around the venue',
+      'Guests register with a quick scan – no app needed',
+      'Matching runs at times you choose throughout the event',
+      'Matched pairs meet at fun locations around the festival grounds',
+    ],
+    cta: 'Add Wonderelo to your festival',
+  },
+  schools: {
+    slug: 'schools',
+    title: 'Wonderelo for Schools & Universities',
+    subtitle: 'Education Networking',
+    heroHeadline: 'Help students build connections that last beyond the classroom',
+    heroDescription: 'Starting at a new school or university is exciting – and lonely. Wonderelo helps students meet each other in a structured, low-pressure way, so they feel at home faster and build a real community.',
+    benefits: [
+      { icon: GraduationCap, title: 'First-week icebreakers', description: 'Orientation weeks are the perfect time for networking rounds. Help freshmen meet each other before the semester even starts.' },
+      { icon: Users, title: 'Cross-department connections', description: 'Students from different faculties rarely meet. Wonderelo pairs them randomly, sparking interdisciplinary friendships.' },
+      { icon: BookOpen, title: 'Study group formation', description: 'Use matching rounds to help students find project partners or study buddies outside their usual circle.' },
+      { icon: Zap, title: 'Easy for organizers', description: 'Student unions, professors, or event coordinators can set it up in minutes. No tech skills required.' },
+    ],
+    howItWorks: [
+      'Share the QR code on slides, posters, or in the campus app',
+      'Students register with their name – takes seconds',
+      'Matching runs at your chosen time during an event or class',
+      'Students meet at designated spots on campus for quick conversations',
+    ],
+    cta: 'Bring Wonderelo to your school',
+  },
 };
 
 interface UseCaseLandingPageProps {
@@ -273,14 +314,7 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-border">
-        <div className="container mx-auto max-w-6xl text-center">
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Wonderelo. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

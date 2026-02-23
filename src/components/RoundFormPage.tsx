@@ -4,6 +4,7 @@ import { SessionForm } from './SessionForm';
 import { debugLog } from '../utils/debug';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { NetworkingSession } from '../App';
+import { Footer } from './Footer';
 
 interface RoundFormPageProps {
   sessions: NetworkingSession[];
@@ -113,6 +114,8 @@ export function RoundFormPage({
           />
         </CardContent>
       </Card>
+
+      <Footer />
     </div>
   );
 }

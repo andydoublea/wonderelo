@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { ArrowRight, Users, Calendar, Clock, QrCode, Heart, Shield, Zap, Star, Coffee, MessageCircle, UserCheck, Shuffle, MapPin, Palette, HandHeart, Lightbulb, Target, Mic, Monitor, GitBranch, Music, Cake, BookOpen, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowRight, Users, Calendar, Clock, QrCode, Heart, Shield, Zap, Star, Coffee, MessageCircle, UserCheck, Shuffle, MapPin, Palette, HandHeart, Lightbulb, Target, Mic, Monitor, GitBranch, Music, Cake, BookOpen, CheckCircle, Loader2, GraduationCap, ImageIcon } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Navigation } from './Navigation';
 import { toast } from 'sonner@2.0.3';
@@ -105,15 +105,14 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       {/* Navigation */}
       <Navigation onGetStarted={onGetStarted} onSignIn={onSignIn} />
 
-      {/* Hero Section */}
-      <section className="relative py-20 px-6">
+      {/* Participant entry - close to navigation */}
+      <section className="py-3 px-6 border-b border-border/40">
         <div className="container mx-auto max-w-6xl">
-          {/* Participant entry */}
-          <div className="text-center mb-8">
-            <p className="text-sm text-muted-foreground mb-3">
+          <div className="flex items-center justify-center gap-3">
+            <p className="text-sm text-muted-foreground">
               Joining as a participant?
             </p>
-            <div className="flex items-center justify-center gap-2 max-w-xs mx-auto">
+            <div className="flex items-center gap-2">
               <div className="relative flex items-center">
                 <span className="absolute left-3 text-muted-foreground pointer-events-none z-10">#</span>
                 <Input
@@ -127,14 +126,14 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                       navigate(`/${cleanCode}`);
                     }
                   }}
-                  className="pl-8 text-center"
+                  className="pl-8 text-left h-8 w-40"
                 />
               </div>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 disabled={!participantCode.trim()}
+                className="h-8"
                 onClick={() => {
-                  // Navigate to user's event page
                   const cleanCode = participantCode.trim().toLowerCase();
                   navigate(`/${cleanCode}`);
                 }}
@@ -143,13 +142,18 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               </Button>
             </div>
           </div>
+        </div>
+      </section>
 
+      {/* Hero Section */}
+      <section className="relative px-6" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
+        <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h1 className="mb-6 max-w-4xl mx-auto text-4xl">
-              Turn networking from side effect into program highlight!
+              <span style={{ color: '#5C2277' }}>Add value to your event with{' '}<br />networking rounds!</span>
             </h1>
             <p className="mb-12 max-w-2xl mx-auto text-muted-foreground">
-              Add value to your event – with timed sessions that bring new people together. Perfect for conferences, meet-ups, internal meetings and private events.
+              Easily turn networking from side effect into program highlight! Perfect for conferences, meet-ups, festivals, internal meetings and private events.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -161,493 +165,209 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             </div>
           </div>
 
-          {/* Networking photos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-16">
+          {/* Hero image */}
+          <div className="mx-auto mb-16" style={{ maxWidth: '600px', marginTop: '-20px' }}>
             <div className="rounded-lg overflow-hidden">
-              <ImageWithFallback 
-                src="https://images.unsplash.com/photo-1549299513-83dceea1f48b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMHBlb3BsZSUyMG5ldHdvcmtpbmclMjBjb25mZXJlbmNlfGVufDF8fHx8MTc1NzQzOTM3NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                alt="Business people networking at conference"
-                className="w-full h-64 object-cover"
-              />
-            </div>
-            <div className="rounded-lg overflow-hidden">
-              <ImageWithFallback 
-                src="https://images.unsplash.com/photo-1517916358207-1e49f666e851?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBuZXR3b3JraW5nJTIwZXZlbnQlMjBtZWV0aW5nfGVufDF8fHx8MTc1NzQzOTM3NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                alt="Professional networking event meeting"
-                className="w-full h-64 object-cover"
+              <img
+                src="/Wonderelo-hero-section-dog.png"
+                alt="Wonderelo networking session"
+                className="w-full h-auto object-contain"
               />
             </div>
           </div>
 
+          <div className="flex items-center justify-center gap-8 text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 fill-current" />
+              <span className="text-sm">Five minute set up</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 fill-current" />
+              <span className="text-sm">For events of every size</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 fill-current" />
+              <span className="text-sm">No worry pricing</span>
+            </div>
+          </div>
 
         </div>
       </section>
 
-      {/* Customer Logos - Trusted By */}
+      {/* Media Logos - As Seen In */}
       <section className="py-12 px-6 border-y border-border/40">
         <div className="container mx-auto max-w-5xl">
           <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
-            Trusted by event organizers at
+            As seen in
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-12 opacity-60">
-            {/* TechFuture Conference */}
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Zap className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">TechFuture</span>
-            </div>
-            {/* CreativeMinds */}
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Lightbulb className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">CreativeMinds</span>
-            </div>
-            {/* BrightPath Consulting */}
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Star className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">BrightPath</span>
-            </div>
-            {/* Caffè Centrale */}
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Coffee className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">Caffè Centrale</span>
-            </div>
-            {/* EuroSummit */}
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Calendar className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">EuroSummit</span>
-            </div>
-            {/* NovaTech */}
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Monitor className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">NovaTech</span>
-            </div>
+          <div className="flex items-center justify-between gap-10 opacity-60 grayscale hover:opacity-80 hover:grayscale-0 transition-all duration-500">
+            <img src="/logos/business-insider.svg" alt="Business Insider" className="h-7 max-w-[130px] w-auto object-contain" />
+            <img src="/logos/digital-journal.svg" alt="Digital Journal" className="h-7 max-w-[130px] w-auto object-contain" />
+            <img src="/logos/big-news-network.svg" alt="Big News Network" className="h-7 max-w-[130px] w-auto object-contain" />
+            <img src="/logos/techbullion.svg" alt="TechBullion" className="h-7 max-w-[130px] w-auto object-contain" />
+            <img src="/logos/ips.svg" alt="IPS" className="h-7 max-w-[130px] w-auto object-contain" />
+            <img src="/logos/starkville-daily-news.svg" alt="Starkville Daily News" className="h-7 max-w-[130px] w-auto object-contain" />
           </div>
         </div>
       </section>
 
       {/* The Problem */}
       <section className="py-20 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="mb-4">Coffee breaks aren't a networking strategy</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Relying on coffee breaks and hallway chats means leaving networking to luck. The chance for real connections slips away—and so does the value of your event.
+        <div className="container mx-auto max-w-3xl">
+          <div className="text-center" style={{ marginBottom: '24px' }}>
+            <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Nine out of ten people go to events to{' '}<br />meet someone new</span></h2>
+            <p className="text-muted-foreground text-lg">
+              Here's the networking experience they usually get:
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-destructive/10 rounded-lg">
-                    <Users className="h-5 w-5 text-destructive" />
-                  </div>
-                  <span>No new contacts</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Many participants leave without meeting anyone new.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-destructive/10 rounded-lg">
-                    <MessageCircle className="h-5 w-5 text-destructive" />
-                  </div>
-                  <span>Hard for introverts</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Approaching strangers feels uncomfortable.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-destructive/10 rounded-lg">
-                    <Shield className="h-5 w-5 text-destructive" />
-                  </div>
-                  <span>Closed circles</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Groups stick together, outsiders stay out.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-destructive/10 rounded-lg">
-                    <UserCheck className="h-5 w-5 text-destructive" />
-                  </div>
-                  <span>Alone all day</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Solo attendees often spend the event on their own.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Solution */}
-      <section id="features" className="py-20 px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="mb-4">Sessions that make networking happen</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Wonderelo turns casual encounters into structured sessions—easy for you to set up, reliable for participants to join, and designed so everyone meets someone new
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '380px', margin: '0 auto 24px' }}>
+            <div className="flex items-center justify-center gap-3 bg-background rounded-xl px-4 py-3 border border-border/40">
+              <span className="text-xl">🍽️</span>
+              <span className="text-sm text-muted-foreground">Food-line bonding over schnitzel</span>
+            </div>
+            <div className="flex items-center justify-center gap-3 bg-background rounded-xl px-4 py-3 border border-border/40">
+              <span className="text-xl">👋</span>
+              <span className="text-sm text-muted-foreground">Brave "Hi…" to their seat neighbour</span>
+            </div>
+            <div className="flex items-center justify-center gap-3 bg-background rounded-xl px-4 py-3 border border-border/40">
+              <span className="text-xl">🤞</span>
+              <span className="text-sm text-muted-foreground">Hope for accidental hallway collisions</span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Calendar className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Program-ready sessions</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Schedule them as part of your program or let them run alongside your event.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <QrCode className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Easy sign-up</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Your participants join with a simple QR code, no app required.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Clock className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Reliable attendance</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Automatic notifications help your participants show up on time.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Shuffle className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Unexpected matches</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Wonderelo pairs people at random, sparking serendipitous conversations.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <MapPin className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Meeting made easy</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  You define meeting points, or let participants agree on their own.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Palette className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>See the shape, meet the person</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Colorful Olishapes™ guide participants together while keeping names and photos hidden as a surprise.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2 lg:col-span-1">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <HandHeart className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>No-pressure contacts</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Shared only if both agree, delivered later to avoid awkward moments.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="mb-4">Networking, thoughtfully designed</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Tailor each networking session to fit your event perfectly
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Clock className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Flexible duration</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Choose the right length for each session, from speed chats to deeper conversations.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Group size control</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Decide whether participants meet one-on-one or in groups.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Target className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Discussion topics</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Add topics to spark conversations around shared interests.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Lightbulb className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Ice breakers</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Provide optional starter questions to help participants begin the conversation.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <GitBranch className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Group matching</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Choose whether attendees meet within or across groups.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Shuffle className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Matching memory</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Sessions remember past pairings, so people always meet someone new.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Mic className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Optional moderators</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Assign moderators in larger groups to keep the conversation flowing and give everyone a chance to speak.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                    <Monitor className="h-5 w-5 text-primary" />
-                  </div>
-                  <span>Stage matching</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Optional feature for smaller events where pairing happens live on screen as part of the show.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          <p className="text-center text-muted-foreground max-w-2xl mx-auto">
+            Too many attendees leave without new connections — approaching strangers is hard, groups stay closed, and solo participants get stuck on the sidelines.
+          </p>
         </div>
       </section>
 
       {/* How It Works */}
       <section id="how-it-works" className="py-20 px-6">
-        <div className="container mx-auto max-w-4xl">
+        <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4">How it works</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Five simple steps from sign-up to new connections
+            <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Stop leaving networking to chance</span></h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+              Give your attendees what they came for — new connections.<br />Run networking rounds at your event.
+            </p>
+            <p className="text-muted-foreground max-w-2xl mx-auto" style={{ marginTop: '24px' }}>
+              Setup takes minutes. Joining takes seconds.<br />This is how it works:
             </p>
           </div>
 
-          <div className="space-y-8 max-w-2xl mx-auto">
-            {/* Step 1 */}
-            <div className="flex items-start gap-5">
-              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
-                <span className="text-xl font-bold text-primary">1</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '60px' }}>
+            {/* Step 1 - Event page promotion */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
+                <div className="text-center text-muted-foreground">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm opacity-60">Step 1 illustration</p>
+                </div>
               </div>
               <div>
-                <h3 className="mb-1">Register</h3>
-                <p className="text-sm text-muted-foreground">
-                  Scan the QR code on a slide, TV screen or rollup banner at the event. Fill in your name and phone number — no app download needed.
+                <div className="mb-5">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
+                    <span className="text-lg font-bold text-primary">1</span>
+                  </div>
+                  <h3 className="text-xl font-semibold" style={{ marginBottom: '12px' }}>Event page promotion</h3>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Share your Event page link with attendees — show it on slides, screens, or roll-ups using a QR code or the event hashtag for instant access.
                 </p>
               </div>
             </div>
 
-            {/* Step 2 */}
-            <div className="flex items-start gap-5">
-              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
-                <span className="text-xl font-bold text-primary">2</span>
+            {/* Step 2 - Participant round registration */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+              <div>
+                <div className="mb-5">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
+                    <span className="text-lg font-bold text-primary">2</span>
+                  </div>
+                  <h3 className="text-xl font-semibold" style={{ marginBottom: '12px' }}>Participant round registration</h3>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  People choose their time and optionally their topic or group. Zero attendee setup for the organizer.
+                </p>
+              </div>
+              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
+                <div className="text-center text-muted-foreground">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm opacity-60">Step 2 illustration</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3 - Attendance confirmation */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
+                <div className="text-center text-muted-foreground">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm opacity-60">Step 3 illustration</p>
+                </div>
               </div>
               <div>
-                <h3 className="mb-1">Get notified</h3>
-                <p className="text-sm text-muted-foreground">
-                  A few minutes before each round, you receive an SMS with a link. Tap to confirm you're ready — that's it.
+                <div className="mb-5">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
+                    <span className="text-lg font-bold text-primary">3</span>
+                  </div>
+                  <h3 className="text-xl font-semibold" style={{ marginBottom: '12px' }}>Attendance confirmation</h3>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Participants get an SMS notification 5 minutes before the round to confirm attendance.
                 </p>
               </div>
             </div>
 
-            {/* Step 3 */}
-            <div className="flex items-start gap-5">
-              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
-                <span className="text-xl font-bold text-primary">3</span>
-              </div>
+            {/* Step 4 - Participants meet & network */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
               <div>
-                <h3 className="mb-1">Find your match</h3>
-                <p className="text-sm text-muted-foreground">
-                  Wonderelo draws random pairs and assigns each a meeting point and a unique image. Head to your spot and look for someone with the same picture.
+                <div className="mb-5">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
+                    <span className="text-lg font-bold text-primary">4</span>
+                  </div>
+                  <h3 className="text-xl font-semibold" style={{ marginBottom: '12px' }}>Participants meet & network</h3>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Wonderelo shows every participant their match and designated meeting point. The round runs according to the preset duration and locations — ice breakers handle the rest.
                 </p>
+              </div>
+              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
+                <div className="text-center text-muted-foreground">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm opacity-60">Step 4 illustration</p>
+                </div>
               </div>
             </div>
 
-            {/* Step 4 */}
-            <div className="flex items-start gap-5">
-              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
-                <span className="text-xl font-bold text-primary">4</span>
+            {/* Step 5 - Contact exchange */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
+                <div className="text-center text-muted-foreground">
+                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm opacity-60">Step 5 illustration</p>
+                </div>
               </div>
               <div>
-                <h3 className="mb-1">Have a conversation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Chat one-on-one with a countdown timer on screen. Ice-breaker questions help you get started if you need a nudge.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 5 */}
-            <div className="flex items-start gap-5">
-              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
-                <span className="text-xl font-bold text-primary">5</span>
-              </div>
-              <div>
-                <h3 className="mb-1">Exchange contacts</h3>
-                <p className="text-sm text-muted-foreground">
-                  After the round, decide whether to share your contact details. If you both say yes, you get each other's info — simple and private.
+                <div className="mb-5">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
+                    <span className="text-lg font-bold text-primary">5</span>
+                  </div>
+                  <h3 className="text-xl font-semibold" style={{ marginBottom: '12px' }}>Contact exchange</h3>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  If both parties agree, contacts are exchanged 15 minutes after the round. New contacts are made, new worlds emerge.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="text-center mt-12">
+          <div className="text-center" style={{ marginTop: '100px' }}>
             <Button onClick={onGetStarted} className="bg-primary text-primary-foreground" size="lg">
               <Calendar className="mr-2 h-5 w-5" />
-              Try it now — it's free
+              Let's make your event better!
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Why random matching */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-3xl text-center">
-          <div className="flex items-center justify-center w-14 h-14 bg-primary/10 rounded-full mx-auto mb-6">
-            <Shuffle className="h-7 w-7 text-primary" />
-          </div>
-          <h2 className="mb-4">Why random matching?</h2>
-          <p className="text-lg text-muted-foreground mb-6">
-            We pair people at random on purpose. No profiles. No algorithms. No filters.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left mt-10">
-            <div className="p-5 rounded-xl border bg-background">
-              <div className="flex items-center gap-3 mb-3">
-                <Lightbulb className="h-5 w-5 text-primary flex-shrink-0" />
-                <h3 className="text-base">Serendipity creates value</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                The best connections often come from unexpected encounters. Random matching breaks bubbles, sparks cross-industry ideas, and helps introverts meet people they'd never approach on their own.
-              </p>
-            </div>
-            <div className="p-5 rounded-xl border bg-background">
-              <div className="flex items-center gap-3 mb-3">
-                <Zap className="h-5 w-5 text-primary flex-shrink-0" />
-                <h3 className="text-base">Zero friction for participants</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                No lengthy profiles to fill out, no swiping, no waiting for a match. Participants just show up and the system does the rest — so they can focus on the conversation.
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -656,27 +376,23 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       <section className="py-20 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4">Every gathering is better when people really connect</h2>
+            <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Every gathering is better when people connect</span></h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Wonderelo works for any setting where you want to bring people together
             </p>
           </div>
 
-          <div className="space-y-12">
-            {/* Events category */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            {/* Row 1: Events (4 cards) */}
             <div>
-              <div className="flex items-center gap-2 mb-5">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Events</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                 <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/conferences')}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
                         <Mic className="h-5 w-5 text-primary" />
                       </div>
-                      <CardTitle>Conferences & barcamps</CardTitle>
+                      <CardTitle className="text-base">Conferences & barcamps</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -693,7 +409,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                       <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
                         <HandHeart className="h-5 w-5 text-primary" />
                       </div>
-                      <CardTitle>Meetups</CardTitle>
+                      <CardTitle className="text-base">Meetups</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -704,13 +420,13 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/parties')}>
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/festivals')}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
                         <Music className="h-5 w-5 text-primary" />
                       </div>
-                      <CardTitle>Parties & weddings</CardTitle>
+                      <CardTitle className="text-base">Festivals & Parties</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -720,28 +436,19 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                     <span className="text-sm text-primary font-medium">Learn more →</span>
                   </CardContent>
                 </Card>
-              </div>
-            </div>
 
-            {/* Venues category */}
-            <div>
-              <div className="flex items-center gap-2 mb-5">
-                <MapPin className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Venues</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/bars')}>
+                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/weddings')}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                        <Coffee className="h-5 w-5 text-primary" />
+                        <Heart className="h-5 w-5 text-primary" />
                       </div>
-                      <CardTitle>Bars & cafés</CardTitle>
+                      <CardTitle className="text-base">Weddings</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-2">
-                      Host speed datings, quiz nights, board game evenings or after-work mixers — and give your regulars a reason to come back.
+                      Help your guests make friends across groups and create unforgettable shared moments.
                     </p>
                     <span className="text-sm text-primary font-medium">Learn more →</span>
                   </CardContent>
@@ -749,45 +456,163 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               </div>
             </div>
 
-            {/* Teams category */}
-            <div>
-              <div className="flex items-center gap-2 mb-5">
-                <Users className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Teams</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/teams')}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                        <GitBranch className="h-5 w-5 text-primary" />
-                      </div>
-                      <CardTitle>Company teams</CardTitle>
+            {/* Row 2: Venues (2 cards) + Teams (1 card) */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+              <Card className="cursor-pointer hover:border-primary/50 transition-colors" style={{ width: 'calc(25% - 12px)' }} onClick={() => navigate('/for/bars')}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                      <Coffee className="h-5 w-5 text-primary" />
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Build deeper relationships across departments and help remote colleagues connect face-to-face.
-                    </p>
-                    <span className="text-sm text-primary font-medium">Learn more →</span>
-                  </CardContent>
-                </Card>
+                    <CardTitle className="text-base">Bars & cafés</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Host speed datings, quiz nights, board game evenings or after-work mixers — and give your regulars a reason to come back.
+                  </p>
+                  <span className="text-sm text-primary font-medium">Learn more →</span>
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <CardTitle>Study groups</CardTitle>
+              <Card className="cursor-pointer hover:border-primary/50 transition-colors" style={{ width: 'calc(25% - 12px)' }} onClick={() => navigate('/for/schools')}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                      <GraduationCap className="h-5 w-5 text-primary" />
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Help students get to know each other, form project teams, or break the ice at the start of a new semester.
+                    <CardTitle className="text-base">Schools & universities</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Help students get to know each other, form project teams, or break the ice at the start of a new semester.
+                  </p>
+                  <span className="text-sm text-primary font-medium">Learn more →</span>
+                </CardContent>
+              </Card>
+
+              <Card className="cursor-pointer hover:border-primary/50 transition-colors" style={{ width: 'calc(25% - 12px)' }} onClick={() => navigate('/for/teams')}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                      <GitBranch className="h-5 w-5 text-primary" />
+                    </div>
+                    <CardTitle className="text-base">Company teams</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Build deeper relationships across departments and help remote colleagues connect face-to-face.
+                  </p>
+                  <span className="text-sm text-primary font-medium">Learn more →</span>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="py-20 px-6 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+            {/* Left: image placeholder */}
+            <div className="bg-muted/50 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '3/4' }}>
+              <div className="text-center text-muted-foreground">
+                <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                <p className="text-sm opacity-60">Feature illustration</p>
+              </div>
+            </div>
+
+            {/* Right: text content */}
+            <div>
+              <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Tailor each networking round to fit your event</span></h2>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', marginTop: '40px' }}>
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                    <Clock className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="font-semibold">Flexible duration</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Choose the right length for each session, from speed chats to deeper conversations.
                     </p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="font-semibold">Group size control</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Decide whether participants meet one-on-one or in groups.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                    <Target className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="font-semibold">Discussion topics</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Add topics to spark conversations around shared interests.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="font-semibold">Group matching</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Choose whether attendees meet within or across groups.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="font-semibold">Meeting points</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Define where participants should meet.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                    <MessageCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="font-semibold">Ice breakers</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Provide optional starter questions to help participants begin the conversation.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                    <Shuffle className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <span className="font-semibold">Matching memory</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Sessions remember past pairings, so people always meet someone new.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -798,9 +623,9 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       <section className="py-20 px-6 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4">Event organizers are going bananas</h2>
+            <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Here's what happened when organizers used Wonderelo</span></h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Wonderelo helped them unlock the full potential of their events
+              And the best part — nothing was left to chance.
             </p>
           </div>
 
@@ -888,23 +713,37 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
         </div>
       </section>
 
-      {/* Media Logos - As Seen In */}
+      {/* Customer Logos - Trusted By */}
       <section className="py-12 px-6">
         <div className="container mx-auto max-w-5xl">
           <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
-            As seen in
+            Trusted by event organizers at
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-12 opacity-50 grayscale hover:opacity-70 hover:grayscale-0 transition-all duration-500">
-            {/* Forbes */}
-            <span className="text-2xl font-bold tracking-tight text-foreground/80 italic" style={{ fontFamily: 'Georgia, serif' }}>Forbes</span>
-            {/* TechCrunch */}
-            <span className="text-2xl font-bold tracking-tight text-foreground/80" style={{ fontFamily: 'system-ui, sans-serif' }}>TechCrunch</span>
-            {/* CNBC */}
-            <span className="text-2xl font-bold tracking-tight text-foreground/80 uppercase" style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.1em' }}>CNBC</span>
-            {/* Eventbrite Blog */}
-            <span className="text-2xl font-bold tracking-tight text-foreground/80" style={{ fontFamily: 'system-ui, sans-serif' }}>Eventbrite</span>
-            {/* The Next Web */}
-            <span className="text-2xl font-bold tracking-tight text-foreground/80 uppercase" style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.05em' }}>TNW</span>
+          <div className="flex flex-wrap items-center justify-center gap-12 opacity-60">
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Zap className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">TechFuture</span>
+            </div>
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Lightbulb className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">CreativeMinds</span>
+            </div>
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Star className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">BrightPath</span>
+            </div>
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Coffee className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">Caffè Centrale</span>
+            </div>
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Calendar className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">EuroSummit</span>
+            </div>
+            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
+              <Monitor className="h-5 w-5" />
+              <span className="text-lg font-semibold tracking-tight">NovaTech</span>
+            </div>
           </div>
         </div>
       </section>
@@ -913,7 +752,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       <section className="py-20 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="mb-4">Become a master of networking</h2>
+            <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Discover the magic of networking</span></h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Insights, tips, and strategies to add more value to your networking events
             </p>
@@ -989,15 +828,15 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       {/* CTA */}
       <section className="py-20 px-6">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="mb-4">Ready to transform networking?</h2>
+          <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Add value to your event with networking rounds!</span></h2>
           <p className="mb-8 text-muted-foreground">
-            Join the movement to make human connections more intentional, structured, and meaningful.
+            Be the event people remember for the connections they made.
           </p>
-          
+
           <div className="flex justify-center">
             <Button size="lg" onClick={onGetStarted}>
               <Calendar className="mr-2 h-5 w-5" />
-              Start organizing now
+              Let's enrich your event!
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -1005,15 +844,15 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <div className="mt-12 flex items-center justify-center gap-8 text-muted-foreground">
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">No setup fees</span>
+              <span className="text-sm">Five minute set up</span>
             </div>
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">Easy to use</span>
+              <span className="text-sm">For events of every size</span>
             </div>
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">Instant results</span>
+              <span className="text-sm">No worry pricing</span>
             </div>
           </div>
         </div>
@@ -1028,7 +867,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 <BookOpen className="h-6 w-6 text-primary" />
                 <span className="text-sm font-medium text-primary uppercase tracking-wide">Free guide</span>
               </div>
-              <h2 className="mb-4">The Ultimate Guide to Event Networking</h2>
+              <h2 className="mb-4"><span style={{ color: '#5C2277' }}>The Ultimate Guide to Event Networking</span></h2>
               <p className="text-muted-foreground mb-6">
                 Learn proven strategies to turn networking from an afterthought into the highlight of your event. Includes templates, timelines, and real examples.
               </p>
@@ -1162,22 +1001,31 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               <h3 className="text-sm font-semibold mb-4">Product</h3>
               <ul className="space-y-3">
                 <li>
-                  <button 
-                    onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  <a
+                    href="#features"
+                    onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                   >
                     Features
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    href="#how-it-works"
+                    onClick={(e) => { e.preventDefault(); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
                     How it works
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    href="/pricing"
+                    onClick={(e) => { e.preventDefault(); navigate('/pricing'); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
                     Pricing
-                  </button>
+                  </a>
                 </li>
               </ul>
             </div>
@@ -1187,22 +1035,30 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               <h3 className="text-sm font-semibold mb-4">Company</h3>
               <ul className="space-y-3">
                 <li>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    href="/our-story"
+                    onClick={(e) => { e.preventDefault(); navigate('/our-story'); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
                     Our story
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button 
-                    onClick={() => navigate('/blog')}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  <a
+                    href="/blog"
+                    onClick={(e) => { e.preventDefault(); navigate('/blog'); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                   >
                     Newsroom
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    href="mailto:hello@wonderelo.com"
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
                     Contact us
-                  </button>
+                  </a>
                 </li>
               </ul>
             </div>
@@ -1212,9 +1068,13 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               <h3 className="text-sm font-semibold mb-4">Support</h3>
               <ul className="space-y-3">
                 <li>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    href="/help"
+                    onClick={(e) => { e.preventDefault(); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
                     Help center
-                  </button>
+                  </a>
                 </li>
               </ul>
             </div>
@@ -1224,14 +1084,22 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               <h3 className="text-sm font-semibold mb-4">Legal</h3>
               <ul className="space-y-3">
                 <li>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    href="/terms"
+                    onClick={(e) => { e.preventDefault(); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
                     Terms of use
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a
+                    href="/privacy"
+                    onClick={(e) => { e.preventDefault(); }}
+                    className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
                     Privacy policy
-                  </button>
+                  </a>
                 </li>
               </ul>
             </div>

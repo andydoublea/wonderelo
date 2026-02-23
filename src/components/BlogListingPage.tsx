@@ -5,6 +5,7 @@ import { Card, CardContent } from './ui/card';
 import { ArrowRight } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Navigation } from './Navigation';
+import { Footer } from './Footer';
 import { debugLog, errorLog } from '../utils/debug';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
@@ -23,6 +24,75 @@ interface BlogPost {
   createdAt: string;
   updatedAt: string;
 }
+
+const fallbackPosts: BlogPost[] = [
+  {
+    id: '1',
+    slug: '5-networking-tips',
+    title: '5 networking tips to maximize your event ROI',
+    excerpt: 'Learn how to create meaningful connections that drive real business value at your next event.',
+    content: '',
+    imageUrl: 'https://images.unsplash.com/photo-1515169067868-5387ec356754?w=800&h=400&fit=crop',
+    readTime: '5 min read',
+    createdAt: '2025-01-15T00:00:00Z',
+    updatedAt: '2025-01-15T00:00:00Z',
+  },
+  {
+    id: '2',
+    slug: 'speed-dating-format',
+    title: 'Why the speed dating format works for networking',
+    excerpt: 'Discover the psychology behind structured networking and why it beats traditional mingling.',
+    content: '',
+    imageUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=400&fit=crop',
+    readTime: '7 min read',
+    createdAt: '2025-01-10T00:00:00Z',
+    updatedAt: '2025-01-10T00:00:00Z',
+  },
+  {
+    id: '3',
+    slug: 'hybrid-events',
+    title: 'How to run successful networking at hybrid events',
+    excerpt: 'Bridge the gap between online and in-person attendees with these proven strategies.',
+    content: '',
+    imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop',
+    readTime: '6 min read',
+    createdAt: '2025-01-05T00:00:00Z',
+    updatedAt: '2025-01-05T00:00:00Z',
+  },
+  {
+    id: '4',
+    slug: 'random-vs-ai-matching',
+    title: 'Random vs AI matching: which one actually works?',
+    excerpt: 'We tested both approaches at real events. The results surprised us — and changed how we think about networking.',
+    content: '',
+    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop',
+    readTime: '8 min read',
+    createdAt: '2025-01-20T00:00:00Z',
+    updatedAt: '2025-01-20T00:00:00Z',
+  },
+  {
+    id: '5',
+    slug: 'how-to-promote-your-event',
+    title: 'How to promote your event and get more signups',
+    excerpt: 'From social media to on-site QR codes — practical ways to drive attendance and get people excited about networking rounds.',
+    content: '',
+    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop',
+    readTime: '6 min read',
+    createdAt: '2025-01-25T00:00:00Z',
+    updatedAt: '2025-01-25T00:00:00Z',
+  },
+  {
+    id: '6',
+    slug: 'meeting-points-guide',
+    title: 'Meeting points: the secret ingredient of great networking rounds',
+    excerpt: 'Why designated meeting spots make networking less awkward, more efficient, and way more fun for everyone involved.',
+    content: '',
+    imageUrl: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&h=400&fit=crop',
+    readTime: '5 min read',
+    createdAt: '2025-01-30T00:00:00Z',
+    updatedAt: '2025-01-30T00:00:00Z',
+  },
+];
 
 export function BlogListingPage() {
   const navigate = useNavigate();
@@ -48,12 +118,15 @@ export function BlogListingPage() {
       if (response.ok) {
         const data = await response.json();
         debugLog('Blog posts:', data);
-        setBlogPosts(data.posts || []);
+        const posts = data.posts || [];
+        setBlogPosts(posts.length > 0 ? posts : fallbackPosts);
       } else {
         errorLog('Failed to fetch blog posts:', response.status);
+        setBlogPosts(fallbackPosts);
       }
     } catch (error) {
       errorLog('Error fetching blog posts:', error);
+      setBlogPosts(fallbackPosts);
     } finally {
       setLoading(false);
     }
@@ -67,7 +140,7 @@ export function BlogListingPage() {
       {/* Header */}
       <section className="py-20 px-6 bg-muted/30">
         <div className="container mx-auto max-w-4xl text-center">
-          <h1 className="mb-4">Become a master of networking</h1>
+          <h1 className="mb-4"><span style={{ color: '#5C2277' }}>Discover the magic of networking</span></h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Insights, tips, and strategies to add more value to your networking events
           </p>
@@ -120,22 +193,7 @@ export function BlogListingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-8 px-6">
-        <div className="container mx-auto max-w-6xl text-center">
-          <p className="text-sm text-muted-foreground">
-            Powered by{' '}
-            <a 
-              href="https://wonderelo.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="font-medium hover:text-foreground transition-colors"
-            >
-              Wonderelo
-            </a>
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

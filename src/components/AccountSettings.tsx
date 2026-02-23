@@ -7,6 +7,7 @@ import { Save, Loader2 } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
+import { Footer } from './Footer';
 
 interface AccountSettingsProps {
   accessToken: string;
@@ -436,6 +437,8 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }
