@@ -1166,8 +1166,9 @@
   color: var(--vs-text-dark) !important;
 }
 
-.vs-jasper [data-variant="ghost"]:hover {
-  background-color: var(--vs-vanilla-muted) !important;
+.vs-jasper [data-variant="ghost"]:hover,
+.vs-jasper [data-slot="button"]:not(.bg-primary):hover {
+  background-color: #f0e6f6 !important;
 }
 
 /* Outline buttons */
@@ -1177,7 +1178,7 @@
 }
 
 .vs-jasper [data-variant="outline"]:hover {
-  background-color: var(--vs-vanilla-muted) !important;
+  background-color: #f0e6f6 !important;
 }
 
 /* ---- Badges ---- */
@@ -1267,8 +1268,8 @@
 
 /* ---- Hero section extra spacing ---- */
 .vs-jasper section.relative {
-  padding-top: 5rem !important;
-  padding-bottom: 5rem !important;
+  padding-top: 5rem;
+  padding-bottom: 5rem;
 }
 
 /* ---- Links ---- */
