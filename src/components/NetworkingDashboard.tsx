@@ -13,10 +13,10 @@ import { SessionForm } from './SessionForm';
 import { SessionDisplayCard } from './SessionDisplayCard';
 import { CalendarView } from './CalendarView';
 import { SessionSuccessPage } from './SessionSuccessPage';
-import { UserPublicPage } from './UserPublicPage';
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calendar, Users, Clock, Globe, Copy, Check, QrCode, Download, Wrench, UserCheck, Edit, Play, CheckCircle2, LayoutGrid, Table as TableIcon, MoreVertical, Trash2, BarChart3, ArrowUpDown, Search, X, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Users, Clock, Copy, Check, QrCode, Download, Wrench, UserCheck, Edit, Play, CheckCircle2, LayoutGrid, Table as TableIcon, MoreVertical, Trash2, BarChart3, ArrowUpDown, Search, X, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { debugLog, errorLog } from '../utils/debug';
 import { ServiceType } from '../App';
 
@@ -53,7 +53,7 @@ export function NetworkingDashboard({
 }: NetworkingDashboardProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [currentView, setCurrentView] = useState<'list' | 'calendar' | 'preview'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'calendar'>('list');
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [editingSession, setEditingSession] = useState<NetworkingSession | null>(null);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
@@ -70,8 +70,6 @@ export function NetworkingDashboard({
     const view = searchParams.get('view');
     if (view === 'calendar') {
       setCurrentView('calendar');
-    } else if (view === 'preview') {
-      setCurrentView('preview');
     } else {
       setCurrentView('list');
     }
@@ -276,15 +274,15 @@ export function NetworkingDashboard({
       <div>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="mb-1">Networking rounds</h1>
+            <h1 className="mb-1">Your networking rounds</h1>
             <p className="text-muted-foreground">
               {isLoadingSessions ? 'Loading...' : `${sortedSessions.length} ${sortedSessions.length === 1 ? 'round' : 'rounds'}`}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => setCurrentView('preview')} variant="outline" size="sm">
-              <Globe className="h-4 w-4 mr-2" />
-              Preview
+            <Button onClick={() => window.open(`/${eventSlug}`, '_blank')} variant="outline" size="sm">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Event page
             </Button>
             <Button onClick={() => navigate('/rounds/new')}>
               Create round
@@ -384,39 +382,18 @@ export function NetworkingDashboard({
     );
   }
 
-  if (currentView === 'preview') {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="mb-1">Public page preview</h1>
-            <p className="text-muted-foreground">Preview how participants see your event</p>
-          </div>
-          <Button onClick={() => setCurrentView('list')} variant="outline">
-            Back to list
-          </Button>
-        </div>
-        <UserPublicPage
-          userSlug={eventSlug}
-          onBack={() => setCurrentView('list')}
-          isPreview={true}
-        />
-      </div>
-    );
-  }
-
   // Main list view
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="mb-1">Networking rounds</h1>
+          <h1 className="mb-1">Your networking rounds</h1>
           <p className="text-muted-foreground">
             {isLoadingSessions ? 'Loading...' : `${sortedSessions.length} ${sortedSessions.length === 1 ? 'round' : 'rounds'}`}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setCurrentView('preview')} variant="outline">
+          <Button onClick={() => window.open(`/${eventSlug}`, '_blank')} variant="outline">
             <ExternalLink className="h-4 w-4 mr-2" />
             Event page
           </Button>
