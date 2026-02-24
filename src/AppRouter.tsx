@@ -1428,9 +1428,10 @@ function AppProviderWithRouter() {
     debugLog('Access token:', accessToken ? 'present' : 'missing');
 
     if (accessToken) {
+      let response: Response | undefined;
       try {
         const { authenticatedFetch } = await import('./utils/supabase/apiClient');
-        const response = await authenticatedFetch(
+        response = await authenticatedFetch(
           '/sessions',
           {
             method: 'POST',
@@ -1438,35 +1439,41 @@ function AppProviderWithRouter() {
           },
           accessToken
         );
-
-        if (response.ok) {
-          const result = await response.json();
-          debugLog('Session added to backend:', result);
-          
-          // Optimistically add to local state immediately for instant UI update
-          setSessions(prevSessions => [...prevSessions, result.session]);
-          
-          // Reload sessions from backend to ensure fresh data and get any server-side changes
-          await loadSessions();
-          
-          const { toast } = await import('sonner@2.0.3');
-          toast.success(`${session.name} created successfully`);
-          
-          return result.session;
-        } else {
-          const { toast } = await import('sonner@2.0.3');
-          toast.error('Error creating round', {
-            description: 'Failed to save to server.'
-          });
-          throw new Error('Failed to create session');
-        }
       } catch (error) {
-        errorLog('Error adding session:', error);
+        errorLog('Error adding session (network):', error);
         const { toast } = await import('sonner@2.0.3');
         toast.error('Error creating round', {
           description: 'Network error.'
         });
         throw error;
+      }
+
+      if (response.ok) {
+        const result = await response.json();
+        debugLog('Session added to backend:', result);
+
+        // Optimistically add to local state immediately for instant UI update
+        setSessions(prevSessions => [...prevSessions, result.session]);
+
+        // Reload sessions from backend to ensure fresh data and get any server-side changes
+        await loadSessions();
+
+        const { toast } = await import('sonner@2.0.3');
+        toast.success(`${session.name} created successfully`);
+
+        return result.session;
+      } else {
+        let errorDetail = `Server responded with ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.error || errorDetail;
+        } catch {}
+        errorLog('Error adding session (server):', errorDetail);
+        const { toast } = await import('sonner@2.0.3');
+        toast.error('Error creating round', {
+          description: errorDetail
+        });
+        throw new Error(errorDetail);
       }
     }
     throw new Error('No access token available');
