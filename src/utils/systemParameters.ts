@@ -1,4 +1,4 @@
-import { projectId, publicAnonKey } from './supabase/info';
+import { apiBaseUrl, publicAnonKey } from './supabase/info';
 import { errorLog } from './debug';
 
 export interface SystemParameters {
@@ -89,7 +89,7 @@ export const fetchSystemParameters = async (): Promise<SystemParameters> => {
   
   try {
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/system-parameters`,
+      `${apiBaseUrl}/system-parameters`,
       {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,

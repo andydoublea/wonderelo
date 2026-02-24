@@ -5,7 +5,7 @@
  */
 
 import { debugLog, errorLog } from './debug';
-import { projectId, publicAnonKey } from './supabase/info';
+import { apiBaseUrl, publicAnonKey } from './supabase/info';
 
 interface AnalyticsEvent {
   type: string;
@@ -90,7 +90,7 @@ async function flushEvents() {
 
   try {
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/events`,
+      `${apiBaseUrl}/events`,
       {
         method: 'POST',
         headers: {
@@ -125,7 +125,7 @@ if (typeof window !== 'undefined') {
         { type: 'application/json' }
       );
       navigator.sendBeacon(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/events`,
+        `${apiBaseUrl}/events`,
         blob
       );
     }

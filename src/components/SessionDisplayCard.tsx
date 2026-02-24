@@ -19,7 +19,7 @@ import { MeetingPointsDialog } from './MeetingPointsDialog';
 import { debugLog, errorLog } from '../utils/debug';
 import { useTime } from '../contexts/TimeContext';
 import { getParametersOrDefault } from '../utils/systemParameters';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
 interface SessionDisplayCardProps {
   session: NetworkingSession;
@@ -109,7 +109,7 @@ export function SessionDisplayCard({
     const fetchRoundRules = async () => {
       try {
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/user/${userSlug}/round-rules`,
+          `${apiBaseUrl}/user/${userSlug}/round-rules`,
           {
             headers: {
               'Authorization': `Bearer ${publicAnonKey}`,

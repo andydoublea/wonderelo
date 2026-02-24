@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { toast } from 'sonner@2.0.3';
 import { hasUpcomingRounds } from '../utils/sessionStatus';
 import { debugLog, errorLog } from '../utils/debug';
@@ -157,15 +157,15 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       debugLog('Current URL:', window.location.href);
       debugLog('Timestamp:', new Date().toISOString());
       
-      const url = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/public/user/${userSlug}`;
+      const url = `${apiBaseUrl}/public/user/${userSlug}`;
       debugLog('Request URL:', url);
-      debugLog('Project ID:', projectId);
+      debugLog('API Base URL:', apiBaseUrl);
       debugLog('Public Anon Key:', publicAnonKey ? 'Present' : 'Missing');
 
       try {
         debugLog('Testing server connectivity...');
         const testResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/test`,
+          `${apiBaseUrl}/test`,
           {
             headers: {
               'Authorization': `Bearer ${publicAnonKey}`,
@@ -273,7 +273,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       debugLog('🔍 Full token (for debugging):', token);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}`,
+        `${apiBaseUrl}/participant/${token}`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -425,7 +425,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       debugLog('🧪 Sending test verification email to:', testEmail);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/test-verification-email`,
+        `${apiBaseUrl}/debug/test-verification-email`,
         {
           method: 'POST',
           headers: {
@@ -468,7 +468,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       debugLog('🧪 Sending test SMS to:', testPhoneNumber);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/test-sms`,
+        `${apiBaseUrl}/debug/test-sms`,
         {
           method: 'POST',
           headers: {
@@ -511,7 +511,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       debugLog('Sending magic link request for:', magicLinkEmail);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/send-magic-link`,
+        `${apiBaseUrl}/participant/send-magic-link`,
         {
           method: 'POST',
           headers: {

@@ -16,7 +16,7 @@ import {
   Loader2, 
   X 
 } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface SignInData {
@@ -96,7 +96,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
 
       // Fetch user profile from backend
       const profileResponse = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/profile`,
+        `${apiBaseUrl}/profile`,
         {
           headers: {
             'Authorization': `Bearer ${data.session.access_token}`,
@@ -160,7 +160,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
       localStorage.setItem('oliwonder_reset_password_timestamp', Date.now().toString());
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/reset-password`,
+        `${apiBaseUrl}/reset-password`,
         {
           method: 'POST',
           headers: {
@@ -221,7 +221,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/send-magic-link`,
+        `${apiBaseUrl}/participant/send-magic-link`,
         {
           method: 'POST',
           headers: {
@@ -254,7 +254,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/quick-login`,
+        `${apiBaseUrl}/participant/quick-login`,
         {
           method: 'POST',
           headers: {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { projectId } from '../utils/supabase/info';
+import { apiBaseUrl } from '../utils/supabase/info';
 import { toast } from 'sonner@2.0.3';
 import { errorLog } from '../utils/debug';
 
@@ -44,7 +44,7 @@ export const adminQueryKeys = {
 
 async function adminFetch(path: string, accessToken: string, options?: RequestInit) {
   const response = await fetch(
-    `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a${path}`,
+    `${apiBaseUrl}${path}`,
     {
       ...options,
       headers: {

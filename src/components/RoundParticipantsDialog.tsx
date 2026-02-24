@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Users, MapPin, Check, X, Clock, UserCheck, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import { projectId } from '../utils/supabase/info';
+import { apiBaseUrl } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
 
 interface RoundParticipant {
@@ -62,7 +62,7 @@ export function RoundParticipantsDialog({
     
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/sessions/${sessionId}/rounds/${roundId}/participants`,
+        `${apiBaseUrl}/admin/sessions/${sessionId}/rounds/${roundId}/participants`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,

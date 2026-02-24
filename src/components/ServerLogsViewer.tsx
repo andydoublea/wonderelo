@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { toast } from 'sonner@2.0.3';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface Log {
@@ -32,7 +32,7 @@ export function ServerLogsViewer() {
       if (!silent) setIsLoading(true);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/server-logs?limit=200`,
+        `${apiBaseUrl}/debug/server-logs?limit=200`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -105,7 +105,7 @@ export function ServerLogsViewer() {
       setIsLoading(true);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/clear-logs`,
+        `${apiBaseUrl}/debug/clear-logs`,
         {
           method: 'POST',
           headers: {

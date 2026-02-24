@@ -35,11 +35,11 @@ export function ParticipantFlow({
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+        const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
         
         // Check if participant has been matched
         const matchResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${roundId}/participant/${participantId}/match`,
+          `${apiBaseUrl}/rounds/${roundId}/participant/${participantId}/match`,
           {
             headers: {
               'Authorization': `Bearer ${publicAnonKey}`,

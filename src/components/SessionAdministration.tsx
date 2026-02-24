@@ -96,13 +96,13 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
 
   const loadUserSlug = async () => {
     try {
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       const accessToken = localStorage.getItem('supabase_access_token');
       
       if (!accessToken) return;
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/profile`,
+        `${apiBaseUrl}/profile`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -122,7 +122,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
   const loadSessionRegistrations = async () => {
     try {
       setIsLoading(true);
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       const accessToken = localStorage.getItem('supabase_access_token');
       
       if (!accessToken) {
@@ -132,7 +132,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
       
       // Use new endpoint
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/organizer/${userSlug}/session/${session.id}/participants`,
+        `${apiBaseUrl}/organizer/${userSlug}/session/${session.id}/participants`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -196,7 +196,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
   const loadRoundParticipants = async (roundId: string) => {
     try {
       setIsLoadingRoundParticipants(true);
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       const accessToken = localStorage.getItem('supabase_access_token');
       
       if (!accessToken) {
@@ -206,7 +206,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
       
       // Call endpoint to get participants for this round with matching information
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/organizer/${userSlug}/session/${session.id}/round/${roundId}/participants`,
+        `${apiBaseUrl}/organizer/${userSlug}/session/${session.id}/round/${roundId}/participants`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -238,7 +238,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
 
   const updateRoundStatus = async (registrationId: string, sessionId: string, roundId: string, newStatus: string) => {
     try {
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       const accessToken = localStorage.getItem('supabase_access_token');
       
       if (!accessToken) {
@@ -248,7 +248,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
       
       // Use new endpoint: /participants/:participantId/rounds/:roundId/status
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participants/${registrationId}/rounds/${roundId}/status`,
+        `${apiBaseUrl}/participants/${registrationId}/rounds/${roundId}/status`,
         {
           method: 'PUT',
           headers: {

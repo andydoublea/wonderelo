@@ -90,12 +90,12 @@ export function ParticipantRoundDetail() {
 
   const fetchRoundDetail = async () => {
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       debugLog('[ParticipantRoundDetail] Fetching round detail for token:', token, 'roundId:', roundId);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/r/${roundId}`,
+        `${apiBaseUrl}/p/${token}/r/${roundId}`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -329,10 +329,10 @@ export function ParticipantRoundDetail() {
                           
                           if (permission === 'granted') {
                             // Update preference on backend
-                            const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+                            const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
                             
                             await fetch(
-                              `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/notification-preference`,
+                              `${apiBaseUrl}/p/${token}/notification-preference`,
                               {
                                 method: 'POST',
                                 headers: {

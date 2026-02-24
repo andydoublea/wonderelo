@@ -118,7 +118,7 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
 
       // Upload to server with auto token refresh
       const { supabase } = await import('../utils/supabase/client');
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       
       // Get fresh session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -147,7 +147,7 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
       const accessToken = session.access_token;
       debugLog('✅ Using token from Supabase session');
       debugLog('Upload config:', {
-        projectId,
+        apiBaseUrl,
         hasAccessToken: !!accessToken,
         fileSize: optimizedFile.size,
         fileType: optimizedFile.type
@@ -160,7 +160,7 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
       formData.append('image', optimizedFile);
       formData.append('original', file); // Send original file too
 
-      const uploadUrl = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/upload-meeting-point-image`;
+      const uploadUrl = `${apiBaseUrl}/upload-meeting-point-image`;
       debugLog('Uploading to:', uploadUrl);
 
       const response = await fetch(uploadUrl, {

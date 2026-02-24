@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { queryKeys, invalidateQueries } from '../utils/queryClient';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 import { handleApiError } from '../utils/apiErrorHandler';
 import { SessionToasts, ParticipantToasts, RegistrationToasts } from '../utils/toastMessages';
@@ -22,8 +22,8 @@ export function useSessions(userId?: string, options?: UseQueryOptions<any[], Er
     queryKey: queryKeys.session.byUser(userId || 'all'),
     queryFn: async () => {
       const url = userId 
-        ? `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions/user/${userId}`
-        : `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions`;
+        ? `${apiBaseUrl}/sessions/user/${userId}`
+        : `${apiBaseUrl}/sessions`;
       
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${publicAnonKey}` }
@@ -48,7 +48,7 @@ export function useSession(sessionId: string, options?: UseQueryOptions<any, Err
     queryKey: queryKeys.session.detail(sessionId),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions/${sessionId}`,
+        `${apiBaseUrl}/sessions/${sessionId}`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -73,7 +73,7 @@ export function useSessionBySlug(slug: string, options?: UseQueryOptions<any, Er
     queryKey: queryKeys.session.bySlug(slug),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions/slug/${slug}`,
+        `${apiBaseUrl}/sessions/slug/${slug}`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -99,7 +99,7 @@ export function useCreateSession(options?: UseMutationOptions<any, Error, any>) 
   return useMutation({
     mutationFn: async (sessionData: any) => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions`,
+        `${apiBaseUrl}/sessions`,
         {
           method: 'POST',
           headers: {
@@ -138,7 +138,7 @@ export function useUpdateSession(options?: UseMutationOptions<any, Error, { sess
   return useMutation({
     mutationFn: async ({ sessionId, data }: { sessionId: string; data: any }) => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions/${sessionId}`,
+        `${apiBaseUrl}/sessions/${sessionId}`,
         {
           method: 'PUT',
           headers: {
@@ -175,7 +175,7 @@ export function useDeleteSession(options?: UseMutationOptions<void, Error, strin
   return useMutation({
     mutationFn: async (sessionId: string) => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions/${sessionId}`,
+        `${apiBaseUrl}/sessions/${sessionId}`,
         {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
@@ -211,7 +211,7 @@ export function useParticipantByToken(token: string, options?: UseQueryOptions<a
     queryKey: queryKeys.participant.byToken(token),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participants/token/${token}`,
+        `${apiBaseUrl}/participants/token/${token}`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -236,7 +236,7 @@ export function useParticipants(sessionId: string, options?: UseQueryOptions<any
     queryKey: queryKeys.participant.list(sessionId),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions/${sessionId}/participants`,
+        `${apiBaseUrl}/sessions/${sessionId}/participants`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -261,7 +261,7 @@ export function useParticipantContacts(participantId: string, options?: UseQuery
     queryKey: queryKeys.participant.contacts(participantId),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participants/${participantId}/contacts`,
+        `${apiBaseUrl}/participants/${participantId}/contacts`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -285,7 +285,7 @@ export function useRegisterParticipant(options?: UseMutationOptions<any, Error, 
   return useMutation({
     mutationFn: async (registrationData: any) => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/register`,
+        `${apiBaseUrl}/register`,
         {
           method: 'POST',
           headers: {
@@ -322,7 +322,7 @@ export function useUpdateParticipant(options?: UseMutationOptions<any, Error, { 
   return useMutation({
     mutationFn: async ({ participantId, data }: { participantId: string; data: any }) => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participants/${participantId}`,
+        `${apiBaseUrl}/participants/${participantId}`,
         {
           method: 'PUT',
           headers: {
@@ -364,7 +364,7 @@ export function useRounds(sessionId: string, options?: UseQueryOptions<any[], Er
     queryKey: queryKeys.round.list(sessionId),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/sessions/${sessionId}/rounds`,
+        `${apiBaseUrl}/sessions/${sessionId}/rounds`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -389,7 +389,7 @@ export function useRoundParticipants(roundId: string, options?: UseQueryOptions<
     queryKey: queryKeys.round.participants(roundId),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${roundId}/participants`,
+        `${apiBaseUrl}/rounds/${roundId}/participants`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -418,7 +418,7 @@ export function useDashboardStats(options?: UseQueryOptions<any, Error>) {
     queryKey: queryKeys.stats.dashboard(),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/stats/dashboard`,
+        `${apiBaseUrl}/stats/dashboard`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }
@@ -443,7 +443,7 @@ export function useSessionStats(sessionId: string, options?: UseQueryOptions<any
     queryKey: queryKeys.stats.session(sessionId),
     queryFn: async () => {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/stats/session/${sessionId}`,
+        `${apiBaseUrl}/stats/session/${sessionId}`,
         {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }

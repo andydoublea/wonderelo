@@ -110,9 +110,9 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
     setSlugError('');
     
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/check-slug/${slug}`,
+        `${apiBaseUrl}/check-slug/${slug}`,
         {
           method: 'GET',
           headers: {
@@ -200,7 +200,7 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
       const previewUrl = URL.createObjectURL(optimizedBlob);
       setPreviewImageUrl(previewUrl);
 
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       
       // Create FormData to send the optimized file
       const formData = new FormData();
@@ -208,7 +208,7 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
 
       // Upload to backend
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/upload-profile-image`,
+        `${apiBaseUrl}/upload-profile-image`,
         {
           method: 'POST',
           headers: {

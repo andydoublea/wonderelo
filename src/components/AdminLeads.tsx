@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ArrowLeft, Download, Mail, Users, Calendar } from 'lucide-react';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
 interface LeadSubmission {
   id: string;
@@ -32,7 +32,7 @@ export function AdminLeads({ accessToken, onBack }: AdminLeadsProps) {
   const loadSubmissions = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/leads`,
+        `${apiBaseUrl}/admin/leads`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,

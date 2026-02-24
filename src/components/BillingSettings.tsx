@@ -6,7 +6,7 @@ import { Slider } from './ui/slider';
 import { Check, Loader2, CreditCard, Calendar, AlertCircle, Sparkles } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
-import { projectId } from '../utils/supabase/info';
+import { apiBaseUrl } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
 import { PRICING_TIERS, CAPACITY_OPTIONS, formatPrice, getTierForCapacity, type CapacityTier } from '../config/pricing';
 
@@ -52,7 +52,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
     try {
       setLoading(true);
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/subscription`,
+        `${apiBaseUrl}/subscription`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -98,7 +98,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
         : { capacity };
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a${endpoint}`,
+        `${apiBaseUrl}${endpoint}`,
         {
           method: 'POST',
           headers: {
@@ -137,7 +137,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/cancel-subscription`,
+        `${apiBaseUrl}/cancel-subscription`,
         {
           method: 'POST',
           headers: {

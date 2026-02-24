@@ -32,10 +32,10 @@ export function NoShowReport({
     setIsSubmitting(true);
 
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${roundId}/no-show`,
+        `${apiBaseUrl}/rounds/${roundId}/no-show`,
         {
           method: 'POST',
           headers: {

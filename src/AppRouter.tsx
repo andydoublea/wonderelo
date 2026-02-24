@@ -10,7 +10,7 @@ import { queryClient, queryKeys } from './utils/queryClient';
 import { PasswordGate } from './components/PasswordGate';
 import type { NetworkingSession, SignUpData, ServiceType } from './App';
 import { debugLog, errorLog, infoLog } from './utils/debug';
-import { projectId } from './utils/supabase/info';
+import { apiBaseUrl } from './utils/supabase/info';
 import { fetchSystemParameters } from './utils/systemParameters';
 
 // Component imports
@@ -1711,7 +1711,7 @@ function AppProviderWithRouter() {
 
           try {
             const response = await fetch(
-              `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/profile`,
+              `${apiBaseUrl}/profile`,
               {
                 headers: {
                   'Authorization': `Bearer ${session.access_token}`,

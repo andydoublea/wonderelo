@@ -210,9 +210,9 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
   useEffect(() => {
     const fetchRoundRules = async () => {
       try {
-        const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+        const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/user/${userSlug}/round-rules`,
+          `${apiBaseUrl}/user/${userSlug}/round-rules`,
           {
             headers: {
               'Authorization': `Bearer ${publicAnonKey}`,
@@ -437,10 +437,10 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     }
 
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/check-email`,
+        `${apiBaseUrl}/participant/check-email`,
         {
           method: 'POST',
           headers: {
@@ -641,10 +641,10 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     }
     
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${participantToken}/confirm/${roundId}`,
+        `${apiBaseUrl}/p/${participantToken}/confirm/${roundId}`,
         {
           method: 'POST',
           headers: {
@@ -689,10 +689,10 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     if (!confirmed) return;
     
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${participantToken}/unregister/${roundId}`,
+        `${apiBaseUrl}/p/${participantToken}/unregister/${roundId}`,
         {
           method: 'DELETE',
           headers: {
@@ -729,12 +729,12 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
 
     try {
       setIsSendingMagicLink(true);
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       debugLog('Sending magic link for registration flow:', magicLinkEmail);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/send-magic-link`,
+        `${apiBaseUrl}/participant/send-magic-link`,
         {
           method: 'POST',
           headers: {
@@ -1193,7 +1193,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
       setIsSubmitting(true);
       let shouldResetSubmitting = true; // Track if we should reset isSubmitting
       try {
-        const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+        const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
         
         // Get existing token from localStorage or props (if any)
         const existingToken = participantToken || localStorage.getItem('participant_token');
@@ -1253,7 +1253,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
         
         // Create registration
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/register-participant`,
+          `${apiBaseUrl}/register-participant`,
           {
             method: 'POST',
             headers: {
@@ -1347,7 +1347,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
             debugLog('Calling /send-registration-email endpoint...');
             
             const emailResponse = await fetch(
-              `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/send-registration-email`,
+              `${apiBaseUrl}/send-registration-email`,
               {
                 method: 'POST',
                 headers: {

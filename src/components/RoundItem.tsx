@@ -146,11 +146,11 @@ export function RoundItem({
 
     const fetchMatchData = async () => {
       try {
-        const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+        const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
         debugLog(`🔍 [RoundItem] Fetching match data for participant ${participantId} in round ${round.id}`);
         
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${round.id}/participant/${participantId}/match?sessionId=${session?.id}`,
+          `${apiBaseUrl}/rounds/${round.id}/participant/${participantId}/match?sessionId=${session?.id}`,
           {
             headers: {
               'Authorization': `Bearer ${publicAnonKey}`,
@@ -364,9 +364,9 @@ export function RoundItem({
       
       const triggerMatching = async () => {
         try {
-          const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+          const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
           const response = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${round.id}/auto-match`,
+            `${apiBaseUrl}/rounds/${round.id}/auto-match`,
             {
               method: 'POST',
               headers: {
@@ -757,9 +757,9 @@ export function RoundItem({
               onClick={async (e) => {
                 e.stopPropagation();
                 try {
-                  const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+                  const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
                   const response = await fetch(
-                    `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${round.id}/confirm-meet`,
+                    `${apiBaseUrl}/rounds/${round.id}/confirm-meet`,
                     {
                       method: 'POST',
                       headers: {
@@ -778,7 +778,7 @@ export function RoundItem({
                     toast.success('Meeting confirmed! Enjoy your networking.');
                     // Refetch match data
                     const matchResponse = await fetch(
-                      `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${round.id}/participant/${participantId}/match`,
+                      `${apiBaseUrl}/rounds/${round.id}/participant/${participantId}/match`,
                       {
                         headers: {
                           'Authorization': `Bearer ${publicAnonKey}`,

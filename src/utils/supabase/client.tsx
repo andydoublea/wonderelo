@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from './info';
+import { supabaseUrl, publicAnonKey } from './info';
 
 // Create a single supabase client with localStorage persistence for session
 export const supabase = createClient(
-  `https://${projectId}.supabase.co`,
+  supabaseUrl,
   publicAnonKey,
   {
     auth: {

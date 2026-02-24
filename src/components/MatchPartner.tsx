@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CheckCircle2, Circle } from 'lucide-react';
 import { CountdownTimer } from './CountdownTimer';
 import { GeometricIdentification } from './GeometricIdentification';
@@ -58,7 +58,7 @@ export function MatchPartner() {
       debugLog('[MatchPartner] Loading match partner data');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/match-partner`,
+        `${apiBaseUrl}/participant/${token}/match-partner`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -98,7 +98,7 @@ export function MatchPartner() {
       debugLog('[MatchPartner] Confirming match with number:', selectedNumber);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/confirm-match`,
+        `${apiBaseUrl}/participant/${token}/confirm-match`,
         {
           method: 'POST',
           headers: {

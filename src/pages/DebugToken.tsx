@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
 export default function DebugToken() {
   const [token, setToken] = useState('5e78ca2d-dddc-452e-80a1-18734595e759');
@@ -10,7 +10,7 @@ export default function DebugToken() {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/verification-token/${token}`,
+        `${apiBaseUrl}/debug/verification-token/${token}`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`

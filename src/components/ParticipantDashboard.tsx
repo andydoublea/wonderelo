@@ -11,7 +11,7 @@ import { ServiceType, NetworkingSession, Round } from '../App';
 import { MeetingPointsDialog } from './MeetingPointsDialog';
 import { RoundRulesDialog, RoundRule } from './RoundRulesDialog';
 import { ParticipantStatusBadge } from '../utils/statusBadge';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import confetti from 'canvas-confetti';
 import {
   AlertDialog,
@@ -501,7 +501,7 @@ export function ParticipantDashboard() {
     
     try {
       // OPTIMIZATION: Use new dashboard endpoint - gets everything in ONE request
-      const baseUrl = addSimulatedTimeParam(`https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/dashboard`);
+      const baseUrl = addSimulatedTimeParam(`${apiBaseUrl}/p/${token}/dashboard`);
       
       // Add cache busting parameter to ensure fresh data
       const separator = baseUrl.includes('?') ? '&' : '?';
@@ -708,7 +708,7 @@ export function ParticipantDashboard() {
     
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/unregister/${round.id}?sessionId=${session.id}`,
+        `${apiBaseUrl}/p/${token}/unregister/${round.id}?sessionId=${session.id}`,
         {
           method: 'DELETE',
           headers: {
@@ -804,7 +804,7 @@ export function ParticipantDashboard() {
       debugLog('🚀 SENDING CONFIRM REQUEST');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/confirm/${roundId}`,
+        `${apiBaseUrl}/p/${token}/confirm/${roundId}`,
         {
           method: 'POST',
           headers: {
@@ -938,7 +938,7 @@ export function ParticipantDashboard() {
         debugLog('📤 Request body:', JSON.stringify(requestBody, null, 2));
         
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/register`,
+          `${apiBaseUrl}/p/${token}/register`,
           {
             method: 'POST',
             headers: {

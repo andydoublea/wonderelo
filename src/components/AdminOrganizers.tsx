@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ArrowLeft, Trash2, Mail, Users, Search, Activity, ChevronUp, ChevronDown, Edit2, RotateCcw, UserX, Globe, Calendar, RefreshCw, Download, UserCheck, History, UserPlus } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { getParticipantStatusConfig, OrganizerStatusBadge } from '../utils/statusBadge';
 import React from 'react';
 import { copyToClipboard } from '../utils/clipboard';
@@ -107,7 +107,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
       setIsLoading(true);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/users`,
+        `${apiBaseUrl}/admin/users`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -135,7 +135,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
   const fetchStats = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/stats`,
+        `${apiBaseUrl}/admin/stats`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -156,7 +156,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
   const handleDeleteUser = async (userId: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/users/${userId}`,
+        `${apiBaseUrl}/admin/users/${userId}`,
         {
           method: 'DELETE',
           headers: {
@@ -185,7 +185,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/users/${editingOrganizer.id}`,
+        `${apiBaseUrl}/admin/users/${editingOrganizer.id}`,
         {
           method: 'PUT',
           headers: {
@@ -215,7 +215,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
   const handleResetUserPassword = async (userId: string, userEmail: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/users/${userId}/reset-password`,
+        `${apiBaseUrl}/admin/users/${userId}/reset-password`,
         {
           method: 'POST',
           headers: {
@@ -241,7 +241,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
   const handleImpersonateUser = async (userId: string, userEmail: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/users/${userId}/impersonate`,
+        `${apiBaseUrl}/admin/users/${userId}/impersonate`,
         {
           method: 'POST',
           headers: {
@@ -395,7 +395,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
     setLoadingSessions(prev => ({ ...prev, [userId]: true }));
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/users/${userId}/sessions`,
+        `${apiBaseUrl}/admin/users/${userId}/sessions`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -419,7 +419,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
     debugLog('🔍 FRONTEND: Fetching participants for', { userId, sessionId });
     setLoadingParticipants(prev => ({ ...prev, [sessionId]: true }));
     try {
-      const url = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/users/${userId}/sessions/${sessionId}/participants`;
+      const url = `${apiBaseUrl}/admin/users/${userId}/sessions/${sessionId}/participants`;
       debugLog('🔍 FRONTEND: Request URL:', url);
       
       const response = await fetch(url, {
@@ -465,7 +465,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
     setLoadingAuditLog(prev => ({ ...prev, [organizerId]: true }));
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/organizers/${organizerId}/audit-log`,
+        `${apiBaseUrl}/admin/organizers/${organizerId}/audit-log`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,

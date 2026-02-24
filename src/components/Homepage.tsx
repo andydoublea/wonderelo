@@ -9,7 +9,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Navigation } from './Navigation';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
 interface HomepageProps {
   onGetStarted: () => void;
@@ -38,7 +38,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
     setLeadSubmitting(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/public/lead-magnet`,
+        `${apiBaseUrl}/public/lead-magnet`,
         {
           method: 'POST',
           headers: {

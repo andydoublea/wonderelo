@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router';
 import { useEffect, useState } from 'react';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 
 interface NetworkingData {
@@ -36,7 +36,7 @@ export function MatchNetworking() {
       debugLog('[MatchNetworking] Loading networking data');
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/networking`,
+        `${apiBaseUrl}/participant/${token}/networking`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,

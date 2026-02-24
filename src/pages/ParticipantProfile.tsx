@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../components/ui/command';
 import { Mail, Phone, Loader2, Check, X, ArrowLeft, User, ChevronsUpDown } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 import { COUNTRY_CODES } from '../utils/countryCodes';
 
@@ -85,7 +85,7 @@ export default function ParticipantProfile() {
 
       // OPTIMIZATION: Use dashboard endpoint for faster loading
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/dashboard`,
+        `${apiBaseUrl}/p/${token}/dashboard`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -154,7 +154,7 @@ export default function ParticipantProfile() {
       setSuccess('');
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/p/${token}/update-profile`,
+        `${apiBaseUrl}/p/${token}/update-profile`,
         {
           method: 'POST',
           headers: {

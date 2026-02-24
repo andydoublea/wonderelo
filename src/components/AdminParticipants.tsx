@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ArrowLeft, Search, RefreshCw, Mail, Phone, Calendar, Users, ChevronUp, ChevronDown, UserPlus, UserCheck, Edit, History, Send, Globe, Trash2, AlertTriangle, Check, X, Eye, LogIn, UserX, Clock, MailPlus, Activity, Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId } from '../utils/supabase/info';
+import { apiBaseUrl } from '../utils/supabase/info';
 import { getStatusBadgeVariant } from '../utils/statusBadge';
 import { useTime } from '../contexts/TimeContext';
 import { useAdminParticipants } from '../hooks/useAdminQueries';
@@ -132,7 +132,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
     try {
       setIsLoadingDetail(true);
       const response = await fetch(
-        addSimulatedTimeParam(`https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/participants/${participantId}`),
+        addSimulatedTimeParam(`${apiBaseUrl}/admin/participants/${participantId}`),
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -160,7 +160,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
     try {
       setIsLoadingAuditLog(true);
       const response = await fetch(
-        addSimulatedTimeParam(`https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/participants/${participantId}/audit-log`),
+        addSimulatedTimeParam(`${apiBaseUrl}/admin/participants/${participantId}/audit-log`),
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -458,7 +458,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
       debugLog('Deleting participant:', participantToDelete.id);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/participants/${participantToDelete.id}`,
+        `${apiBaseUrl}/admin/participants/${participantToDelete.id}`,
         {
           method: 'DELETE',
           headers: {
@@ -494,7 +494,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
       debugLog('Deleting registration:', registrationToDelete.registrationId);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/participants/${expandedParticipantId}/registrations/${registrationToDelete.roundId}`,
+        `${apiBaseUrl}/admin/participants/${expandedParticipantId}/registrations/${registrationToDelete.roundId}`,
         {
           method: 'DELETE',
           headers: {

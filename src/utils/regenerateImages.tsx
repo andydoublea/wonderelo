@@ -1,5 +1,5 @@
 import { optimizeImage, MEETING_POINT_ASPECT_RATIO } from './imageOptimization';
-import { projectId } from './supabase/info';
+import { apiBaseUrl } from './supabase/info';
 import { MeetingPoint } from '../App';
 
 /**
@@ -55,7 +55,7 @@ export async function regenerateMeetingPointImages(
       formData.append('image', optimizedFile);
       formData.append('original', file);
 
-      const uploadUrl = `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/upload-meeting-point-image`;
+      const uploadUrl = `${apiBaseUrl}/upload-meeting-point-image`;
       
       const uploadResponse = await fetch(uploadUrl, {
         method: 'POST',

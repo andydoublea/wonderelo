@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 export function EmailVerification() {
@@ -33,12 +33,12 @@ export function EmailVerification() {
       debugLog('Token:', token);
 
       // Choose endpoint based on verification type
-      const endpoint = verificationType === 'email_change' 
-        ? '/make-server-ce05600a/verify-email-change'
-        : '/make-server-ce05600a/verify-participant-email';
+      const endpoint = verificationType === 'email_change'
+        ? '/verify-email-change'
+        : '/verify-participant-email';
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1${endpoint}`,
+        `${apiBaseUrl}${endpoint}`,
         {
           method: 'POST',
           headers: {

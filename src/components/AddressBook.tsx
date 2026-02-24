@@ -4,7 +4,7 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Users, Mail, Phone, Calendar, ArrowLeft, MessageCircle } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface Contact {
@@ -36,7 +36,7 @@ export function AddressBook() {
     try {
       debugLog('[AddressBook] Loading contacts');
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/shared-contacts`,
+        `${apiBaseUrl}/participant/${token}/shared-contacts`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,

@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface ResetPasswordFlowProps {
@@ -84,7 +84,7 @@ export function ResetPasswordFlow({ onComplete, onBack }: ResetPasswordFlowProps
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/reset-password-with-token`,
+        `${apiBaseUrl}/reset-password-with-token`,
         {
           method: 'POST',
           headers: {

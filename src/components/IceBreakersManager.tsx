@@ -7,7 +7,7 @@ import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Loader2, MessageSquare, Shuffle } from 'lucide-react';
 import { errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
 interface IceBreakersManagerProps {
   iceBreakers: IceBreaker[];
@@ -26,7 +26,7 @@ export function IceBreakersManager({ iceBreakers, onChange }: IceBreakersManager
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/ice-breakers`,
+        `${apiBaseUrl}/ice-breakers`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,

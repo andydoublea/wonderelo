@@ -68,11 +68,11 @@ export function RoundParticipantsAdmin({
     setIsLoading(true);
     
     try {
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       
       // Load participants
       const participantsResponse = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${roundId}/participants?sessionId=${sessionId}`,
+        `${apiBaseUrl}/rounds/${roundId}/participants?sessionId=${sessionId}`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -88,7 +88,7 @@ export function RoundParticipantsAdmin({
 
       // Load matches
       const matchesResponse = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${roundId}/matches`,
+        `${apiBaseUrl}/rounds/${roundId}/matches`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,

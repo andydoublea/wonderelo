@@ -19,7 +19,7 @@ import { DatePicker } from './DatePicker';
 import { MeetingPointsManager } from './MeetingPointsManager';
 import { IceBreakersManager } from './IceBreakersManager';
 import { DEFAULT_ICE_BREAKERS } from '../utils/defaultIceBreakers';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { toast } from 'sonner@2.0.3';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
@@ -115,7 +115,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     const fetchIceBreakers = async () => {
       try {
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/ice-breakers`,
+          `${apiBaseUrl}/ice-breakers`,
           {
             headers: {
               'Authorization': `Bearer ${publicAnonKey}`,

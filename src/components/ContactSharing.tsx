@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { Check, X, Heart, MessageCircle, Sparkles, ThumbsUp } from 'lucide-react';
 
 const FEEDBACK_OPTIONS = [
@@ -53,7 +53,7 @@ export function ContactSharing() {
       debugLog('[ContactSharing] Loading networking data');
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/networking`,
+        `${apiBaseUrl}/participant/${token}/networking`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -111,7 +111,7 @@ export function ContactSharing() {
       debugLog('[ContactSharing] Saving preferences:', contactSharing, 'feedback:', feedback);
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/contact-sharing`,
+        `${apiBaseUrl}/participant/${token}/contact-sharing`,
         {
           method: 'POST',
           headers: {

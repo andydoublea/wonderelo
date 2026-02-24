@@ -137,9 +137,9 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     try {
       debugLog('Changing password...');
       
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/change-password`,
+        `${apiBaseUrl}/change-password`,
         {
           method: 'POST',
           headers: {
@@ -187,9 +187,9 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     try {
       debugLog('Changing email...');
       
-      const { projectId } = await import('../utils/supabase/info');
+      const { apiBaseUrl } = await import('../utils/supabase/info');
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/change-email`,
+        `${apiBaseUrl}/change-email`,
         {
           method: 'POST',
           headers: {

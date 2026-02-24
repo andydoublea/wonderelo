@@ -3,7 +3,7 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Clock, ArrowLeft, Send } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface MissedRoundProps {
@@ -24,7 +24,7 @@ export function MissedRound({ participantToken, roundId, roundName, onBackToDash
     try {
       debugLog('[MissedRound] Submitting feedback');
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${participantToken}/missed-feedback`,
+        `${apiBaseUrl}/participant/${participantToken}/missed-feedback`,
         {
           method: 'POST',
           headers: {

@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { toast } from 'sonner@2.0.3';
 import { Shield, AlertTriangle } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 export function BootstrapAdmin() {
@@ -22,7 +22,7 @@ export function BootstrapAdmin() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/bootstrap-admin`,
+        `${apiBaseUrl}/bootstrap-admin`,
         {
           method: 'POST',
           headers: {

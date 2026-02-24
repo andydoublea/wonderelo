@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { ArrowLeft, TrendingDown, Users, Mail, Loader2 } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface AdminRegistrationFunnelProps {
@@ -40,7 +40,7 @@ export function AdminRegistrationFunnel({ accessToken, onBack }: AdminRegistrati
     try {
       debugLog('[AdminFunnel] Loading funnel data');
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/admin/registration-funnel`,
+        `${apiBaseUrl}/admin/registration-funnel`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,

@@ -47,12 +47,12 @@ export function ParticipantConfirmation({
     setIsConfirming(true);
     
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       debugLog('[ParticipantConfirmation] Confirming participation for roundId:', roundId, 'participantId:', participantId);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${roundId}/confirm/${participantId}`,
+        `${apiBaseUrl}/rounds/${roundId}/confirm/${participantId}`,
         {
           method: 'POST',
           headers: {

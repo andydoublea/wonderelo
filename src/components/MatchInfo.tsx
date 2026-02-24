@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
 
@@ -45,7 +45,7 @@ export function MatchInfo() {
   const fetchMatch = async (): Promise<'matched' | 'no-match' | 'not-ready' | 'error'> => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/match`,
+        `${apiBaseUrl}/participant/${token}/match`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -152,7 +152,7 @@ export function MatchInfo() {
       debugLog('[MatchInfo] Checking in at meeting point');
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/participant/${token}/check-in`,
+        `${apiBaseUrl}/participant/${token}/check-in`,
         {
           method: 'POST',
           headers: {

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Loader2, RefreshCw, User, Edit2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
 interface ProfileDebugToolProps {
   accessToken: string;
@@ -23,7 +24,7 @@ export function ProfileDebugTool({ accessToken, userSlug }: ProfileDebugToolProp
       debugLog('🔍 Checking profile for slug:', userSlug);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/debug/user/${userSlug}/profile`,
+        `${apiBaseUrl}/debug/user/${userSlug}/profile`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -61,7 +62,7 @@ export function ProfileDebugTool({ accessToken, userSlug }: ProfileDebugToolProp
       debugLog('🔄 Refreshing profile...');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/refresh-my-profile`,
+        `${apiBaseUrl}/refresh-my-profile`,
         {
           method: 'POST',
           headers: {

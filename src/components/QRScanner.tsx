@@ -49,10 +49,10 @@ export function QRScanner({
     setCheckInStatus('idle');
 
     try {
-      const { projectId, publicAnonKey } = await import('../utils/supabase/info');
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/rounds/${roundId}/check-in`,
+        `${apiBaseUrl}/rounds/${roundId}/check-in`,
         {
           method: 'POST',
           headers: {

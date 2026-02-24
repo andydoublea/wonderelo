@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ServiceType } from '../App';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface SignUpData {
@@ -174,7 +174,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     setSlugCheckStatus('checking');
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/check-slug/${slug}`,
+        `${apiBaseUrl}/check-slug/${slug}`,
         {
           method: 'GET',
           headers: {
@@ -203,7 +203,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       debugLog('Checking email availability:', email);
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/check-email/${encodeURIComponent(email)}`,
+        `${apiBaseUrl}/check-email/${encodeURIComponent(email)}`,
         {
           method: 'GET',
           headers: {
@@ -236,7 +236,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     // Don't save password to the draft — only non-sensitive fields
     const { password, ...safeFormData } = formData;
     fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/registration-draft`,
+      `${apiBaseUrl}/registration-draft`,
       {
         method: 'POST',
         headers: {
@@ -288,7 +288,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/signup`,
+        `${apiBaseUrl}/signup`,
         {
           method: 'POST',
           headers: {

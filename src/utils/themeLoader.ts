@@ -1,5 +1,5 @@
 import { debugLog, errorLog } from './debug';
-import { projectId, publicAnonKey } from './supabase/info';
+import { apiBaseUrl, publicAnonKey } from './supabase/info';
 
 export interface ThemeColors {
   primary: string;
@@ -50,7 +50,7 @@ export const loadAndApplyTheme = async (): Promise<void> => {
     debugLog('Loading theme from server...');
 
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/public/theme`,
+      `${apiBaseUrl}/public/theme`,
       {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,

@@ -1,4 +1,4 @@
-import { projectId } from './info';
+import { apiBaseUrl } from './info';
 
 /**
  * Authenticated API client that automatically refreshes expired tokens
@@ -14,7 +14,7 @@ export async function authenticatedFetch(
   // Function to make the actual request
   const makeRequest = async (token: string): Promise<Response> => {
     return fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a${endpoint}`,
+      `${apiBaseUrl}${endpoint}`,
       {
         ...options,
         headers: {

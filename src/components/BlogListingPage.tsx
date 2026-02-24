@@ -6,7 +6,7 @@ import { ArrowRight } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Navigation } from './Navigation';
 import { debugLog, errorLog } from '../utils/debug';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
 interface BlogPost {
   id: string;
@@ -37,7 +37,7 @@ export function BlogListingPage() {
     try {
       setLoading(true);
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce05600a/blog/posts`,
+        `${apiBaseUrl}/blog/posts`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
