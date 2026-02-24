@@ -245,11 +245,21 @@ function mapSessionFromDb(data: any) {
     name: data.name,
     description: data.description,
     date: data.date,
+    startTime: data.start_time,
+    endTime: data.end_time,
+    roundDuration: data.round_duration,
+    numberOfRounds: data.number_of_rounds,
+    gapBetweenRounds: data.gap_between_rounds,
     status: data.status,
+    registrationStart: data.registration_start,
+    registrationEnd: data.registration_end,
     limitParticipants: data.limit_participants,
     maxParticipants: data.max_participants,
     groupSize: data.group_size,
+    limitGroups: data.limit_groups,
+    maxGroups: data.max_groups,
     enableTeams: data.enable_teams,
+    allowMultipleTeams: data.allow_multiple_teams,
     matchingType: data.matching_type,
     teams: data.teams,
     enableTopics: data.enable_topics,
@@ -257,6 +267,10 @@ function mapSessionFromDb(data: any) {
     topics: data.topics,
     meetingPoints: data.meeting_points,
     iceBreakers: data.ice_breakers,
+    isRecurring: data.is_recurring,
+    frequency: data.frequency,
+    location: data.location,
+    liveSubStatus: data.live_sub_status,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -315,11 +329,21 @@ export async function createSession(session: any) {
       name: sessionData.name,
       description: sessionData.description || null,
       date: sessionData.date || null,
+      start_time: sessionData.startTime || null,
+      end_time: sessionData.endTime || null,
+      round_duration: sessionData.roundDuration || 10,
+      number_of_rounds: sessionData.numberOfRounds || 1,
+      gap_between_rounds: sessionData.gapBetweenRounds ?? 5,
       status: sessionData.status || 'draft',
+      registration_start: sessionData.registrationStart || null,
+      registration_end: sessionData.registrationEnd || null,
       limit_participants: sessionData.limitParticipants || false,
       max_participants: sessionData.maxParticipants || 20,
       group_size: sessionData.groupSize || 2,
+      limit_groups: sessionData.limitGroups || false,
+      max_groups: sessionData.maxGroups || null,
       enable_teams: sessionData.enableTeams || false,
+      allow_multiple_teams: sessionData.allowMultipleTeams || false,
       matching_type: sessionData.matchingType || 'across-teams',
       teams: sessionData.teams || [],
       enable_topics: sessionData.enableTopics || false,
@@ -327,6 +351,10 @@ export async function createSession(session: any) {
       topics: sessionData.topics || [],
       meeting_points: sessionData.meetingPoints || [],
       ice_breakers: sessionData.iceBreakers || [],
+      is_recurring: sessionData.isRecurring || false,
+      frequency: sessionData.frequency || null,
+      location: sessionData.location || null,
+      live_sub_status: sessionData.liveSubStatus || null,
       created_at: sessionData.createdAt || new Date().toISOString(),
       updated_at: sessionData.updatedAt || new Date().toISOString(),
     });
@@ -348,11 +376,21 @@ export async function updateSession(sessionId: string, updates: any) {
   if (updates.name !== undefined) dbUpdates.name = updates.name;
   if (updates.description !== undefined) dbUpdates.description = updates.description;
   if (updates.date !== undefined) dbUpdates.date = updates.date;
+  if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
+  if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
+  if (updates.roundDuration !== undefined) dbUpdates.round_duration = updates.roundDuration;
+  if (updates.numberOfRounds !== undefined) dbUpdates.number_of_rounds = updates.numberOfRounds;
+  if (updates.gapBetweenRounds !== undefined) dbUpdates.gap_between_rounds = updates.gapBetweenRounds;
   if (updates.status !== undefined) dbUpdates.status = updates.status;
+  if (updates.registrationStart !== undefined) dbUpdates.registration_start = updates.registrationStart;
+  if (updates.registrationEnd !== undefined) dbUpdates.registration_end = updates.registrationEnd;
   if (updates.limitParticipants !== undefined) dbUpdates.limit_participants = updates.limitParticipants;
   if (updates.maxParticipants !== undefined) dbUpdates.max_participants = updates.maxParticipants;
   if (updates.groupSize !== undefined) dbUpdates.group_size = updates.groupSize;
+  if (updates.limitGroups !== undefined) dbUpdates.limit_groups = updates.limitGroups;
+  if (updates.maxGroups !== undefined) dbUpdates.max_groups = updates.maxGroups;
   if (updates.enableTeams !== undefined) dbUpdates.enable_teams = updates.enableTeams;
+  if (updates.allowMultipleTeams !== undefined) dbUpdates.allow_multiple_teams = updates.allowMultipleTeams;
   if (updates.matchingType !== undefined) dbUpdates.matching_type = updates.matchingType;
   if (updates.teams !== undefined) dbUpdates.teams = updates.teams;
   if (updates.enableTopics !== undefined) dbUpdates.enable_topics = updates.enableTopics;
@@ -360,6 +398,10 @@ export async function updateSession(sessionId: string, updates: any) {
   if (updates.topics !== undefined) dbUpdates.topics = updates.topics;
   if (updates.meetingPoints !== undefined) dbUpdates.meeting_points = updates.meetingPoints;
   if (updates.iceBreakers !== undefined) dbUpdates.ice_breakers = updates.iceBreakers;
+  if (updates.isRecurring !== undefined) dbUpdates.is_recurring = updates.isRecurring;
+  if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
+  if (updates.location !== undefined) dbUpdates.location = updates.location;
+  if (updates.liveSubStatus !== undefined) dbUpdates.live_sub_status = updates.liveSubStatus;
 
   const { error } = await db()
     .from('sessions')

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { toast } from 'sonner@2.0.3';
-import { hasUpcomingRounds } from '../utils/sessionStatus';
+
 import { debugLog, errorLog } from '../utils/debug';
 import { APP_VERSION } from '../utils/version';
 import { fetchSystemParameters, getParametersOrDefault } from '../utils/systemParameters';
@@ -352,49 +352,36 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
     }
   };
 
-  const isRegistrationOpen = (session: NetworkingSession): boolean => {
+  const isSessionVisible = (session: NetworkingSession): boolean => {
     if (session.status !== 'published') {
       debugLog(`❌ Session "${session.name}" not published (status: ${session.status})`);
       return false;
     }
-    
+
     const now = new Date();
-    
-    if (session.date && session.endTime) {
-      const sessionEndTime = new Date(`${session.date}T${session.endTime}:00`);
-      if (now >= sessionEndTime) {
-        debugLog(`❌ Session "${session.name}" already ended (endTime: ${session.endTime})`);
-        return false;
-      }
-    }
-    
-    if (!hasUpcomingRounds(session)) {
-      debugLog(`❌ Session "${session.name}" has no upcoming rounds (all rounds started or finished)`);
-      return false;
-    }
-    
+
     if (!session.registrationStart) {
       debugLog(`⚠️ Session "${session.name}" has no registrationStart - showing it anyway`);
       return true;
     }
-    
+
     const registrationStartTime = new Date(session.registrationStart);
-    
+
     const isOpen = now >= registrationStartTime;
-    debugLog(`🕐 Session "${session.name}" registration check:`, {
+    debugLog(`🕐 Session "${session.name}" visibility check:`, {
       status: session.status,
       registrationStart: session.registrationStart,
       now: now.toISOString(),
       registrationStartTime: registrationStartTime.toISOString(),
       isOpen
     });
-    
+
     return isOpen;
   };
-  
-  const availableForRegistration = sessions.filter(s => 
-    s.status === 'published' && 
-    isRegistrationOpen(s)
+
+  const availableForRegistration = sessions.filter(s =>
+    s.status === 'published' &&
+    isSessionVisible(s)
   );
   
   debugLog('📊 AVAILABLE SESSIONS FOR REGISTRATION:', {
