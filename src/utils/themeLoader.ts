@@ -74,7 +74,11 @@ export const loadAndApplyTheme = async (): Promise<void> => {
     }
   } catch (error) {
     errorLog('Error loading theme:', error);
-    // Silently fail and use default theme
+    // On localhost, apply default Jasper style when API is unavailable
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      applyVisualStyle('jasper');
+      debugLog('Localhost fallback: applied Jasper visual style');
+    }
   }
 };
 

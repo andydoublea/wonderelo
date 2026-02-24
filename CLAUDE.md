@@ -23,6 +23,7 @@ Always double-check `--project-ref` before running any Supabase CLI commands.
 - NEVER commit `.env.local` to git (it's in `.gitignore`)
 - NEVER use production Supabase credentials during local development
 - Before ANY infrastructure change, verify current state first
+- Before committing, ALWAYS ask the user which branch to commit to. Never assume the branch — wait for explicit confirmation (e.g. "commit to development", "commit to staging").
 
 ---
 
