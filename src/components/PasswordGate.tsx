@@ -9,6 +9,11 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Skip password gate on localhost
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      setIsUnlocked(true);
+      return;
+    }
     if (localStorage.getItem(STORAGE_KEY) === 'granted') {
       setIsUnlocked(true);
     }

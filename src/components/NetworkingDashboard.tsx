@@ -8,6 +8,7 @@ import { Skeleton } from './ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { toast } from 'sonner@2.0.3';
 import { NetworkingSession } from '../types';
+import { Footer } from './Footer';
 import { SessionForm } from './SessionForm';
 import { SessionDisplayCard } from './SessionDisplayCard';
 import { CalendarView } from './CalendarView';
@@ -681,6 +682,8 @@ export function NetworkingDashboard({
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   );
 }

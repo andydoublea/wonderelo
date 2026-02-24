@@ -8,6 +8,7 @@ import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { debugLog, errorLog } from '../utils/debug';
+import { Footer } from './Footer';
 
 interface EventPageSettingsProps {
   accessToken: string;
@@ -543,6 +544,8 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         </>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Input } from './ui/input';
 import { NetworkingSession } from '../App';
 import { OnboardingChecklist } from './OnboardingChecklist';
 import { OnboardingTour } from './OnboardingTour';
+import { Footer } from './Footer';
 import { DownloadableAssets } from './DownloadableAssets';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
@@ -330,6 +331,8 @@ export function Dashboard({
       {showTour && (
         <OnboardingTour onComplete={() => setShowTour(false)} />
       )}
+
+      <Footer />
     </div>
   );
 }

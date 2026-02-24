@@ -9,6 +9,7 @@ import { toast } from 'sonner@2.0.3';
 import { apiBaseUrl } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
 import { PRICING_TIERS, CAPACITY_OPTIONS, formatPrice, getTierForCapacity, type CapacityTier } from '../config/pricing';
+import { Footer } from './Footer';
 
 interface Subscription {
   plan: string;
@@ -498,6 +499,8 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
           </Card>
         </>
       )}
+
+      <Footer />
     </div>
   );
 }
