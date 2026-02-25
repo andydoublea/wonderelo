@@ -5,23 +5,26 @@ interface AuthorSignatureProps {
 export function AuthorSignature({ className = '' }: AuthorSignatureProps) {
   return (
     <div className={className} style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-      <div style={{
-        width: '96px',
-        height: '96px',
-        borderRadius: '50%',
-        backgroundColor: '#f0e6f6',
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#5C2277',
-        fontSize: '28px',
-        fontWeight: 'bold'
-      }}>
-        AA
-      </div>
+      <img
+        src="/Andy-Abel-Wonderelo.jpg"
+        alt="Andy Abel"
+        style={{
+          width: '128px',
+          height: '128px',
+          borderRadius: '50%',
+          flexShrink: 0,
+          objectFit: 'cover',
+        }}
+      />
       <div>
-        <p className="font-semibold" style={{ margin: 0 }}>Andy Abel</p>
+        <p className="font-semibold" style={{ margin: 0 }}>
+          Andy Abel{' '}
+          <a href="https://linkedin.com/andyabel" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: '4px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#0A66C2">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+          </a>
+        </p>
         <p className="text-sm text-muted-foreground italic" style={{ margin: '2px 0 0 0' }}>Founder & CEO at Wonderelo</p>
         <hr style={{ width: '40px', border: 'none', borderTop: '1px solid #d4d4d4', margin: '8px 0' }} />
         <p className="text-sm text-muted-foreground" style={{ marginTop: '0' }}>
