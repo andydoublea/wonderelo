@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { X, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -10,17 +11,12 @@ interface TourStep {
   position?: 'top' | 'bottom' | 'left' | 'right';
 }
 
+// Steps ordered top-to-bottom on the page to minimize jarring scroll jumps
 const tourSteps: TourStep[] = [
   {
-    target: '[data-tour="session-card"]',
-    title: 'Your published rounds',
-    description: 'This section shows rounds that are live on your event page. Participants can register for published rounds by visiting your event page.',
-    position: 'bottom',
-  },
-  {
-    target: '[data-tour="create-round"]',
-    title: 'Manage your rounds',
-    description: 'Click here to see all your rounds, create new ones, edit existing ones, or change their status. You can also duplicate rounds to save time.',
+    target: '[data-tour="onboarding-checklist"]',
+    title: 'Getting started checklist',
+    description: 'Follow these steps to set up your first event. Each item checks off automatically as you complete it.',
     position: 'bottom',
   },
   {
@@ -30,9 +26,15 @@ const tourSteps: TourStep[] = [
     position: 'bottom',
   },
   {
-    target: '[data-tour="onboarding-checklist"]',
-    title: 'Getting started checklist',
-    description: 'Follow these steps to set up your first event. Each item checks off automatically as you complete it.',
+    target: '[data-tour="session-card"]',
+    title: 'Your published rounds',
+    description: 'This section shows rounds that are live on your event page. Participants can register for published rounds by visiting your event page.',
+    position: 'top',
+  },
+  {
+    target: '[data-tour="create-round"]',
+    title: 'Manage your rounds',
+    description: 'Click here to see all your rounds, create new ones, edit existing ones, or change their status. You can also duplicate rounds to save time.',
     position: 'bottom',
   },
 ];
@@ -41,14 +43,72 @@ interface OnboardingTourProps {
   onComplete: () => void;
 }
 
+function computeTooltipPosition(rect: DOMRect, position: string) {
+  const tooltipWidth = 320;
+  const tooltipHeight = 180;
+  const gap = 12;
+
+  let top = 0;
+  let left = 0;
+
+  switch (position) {
+    case 'bottom':
+      top = rect.bottom + gap;
+      left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16));
+      break;
+    case 'top':
+      top = rect.top - gap - tooltipHeight;
+      left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16));
+      break;
+    case 'left':
+      top = rect.top + rect.height / 2 - tooltipHeight / 2;
+      left = rect.left - tooltipWidth - gap;
+      break;
+    case 'right':
+      top = rect.top + rect.height / 2 - tooltipHeight / 2;
+      left = rect.right + gap;
+      break;
+  }
+
+  // Clamp to keep tooltip within viewport
+  top = Math.max(16, Math.min(top, window.innerHeight - tooltipHeight - 16));
+  left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16));
+
+  return { top, left };
+}
+
+/**
+ * Scrolls element into view and waits for scroll to stabilize,
+ * then calls the callback with the final viewport-relative rect.
+ */
+function scrollToElementAndGetRect(
+  el: Element,
+  callback: (rect: DOMRect) => void
+) {
+  // Use instant scroll for reliability - smooth scroll timing is unpredictable
+  el.scrollIntoView({ behavior: 'instant', block: 'center' });
+
+  // After instant scroll, use rAF to get the rect after layout
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      callback(el.getBoundingClientRect());
+    });
+  });
+}
+
 export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
-  const positionTooltip = useCallback(() => {
+  const handleComplete = useCallback(() => {
+    localStorage.setItem('onboarding_tour_completed', 'true');
+    onComplete();
+  }, [onComplete]);
+
+  // Navigate to step: scroll into view, then position tooltip
+  useEffect(() => {
     const step = tourSteps[currentStep];
     if (!step) return;
 
@@ -63,64 +123,30 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
       return;
     }
 
-    const rect = targetEl.getBoundingClientRect();
-    setTargetRect(rect);
+    setIsVisible(false);
+    setTargetRect(null);
 
-    // Scroll element into view
-    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    scrollToElementAndGetRect(targetEl, (rect) => {
+      setTargetRect(rect);
+      setTooltipPosition(computeTooltipPosition(rect, step.position || 'bottom'));
+      setIsVisible(true);
+    });
+  }, [currentStep, handleComplete]);
 
-    // Position tooltip based on step.position
-    const position = step.position || 'bottom';
-    const tooltipWidth = 320;
-    const gap = 12;
-
-    let top = 0;
-    let left = 0;
-
-    switch (position) {
-      case 'bottom':
-        top = rect.bottom + gap + window.scrollY;
-        left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16));
-        break;
-      case 'top':
-        top = rect.top - gap - 180 + window.scrollY;
-        left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16));
-        break;
-      case 'left':
-        top = rect.top + rect.height / 2 - 90 + window.scrollY;
-        left = rect.left - tooltipWidth - gap;
-        break;
-      case 'right':
-        top = rect.top + rect.height / 2 - 90 + window.scrollY;
-        left = rect.right + gap;
-        break;
-    }
-
-    setTooltipPosition({ top, left });
-    setIsVisible(true);
-  }, [currentStep]);
-
+  // Re-position on resize
   useEffect(() => {
-    // Small delay to let the page render
-    const timer = setTimeout(positionTooltip, 300);
-    return () => clearTimeout(timer);
-  }, [currentStep, positionTooltip]);
-
-  // Re-position on scroll/resize
-  useEffect(() => {
-    const handleReposition = () => positionTooltip();
-    window.addEventListener('resize', handleReposition);
-    window.addEventListener('scroll', handleReposition);
-    return () => {
-      window.removeEventListener('resize', handleReposition);
-      window.removeEventListener('scroll', handleReposition);
+    const handleResize = () => {
+      const step = tourSteps[currentStep];
+      if (!step) return;
+      const targetEl = document.querySelector(step.target);
+      if (!targetEl) return;
+      const rect = targetEl.getBoundingClientRect();
+      setTargetRect(rect);
+      setTooltipPosition(computeTooltipPosition(rect, step.position || 'bottom'));
     };
-  }, [positionTooltip]);
-
-  const handleComplete = () => {
-    localStorage.setItem('onboarding_tour_completed', 'true');
-    onComplete();
-  };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [currentStep]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
@@ -140,20 +166,28 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   const step = tourSteps[currentStep];
 
-  return (
+  // Use a portal to render at document.body level, avoiding any parent stacking context issues.
+  // Use inline styles for position/zIndex since Tailwind v4 may not generate arbitrary z-[...] classes.
+  return createPortal(
     <>
-      {/* Overlay */}
+      {/* Overlay - covers entire viewport */}
       <div
-        className="fixed inset-0 z-[9998]"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9998,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}
         onClick={handleComplete}
       />
 
       {/* Highlight cutout for target element */}
       {targetRect && (
         <div
-          className="fixed z-[9999] pointer-events-none"
           style={{
+            position: 'fixed',
+            zIndex: 9999,
+            pointerEvents: 'none',
             top: targetRect.top - 4,
             left: targetRect.left - 4,
             width: targetRect.width + 8,
@@ -161,6 +195,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             borderRadius: '8px',
             boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
             border: '2px solid hsl(var(--primary))',
+            backgroundColor: 'hsl(var(--background))',
           }}
         />
       )}
@@ -168,9 +203,9 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
       {/* Tooltip */}
       {isVisible && step && (
         <div
-          ref={tooltipRef}
-          className="fixed z-[10000]"
           style={{
+            position: 'fixed',
+            zIndex: 10000,
             top: tooltipPosition.top,
             left: tooltipPosition.left,
             width: '320px',
@@ -211,6 +246,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
           </Card>
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }

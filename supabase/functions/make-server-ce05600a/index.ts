@@ -141,7 +141,7 @@ app.post('/make-server-ce05600a/signup', async (c) => {
     // Send welcome email (non-blocking)
     const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
     const dashboardUrl = `${appUrl}/dashboard`;
-    const eventPageUrl = urlSlug ? `${appUrl}/${urlSlug}` : undefined;
+    const eventPageUrl = finalSlug ? `${appUrl}/${finalSlug}` : undefined;
     const welcomeEmail = buildWelcomeEmail({
       firstName: organizerName?.split(' ')[0] || 'there',
       dashboardUrl,
@@ -204,6 +204,49 @@ app.post('/make-server-ce05600a/signup', async (c) => {
   } catch (error) {
     errorLog('Error in signup:', error);
     return c.json({ error: 'Failed to sign up' }, 500);
+  }
+});
+
+// Participant pre-registration
+app.post('/make-server-ce05600a/participant-preregister', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { email, firstName, lastName, phone } = body;
+
+    if (!email || !firstName || !lastName) {
+      return c.json({ error: 'Email, first name, and last name are required' }, 400);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await db.getParticipantByEmail(normalizedEmail);
+
+    if (existing) {
+      // Update existing participant's info
+      await db.updateParticipant(existing.id, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone?.trim() || undefined,
+      });
+      return c.json({ success: true, message: 'Info updated' });
+    }
+
+    // Create new participant
+    const participantId = `p-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const token = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+
+    await db.createParticipant({
+      participantId,
+      email: normalizedEmail,
+      token,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone?.trim() || undefined,
+    });
+
+    return c.json({ success: true, message: 'Pre-registration complete' });
+  } catch (error) {
+    errorLog('Error in participant-preregister:', error);
+    return c.json({ error: 'Failed to pre-register' }, 500);
   }
 });
 

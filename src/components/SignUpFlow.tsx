@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, Loader2, X, Users, Mic } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ServiceType } from '../App';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
+import { Footer } from './Footer';
 
 interface SignUpData {
   email: string;
@@ -23,8 +24,16 @@ interface SignUpData {
   eventTypeOther: string;
 }
 
+interface ParticipantData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
+
 interface SignUpFlowProps {
   onComplete: (data: SignUpData) => void;
+  onParticipantComplete?: () => void;
   onBack: () => void;
   onSwitchToSignIn?: () => void;
 }
@@ -73,7 +82,10 @@ const discoveryOptions = [
   { value: 'other', label: 'Other' }
 ];
 
-export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowProps) {
+type UserRole = 'organizer' | 'participant' | null;
+
+export function SignUpFlow({ onComplete, onParticipantComplete, onBack, onSwitchToSignIn }: SignUpFlowProps) {
+  const [selectedRole, setSelectedRole] = useState<UserRole>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,6 +93,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
   const [slugCheckStatus, setSlugCheckStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [emailCheckStatus, setEmailCheckStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const emailTimeoutRef = useRef<NodeJS.Timeout>();
+  const [participantSuccess, setParticipantSuccess] = useState(false);
   const [formData, setFormData] = useState<SignUpData>({
     email: '',
     password: '',
@@ -93,8 +106,14 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     eventType: '',
     eventTypeOther: ''
   });
+  const [participantData, setParticipantData] = useState<ParticipantData>({
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: ''
+  });
 
-  const totalSteps = 3;
+  const totalSteps = selectedRole === 'organizer' ? 3 : 1;
 
   // Function to remove diacritics and convert to URL-friendly slug
   const removeDiacritics = (str: string): string => {
@@ -134,40 +153,36 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       .map(char => diacriticsMap[char] || char)
       .join('')
       .toLowerCase()
-      .replace(/\s+/g, '') // Remove spaces completely
-      .replace(/[^a-z0-9]/g, '') // Remove all special characters
-      .trim(); // Remove leading/trailing whitespace
+      .replace(/\s+/g, '')
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
   };
 
   const updateFormData = (field: keyof SignUpData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Check URL slug availability when it changes
+
     if (field === 'urlSlug' && value.length >= 3) {
       checkSlugAvailability(value);
     } else if (field === 'urlSlug') {
       setSlugCheckStatus('idle');
     }
 
-    // Check email availability when it changes (with debounce)
     if (field === 'email') {
-      // Clear previous timeout
       if (emailTimeoutRef.current) {
         clearTimeout(emailTimeoutRef.current);
       }
-      
-      // Reset status immediately
       setEmailCheckStatus('idle');
-      
-      // Check if email format is valid
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (value && emailRegex.test(value)) {
-        // Set debounced check
         emailTimeoutRef.current = setTimeout(() => {
           checkEmailAvailability(value);
-        }, 500); // 500ms debounce
+        }, 500);
       }
     }
+  };
+
+  const updateParticipantData = (field: keyof ParticipantData, value: string) => {
+    setParticipantData(prev => ({ ...prev, [field]: value }));
   };
 
   const checkSlugAvailability = async (slug: string) => {
@@ -183,7 +198,6 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
           },
         }
       );
-
       if (response.ok) {
         const result = await response.json();
         setSlugCheckStatus(result.available ? 'available' : 'taken');
@@ -201,7 +215,6 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     setEmailCheckStatus('checking');
     try {
       debugLog('Checking email availability:', email);
-      
       const response = await fetch(
         `${apiBaseUrl}/check-email/${encodeURIComponent(email)}`,
         {
@@ -212,9 +225,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
           },
         }
       );
-
       debugLog('Email check response status:', response.status);
-
       if (response.ok) {
         const result = await response.json();
         debugLog('Email check result:', result);
@@ -230,10 +241,8 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     }
   };
 
-  // Save registration draft to backend (non-blocking)
   const saveRegistrationDraft = (step: number) => {
     if (!formData.email) return;
-    // Don't save password to the draft — only non-sensitive fields
     const { password, ...safeFormData } = formData;
     fetch(
       `${apiBaseUrl}/registration-draft`,
@@ -245,7 +254,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
         },
         body: JSON.stringify({ email: formData.email, currentStep: step, formData: safeFormData }),
       }
-    ).catch(() => {}); // Silently fail — this is a best-effort save
+    ).catch(() => {});
   };
 
   const nextStep = () => {
@@ -263,9 +272,17 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
   };
 
   const isStepValid = () => {
+    if (selectedRole === 'participant') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return (
+        participantData.email && emailRegex.test(participantData.email) &&
+        participantData.firstName.trim().length > 0 &&
+        participantData.lastName.trim().length > 0
+      );
+    }
+
     switch (currentStep) {
       case 1:
-        // Email must be available, password must be valid, and organizer name must be provided
         const emailValid = formData.email && emailCheckStatus === 'available';
         const passwordValid = formData.password.length >= 6;
         const organizerNameValid = formData.organizerName && formData.organizerName.trim().length > 0;
@@ -282,10 +299,8 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
 
   const handleSubmit = async () => {
     if (!isStepValid()) return;
-
     setIsLoading(true);
     setError('');
-
     try {
       const response = await fetch(
         `${apiBaseUrl}/signup`,
@@ -298,9 +313,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
           body: JSON.stringify(formData),
         }
       );
-
       const result = await response.json();
-
       if (response.ok && result.success) {
         onComplete(formData);
       } else {
@@ -314,11 +327,41 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     }
   };
 
+  const handleParticipantSubmit = async () => {
+    if (!isStepValid()) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/participant-preregister`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(participantData),
+        }
+      );
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setParticipantSuccess(true);
+      } else {
+        setError(result.error || 'Failed to pre-register');
+      }
+    } catch (error) {
+      errorLog('Participant pre-register error:', error);
+      setError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Create your account';
       case 2: return 'How did you hear about us?';
-      case 3: return 'About your organization';
+      case 3: return 'Tell us about your organization and role';
       default: return '';
     }
   };
@@ -326,13 +369,12 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
   const getStepDescription = () => {
     switch (currentStep) {
       case 1: return 'Get started with your Wonderelo account';
-      case 2: return 'Help us understand how you discovered Wonderelo';
-      case 3: return 'Tell us about your organization and role';
+      case 2: return '';
+      case 3: return '';
       default: return '';
     }
   };
 
-  // Auto-generate URL slug from organizer name (sent to backend)
   useEffect(() => {
     if (formData.organizerName && formData.organizerName.trim()) {
       const autoSlug = removeDiacritics(formData.organizerName);
@@ -342,7 +384,6 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     }
   }, [formData.organizerName]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (emailTimeoutRef.current) {
@@ -351,14 +392,255 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     };
   }, []);
 
+  const handleRoleSelect = (role: UserRole) => {
+    setSelectedRole(role);
+    setCurrentStep(1);
+    setError('');
+  };
+
+  const handleBackToRoleSelection = () => {
+    setSelectedRole(null);
+    setCurrentStep(1);
+    setError('');
+    setParticipantSuccess(false);
+  };
+
+  // Role selection screen
+  if (!selectedRole) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <nav className="border-b border-border">
+          <div className="container mx-auto max-w-6xl px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-8">
+                <h2 className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity" onClick={onBack}>Wonderelo</h2>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" onClick={onBack}>
+                  Back to home
+                </Button>
+                {onSwitchToSignIn && (
+                  <Button variant="outline" onClick={onSwitchToSignIn}>
+                    Sign in
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-md">
+            <div className="mb-8 text-center">
+              <h1 className="mb-2">Sign up</h1>
+              <p className="text-muted-foreground">How would you like to use Wonderelo?</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <Card
+                className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+                onClick={() => handleRoleSelect('organizer')}
+              >
+                <CardContent className="pt-6 text-center">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Mic className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-2">I'm an Organizer</h3>
+                  <p className="text-sm text-muted-foreground">
+                    I want to create and manage networking events
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all"
+                onClick={() => handleRoleSelect('participant')}
+              >
+                <CardContent className="pt-6 text-center">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-2">I'm a Participant</h3>
+                  <p className="text-sm text-muted-foreground">
+                    I want to join networking events
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    );
+  }
+
+  // Participant success screen
+  if (selectedRole === 'participant' && participantSuccess) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <nav className="border-b border-border">
+          <div className="container mx-auto max-w-6xl px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-8">
+                <h2 className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity" onClick={onBack}>Wonderelo</h2>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" onClick={onBack}>
+                  Back to home
+                </Button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-md text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+              <Check className="h-8 w-8 text-green-600" />
+            </div>
+            <h1 className="mb-3">You're all set!</h1>
+            <p className="text-muted-foreground mb-8">
+              Your info has been saved. When you receive an event link from an organizer, your details will be pre-filled — no need to type them again.
+            </p>
+            <Button onClick={onBack}>
+              Back to home
+            </Button>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    );
+  }
+
+  // Participant form
+  if (selectedRole === 'participant') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <nav className="border-b border-border">
+          <div className="container mx-auto max-w-6xl px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-8">
+                <h2 className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity" onClick={onBack}>Wonderelo</h2>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" onClick={onBack}>
+                  Back to home
+                </Button>
+                {onSwitchToSignIn && (
+                  <Button variant="outline" onClick={onSwitchToSignIn}>
+                    Sign in
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-md">
+            <div className="mb-8 text-center">
+              <h1 className="mb-2">Participant pre-registration</h1>
+              <p className="text-muted-foreground">
+                Save your info so it's ready when you join an event
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Your details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {error && (
+                  <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <X className="h-4 w-4 text-destructive" />
+                    <p className="text-sm text-destructive">{error}</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="participant-email">Email address</Label>
+                  <Input
+                    id="participant-email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={participantData.email}
+                    onChange={(e) => updateParticipantData('email', e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="participant-firstName">First name</Label>
+                    <Input
+                      id="participant-firstName"
+                      type="text"
+                      placeholder="John"
+                      value={participantData.firstName}
+                      onChange={(e) => updateParticipantData('firstName', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="participant-lastName">Last name</Label>
+                    <Input
+                      id="participant-lastName"
+                      type="text"
+                      placeholder="Doe"
+                      value={participantData.lastName}
+                      onChange={(e) => updateParticipantData('lastName', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="participant-phone">Phone number <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Input
+                    id="participant-phone"
+                    type="tel"
+                    placeholder="+421 900 000 000"
+                    value={participantData.phone}
+                    onChange={(e) => updateParticipantData('phone', e.target.value)}
+                  />
+                </div>
+
+                <div className="flex justify-between gap-3 pt-2">
+                  <Button variant="outline" onClick={handleBackToRoleSelection}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                  <Button onClick={handleParticipantSubmit} disabled={!isStepValid() || isLoading} className="flex-1">
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        Save my info
+                        <Check className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    );
+  }
+
+  // Organizer sign-up flow
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
+    <div className="min-h-screen bg-background flex flex-col">
       <nav className="border-b border-border">
         <div className="container mx-auto max-w-6xl px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <h2 className="text-primary cursor-pointer" onClick={onBack}>Wonderelo</h2>
+              <h2 className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity" onClick={onBack}>Wonderelo</h2>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" onClick={onBack}>
@@ -374,7 +656,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
         </div>
       </nav>
 
-      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
+      <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <h1 className="mb-2">
@@ -398,7 +680,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
           <Card>
             <CardHeader>
               <CardTitle>{getStepTitle()}</CardTitle>
-              <CardDescription>{getStepDescription()}</CardDescription>
+              {getStepDescription() && <CardDescription>{getStepDescription()}</CardDescription>}
             </CardHeader>
             <CardContent className="space-y-4">
               {error && (
@@ -412,35 +694,37 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={formData.email}
-                      onChange={(e) => updateFormData('email', e.target.value)}
-                    />
-                    {formData.email && (
-                      <div className="text-sm">
-                        {emailCheckStatus === 'checking' && (
-                          <p className="text-muted-foreground flex items-center">
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            Checking availability...
-                          </p>
-                        )}
-                        {emailCheckStatus === 'available' && (
-                          <p className="text-green-600 flex items-center">
-                            <Check className="h-3 w-3 mr-1" />
-                            Email is available
-                          </p>
-                        )}
-                        {emailCheckStatus === 'taken' && (
-                          <p className="text-destructive flex items-center">
-                            <X className="h-3 w-3 mr-1" />
-                            Email is already registered
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    <div>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={formData.email}
+                        onChange={(e) => updateFormData('email', e.target.value)}
+                      />
+                      {formData.email && emailCheckStatus !== 'idle' && (
+                        <div style={{ marginTop: '2px' }}>
+                          {emailCheckStatus === 'checking' && (
+                            <span className="text-xs text-muted-foreground flex items-center">
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Checking...
+                            </span>
+                          )}
+                          {emailCheckStatus === 'available' && (
+                            <span className="text-xs text-green-600 flex items-center">
+                              <Check className="h-3 w-3 mr-1" />
+                              Available
+                            </span>
+                          )}
+                          {emailCheckStatus === 'taken' && (
+                            <span className="text-xs text-destructive flex items-center">
+                              <X className="h-3 w-3 mr-1" />
+                              Already registered
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
@@ -467,7 +751,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                       </Button>
                     </div>
                     {formData.password && formData.password.length < 6 && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Password must be at least 6 characters
                       </p>
                     )}
@@ -481,11 +765,6 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                       value={formData.organizerName}
                       onChange={(e) => updateFormData('organizerName', e.target.value)}
                     />
-                    {formData.organizerName && formData.organizerName.trim().length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Name is required
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
@@ -495,12 +774,12 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                   <RadioGroup
                     value={formData.discoverySource}
                     onValueChange={(value) => updateFormData('discoverySource', value)}
-                    className="space-y-2"
+                    className="space-y-1"
                   >
                     {discoveryOptions.map((option) => (
                       <div
                         key={option.value}
-                        className="flex items-center space-x-3 rounded-lg border p-2 hover:bg-accent/50 transition-colors"
+                        className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors"
                       >
                         <RadioGroupItem value={option.value} id={option.value} />
                         <Label htmlFor={option.value} className="cursor-pointer flex-1">
@@ -552,7 +831,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="userRole">Your role</Label>
                     <Select value={formData.userRole} onValueChange={(value) => updateFormData('userRole', value)}>
@@ -571,50 +850,47 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
                 </div>
               )}
 
-              {/* Spacer for sticky bottom buttons */}
-              <div className="h-20" />
+              {/* Buttons inside card */}
+              <div className="flex justify-between gap-3 pt-2">
+                {currentStep > 1 ? (
+                  <Button variant="outline" onClick={prevStep}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={handleBackToRoleSelection}>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                )}
+
+                {currentStep < totalSteps ? (
+                  <Button onClick={nextStep} disabled={!isStepValid()} className="flex-1">
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleSubmit} disabled={!isStepValid() || isLoading} className="flex-1">
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating account...
+                      </>
+                    ) : (
+                      <>
+                        Create account
+                        <Check className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Sticky bottom buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
-        <div className="max-w-md mx-auto flex justify-between gap-3">
-          {currentStep > 1 ? (
-            <Button variant="outline" onClick={prevStep}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          ) : (
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Home
-            </Button>
-          )}
-
-          {currentStep < totalSteps ? (
-            <Button onClick={nextStep} disabled={!isStepValid()} className="flex-1">
-              Next
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={!isStepValid() || isLoading} className="flex-1">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                <>
-                  Create account
-                  <Check className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
+      <Footer />
     </div>
   );
 }
