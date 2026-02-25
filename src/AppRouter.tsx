@@ -254,6 +254,7 @@ function SignUpRoute() {
   return (
     <SignUpFlow
       onComplete={handleSignUpComplete}
+      onParticipantComplete={() => navigate('/')}
       onBack={() => navigate('/')}
       onSwitchToSignIn={() => navigate('/signin')}
     />
