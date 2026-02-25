@@ -15,6 +15,7 @@ export function Footer() {
             >
               Wonderelo
             </h2>
+            <p className="text-sm text-muted-foreground">Magic by networking</p>
           </div>
 
           {/* Product */}

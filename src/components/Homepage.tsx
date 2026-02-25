@@ -176,7 +176,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-8 text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-muted-foreground">
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
               <span className="text-sm">Five minute set up</span>
@@ -200,13 +200,13 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
             As seen in
           </p>
-          <div className="flex items-center justify-between gap-10 opacity-60 grayscale hover:opacity-80 hover:grayscale-0 transition-all duration-500">
-            <img src="/logos/business-insider.svg" alt="Business Insider" className="h-7 max-w-[130px] w-auto object-contain" />
-            <img src="/logos/digital-journal.svg" alt="Digital Journal" className="h-7 max-w-[130px] w-auto object-contain" />
-            <img src="/logos/big-news-network.svg" alt="Big News Network" className="h-7 max-w-[130px] w-auto object-contain" />
-            <img src="/logos/techbullion.svg" alt="TechBullion" className="h-7 max-w-[130px] w-auto object-contain" />
-            <img src="/logos/ips.svg" alt="IPS" className="h-7 max-w-[130px] w-auto object-contain" />
-            <img src="/logos/starkville-daily-news.svg" alt="Starkville Daily News" className="h-7 max-w-[130px] w-auto object-contain" />
+          <div className="grid grid-cols-3 gap-4 md:flex md:items-center md:justify-between md:gap-10 opacity-60 grayscale hover:opacity-80 hover:grayscale-0 transition-all duration-500">
+            <img src="/logos/business-insider.svg" alt="Business Insider" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
+            <img src="/logos/digital-journal.svg" alt="Digital Journal" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
+            <img src="/logos/big-news-network.svg" alt="Big News Network" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
+            <img src="/logos/techbullion.svg" alt="TechBullion" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
+            <img src="/logos/ips.svg" alt="IPS" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
+            <img src="/logos/starkville-daily-news.svg" alt="Starkville Daily News" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
           </div>
         </div>
       </section>
@@ -221,17 +221,23 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '380px', margin: '0 auto 24px' }}>
-            <div className="flex items-center justify-center gap-3 bg-background rounded-xl px-4 py-3 border border-border/40">
-              <span className="text-xl">🍽️</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '430px', margin: '0 auto 24px' }}>
+            <div className="flex items-center gap-2 bg-background rounded-xl py-2 border border-border/40" style={{ paddingLeft: '40px', paddingRight: '16px' }}>
+              <div style={{ width: '100px', height: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img src="/experience-schnitzel.png" alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              </div>
               <span className="text-sm text-muted-foreground">Food-line bonding over schnitzel</span>
             </div>
-            <div className="flex items-center justify-center gap-3 bg-background rounded-xl px-4 py-3 border border-border/40">
-              <span className="text-xl">👋</span>
+            <div className="flex items-center gap-2 bg-background rounded-xl py-2 border border-border/40" style={{ paddingLeft: '40px', paddingRight: '16px' }}>
+              <div style={{ width: '100px', height: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img src="/experience-wave.png" alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              </div>
               <span className="text-sm text-muted-foreground">Brave "Hi…" to their seat neighbour</span>
             </div>
-            <div className="flex items-center justify-center gap-3 bg-background rounded-xl px-4 py-3 border border-border/40">
-              <span className="text-xl">🤞</span>
+            <div className="flex items-center gap-2 bg-background rounded-xl py-2 border border-border/40" style={{ paddingLeft: '40px', paddingRight: '16px' }}>
+              <div style={{ width: '100px', height: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img src="/experience-fingers.png" alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              </div>
               <span className="text-sm text-muted-foreground">Hope for accidental hallway collisions</span>
             </div>
           </div>
@@ -257,12 +263,9 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '60px' }}>
             {/* Step 1 - Event page promotion */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
-              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm opacity-60">Step 1 illustration</p>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
+              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30" style={{ aspectRatio: '16/9' }}>
+                <img src="/how-it-works-1.png" alt="Event page promotion" className="w-full h-full object-cover" />
               </div>
               <div>
                 <div className="mb-5">
@@ -278,8 +281,8 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             </div>
 
             {/* Step 2 - Participant round registration */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
+              <div className="order-2 md:order-1">
                 <div className="mb-5">
                   <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
                     <span className="text-lg font-bold text-primary">2</span>
@@ -290,21 +293,15 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   People choose their time and optionally their topic or group. Zero attendee setup for the organizer.
                 </p>
               </div>
-              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm opacity-60">Step 2 illustration</p>
-                </div>
+              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 order-1 md:order-2" style={{ aspectRatio: '16/9' }}>
+                <img src="/how-it-works-2.png" alt="Participant round registration" className="w-full h-full object-cover" />
               </div>
             </div>
 
             {/* Step 3 - Attendance confirmation */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
-              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm opacity-60">Step 3 illustration</p>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
+              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30" style={{ aspectRatio: '16/9' }}>
+                <img src="/how-it-works-3.png" alt="Attendance confirmation" className="w-full h-full object-cover" style={{ objectPosition: 'calc(50% + 60px) calc(50% + 5px)' }} />
               </div>
               <div>
                 <div className="mb-5">
@@ -320,8 +317,8 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             </div>
 
             {/* Step 4 - Participants meet & network */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
+              <div className="order-2 md:order-1">
                 <div className="mb-5">
                   <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
                     <span className="text-lg font-bold text-primary">4</span>
@@ -332,21 +329,15 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   Wonderelo shows every participant their match and designated meeting point. The round runs according to the preset duration and locations — ice breakers handle the rest.
                 </p>
               </div>
-              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm opacity-60">Step 4 illustration</p>
-                </div>
+              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 order-1 md:order-2" style={{ aspectRatio: '16/9' }}>
+                <img src="/how-it-works-4.png" alt="Participants meet and network" className="w-full h-full object-cover" />
               </div>
             </div>
 
             {/* Step 5 - Contact exchange */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
-              <div className="bg-muted/30 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '16/9' }}>
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm opacity-60">Step 5 illustration</p>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
+              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30" style={{ aspectRatio: '16/9' }}>
+                <img src="/how-it-works-5.png" alt="Contact exchange" className="w-full h-full object-cover" />
               </div>
               <div>
                 <div className="mb-5">
@@ -385,7 +376,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             {/* Row 1: Events (4 cards) */}
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-responsive-16">
                 <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/conferences')}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
@@ -457,8 +448,8 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             </div>
 
             {/* Row 2: Venues (2 cards) + Teams (1 card) */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-              <Card className="cursor-pointer hover:border-primary/50 transition-colors" style={{ width: 'calc(25% - 12px)' }} onClick={() => navigate('/for/bars')}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md-flex-center gap-responsive-16">
+              <Card className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate('/for/bars')}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
@@ -475,7 +466,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:border-primary/50 transition-colors" style={{ width: 'calc(25% - 12px)' }} onClick={() => navigate('/for/schools')}>
+              <Card className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate('/for/schools')}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
@@ -492,7 +483,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:border-primary/50 transition-colors" style={{ width: 'calc(25% - 12px)' }} onClick={() => navigate('/for/teams')}>
+              <Card className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate('/for/teams')}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
@@ -516,13 +507,10 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       {/* Features */}
       <section id="features" className="py-20 px-6 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
-            {/* Left: image placeholder */}
-            <div className="bg-muted/50 rounded-2xl flex items-center justify-center border border-border/40" style={{ aspectRatio: '3/4' }}>
-              <div className="text-center text-muted-foreground">
-                <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                <p className="text-sm opacity-60">Feature illustration</p>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
+            {/* Left: image */}
+            <div className="flex items-center justify-center">
+              <img src="/Wonderelo-magic-by-networking.png" alt="Wonderelo magic by networking" className="w-full h-auto rounded-2xl" />
             </div>
 
             {/* Right: text content */}
@@ -654,7 +642,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   ))}
                 </div>
                 <p className="text-sm mb-4">
-                  "Stage matching turned our meetup into a show—people loved the energy."
+                  "Our attendees used to stick to their own groups. Wonderelo changed that in one evening."
                 </p>
                 <div className="text-sm text-muted-foreground">
                   — David Novak, CreativeMinds Meetup
@@ -694,7 +682,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               </CardContent>
             </Card>
 
-            <Card className="md:col-span-2 lg:col-span-1">
+            <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-4">
                   {[...Array(5)].map((_, i) => (
@@ -709,6 +697,22 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                  ))}
+                </div>
+                <p className="text-sm mb-4">
+                  "Setup took 5 minutes and participants figured it out on their own. Zero stress for the organizer."
+                </p>
+                <div className="text-sm text-muted-foreground">
+                  — Jan Horváth, EuroSummit Bratislava
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -719,7 +723,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
             Trusted by event organizers at
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-12 opacity-60">
+          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 opacity-60">
             <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
               <Zap className="h-5 w-5" />
               <span className="text-lg font-semibold tracking-tight">TechFuture</span>
@@ -836,12 +840,12 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <div className="flex justify-center">
             <Button size="lg" onClick={onGetStarted}>
               <Calendar className="mr-2 h-5 w-5" />
-              Let's enrich your event!
+              Let's get unforgettable!
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
 
-          <div className="mt-12 flex items-center justify-center gap-8 text-muted-foreground">
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-muted-foreground">
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
               <span className="text-sm">Five minute set up</span>
@@ -994,6 +998,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               >
                 Wonderelo
               </h2>
+              <p className="text-sm text-muted-foreground">Magic by networking</p>
             </div>
 
             {/* Product */}

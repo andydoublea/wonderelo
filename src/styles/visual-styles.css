@@ -1298,3 +1298,33 @@
 .btn-hover-white:hover {
   background-color: #ffffff !important;
 }
+
+
+/* ==========================================================================
+   HOMEPAGE RESPONSIVE UTILITIES
+   Custom responsive classes for homepage layout (needed because the pre-compiled
+   Tailwind CSS doesn't generate arbitrary value classes like md:gap-[80px])
+   ========================================================================== */
+
+.gap-responsive-80 {
+  gap: 24px;
+}
+@media (min-width: 768px) {
+  .gap-responsive-80 {
+    gap: 80px;
+  }
+}
+
+.gap-responsive-16 {
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .card-w-quarter {
+    width: calc(25% - 12px);
+  }
+  .md-flex-center {
+    display: flex;
+    justify-content: center;
+  }
+}
