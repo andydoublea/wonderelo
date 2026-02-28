@@ -1245,32 +1245,24 @@ function AppProviderWithRouter() {
     localStorage.setItem('oliwonder_current_user', JSON.stringify(userData));
   }, []);
 
-  // Load and apply theme on mount
+  // Load theme and system parameters AFTER a short delay
+  // so the critical page data fetch (/public/user/:slug) gets connection priority
   useEffect(() => {
-    const loadTheme = async () => {
+    const timer = setTimeout(async () => {
       try {
         const { loadAndApplyTheme } = await import('./utils/themeLoader');
         await loadAndApplyTheme();
       } catch (error) {
         errorLog('Error loading theme:', error);
       }
-    };
-    
-    loadTheme();
-  }, []);
-
-  // Load system parameters on mount
-  useEffect(() => {
-    const loadParameters = async () => {
       try {
         await fetchSystemParameters();
         debugLog('✅ System parameters loaded');
       } catch (error) {
         errorLog('Error loading system parameters:', error);
       }
-    };
-    
-    loadParameters();
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   // Auto status checker - check every minute for status transitions
@@ -1474,15 +1466,24 @@ function AppProviderWithRouter() {
         return result.session;
       } else {
         let errorDetail = `Server responded with ${response.status}`;
+        let errorData: any = {};
         try {
-          const errorData = await response.json();
+          errorData = await response.json();
           errorDetail = errorData.error || errorDetail;
         } catch {}
         errorLog('Error adding session (server):', errorDetail);
         const { toast } = await import('sonner@2.0.3');
-        toast.error('Error creating round', {
-          description: errorDetail
-        });
+
+        if (errorData.error === 'capacity_exceeded') {
+          toast.error('Participant limit exceeded', {
+            description: errorData.suggestion || 'Upgrade your plan or reduce max participants.',
+            duration: 8000,
+          });
+        } else {
+          toast.error('Error creating round', {
+            description: errorDetail
+          });
+        }
         throw new Error(errorDetail);
       }
     }
@@ -1519,10 +1520,10 @@ function AppProviderWithRouter() {
 
         if (response.ok) {
           debugLog('Session updated on backend');
-          
+
           // Reload sessions from backend to ensure fresh data
           await loadSessions();
-          
+
           // Don't show toast if status is being changed to completed (specific toast is shown in component)
           if (updates.status !== 'completed') {
             const { toast } = await import('sonner@2.0.3');
@@ -1530,16 +1531,28 @@ function AppProviderWithRouter() {
           }
         } else {
           // Revert optimistic update on failure
-          setSessions(prevSessions => 
-            prevSessions.map(session => 
+          setSessions(prevSessions =>
+            prevSessions.map(session =>
               session.id === id ? oldSession! : session
             )
           );
-          
+
+          let errorData: any = {};
+          try {
+            errorData = await response.json();
+          } catch {}
+
           const { toast } = await import('sonner@2.0.3');
-          toast.error('Error updating round', {
-            description: 'Round updated locally but server sync failed.'
-          });
+          if (errorData.error === 'capacity_exceeded') {
+            toast.error('Participant limit exceeded', {
+              description: errorData.suggestion || 'Upgrade your plan or reduce max participants.',
+              duration: 8000,
+            });
+          } else {
+            toast.error('Error updating round', {
+              description: errorData.error || 'Round updated locally but server sync failed.'
+            });
+          }
         }
       } catch (error) {
         errorLog('Error updating session on backend:', error);

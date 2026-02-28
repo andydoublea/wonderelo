@@ -193,7 +193,7 @@ export function SessionList({
 
   // Group sessions by date (original logic)
   const sessionsByDate = sessions.reduce((groups, session) => {
-    const date = session.date;
+    const date = session.date || 'no-date';
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -201,15 +201,21 @@ export function SessionList({
     return groups;
   }, {} as Record<string, NetworkingSession[]>);
 
-  // Sort dates
-  const sortedDates = Object.keys(sessionsByDate).sort();
+  // Sort dates (put 'no-date' last)
+  const sortedDates = Object.keys(sessionsByDate).sort((a, b) => {
+    if (a === 'no-date') return 1;
+    if (b === 'no-date') return -1;
+    return a.localeCompare(b);
+  });
 
   const formatDate = (dateString: string) => {
+    if (!dateString || dateString === 'no-date') return 'No date set';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'No date set';
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     if (dateString === today.toISOString().split('T')[0]) {
       return 'Today';
     } else if (dateString === tomorrow.toISOString().split('T')[0]) {
@@ -231,7 +237,7 @@ export function SessionList({
           <h3 className="mb-4 capitalize">{formatDate(date)}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {sessionsByDate[date]
-              .sort((a, b) => a.startTime.localeCompare(b.startTime))
+              .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
               .map((session, index) => {
                 // Generate unique key - combine date, ID, and index to handle duplicates
                 const uniqueKey = session.id 

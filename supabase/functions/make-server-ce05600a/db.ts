@@ -286,13 +286,13 @@ export async function getSessionsByUser(userId: string) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  // Fetch rounds for each session
-  const sessions = [];
-  for (const s of data || []) {
-    const rounds = await getRoundsBySession(s.id);
-    sessions.push({ ...mapSessionFromDb(s), rounds });
-  }
-  return sessions;
+  // Batch fetch all rounds for all sessions in one query
+  const sessionIds = (data || []).map(s => s.id);
+  const roundsBySession = await getRoundsBySessionIds(sessionIds);
+  return (data || []).map(s => ({
+    ...mapSessionFromDb(s),
+    rounds: roundsBySession[s.id] || []
+  }));
 }
 
 export async function getAllSessions() {
@@ -301,12 +301,12 @@ export async function getAllSessions() {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  const sessions = [];
-  for (const s of data || []) {
-    const rounds = await getRoundsBySession(s.id);
-    sessions.push({ ...mapSessionFromDb(s), rounds });
-  }
-  return sessions;
+  const sessionIds = (data || []).map(s => s.id);
+  const roundsBySession = await getRoundsBySessionIds(sessionIds);
+  return (data || []).map(s => ({
+    ...mapSessionFromDb(s),
+    rounds: roundsBySession[s.id] || []
+  }));
 }
 
 export async function createSession(session: any) {
@@ -415,6 +415,22 @@ export async function getRoundsBySession(sessionId: string) {
     .order('sort_order', { ascending: true });
   if (error) throw error;
   return (data || []).map(mapRoundFromDb);
+}
+
+export async function getRoundsBySessionIds(sessionIds: string[]): Promise<Record<string, any[]>> {
+  if (sessionIds.length === 0) return {};
+  const { data, error } = await db()
+    .from('rounds')
+    .select('*')
+    .in('session_id', sessionIds)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  const grouped: Record<string, any[]> = {};
+  for (const r of data || []) {
+    if (!grouped[r.session_id]) grouped[r.session_id] = [];
+    grouped[r.session_id].push(mapRoundFromDb(r));
+  }
+  return grouped;
 }
 
 export async function getRoundById(roundId: string) {

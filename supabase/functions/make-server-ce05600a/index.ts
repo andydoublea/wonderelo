@@ -16,7 +16,7 @@ import { registerParticipantRoutes } from './route-participants.tsx';
 import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
 import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
-import { registerStripeRoutes } from './route-stripe.tsx';
+import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 
 const app = new Hono();
 
@@ -335,16 +335,43 @@ app.post('/make-server-ce05600a/sessions', async (c) => {
       updatedAt: new Date().toISOString()
     };
     
+    // ── Capacity check when publishing/scheduling ──
+    if (newSession.status === 'published' || newSession.status === 'scheduled') {
+      const maxParticipants = newSession.maxParticipants || 10;
+      try {
+        const capacityResult = await checkCapacity(user.id, maxParticipants);
+        if (!capacityResult.allowed) {
+          debugLog(`❌ Capacity limit for publish: ${capacityResult.reason}`);
+          return c.json({
+            error: 'capacity_exceeded',
+            message: capacityResult.reason,
+            suggestion: capacityResult.suggestion,
+            currentTier: capacityResult.currentTier,
+          }, 403);
+        }
+        // Consume credit for non-subscription organizers (subscription = no credits needed)
+        if (capacityResult.currentTier !== 'free') {
+          const subscription = await db.getSubscription(user.id);
+          if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+            await consumeEventCredit(user.id, sessionId);
+            debugLog('💳 Event credit consumed for session:', sessionId);
+          }
+        }
+      } catch (capErr) {
+        debugLog('⚠️ Capacity check failed, allowing publish:', capErr);
+      }
+    }
+
     // Save session
     await db.createSession(newSession);
-    
+
     debugLog('✅ Created session:', sessionId);
-    
+
     return c.json({
       success: true,
       session: newSession
     });
-    
+
   } catch (error) {
     errorLog('Error creating session:', error);
     return c.json({ error: 'Failed to create session' }, 500);
@@ -375,6 +402,51 @@ app.put('/make-server-ce05600a/sessions/:sessionId', async (c) => {
       return c.json({ error: 'Session not found' }, 404);
     }
 
+    const oldStatus = existingSession.status;
+    const newStatus = body.status;
+    const isBecomingLive = (newStatus === 'published' || newStatus === 'scheduled') && oldStatus !== 'published' && oldStatus !== 'scheduled';
+    const isBecomingDraft = newStatus === 'draft' && (oldStatus === 'published' || oldStatus === 'scheduled');
+
+    // ── Capacity check when transitioning to published/scheduled ──
+    if (isBecomingLive) {
+      const maxParticipants = body.maxParticipants || existingSession.maxParticipants || 10;
+      try {
+        const capacityResult = await checkCapacity(user.id, maxParticipants);
+        if (!capacityResult.allowed) {
+          debugLog(`❌ Capacity limit for publish: ${capacityResult.reason}`);
+          return c.json({
+            error: 'capacity_exceeded',
+            message: capacityResult.reason,
+            suggestion: capacityResult.suggestion,
+            currentTier: capacityResult.currentTier,
+          }, 403);
+        }
+        // Consume credit for non-subscription organizers
+        if (capacityResult.currentTier !== 'free') {
+          const subscription = await db.getSubscription(user.id);
+          if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+            await consumeEventCredit(user.id, sessionId);
+            debugLog('💳 Event credit consumed for session:', sessionId);
+          }
+        }
+      } catch (capErr) {
+        debugLog('⚠️ Capacity check failed, allowing publish:', capErr);
+      }
+    }
+
+    // ── Refund credit when unpublishing (draft) with 0 registrations ──
+    if (isBecomingDraft) {
+      try {
+        const regs = await db.getRegistrationsForSession(sessionId);
+        if (regs.length === 0) {
+          await refundEventCredit(user.id, sessionId);
+          debugLog('💳 Credit refunded for unpublished session:', sessionId);
+        }
+      } catch (refundErr) {
+        debugLog('⚠️ Credit refund failed (non-blocking):', refundErr);
+      }
+    }
+
     await db.updateSession(sessionId, body);
     const updatedSession = await db.getSessionById(sessionId);
 
@@ -384,7 +456,7 @@ app.put('/make-server-ce05600a/sessions/:sessionId', async (c) => {
       success: true,
       session: updatedSession
     });
-    
+
   } catch (error) {
     errorLog('Error updating session:', error);
     return c.json({ error: 'Failed to update session' }, 500);
@@ -407,9 +479,23 @@ app.delete('/make-server-ce05600a/sessions/:sessionId', async (c) => {
     }
     
     const sessionId = c.req.param('sessionId');
-    
+
+    // Refund credit if session was published/scheduled and has 0 registrations
+    try {
+      const session = await db.getSessionById(sessionId);
+      if (session && (session.status === 'published' || session.status === 'scheduled')) {
+        const regs = await db.getRegistrationsForSession(sessionId);
+        if (regs.length === 0) {
+          await refundEventCredit(user.id, sessionId);
+          debugLog('💳 Credit refunded for deleted session:', sessionId);
+        }
+      }
+    } catch (refundErr) {
+      debugLog('⚠️ Credit refund on delete failed (non-blocking):', refundErr);
+    }
+
     await db.deleteSession(sessionId);
-    
+
     debugLog('✅ Deleted session:', sessionId);
     
     return c.json({

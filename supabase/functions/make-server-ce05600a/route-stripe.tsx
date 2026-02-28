@@ -468,8 +468,9 @@ export async function checkCapacity(userId: string, requestedCapacity: number): 
   currentTier: string;
   suggestion?: string;
 }> {
-  // Free tier: up to 10 participants
-  if (requestedCapacity <= 10) {
+  // Free tier: configurable limit from admin_settings (default 5)
+  const freeTierLimit = (await db.getAdminSetting('free_tier_max_participants')) || 5;
+  if (requestedCapacity <= freeTierLimit) {
     return { allowed: true, reason: 'Free tier', currentTier: 'free' };
   }
 
@@ -525,7 +526,7 @@ export async function checkCapacity(userId: string, requestedCapacity: number): 
 }
 
 // ============================================================
-// Credit consumption (called when first participant registers)
+// Credit consumption (called when session is published/scheduled)
 // ============================================================
 
 export async function consumeEventCredit(userId: string, sessionId: string): Promise<boolean> {
@@ -535,7 +536,7 @@ export async function consumeEventCredit(userId: string, sessionId: string): Pro
   await db.deductCredit(userId, 1, {
     type: 'consumed',
     sessionId,
-    description: 'Event credit used for first participant registration',
+    description: 'Event credit used for session publish',
   });
 
   return true;

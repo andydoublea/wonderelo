@@ -749,10 +749,7 @@ export function SessionDisplayCard({
           <div id="meeting-points" className="flex items-center gap-4 text-sm text-muted-foreground mb-1">
             <button
               type="button"
-              onClick={() => {
-                window.location.hash = 'meeting-points';
-                setShowMeetingPoints(true);
-              }}
+              onClick={() => setShowMeetingPoints(true)}
               className="flex items-center gap-1 text-foreground underline hover:text-primary"
             >
               <MapPin className="h-3.5 w-3.5" />
@@ -760,10 +757,7 @@ export function SessionDisplayCard({
             </button>
             <button
               type="button"
-              onClick={() => {
-                window.location.hash = 'round-rules';
-                setShowRoundRules(true);
-              }}
+              onClick={() => setShowRoundRules(true)}
               className="flex items-center gap-1 text-foreground underline hover:text-primary"
             >
               <FileText className="h-3.5 w-3.5" />

@@ -5,7 +5,7 @@ import { toast } from 'sonner@2.0.3';
 
 import { debugLog, errorLog } from '../utils/debug';
 import { APP_VERSION } from '../utils/version';
-import { fetchSystemParameters, getParametersOrDefault } from '../utils/systemParameters';
+import { getParametersOrDefault } from '../utils/systemParameters';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -93,14 +93,9 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
   const displayVersion = `Build ${buildNumber}`;
 
   useEffect(() => {
-    (async () => {
-      try {
-        await fetchSystemParameters();
-      } catch (err) {
-        errorLog('Failed to load system parameters:', err);
-      }
-    })();
-    
+    // Note: fetchSystemParameters() is already called by AppRouter on mount
+    // No need to duplicate it here — getParametersOrDefault() uses the cached value
+
     const token = localStorage.getItem('participant_token');
     
     if (token) {
@@ -161,27 +156,6 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       debugLog('Request URL:', url);
       debugLog('API Base URL:', apiBaseUrl);
       debugLog('Public Anon Key:', publicAnonKey ? 'Present' : 'Missing');
-
-      try {
-        debugLog('Testing server connectivity...');
-        const testResponse = await fetch(
-          `${apiBaseUrl}/test`,
-          {
-            headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-          }
-        );
-        debugLog('Test endpoint status:', testResponse.status);
-        if (testResponse.ok) {
-          const testData = await testResponse.json();
-          debugLog('Server is accessible:', testData);
-        } else {
-          debugLog('Server test failed with status:', testResponse.status);
-        }
-      } catch (testError) {
-        errorLog('Server connectivity test failed:', testError);
-      }
 
       let response;
       try {

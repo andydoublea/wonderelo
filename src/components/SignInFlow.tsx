@@ -555,7 +555,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                         </Button>
                       </div>
 
-                      {/* Test Login Button for Participant - only on dev/staging */}
+                      {/* Test Login Buttons for Participant - only on dev/staging */}
                       {showTestLogins && (
                       <div className="space-y-2 pt-4 border-t">
                         <p className="text-xs text-muted-foreground mb-2">Quick test logins:</p>
@@ -565,19 +565,23 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleParticipantQuickLogin('andy.double.a+ma@gmail.com');
+                            navigate('/p/test-token-alice');
                           }}
-                          disabled={participantLoading}
                           className="text-xs w-full"
                         >
-                          {participantLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Signing in...
-                            </>
-                          ) : (
-                            'Quick test login (Andre Breton)'
-                          )}
+                          Quick test login (Alice Novak)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate('/p/test-token-bob');
+                          }}
+                          className="text-xs w-full"
+                        >
+                          Quick test login (Bob Kovac)
                         </Button>
                       </div>
                       )}
@@ -688,32 +692,10 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                     </div>
                   </form>
 
-                  {/* Test Login Buttons - only on dev/staging */}
+                  {/* Test Login Button - only on dev/staging */}
                   {showTestLogins && (
                   <div className="space-y-2 pt-4 border-t">
-                    <p className="text-xs text-muted-foreground mb-2">Quick test logins:</p>
-                    <Button
-                      variant="secondary"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setFormData({
-                          email: 'andy.double.a+3@gmail.com',
-                          password: 'Rukuku'
-                        });
-                        setError('');
-
-                        // Auto-submit after a short delay
-                        setTimeout(() => {
-                          handleSubmit();
-                        }, 100);
-                      }}
-                      disabled={isLoading}
-                      className="text-xs w-full"
-                    >
-                      Quick test login (andy.double.a+3@gmail.com)
-                    </Button>
-
+                    <p className="text-xs text-muted-foreground mb-2">Quick test login:</p>
                     <Button
                       variant="secondary"
                       onClick={async (e) => {
@@ -721,7 +703,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                         e.stopPropagation();
                         setFormData({
                           email: 'admin@oliwonder.com',
-                          password: 'Rukuku'
+                          password: 'test123456'
                         });
                         setError('');
 

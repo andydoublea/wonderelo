@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { debugLog, errorLog } from '../utils/debug';
 import { fetchSystemParameters, type SystemParameters } from '../utils/systemParameters';
+import { useIsDesktop } from '../hooks/useResponsive';
 
 interface SessionFormProps {
   initialData?: NetworkingSession | null;
@@ -38,6 +39,7 @@ interface SessionFormProps {
 }
 
 export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organizerName, profileImageUrl, userSlug, isDuplicate }: SessionFormProps) {
+  const isDesktop = useIsDesktop();
   const [availableIceBreakers, setAvailableIceBreakers] = useState<string[]>([]);
   const [systemParams, setSystemParams] = useState<SystemParameters | null>(null);
   const [useCustomTimes, setUseCustomTimes] = useState(false);
@@ -1706,12 +1708,14 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       </Card>
 
       {/* Mobile Preview - Show before action buttons */}
-      <div className="lg:hidden">
+      {!isDesktop && (
+      <div>
         <Separator />
         <div className="mt-6">
           <SessionPreview formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
         </div>
       </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-3 justify-between">
@@ -1804,9 +1808,11 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     </Dialog>
 
     {/* Preview Section */}
-    <div className="hidden lg:block">
+    {isDesktop && (
+    <div>
       <SessionPreview formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
     </div>
+    )}
   </div>
   
   </TooltipProvider>
