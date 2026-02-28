@@ -235,6 +235,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     if (!formData.email) return;
     // Don't save password to the draft — only non-sensitive fields
     const { password, ...safeFormData } = formData;
+    debugLog('Saving registration draft:', { email: formData.email, step, formData: safeFormData });
     fetch(
       `${apiBaseUrl}/registration-draft`,
       {
@@ -245,7 +246,16 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
         },
         body: JSON.stringify({ email: formData.email, currentStep: step, formData: safeFormData }),
       }
-    ).catch(() => {}); // Silently fail — this is a best-effort save
+    ).then(async (res) => {
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        errorLog('Registration draft save failed:', res.status, text);
+      } else {
+        debugLog('Registration draft saved successfully for step', step);
+      }
+    }).catch((err) => {
+      errorLog('Registration draft save network error:', err);
+    });
   };
 
   const nextStep = () => {
@@ -302,7 +312,9 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       const result = await response.json();
 
       if (response.ok && result.success) {
-        onComplete(formData);
+        // Use the backend-generated slug instead of any frontend value
+        localStorage.setItem('slug_auto_generated', 'true');
+        onComplete({ ...formData, urlSlug: result.urlSlug || formData.urlSlug });
       } else {
         setError(result.error || 'Failed to create account');
       }
@@ -332,15 +344,8 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     }
   };
 
-  // Auto-generate URL slug from organizer name (sent to backend)
-  useEffect(() => {
-    if (formData.organizerName && formData.organizerName.trim()) {
-      const autoSlug = removeDiacritics(formData.organizerName);
-      if (autoSlug && autoSlug.length >= 3) {
-        setFormData(prev => ({ ...prev, urlSlug: autoSlug }));
-      }
-    }
-  }, [formData.organizerName]);
+  // URL slug is now generated randomly by the backend on registration
+  // The organizer can customize it later via settings
 
   // Cleanup timeout on unmount
   useEffect(() => {

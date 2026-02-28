@@ -8,7 +8,6 @@ import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { debugLog, errorLog } from '../utils/debug';
-import { Footer } from './Footer';
 
 interface EventPageSettingsProps {
   accessToken: string;
@@ -343,6 +342,8 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         
         // Update localStorage with new slug
         localStorage.setItem('oliwonder_event_slug', urlSlug);
+        // Mark slug as customized (no longer auto-generated)
+        localStorage.removeItem('slug_auto_generated');
         
         // Update current user in localStorage
         const currentUser = localStorage.getItem('oliwonder_current_user');
@@ -372,7 +373,7 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1">
       <div className="container mx-auto p-6 max-w-3xl">
         <div className="mb-8">
           <h1 className="mb-2">Event page settings</h1>
@@ -545,7 +546,6 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         )}
       </div>
 
-      <Footer />
     </div>
   );
 }

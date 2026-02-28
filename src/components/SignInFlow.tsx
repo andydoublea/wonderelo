@@ -9,14 +9,14 @@ import {
   AlertCircle, 
   ArrowLeft, 
   UserCircle, 
-  Shield, 
+  Mic,
   Mail, 
   Eye, 
   EyeOff, 
   Loader2, 
   X 
 } from 'lucide-react';
-import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey, projectId } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface SignInData {
@@ -46,6 +46,10 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
     password: ''
   });
   
+  // Show quick test logins only on dev/staging (not production)
+  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const showTestLogins = isLocalhost || projectId !== 'tpsgnnrkwgvgnsktuicr';
+
   // Participant magic link state
   const [participantEmail, setParticipantEmail] = useState('');
   const [participantLoading, setParticipantLoading] = useState(false);
@@ -440,16 +444,13 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
               Sign in
             </h1>
             <p className="text-muted-foreground">
-              Access your networking sessions
+              Access your networking rounds
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Sign in</CardTitle>
-              <CardContent>
-                Choose how you want to sign in
-              </CardContent>
+              <CardTitle>Sign in as</CardTitle>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="participant" className="w-full" onValueChange={(value) => setActiveTab(value as 'participant' | 'organizer')}>
@@ -459,7 +460,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                     Participant
                   </TabsTrigger>
                   <TabsTrigger value="organizer" className="gap-2">
-                    <Shield className="h-4 w-4" />
+                    <Mic className="h-4 w-4" />
                     Organizer
                   </TabsTrigger>
                 </TabsList>
@@ -554,12 +555,13 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                         </Button>
                       </div>
 
-                      {/* Test Login Button for Participant */}
+                      {/* Test Login Button for Participant - only on dev/staging */}
+                      {showTestLogins && (
                       <div className="space-y-2 pt-4 border-t">
                         <p className="text-xs text-muted-foreground mb-2">Quick test logins:</p>
-                        <Button 
+                        <Button
                           type="button"
-                          variant="secondary" 
+                          variant="secondary"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -578,6 +580,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                           )}
                         </Button>
                       </div>
+                      )}
                     </form>
                   )}
                 </TabsContent>
@@ -685,11 +688,12 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                     </div>
                   </form>
 
-                  {/* Test Login Buttons */}
+                  {/* Test Login Buttons - only on dev/staging */}
+                  {showTestLogins && (
                   <div className="space-y-2 pt-4 border-t">
                     <p className="text-xs text-muted-foreground mb-2">Quick test logins:</p>
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -698,7 +702,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                           password: 'Rukuku'
                         });
                         setError('');
-                        
+
                         // Auto-submit after a short delay
                         setTimeout(() => {
                           handleSubmit();
@@ -710,8 +714,8 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                       Quick test login (andy.double.a+3@gmail.com)
                     </Button>
 
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -720,7 +724,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                           password: 'Rukuku'
                         });
                         setError('');
-                        
+
                         // Auto-submit after a short delay
                         setTimeout(() => {
                           handleSubmit();
@@ -732,6 +736,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                       Quick test login (admin@oliwonder.com)
                     </Button>
                   </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>

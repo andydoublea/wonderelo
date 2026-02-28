@@ -7,7 +7,6 @@ import { Save, Loader2 } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
-import { Footer } from './Footer';
 
 interface AccountSettingsProps {
   accessToken: string;
@@ -227,7 +226,7 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1">
       <div className="container mx-auto p-6 max-w-3xl">
         <div className="mb-8">
           <h1 className="mb-2">Account settings</h1>
@@ -438,7 +437,6 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         )}
       </div>
 
-      <Footer />
     </div>
   );
 }

@@ -148,7 +148,7 @@ function parseRoundStartTime(date: string, startTime: string): Date {
 }
 
 // Helper function to dynamically update session status based on round times
-function updateSessionStatusBasedOnRounds(session: any, now: Date = new Date()): void {
+export function updateSessionStatusBasedOnRounds(session: any, now: Date = new Date()): void {
   if (!session || !session.rounds || session.rounds.length === 0) {
     return;
   }
@@ -292,7 +292,17 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
     const sessionPromises = sessionIds.map(async (sessionId) => {
       const session = await db.getSessionById(sessionId);
       if (session) {
+        const originalStatus = session.status;
         updateSessionStatusBasedOnRounds(session, getCurrentTime(c));
+        // Persist status change to DB if it was auto-completed
+        if (session.status === 'completed' && originalStatus !== 'completed') {
+          try {
+            await db.updateSession(sessionId, { status: 'completed' });
+            debugLog(`Session ${sessionId} auto-completed (was: ${originalStatus})`);
+          } catch (error) {
+            errorLog(`Failed to auto-complete session ${sessionId}:`, error);
+          }
+        }
       }
       return session;
     });

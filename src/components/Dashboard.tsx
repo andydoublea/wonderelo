@@ -5,13 +5,12 @@ import { SessionList } from './SessionList';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Skeleton } from './ui/skeleton';
-import { PlusCircle, Download, QrCode, Copy, Search, ExternalLink, Check, Edit, Play, CheckCircle, X, Presentation } from 'lucide-react';
+import { PlusCircle, Download, QrCode, Copy, Search, ExternalLink, Check, Edit, Play, CheckCircle, X, Presentation, CalendarClock } from 'lucide-react';
 import { Input } from './ui/input';
 import { NetworkingSession } from '../App';
 import { OnboardingChecklist } from './OnboardingChecklist';
 import { OnboardingTour } from './OnboardingTour';
-import { Footer } from './Footer';
-import { DownloadableAssets } from './DownloadableAssets';
+// import { DownloadableAssets } from './DownloadableAssets';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
 
@@ -36,6 +35,9 @@ export function Dashboard({
   const [downloadingQR, setDownloadingQR] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showTour, setShowTour] = useState(false);
+  const [checklistVisible, setChecklistVisible] = useState(
+    () => localStorage.getItem('onboarding_checklist_dismissed') !== 'true'
+  );
 
   // Show onboarding tour for first-time users
   useEffect(() => {
@@ -154,11 +156,6 @@ export function Dashboard({
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Onboarding Checklist - shown for new organizers */}
-      <div data-tour="onboarding-checklist">
-        <OnboardingChecklist eventSlug={eventSlug} sessions={sessions} />
-      </div>
-
       {/* Event Page URL Section */}
       <Card data-tour="event-page-url">
         <CardHeader>
@@ -235,11 +232,11 @@ export function Dashboard({
                 <div className="text-2xl">{draftSessions.length}</div>
               </CardContent>
             </Card>
-            
+
             <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=scheduled')}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm">Scheduled</CardTitle>
-                <Play className="h-4 w-4 text-muted-foreground" />
+                <CalendarClock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl">{scheduledSessions.length}</div>
@@ -269,70 +266,64 @@ export function Dashboard({
         )}
       </div>
 
-      {/* Downloadable Assets */}
-      <DownloadableAssets
+      {/* Onboarding Checklist (left) + Published on Event Page (right) */}
+      <div className={`grid grid-cols-1 gap-6 ${checklistVisible ? 'md:grid-cols-2' : ''}`}>
+        {/* Onboarding Checklist - shown for new organizers */}
+        {checklistVisible && (
+          <div data-tour="onboarding-checklist">
+            <OnboardingChecklist eventSlug={eventSlug} sessions={sessions} onVisibilityChange={setChecklistVisible} />
+          </div>
+        )}
+
+        {/* Published on Event Page Section */}
+        <Card data-tour="session-card">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Published on event page</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => navigate('/rounds/new')} variant="outline" size="sm" data-tour="create-round">
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                  Create new round
+                </Button>
+                <Button onClick={() => navigate('/rounds')} variant="outline" size="sm">
+                  Show all rounds
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {publishedSessions.length === 0 && !isLoadingSessions ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No published rounds yet
+              </div>
+            ) : (
+              <SessionList
+                sessions={publishedSessions}
+                isLoading={isLoadingSessions}
+                onEditSession={handleEditSession}
+                onDeleteSession={onDeleteSession}
+                onDuplicateSession={handleDuplicateSession}
+                onUpdateSession={onUpdateSession}
+                onManageSession={handleManageSession}
+                groupBy="date"
+                hideEmptySections={false}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Downloadable Assets - temporarily disabled */}
+      {/* <DownloadableAssets
         eventSlug={eventSlug}
         eventPageUrl={publicUrl}
-      />
-
-      {/* Published on Event Page Section */}
-      <Card data-tour="session-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Published on event page</CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative w-[260px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search rounds..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-9 pr-9"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              <Button onClick={() => navigate('/rounds')} variant="outline" data-tour="create-round">
-                Show all rounds
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {publishedSessions.length === 0 && !isLoadingSessions ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No published rounds yet
-            </div>
-          ) : (
-            <SessionList
-              sessions={publishedSessions}
-              isLoading={isLoadingSessions}
-              onEditSession={handleEditSession}
-              onDeleteSession={onDeleteSession}
-              onDuplicateSession={handleDuplicateSession}
-              onUpdateSession={onUpdateSession}
-              onManageSession={handleManageSession}
-              groupBy="date"
-              hideEmptySections={false}
-            />
-          )}
-        </CardContent>
-      </Card>
+      /> */}
 
       {/* Onboarding Tour */}
       {showTour && (
         <OnboardingTour onComplete={() => setShowTour(false)} />
       )}
 
-      <Footer />
     </div>
   );
 }

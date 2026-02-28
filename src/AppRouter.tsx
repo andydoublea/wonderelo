@@ -22,6 +22,7 @@ import { AuthenticatedNav } from './components/AuthenticatedNav';
 import { SessionAdministration } from './components/SessionAdministration';
 import { RoundFormPage } from './components/RoundFormPage';
 import { Dashboard } from './components/Dashboard';
+import { Footer } from './components/Footer';
 import { NetworkingDashboard } from './components/NetworkingDashboard';
 import { AccountSettings } from './components/AccountSettings';
 import { EventPageSettings } from './components/EventPageSettings';
@@ -466,7 +467,7 @@ function RoundFormPageRoute() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <AuthenticatedNav
         currentView="rounds"
         currentUser={currentUser}
@@ -491,6 +492,8 @@ function RoundFormPageRoute() {
         profileImageUrl={currentUser?.profileImageUrl}
         userSlug={eventSlug}
       />
+
+      <Footer />
     </div>
   );
 }
@@ -509,7 +512,7 @@ function DashboardRoute() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <AuthenticatedNav
         currentView="dashboard"
         currentUser={currentUser}
@@ -523,7 +526,7 @@ function DashboardRoute() {
         onSignOut={handleSignOut}
       />
 
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 flex-1">
         <Dashboard
           eventSlug={eventSlug}
           sessions={sessions}
@@ -532,6 +535,8 @@ function DashboardRoute() {
           onDeleteSession={deleteSession}
         />
       </div>
+
+      <Footer />
     </div>
   );
 }
@@ -555,7 +560,7 @@ function RoundsRoute() {
   const [dashboardKey, setDashboardKey] = useState(0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <AuthenticatedNav
         currentView="rounds"
         currentUser={currentUser}
@@ -572,7 +577,7 @@ function RoundsRoute() {
         onSignOut={handleSignOut}
       />
 
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 flex-1">
         <NetworkingDashboard
           key={dashboardKey}
           sessions={sessions}
@@ -593,6 +598,8 @@ function RoundsRoute() {
           }}
         />
       </div>
+
+      <Footer />
     </div>
   );
 }
@@ -609,7 +616,7 @@ function AccountSettingsRoute() {
   const navigate = useNavigate();
 
   return (
-    <>
+    <div className="min-h-screen bg-background flex flex-col">
       <AuthenticatedNav
         currentView="account-settings"
         currentUser={currentUser}
@@ -640,7 +647,8 @@ function AccountSettingsRoute() {
           debugLog('Profile updated in AppRouter:', updates);
         }}
       />
-    </>
+      <Footer />
+    </div>
   );
 }
 
@@ -656,7 +664,7 @@ function EventPageSettingsRoute() {
   const navigate = useNavigate();
 
   return (
-    <>
+    <div className="min-h-screen bg-background flex flex-col">
       <AuthenticatedNav
         currentView="event-page-settings"
         currentUser={currentUser}
@@ -691,7 +699,8 @@ function EventPageSettingsRoute() {
           debugLog('Event page settings updated in AppRouter:', updates);
         }}
       />
-    </>
+      <Footer />
+    </div>
   );
 }
 
@@ -721,7 +730,7 @@ function BillingSettingsRoute() {
   const navigate = useNavigate();
 
   return (
-    <>
+    <div className="min-h-screen bg-background flex flex-col">
       <AuthenticatedNav
         currentView="billing"
         currentUser={currentUser}
@@ -735,7 +744,8 @@ function BillingSettingsRoute() {
         onSignOut={handleSignOut}
       />
       <BillingSettings accessToken={accessToken} />
-    </>
+      <Footer />
+    </div>
   );
 }
 

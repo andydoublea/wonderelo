@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "vite-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3001
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "3011", "--host"],
+      "port": 3011
     }
   ]
 }

@@ -4,7 +4,15 @@ export function Footer() {
   const navigate = useNavigate();
 
   return (
-    <footer className="border-t border-border bg-muted/30">
+    <footer
+      className="border-t border-border bg-muted/30 mt-auto"
+      style={{
+        width: '100vw',
+        position: 'relative',
+        left: '50%',
+        marginLeft: '-50vw',
+      }}
+    >
       <div className="container mx-auto max-w-6xl px-6 py-12">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-8">
           {/* Logo */}

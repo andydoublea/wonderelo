@@ -224,7 +224,7 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navigation onGetStarted={onGetStarted} onSignIn={onSignIn} />
 
       {/* Hero Section */}

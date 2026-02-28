@@ -170,13 +170,12 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   // Use inline styles for position/zIndex since Tailwind v4 may not generate arbitrary z-[...] classes.
   return createPortal(
     <>
-      {/* Overlay - covers entire viewport */}
+      {/* Overlay - covers entire viewport (transparent, just captures clicks for dismissal) */}
       <div
         style={{
           position: 'fixed',
           inset: 0,
           zIndex: 9998,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
         }}
         onClick={handleComplete}
       />
@@ -195,7 +194,6 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             borderRadius: '8px',
             boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
             border: '2px solid hsl(var(--primary))',
-            backgroundColor: 'hsl(var(--background))',
           }}
         />
       )}

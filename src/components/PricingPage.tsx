@@ -82,7 +82,7 @@ export function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navigation onGetStarted={() => navigate('/signup')} onSignIn={() => navigate('/signin')} />
 
       {/* Hero */}

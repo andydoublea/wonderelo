@@ -14,7 +14,7 @@ export function OurStoryPage({ onGetStarted, onSignIn }: OurStoryPageProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navigation onGetStarted={onGetStarted || (() => navigate('/signup'))} onSignIn={onSignIn || (() => navigate('/signin'))} />
 
       {/* Hero */}

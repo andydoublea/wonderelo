@@ -10,6 +10,10 @@ function db() {
   return getGlobalSupabaseClient();
 }
 
+export function getClient() {
+  return getGlobalSupabaseClient();
+}
+
 // ============================================================
 // ORGANIZER PROFILES
 // ============================================================

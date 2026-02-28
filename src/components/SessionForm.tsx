@@ -1728,20 +1728,20 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           >
             Save as draft
           </Button>
-          <div className="flex gap-0">
-            <Button 
-              type="button" 
+          <div className="flex items-stretch">
+            <Button
+              type="button"
               onClick={handleMakeLive}
-              className="rounded-r-none"
+              className="rounded-r-none btn-group-left"
               disabled={!!roundDurationError}
             >
               {formData.status === 'published' ? 'Update on event page' : 'Publish to event page'}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
+                <Button
                   type="button"
-                  className="px-2 rounded-l-none border-l border-primary/20"
+                  className="px-2 rounded-l-none btn-group-right"
                   disabled={!!roundDurationError}
                 >
                   <ChevronDown className="h-4 w-4" />

@@ -3,8 +3,6 @@ import { SessionRegistration } from './SessionRegistration';
 import { OrganizerHeader } from './OrganizerHeader';
 import { NetworkingSession } from '../App';
 import { errorLog } from '../utils/debug';
-import { Footer } from './Footer';
-
 interface EventPromoPageProps {
   eventSlug: string;
   sessions: NetworkingSession[];
@@ -120,7 +118,6 @@ export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, 
         </div>
       </div>
 
-      <Footer />
     </div>
   );
 }

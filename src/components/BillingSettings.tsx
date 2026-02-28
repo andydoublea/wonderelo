@@ -9,7 +9,6 @@ import { toast } from 'sonner@2.0.3';
 import { apiBaseUrl } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
 import { PRICING_TIERS, CAPACITY_OPTIONS, formatPrice, getTierForCapacity, type CapacityTier } from '../config/pricing';
-import { Footer } from './Footer';
 
 interface Subscription {
   plan: string;
@@ -195,7 +194,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl flex-1">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Billing and subscription</h1>
         <p className="text-muted-foreground">
@@ -500,7 +499,6 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
         </>
       )}
 
-      <Footer />
     </div>
   );
 }

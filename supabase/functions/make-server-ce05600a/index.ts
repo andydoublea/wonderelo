@@ -9,7 +9,7 @@ import { logger } from 'npm:hono/logger';
 import { getGlobalSupabaseClient } from './global-supabase.tsx';
 import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
-import { getParticipantDashboard } from './participant-dashboard.tsx';
+import { getParticipantDashboard, updateSessionStatusBasedOnRounds } from './participant-dashboard.tsx';
 import { getCurrentTime, parseRoundStartTime } from './time-helpers.tsx';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
@@ -107,17 +107,9 @@ app.post('/make-server-ce05600a/signup', async (c) => {
 
     const userId = authData.user.id;
 
-    // Auto-generate URL slug from organizer name if not provided
-    let finalSlug = requestedSlug;
-    if (!finalSlug || finalSlug.length < 3) {
-      // Generate slug from organizer name: remove diacritics, lowercase, alphanumeric only
-      const baseName = (organizerName || 'user')
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove diacritics
-        .toLowerCase()
-        .replace(/\s+/g, '')
-        .replace(/[^a-z0-9]/g, '');
-      finalSlug = baseName.length >= 3 ? baseName : baseName + Math.random().toString(36).substring(2, 6);
-    }
+    // Always generate a random URL slug for new registrations
+    // This motivates the organizer to customize their URL later
+    let finalSlug = Math.random().toString(36).substring(2, 10);
 
     // Ensure slug uniqueness by checking DB and appending random suffix if taken
     let slugAttempt = finalSlug;
@@ -141,7 +133,7 @@ app.post('/make-server-ce05600a/signup', async (c) => {
     // Send welcome email (non-blocking)
     const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
     const dashboardUrl = `${appUrl}/dashboard`;
-    const eventPageUrl = urlSlug ? `${appUrl}/${urlSlug}` : undefined;
+    const eventPageUrl = finalSlug ? `${appUrl}/${finalSlug}` : undefined;
     const welcomeEmail = buildWelcomeEmail({
       firstName: organizerName?.split(' ')[0] || 'there',
       dashboardUrl,
@@ -157,33 +149,37 @@ app.post('/make-server-ce05600a/signup', async (c) => {
       })
       .catch(err => console.log('⚠️ Welcome email error:', err));
 
-    // Auto-create sample draft session (non-blocking)
+    // Auto-create sample draft session (awaited to ensure it exists when user reaches dashboard)
     const firstName = organizerName?.split(' ')[0] || 'My';
     const sampleSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     const sampleDate = nextWeek.toISOString().split('T')[0];
-    db.createSession({
-      id: sampleSessionId,
-      userId,
-      name: `${firstName}'s First Networking`,
-      description: 'This is a sample round to help you explore Wonderelo. Feel free to edit or delete it.',
-      date: sampleDate,
-      status: 'draft',
-      limitParticipants: false,
-      maxParticipants: 10,
-      groupSize: 2,
-      enableTeams: false,
-      enableTopics: false,
-      meetingPoints: ['Table 1', 'Table 2', 'Table 3'],
-      iceBreakers: ['What do you do?', 'What brought you here today?', 'What\'s the most interesting project you\'re working on?'],
-      rounds: [
-        { id: `round-sample-1-${Date.now()}`, startTime: '10:00', duration: 5, name: 'Round 1' },
-        { id: `round-sample-2-${Date.now()}`, startTime: '10:10', duration: 5, name: 'Round 2' },
-        { id: `round-sample-3-${Date.now()}`, startTime: '10:20', duration: 5, name: 'Round 3' },
-      ],
-    }).then(() => console.log('✅ Sample session created for', email))
-      .catch(err => console.log('⚠️ Sample session creation error:', err));
+    try {
+      await db.createSession({
+        id: sampleSessionId,
+        userId,
+        name: `${firstName}'s First Networking`,
+        description: 'This is a sample round to help you explore Wonderelo. Feel free to edit or delete it.',
+        date: sampleDate,
+        status: 'draft',
+        limitParticipants: false,
+        maxParticipants: 10,
+        groupSize: 2,
+        enableTeams: false,
+        enableTopics: false,
+        meetingPoints: ['Table 1', 'Table 2', 'Table 3'],
+        iceBreakers: ['What do you do?', 'What brought you here today?', 'What\'s the most interesting project you\'re working on?'],
+        rounds: [
+          { id: `round-sample-1-${Date.now()}`, startTime: '10:00', duration: 5, name: 'Round 1' },
+          { id: `round-sample-2-${Date.now()}`, startTime: '10:10', duration: 5, name: 'Round 2' },
+          { id: `round-sample-3-${Date.now()}`, startTime: '10:20', duration: 5, name: 'Round 3' },
+        ],
+      });
+      console.log('✅ Sample session created for', email);
+    } catch (err) {
+      console.log('⚠️ Sample session creation error:', err);
+    }
 
     const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
       email,
@@ -285,6 +281,21 @@ app.get('/make-server-ce05600a/sessions', async (c) => {
     }
     
     const sessions = await db.getSessionsByUser(user.id);
+
+    // Auto-complete sessions whose rounds have all ended
+    const now = getCurrentTime(c);
+    for (const session of sessions) {
+      const originalStatus = session.status;
+      updateSessionStatusBasedOnRounds(session, now);
+      if (session.status === 'completed' && originalStatus !== 'completed') {
+        try {
+          await db.updateSession(session.id, { status: 'completed' });
+          debugLog(`Session ${session.id} auto-completed via sessions list (was: ${originalStatus})`);
+        } catch (error) {
+          errorLog(`Failed to auto-complete session ${session.id}:`, error);
+        }
+      }
+    }
 
     return c.json({ success: true, sessions });
     

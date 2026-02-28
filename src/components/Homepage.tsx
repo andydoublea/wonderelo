@@ -4,12 +4,113 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { ArrowRight, Users, Calendar, Clock, QrCode, Heart, Shield, Zap, Star, Coffee, MessageCircle, UserCheck, Shuffle, MapPin, Palette, HandHeart, Lightbulb, Target, Mic, Monitor, GitBranch, Music, Cake, BookOpen, CheckCircle, Loader2, GraduationCap, ImageIcon } from 'lucide-react';
+import { ArrowRight, Users, Calendar, Clock, QrCode, Heart, Shield, Star, Coffee, MessageCircle, UserCheck, Shuffle, MapPin, Palette, HandHeart, Target, Mic, GitBranch, Music, Cake, BookOpen, CheckCircle, Loader2, GraduationCap, ImageIcon } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from './ui/carousel';
 import { Navigation } from './Navigation';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+
+const eventTypes = [
+  { icon: Mic, title: 'Conferences & barcamps', description: 'Ensure everyone leaves with new contacts — even introverts and solo attendees.', path: '/for/conferences' },
+  { icon: HandHeart, title: 'Meetups', description: 'Mix people beyond their usual circles and create fresh conversations every time.', path: '/for/meetups' },
+  { icon: Music, title: 'Festivals & Parties', description: 'Break the ice between groups, make solo guests feel included, and help everyone actually get to know each other.', path: '/for/festivals' },
+  { icon: Heart, title: 'Weddings', description: 'Help your guests make friends across groups and create unforgettable shared moments.', path: '/for/weddings' },
+  { icon: Coffee, title: 'Bars & cafés', description: 'Host speed datings, quiz nights, board game evenings or after-work mixers — and give your regulars a reason to come back.', path: '/for/bars' },
+  { icon: GraduationCap, title: 'Schools & universities', description: 'Help students get to know each other, form project teams, or break the ice at the start of a new semester.', path: '/for/schools' },
+  { icon: GitBranch, title: 'Company teams', description: 'Build deeper relationships across departments and help remote colleagues connect face-to-face.', path: '/for/teams' },
+];
+
+const testimonials = [
+  { quote: "It was the first event where we felt confident nobody was left out of networking.", author: "Anna Müller", event: "TechFuture Conference" },
+  { quote: "Our attendees used to stick to their own groups. Wonderelo changed that in one evening.", author: "David Novak", event: "CreativeMinds Meetup" },
+  { quote: "At our company offsite, the sales and manufacturing departments finally found their way to each other 🙂.", author: "Sophie Laurent", event: "BrightPath Consulting Offsite" },
+  { quote: "Mixing the bride's team and the groom's team led to a massive party :-D.", author: "Marko & Elena", event: "Wedding in Vienna" },
+  { quote: "We tried it at a café quiz night—people laughed, made new friends, and kept asking when the next one would be 🎉.", author: "Lucia Rossi", event: "Quiz Nights at Caffè Centrale" },
+  { quote: "Setup took 5 minutes and participants figured it out on their own. Zero stress for the organizer.", author: "Jan Horváth", event: "EuroSummit Bratislava" },
+];
+
+const blogPosts = [
+  { slug: '5-networking-tips', image: 'https://images.unsplash.com/photo-1515169067868-5387ec356754?w=800&h=400&fit=crop', title: '5 networking tips to maximize your event ROI', description: 'Learn how to create meaningful connections that drive real business value at your next event.' },
+  { slug: 'speed-dating-format', image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=400&fit=crop', title: 'Why the speed dating format works for networking', description: 'Discover the psychology behind structured networking and why it beats traditional mingling.' },
+  { slug: 'hybrid-events', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop', title: 'How to run successful networking at hybrid events', description: 'Bridge the gap between online and in-person attendees with these proven strategies.' },
+  { slug: 'icebreaker-questions', image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&h=400&fit=crop', title: 'The ultimate guide to icebreaker questions', description: 'Curated icebreaker questions that actually work — from casual meetups to corporate events.' },
+  { slug: 'networking-event-planning', image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop', title: 'How to plan a networking event from scratch', description: 'A step-by-step playbook covering venue, format, technology, and follow-up.' },
+  { slug: 'introvert-networking', image: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800&h=400&fit=crop', title: 'Networking for introverts: a better way', description: 'Why structured networking helps introverts shine — and how to set it up at your event.' },
+];
+
+const trustedLogos = [
+  { src: '/logos/ecommercebridge.svg', alt: 'Ecommerce Bridge', style: { height: '32px', width: 'auto', filter: 'brightness(0)' } as React.CSSProperties },
+  { src: '/logos/upterdam-logo-dark.svg', alt: 'Upterdam', style: { height: '14px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/bezcyklenia.png', alt: 'Bez Cyklenia', style: { height: '30px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/Blancacademy.svg', alt: 'Blanc Academy', style: { height: '28px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/web-summit.svg', alt: 'Web Summit', style: { height: '20px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/sxsw.svg', alt: 'SXSW', style: { height: '22px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/slush.svg', alt: 'Slush', style: { height: '20px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/collision.svg', alt: 'Collision', style: { height: '18px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/techcrunch-disrupt.svg', alt: 'TechCrunch Disrupt', style: { height: '30px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/tnw.svg', alt: 'TNW', style: { height: '22px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/ces.svg', alt: 'CES', style: { height: '22px', width: 'auto' } as React.CSSProperties },
+  { src: '/logos/founders-summit.svg', alt: 'Founders Summit', style: { height: '28px', width: 'auto' } as React.CSSProperties },
+];
+
+function TrustedLogosMobile({ logos }: { logos: typeof trustedLogos }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const groupSize = 3;
+  const groupCount = Math.ceil(logos.length / groupSize);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % groupCount);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [groupCount]);
+
+  return (
+    <div className="md:hidden">
+      <div style={{ position: 'relative', height: '50px' }}>
+        {Array.from({ length: groupCount }).map((_, groupIdx) => {
+          const groupLogos = logos.slice(groupIdx * groupSize, groupIdx * groupSize + groupSize);
+          return (
+            <div
+              key={groupIdx}
+              className="flex items-center justify-center opacity-70"
+              style={{
+                position: 'absolute',
+                inset: '0 1.5rem',
+                gap: '1.5rem',
+                transform: 'scale(0.85)',
+                opacity: groupIdx === activeIndex ? 0.7 : 0,
+                transition: 'opacity 0.6s ease-in-out',
+              }}
+            >
+              {groupLogos.map((logo) => (
+                <img key={logo.alt} src={logo.src} alt={logo.alt} style={logo.style} />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      {/* Dot indicators */}
+      <div className="flex justify-center" style={{ gap: '6px', marginTop: '12px' }}>
+        {Array.from({ length: groupCount }).map((_, i) => (
+          <button
+            key={i}
+            className="rounded-full"
+            style={{
+              width: '6px',
+              height: '6px',
+              backgroundColor: i === activeIndex ? '#888' : '#ddd',
+              transition: 'background-color 0.3s',
+            }}
+            onClick={() => setActiveIndex(i)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface HomepageProps {
   onGetStarted: () => void;
@@ -30,6 +131,32 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
   const [leadParticipantCount, setLeadParticipantCount] = useState('');
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadSubmitted, setLeadSubmitted] = useState(false);
+
+  // Carousel state
+  const [testimonialApi, setTestimonialApi] = useState<CarouselApi>();
+  const [testimonialCurrent, setTestimonialCurrent] = useState(0);
+  const [testimonialCount, setTestimonialCount] = useState(0);
+  const [blogApi, setBlogApi] = useState<CarouselApi>();
+  const [blogCurrent, setBlogCurrent] = useState(0);
+  const [blogCount, setBlogCount] = useState(0);
+
+  useEffect(() => {
+    if (!testimonialApi) return;
+    setTestimonialCount(testimonialApi.scrollSnapList().length);
+    setTestimonialCurrent(testimonialApi.selectedScrollSnap());
+    testimonialApi.on('select', () => {
+      setTestimonialCurrent(testimonialApi.selectedScrollSnap());
+    });
+  }, [testimonialApi]);
+
+  useEffect(() => {
+    if (!blogApi) return;
+    setBlogCount(blogApi.scrollSnapList().length);
+    setBlogCurrent(blogApi.selectedScrollSnap());
+    blogApi.on('select', () => {
+      setBlogCurrent(blogApi.selectedScrollSnap());
+    });
+  }, [blogApi]);
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,7 +376,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6">
+      <section id="how-it-works" className="py-12 md:py-20 px-6">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
             <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Stop leaving networking to chance</span></h2>
@@ -282,7 +409,10 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
 
             {/* Step 2 - Participant round registration */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
-              <div className="order-2 md:order-1">
+              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 md:order-2" style={{ aspectRatio: '16/9' }}>
+                <img src="/how-it-works-2.png" alt="Participant round registration" className="w-full h-full object-cover" />
+              </div>
+              <div className="md:order-1">
                 <div className="mb-5">
                   <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
                     <span className="text-lg font-bold text-primary">2</span>
@@ -293,15 +423,12 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   People choose their time and optionally their topic or group. Zero attendee setup for the organizer.
                 </p>
               </div>
-              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 order-1 md:order-2" style={{ aspectRatio: '16/9' }}>
-                <img src="/how-it-works-2.png" alt="Participant round registration" className="w-full h-full object-cover" />
-              </div>
             </div>
 
             {/* Step 3 - Attendance confirmation */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
               <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30" style={{ aspectRatio: '16/9' }}>
-                <img src="/how-it-works-3.png" alt="Attendance confirmation" className="w-full h-full object-cover" style={{ objectPosition: 'calc(50% + 60px) calc(50% + 5px)' }} />
+                <img src="/how-it-works-3.png" alt="Attendance confirmation" className="w-full h-full object-cover" style={{ objectPosition: 'calc(50% + 55px) calc(50% + 7px)' }} />
               </div>
               <div>
                 <div className="mb-5">
@@ -318,7 +445,10 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
 
             {/* Step 4 - Participants meet & network */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
-              <div className="order-2 md:order-1">
+              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 md:order-2" style={{ aspectRatio: '16/9' }}>
+                <img src="/how-it-works-4.png" alt="Participants meet and network" className="w-full h-full object-cover" />
+              </div>
+              <div className="md:order-1">
                 <div className="mb-5">
                   <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full mb-3">
                     <span className="text-lg font-bold text-primary">4</span>
@@ -328,9 +458,6 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 <p className="text-muted-foreground leading-relaxed">
                   Wonderelo shows every participant their match and designated meeting point. The round runs according to the preset duration and locations — ice breakers handle the rest.
                 </p>
-              </div>
-              <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 order-1 md:order-2" style={{ aspectRatio: '16/9' }}>
-                <img src="/how-it-works-4.png" alt="Participants meet and network" className="w-full h-full object-cover" />
               </div>
             </div>
 
@@ -364,141 +491,81 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       </section>
 
       {/* Who is it for */}
-      <section className="py-20 px-6">
+      <section className="py-12 md:py-20 px-6">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 md:mb-16">
             <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Every gathering is better when people connect</span></h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Wonderelo works for any setting where you want to bring people together
             </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {/* Row 1: Events (4 cards) */}
-            <div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-responsive-16">
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/conferences')}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                        <Mic className="h-5 w-5 text-primary" />
-                      </div>
-                      <CardTitle className="text-base">Conferences & barcamps</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Ensure everyone leaves with new contacts — even introverts and solo attendees.
-                    </p>
-                    <span className="text-sm text-primary font-medium">Learn more →</span>
-                  </CardContent>
-                </Card>
+          {/* Mobile: compact list with dividers */}
+          <div className="md:hidden divide-y divide-border" style={{ marginTop: '1.5rem' }}>
+            {eventTypes.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className="flex items-start w-full py-4 text-left gap-3"
+                >
+                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg flex-shrink-0 mt-0.5">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium">{item.title}</span>
+                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-primary flex-shrink-0 mt-1" />
+                </button>
+              );
+            })}
+          </div>
 
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/meetups')}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                        <HandHeart className="h-5 w-5 text-primary" />
+          {/* Desktop: card grid */}
+          <div className="hidden md:flex flex-col gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-responsive-16">
+              {eventTypes.slice(0, 4).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Card key={item.path} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(item.path)}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <CardTitle className="text-base">{item.title}</CardTitle>
                       </div>
-                      <CardTitle className="text-base">Meetups</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Mix people beyond their usual circles and create fresh conversations every time.
-                    </p>
-                    <span className="text-sm text-primary font-medium">Learn more →</span>
-                  </CardContent>
-                </Card>
-
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/festivals')}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                        <Music className="h-5 w-5 text-primary" />
-                      </div>
-                      <CardTitle className="text-base">Festivals & Parties</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Break the ice between groups, make solo guests feel included, and help everyone actually get to know each other.
-                    </p>
-                    <span className="text-sm text-primary font-medium">Learn more →</span>
-                  </CardContent>
-                </Card>
-
-                <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/for/weddings')}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                        <Heart className="h-5 w-5 text-primary" />
-                      </div>
-                      <CardTitle className="text-base">Weddings</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Help your guests make friends across groups and create unforgettable shared moments.
-                    </p>
-                    <span className="text-sm text-primary font-medium">Learn more →</span>
-                  </CardContent>
-                </Card>
-              </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
+                      <span className="text-sm text-primary font-medium">Learn more →</span>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
-
-            {/* Row 2: Venues (2 cards) + Teams (1 card) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md-flex-center gap-responsive-16">
-              <Card className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate('/for/bars')}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                      <Coffee className="h-5 w-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-base">Bars & cafés</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Host speed datings, quiz nights, board game evenings or after-work mixers — and give your regulars a reason to come back.
-                  </p>
-                  <span className="text-sm text-primary font-medium">Learn more →</span>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate('/for/schools')}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                      <GraduationCap className="h-5 w-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-base">Schools & universities</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Help students get to know each other, form project teams, or break the ice at the start of a new semester.
-                  </p>
-                  <span className="text-sm text-primary font-medium">Learn more →</span>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate('/for/teams')}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                      <GitBranch className="h-5 w-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-base">Company teams</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Build deeper relationships across departments and help remote colleagues connect face-to-face.
-                  </p>
-                  <span className="text-sm text-primary font-medium">Learn more →</span>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-2 gap-4 md-flex-center gap-responsive-16">
+              {eventTypes.slice(4).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Card key={item.path} className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate(item.path)}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <CardTitle className="text-base">{item.title}</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
+                      <span className="text-sm text-primary font-medium">Learn more →</span>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -515,7 +582,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
 
             {/* Right: text content */}
             <div>
-              <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Tailor each networking round to fit your event</span></h2>
+              <h2 className="mb-4 text-center md:text-left"><span style={{ color: '#5C2277' }}>Tailor each networking round to fit your event</span></h2>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', marginTop: '40px' }}>
                 <div className="flex items-start gap-4">
@@ -608,217 +675,157 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 px-6 bg-muted/30">
+      <section className="py-12 md:py-20 px-6 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 md:mb-16">
             <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Here's what happened when organizers used Wonderelo</span></h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               And the best part — nothing was left to chance.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm mb-4">
-                  "It was the first event where we felt confident nobody was left out of networking."
-                </p>
-                <div className="text-sm text-muted-foreground">
-                  — Anna Müller, TechFuture Conference
-                </div>
-              </CardContent>
-            </Card>
+          {/* Mobile: carousel with peek */}
+          <div className="md:hidden" style={{ marginTop: '1.5rem' }}>
+            <Carousel
+              setApi={setTestimonialApi}
+              opts={{ align: 'center', containScroll: false }}
+              className="w-full carousel-peek-bleed"
+            >
+              <CarouselContent>
+                {testimonials.map((t, index) => (
+                  <CarouselItem key={index}>
+                    <Card className="h-full">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                          ))}
+                        </div>
+                        <p className="text-sm mb-4">"{t.quote}"</p>
+                        <div className="text-sm text-muted-foreground">
+                          — {t.author}, {t.event}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+            {/* Dot indicators - mobile only */}
+            <div className="flex justify-center gap-2 mt-6">
+              {Array.from({ length: testimonialCount }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => testimonialApi?.scrollTo(index)}
+                  className="w-2 h-2 rounded-full transition-colors"
+                  style={{ backgroundColor: index === testimonialCurrent ? 'var(--primary)' : 'var(--border)' }}
+                />
+              ))}
+            </div>
+          </div>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm mb-4">
-                  "Our attendees used to stick to their own groups. Wonderelo changed that in one evening."
-                </p>
-                <div className="text-sm text-muted-foreground">
-                  — David Novak, CreativeMinds Meetup
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm mb-4">
-                  "At our company offsite, the sales and manufacturing departments finally found their way to each other 🙂."
-                </p>
-                <div className="text-sm text-muted-foreground">
-                  — Sophie Laurent, BrightPath Consulting Offsite
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm mb-4">
-                  "Mixing the bride's team and the groom's team led to a massive party :-D."
-                </p>
-                <div className="text-sm text-muted-foreground">
-                  — Marko & Elena, Wedding in Vienna
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm mb-4">
-                  "We tried it at a café quiz night—people laughed, made new friends, and kept asking when the next one would be 🎉."
-                </p>
-                <div className="text-sm text-muted-foreground">
-                  — Lucia Rossi, Quiz Nights at Caffè Centrale
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-sm mb-4">
-                  "Setup took 5 minutes and participants figured it out on their own. Zero stress for the organizer."
-                </p>
-                <div className="text-sm text-muted-foreground">
-                  — Jan Horváth, EuroSummit Bratislava
-                </div>
-              </CardContent>
-            </Card>
+          {/* Desktop: show all cards in grid */}
+          <div className="hidden md:grid grid-cols-3 gap-6">
+            {testimonials.map((t, index) => (
+              <Card key={index} className="h-full">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                    ))}
+                  </div>
+                  <p className="text-sm mb-4">"{t.quote}"</p>
+                  <div className="text-sm text-muted-foreground">
+                    — {t.author}, {t.event}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Customer Logos - Trusted By */}
       <section className="py-12 px-6">
-        <div className="container mx-auto max-w-5xl">
+        <div className="container mx-auto max-w-4xl">
           <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
             Trusted by event organizers at
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 opacity-60">
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Zap className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">TechFuture</span>
-            </div>
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Lightbulb className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">CreativeMinds</span>
-            </div>
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Star className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">BrightPath</span>
-            </div>
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Coffee className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">Caffè Centrale</span>
-            </div>
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Calendar className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">EuroSummit</span>
-            </div>
-            <div className="flex items-center gap-2 text-foreground/70 hover:text-foreground/90 transition-colors">
-              <Monitor className="h-5 w-5" />
-              <span className="text-lg font-semibold tracking-tight">NovaTech</span>
-            </div>
+          {/* Desktop: show all logos in 2 rows */}
+          <div className="hidden md:grid opacity-70" style={{ gridTemplateColumns: 'repeat(6, auto)', justifyContent: 'center', justifyItems: 'center', alignItems: 'center', gap: '2rem 3rem' }}>
+            {trustedLogos.map((logo) => (
+              <img key={logo.alt} src={logo.src} alt={logo.alt} style={logo.style} />
+            ))}
           </div>
+          {/* Mobile: auto-rotating logos */}
+          <TrustedLogosMobile logos={trustedLogos} />
         </div>
       </section>
 
       {/* Blog Section */}
-      <section className="py-20 px-6">
+      <section className="py-10 md:py-20 px-6">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 md:mb-16">
             <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Discover the magic of networking</span></h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Insights, tips, and strategies to add more value to your networking events
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Blog post 1 */}
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/blog/5-networking-tips')}>
-              <ImageWithFallback 
-                src="https://images.unsplash.com/photo-1515169067868-5387ec356754?w=800&h=400&fit=crop"
-                alt="Networking event"
-                className="w-full h-48 object-cover rounded-t-lg"
-              />
-              <CardContent className="pt-6">
-                <div className="text-xs text-muted-foreground mb-2">5 min read</div>
-                <h3 className="text-lg mb-2">5 networking tips to maximize your event ROI</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Learn how to create meaningful connections that drive real business value at your next event.
-                </p>
-                <Button variant="ghost" size="sm" className="p-0 h-auto">
-                  Read more <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Mobile: carousel */}
+          <div className="md:hidden" style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+            <Carousel setApi={setBlogApi} opts={{ align: 'center', containScroll: false }} className="w-full carousel-peek-bleed">
+              <CarouselContent>
+                {blogPosts.map((post) => (
+                  <CarouselItem key={post.slug}>
+                    <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/blog/${post.slug}`)}>
+                      <ImageWithFallback
+                        src={post.image}
+                        alt={post.title}
+                        className="w-full h-48 object-cover rounded-t-lg"
+                      />
+                      <CardContent className="pt-3">
+                        <h3 className="text-lg mb-2">{post.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-3">{post.description}</p>
+                        <span className="text-sm text-primary font-medium inline-flex items-center gap-1">
+                          Read more <ArrowRight className="h-4 w-4" />
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+            <div className="flex justify-center gap-2 mt-4">
+              {Array.from({ length: blogCount }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => blogApi?.scrollTo(index)}
+                  className="w-2 h-2 rounded-full transition-colors"
+                  style={{ backgroundColor: index === blogCurrent ? 'var(--primary)' : 'var(--border)' }}
+                />
+              ))}
+            </div>
+          </div>
 
-            {/* Blog post 2 */}
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/blog/speed-dating-format')}>
-              <ImageWithFallback 
-                src="https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=400&fit=crop"
-                alt="Speed networking"
-                className="w-full h-48 object-cover rounded-t-lg"
-              />
-              <CardContent className="pt-6">
-                <div className="text-xs text-muted-foreground mb-2">7 min read</div>
-                <h3 className="text-lg mb-2">Why the speed dating format works for networking</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Discover the psychology behind structured networking and why it beats traditional mingling.
-                </p>
-                <Button variant="ghost" size="sm" className="p-0 h-auto">
-                  Read more <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Blog post 3 */}
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/blog/hybrid-events')}>
-              <ImageWithFallback 
-                src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop"
-                alt="Hybrid event"
-                className="w-full h-48 object-cover rounded-t-lg"
-              />
-              <CardContent className="pt-6">
-                <div className="text-xs text-muted-foreground mb-2">6 min read</div>
-                <h3 className="text-lg mb-2">How to run successful networking at hybrid events</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Bridge the gap between online and in-person attendees with these proven strategies.
-                </p>
-                <Button variant="ghost" size="sm" className="p-0 h-auto">
-                  Read more <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Desktop: 3-column grid */}
+          <div className="hidden md:grid grid-cols-3 gap-6 mb-8">
+            {blogPosts.slice(0, 3).map((post) => (
+              <Card key={post.slug} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/blog/${post.slug}`)}>
+                <ImageWithFallback
+                  src={post.image}
+                  alt={post.title}
+                  className="w-full h-48 object-cover rounded-t-lg"
+                />
+                <CardContent className="pt-3">
+                  <h3 className="text-lg mb-2">{post.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">{post.description}</p>
+                  <Button variant="ghost" size="sm" className="p-0 h-auto">
+                    Read more <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           <div className="text-center">
@@ -830,7 +837,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-6">
+      <section className="py-10 md:py-20 px-6">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Add value to your event with networking rounds!</span></h2>
           <p className="mb-8 text-muted-foreground">

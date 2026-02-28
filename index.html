@@ -1,14 +1,34 @@
 
   <!DOCTYPE html>
-  <html lang="en">
+  <html lang="en" class="vs-jasper">
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta name="robots" content="noindex, nofollow" />
       <title>Wonderelo</title>
+      <style>
+        /* Critical styles to prevent FOUC — matches vs-jasper theme */
+        html.vs-jasper { background-color: #faf8f3 !important; color: #2d2a26 !important; }
+        html.vs-jasper body { background-color: #faf8f3; }
+      </style>
+      <!-- Google Tag Manager (production only) -->
+      <script>
+        if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && !location.hostname.includes('dqoybysbooxngrsxaekd')) {
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-PRNCBKJ2');
+        }
+      </script>
+      <!-- End Google Tag Manager -->
     </head>
 
     <body>
+      <!-- Google Tag Manager (noscript, production only) -->
+      <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PRNCBKJ2"
+      height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+      <!-- End Google Tag Manager (noscript) -->
       <div id="root"></div>
       <script type="module" src="/src/main.tsx"></script>
     </body>
