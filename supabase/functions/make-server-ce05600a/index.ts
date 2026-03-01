@@ -2687,6 +2687,130 @@ app.post('/make-server-ce05600a/cron/onboarding-emails', async (c) => {
   }
 });
 
+// ============================================================
+// ACCESS PASSWORDS (public + admin)
+// ============================================================
+
+// Public: validate access password (no auth required)
+app.post('/make-server-ce05600a/validate-access-password', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { password } = body;
+
+    if (!password) {
+      return c.json({ valid: false }, 400);
+    }
+
+    const match = await db.validateAccessPassword(password.trim());
+
+    if (!match) {
+      return c.json({ valid: false });
+    }
+
+    const userAgent = c.req.header('User-Agent') || null;
+    const ipAddress = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || null;
+
+    await db.logPasswordAccess(match.id, userAgent, ipAddress);
+
+    return c.json({
+      valid: true,
+      personName: match.person_name,
+      passwordId: match.id,
+    });
+  } catch (error) {
+    errorLog('Error validating access password:', error);
+    return c.json({ error: 'Validation failed' }, 500);
+  }
+});
+
+// Admin: list all access passwords
+app.get('/make-server-ce05600a/admin/access-passwords', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const passwords = await db.getAllAccessPasswords();
+    return c.json({ passwords });
+  } catch (error) {
+    errorLog('Error listing access passwords:', error);
+    return c.json({ error: 'Failed to list access passwords' }, 500);
+  }
+});
+
+// Admin: create access password
+app.post('/make-server-ce05600a/admin/access-passwords', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const body = await c.req.json();
+    if (!body.personName || !body.password) {
+      return c.json({ error: 'Person name and password are required' }, 400);
+    }
+
+    const result = await db.createAccessPassword(body.personName.trim(), body.password.trim());
+    return c.json({ success: true, password: result });
+  } catch (error) {
+    errorLog('Error creating access password:', error);
+    return c.json({ error: 'Failed to create access password' }, 500);
+  }
+});
+
+// Admin: toggle access password active/inactive
+app.put('/make-server-ce05600a/admin/access-passwords/:id/toggle', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const id = c.req.param('id');
+    const result = await db.toggleAccessPassword(id);
+    return c.json({ success: true, isActive: result.is_active });
+  } catch (error) {
+    errorLog('Error toggling access password:', error);
+    return c.json({ error: 'Failed to toggle access password' }, 500);
+  }
+});
+
+// Admin: delete access password
+app.delete('/make-server-ce05600a/admin/access-passwords/:id', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const id = c.req.param('id');
+    await db.deleteAccessPassword(id);
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error deleting access password:', error);
+    return c.json({ error: 'Failed to delete access password' }, 500);
+  }
+});
+
+// Admin: view access password logs
+app.get('/make-server-ce05600a/admin/access-passwords/:id/logs', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const id = c.req.param('id');
+    const logs = await db.getAccessPasswordLogs(id);
+    return c.json({ logs });
+  } catch (error) {
+    errorLog('Error fetching access password logs:', error);
+    return c.json({ error: 'Failed to fetch access logs' }, 500);
+  }
+});
+
 // Register participant routes
 registerParticipantRoutes(app, getCurrentTime);
 

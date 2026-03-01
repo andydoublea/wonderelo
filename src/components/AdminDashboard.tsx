@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -96,6 +96,14 @@ const adminTools = [
     description: 'Create and manage promo codes',
     icon: Gift,
     route: '/admin/gift-cards',
+    category: 'settings',
+  },
+  {
+    id: 'access-passwords',
+    title: 'Access passwords',
+    description: 'Manage site access codes and logs',
+    icon: KeyRound,
+    route: '/admin/access-passwords',
     category: 'settings',
   },
   {
