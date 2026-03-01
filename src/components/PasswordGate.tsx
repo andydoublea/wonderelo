@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { apiBaseUrl } from '../utils/supabase/info';
 
-const SITE_PASSWORD = 'rukuku';
 const STORAGE_KEY = 'wonderelo_site_access';
+const PERSON_KEY = 'wonderelo_access_person';
+
+function identifyHotjar(personName: string) {
+  if (typeof window !== 'undefined' && (window as any).hj) {
+    (window as any).hj('identify', personName, { name: personName });
+  }
+}
 
 export function PasswordGate({ children }: { children: React.ReactNode }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     // Skip password gate on localhost
@@ -16,17 +24,43 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
     }
     if (localStorage.getItem(STORAGE_KEY) === 'granted') {
       setIsUnlocked(true);
+      // Re-identify with Hotjar on page reload
+      const personName = localStorage.getItem(PERSON_KEY);
+      if (personName) {
+        identifyHotjar(personName);
+      }
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === SITE_PASSWORD) {
-      localStorage.setItem(STORAGE_KEY, 'granted');
-      setIsUnlocked(true);
-    } else {
-      setError('Incorrect password');
-      setPassword('');
+    if (!password.trim() || isLoading) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/validate-access-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (data.valid) {
+        localStorage.setItem(STORAGE_KEY, 'granted');
+        localStorage.setItem(PERSON_KEY, data.personName);
+        identifyHotjar(data.personName);
+        setIsUnlocked(true);
+      } else {
+        setError('Incorrect password');
+        setPassword('');
+      }
+    } catch {
+      setError('Connection error. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,6 +97,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
             onChange={(e) => { setPassword(e.target.value); setError(''); }}
             placeholder="Enter password"
             autoFocus
+            disabled={isLoading}
             style={{
               width: '100%',
               padding: '12px 16px',
@@ -72,6 +107,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
               outline: 'none',
               boxSizing: 'border-box',
               transition: 'border-color 0.15s',
+              opacity: isLoading ? 0.6 : 1,
             }}
             onFocus={(e) => e.target.style.borderColor = error ? '#ef4444' : '#1a1a1a'}
             onBlur={(e) => e.target.style.borderColor = error ? '#ef4444' : '#e5e7eb'}
@@ -81,23 +117,24 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
           )}
           <button
             type="submit"
+            disabled={isLoading}
             style={{
               width: '100%',
               padding: '12px',
-              background: '#1a1a1a',
+              background: isLoading ? '#666' : '#1a1a1a',
               color: 'white',
               border: 'none',
               borderRadius: '10px',
               fontSize: '15px',
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
               marginTop: '16px',
               transition: 'background 0.15s',
             }}
-            onMouseOver={(e) => (e.target as HTMLButtonElement).style.background = '#333'}
-            onMouseOut={(e) => (e.target as HTMLButtonElement).style.background = '#1a1a1a'}
+            onMouseOver={(e) => !isLoading && ((e.target as HTMLButtonElement).style.background = '#333')}
+            onMouseOut={(e) => !isLoading && ((e.target as HTMLButtonElement).style.background = '#1a1a1a')}
           >
-            Enter
+            {isLoading ? 'Checking...' : 'Enter'}
           </button>
         </form>
       </div>

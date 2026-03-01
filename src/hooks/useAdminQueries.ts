@@ -37,6 +37,8 @@ export const adminQueryKeys = {
   participantAuditLog: (id: string) => ['admin', 'participants', id, 'audit-log'] as const,
   sessions: ['admin', 'sessions'] as const,
   billing: (userId: string) => ['admin', 'billing', userId] as const,
+  accessPasswords: ['admin', 'access-passwords'] as const,
+  accessPasswordLogs: (id: string) => ['admin', 'access-passwords', id, 'logs'] as const,
 } as const;
 
 // ========================================
@@ -509,5 +511,94 @@ export function useResetCredits(accessToken: string) {
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to reset credits');
     },
+  });
+}
+
+// ========================================
+// ACCESS PASSWORDS
+// ========================================
+
+export function useAccessPasswords(accessToken: string) {
+  return useQuery({
+    queryKey: adminQueryKeys.accessPasswords,
+    queryFn: async () => {
+      const data = await adminFetch('/admin/access-passwords', accessToken);
+      return data.passwords || [];
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateAccessPassword(accessToken: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { personName: string; password: string }) => {
+      return adminFetch('/admin/access-passwords', accessToken, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.accessPasswords });
+      toast.success('Access password created');
+    },
+    onError: (error: Error) => {
+      errorLog('Error creating access password:', error);
+      toast.error(error.message || 'Failed to create access password');
+    },
+  });
+}
+
+export function useToggleAccessPassword(accessToken: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return adminFetch(`/admin/access-passwords/${id}/toggle`, accessToken, {
+        method: 'PUT',
+      });
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.accessPasswords });
+      toast.success(result.isActive ? 'Password activated' : 'Password deactivated');
+    },
+    onError: (error: Error) => {
+      errorLog('Error toggling access password:', error);
+      toast.error(error.message || 'Failed to toggle access password');
+    },
+  });
+}
+
+export function useDeleteAccessPassword(accessToken: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return adminFetch(`/admin/access-passwords/${id}`, accessToken, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.accessPasswords });
+      toast.success('Access password deleted');
+    },
+    onError: (error: Error) => {
+      errorLog('Error deleting access password:', error);
+      toast.error(error.message || 'Failed to delete access password');
+    },
+  });
+}
+
+export function useAccessPasswordLogs(passwordId: string | null, accessToken: string) {
+  return useQuery({
+    queryKey: adminQueryKeys.accessPasswordLogs(passwordId || ''),
+    queryFn: async () => {
+      if (!passwordId) return [];
+      const data = await adminFetch(`/admin/access-passwords/${passwordId}/logs`, accessToken);
+      return data.logs || [];
+    },
+    enabled: !!passwordId,
+    staleTime: 30 * 1000,
   });
 }

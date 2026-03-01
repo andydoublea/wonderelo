@@ -1467,3 +1467,102 @@ export async function deleteRegistrationDraft(email: string) {
     .eq('email', email);
   if (error) throw error;
 }
+
+// ============================================================
+// ACCESS PASSWORDS
+// ============================================================
+
+export async function validateAccessPassword(password: string) {
+  const { data, error } = await db()
+    .from('access_passwords')
+    .select('id, person_name, is_active')
+    .eq('password', password)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function logPasswordAccess(passwordId: string, userAgent: string | null, ipAddress: string | null) {
+  const { error: logError } = await db()
+    .from('access_password_logs')
+    .insert({
+      password_id: passwordId,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+    });
+  if (logError) throw logError;
+
+  // Atomic increment via PG function
+  const { error: rpcError } = await db().rpc('increment_access_count', { pwd_id: passwordId });
+  if (rpcError) throw rpcError;
+}
+
+export async function getAllAccessPasswords() {
+  const { data, error } = await db()
+    .from('access_passwords')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    personName: p.person_name,
+    password: p.password,
+    isActive: p.is_active,
+    accessCount: p.access_count,
+    lastAccessedAt: p.last_accessed_at,
+    createdAt: p.created_at,
+  }));
+}
+
+export async function createAccessPassword(personName: string, password: string) {
+  const { data, error } = await db()
+    .from('access_passwords')
+    .insert({ person_name: personName, password })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function toggleAccessPassword(id: string) {
+  const { data: current, error: getError } = await db()
+    .from('access_passwords')
+    .select('is_active')
+    .eq('id', id)
+    .single();
+  if (getError) throw getError;
+
+  const { data, error } = await db()
+    .from('access_passwords')
+    .update({ is_active: !current.is_active, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAccessPassword(id: string) {
+  const { error } = await db()
+    .from('access_passwords')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function getAccessPasswordLogs(passwordId: string) {
+  const { data, error } = await db()
+    .from('access_password_logs')
+    .select('*')
+    .eq('password_id', passwordId)
+    .order('accessed_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data || []).map((l: any) => ({
+    id: l.id,
+    accessedAt: l.accessed_at,
+    userAgent: l.user_agent,
+    ipAddress: l.ip_address,
+  }));
+}
