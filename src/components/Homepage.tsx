@@ -377,7 +377,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-12 md:py-20 px-6">
+      <section id="how-it-works" className="py-12 md:py-20 px-6" style={{ scrollMarginTop: '69px' }}>
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
             <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Stop leaving networking to chance</span></h2>
@@ -573,7 +573,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 px-6 bg-muted/30">
+      <section id="features" className="py-20 px-6 bg-muted/30" style={{ scrollMarginTop: '69px' }}>
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
             {/* Left: image */}
