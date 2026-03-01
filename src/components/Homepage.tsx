@@ -32,12 +32,12 @@ const testimonials = [
 ];
 
 const blogPosts = [
+  { slug: 'meeting-points-guide', image: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&h=400&fit=crop', title: 'Meeting points: the secret ingredient of great networking rounds', description: 'Why designated meeting spots make networking less awkward, more efficient, and way more fun for everyone involved.' },
+  { slug: 'how-to-promote-your-event', image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop', title: 'How to promote your event and get more signups', description: 'From social media to on-site QR codes — practical ways to drive attendance and get people excited about networking rounds.' },
+  { slug: 'random-vs-ai-matching', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop', title: 'Random vs AI matching: which one actually works?', description: 'We tested both approaches at real events. The results surprised us — and changed how we think about networking.' },
   { slug: '5-networking-tips', image: 'https://images.unsplash.com/photo-1515169067868-5387ec356754?w=800&h=400&fit=crop', title: '5 networking tips to maximize your event ROI', description: 'Learn how to create meaningful connections that drive real business value at your next event.' },
   { slug: 'speed-dating-format', image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=400&fit=crop', title: 'Why the speed dating format works for networking', description: 'Discover the psychology behind structured networking and why it beats traditional mingling.' },
   { slug: 'hybrid-events', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop', title: 'How to run successful networking at hybrid events', description: 'Bridge the gap between online and in-person attendees with these proven strategies.' },
-  { slug: 'icebreaker-questions', image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&h=400&fit=crop', title: 'The ultimate guide to icebreaker questions', description: 'Curated icebreaker questions that actually work — from casual meetups to corporate events.' },
-  { slug: 'networking-event-planning', image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop', title: 'How to plan a networking event from scratch', description: 'A step-by-step playbook covering venue, format, technology, and follow-up.' },
-  { slug: 'introvert-networking', image: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800&h=400&fit=crop', title: 'Networking for introverts: a better way', description: 'Why structured networking helps introverts shine — and how to set it up at your event.' },
 ];
 
 const trustedLogos = [
@@ -410,7 +410,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             {/* Step 2 - Participant round registration */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
               <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 md:order-2" style={{ aspectRatio: '16/9' }}>
-                <img src="/how-it-works-2.png" alt="Participant round registration" className="w-full h-full object-cover" />
+                <img src="/Hand-with-phone.png" alt="Participant round registration" className="w-full h-full object-cover" />
               </div>
               <div className="md:order-1">
                 <div className="mb-5">

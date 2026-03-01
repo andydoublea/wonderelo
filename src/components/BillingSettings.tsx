@@ -3,8 +3,18 @@ import { Button } from './ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Slider } from './ui/slider';
-import { Check, Loader2, CreditCard, Calendar, AlertCircle, Sparkles } from 'lucide-react';
+import { Check, Loader2, CreditCard, Calendar, AlertCircle, Sparkles, Coins, AlertTriangle, Download, FileText, ExternalLink, Settings } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { toast } from 'sonner@2.0.3';
 import { apiBaseUrl } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
@@ -20,19 +30,39 @@ interface Subscription {
   cancelAtPeriodEnd?: boolean;
 }
 
+interface Invoice {
+  id: string;
+  type: 'subscription' | 'single_event';
+  amount: number;
+  currency: string;
+  status: string;
+  date: string | null;
+  description: string;
+  pdfUrl: string | null;
+  hostedUrl: string | null;
+  number: string | null;
+}
+
 interface BillingSettingsProps {
   accessToken: string;
 }
 
 export function BillingSettings({ accessToken }: BillingSettingsProps) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [credits, setCredits] = useState<{ balance: number; capacityTier: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedCapacity, setSelectedCapacity] = useState(50); // Default to 50
-  // Only monthly billing - no yearly option
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('annual');
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+
 
   useEffect(() => {
     loadSubscription();
+    loadCredits();
+    loadInvoices();
 
     // Check for payment success/cancel in URL
     const params = new URLSearchParams(window.location.search);
@@ -81,6 +111,49 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
     }
   };
 
+  const loadCredits = async () => {
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/credits`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setCredits(data.credits || null);
+      }
+    } catch (error) {
+      errorLog('Error loading credits:', error);
+    }
+  };
+
+  const loadInvoices = async () => {
+    try {
+      setInvoicesLoading(true);
+      const response = await fetch(
+        `${apiBaseUrl}/invoices`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setInvoices(data.invoices || []);
+      }
+    } catch (error) {
+      errorLog('Error loading invoices:', error);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
   const handleSubscribe = async (paymentType: 'single' | 'subscription') => {
     const tier = getTierForCapacity(selectedCapacity);
     if (tier === 'free') return;
@@ -94,7 +167,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
         : '/create-event-payment';
 
       const body = paymentType === 'subscription'
-        ? { capacity, interval: 'monthly' }
+        ? { capacity, interval: billingInterval === 'annual' ? 'yearly' : 'monthly' }
         : { capacity };
 
       const response = await fetch(
@@ -129,10 +202,7 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
 
   const handleCancelSubscription = async () => {
     if (!subscription) return;
-
-    if (!confirm('Are you sure you want to cancel your subscription? You will retain access until the end of your current billing period.')) {
-      return;
-    }
+    setShowCancelDialog(false);
 
     try {
       setActionLoading(true);
@@ -202,21 +272,6 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
         </p>
       </div>
 
-      {/* Free Tier Notice */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-        <div className="flex items-start gap-3">
-          <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <h3 className="font-semibold text-green-900 dark:text-green-100 mb-1">
-              Events up to 10 participants free for testing purposes
-            </h3>
-            <p className="text-sm text-green-700 dark:text-green-300">
-              Try Wonderelo for free with events up to 10 participants. Perfect for testing the platform before scaling up!
-            </p>
-          </div>
-        </div>
-      </div>
-
       {loading ? (
         <div className="space-y-8">
           <Card><CardHeader><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-3"><Skeleton className="h-6 w-32" /><Skeleton className="h-4 w-48" /><Skeleton className="h-4 w-40" /></div></CardContent></Card>
@@ -224,66 +279,106 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
         </div>
       ) : (
         <>
-          {/* Current Subscription */}
-          {subscription && (
-            <Card className="mb-8">
+          {/* Your plan — merged subscription + credits */}
+          {(subscription || (credits && credits.balance > 0)) && (
+            <Card className={`mb-8 ${subscription && (subscription.cancelAtPeriodEnd || subscription.status === 'cancelled') ? 'border-amber-200 dark:border-amber-800' : ''}`}>
               <CardHeader>
-                <CardTitle>Current subscription</CardTitle>
-                <CardDescription>Your active subscription plan</CardDescription>
+                <CardTitle>Your plan</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold">
-                          Premium - Up to {PRICING_TIERS[subscription.capacityTier].capacity} participants
-                        </h3>
-                        {getStatusBadge(subscription.status)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {formatPrice(PRICING_TIERS[subscription.capacityTier].premiumMonthlyPrice)}/month
-                      </p>
-                    </div>
-                    {subscription.status === 'active' && !subscription.cancelAtPeriodEnd && (
-                      <Button
-                        variant="outline"
-                        onClick={handleCancelSubscription}
-                        disabled={actionLoading}
-                      >
-                        {actionLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Cancelling...
-                          </>
-                        ) : (
-                          'Cancel subscription'
+                <div className="space-y-5">
+                  {/* Subscription section */}
+                  {subscription && (
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold">
+                              Unlimited events
+                            </h3>
+                            {subscription.cancelAtPeriodEnd ? (
+                              <Badge variant="destructive">Cancelled</Badge>
+                            ) : (
+                              getStatusBadge(subscription.status)
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Up to {PRICING_TIERS[subscription.capacityTier].capacity} participants · {formatPrice(PRICING_TIERS[subscription.capacityTier].premiumMonthlyPrice)}/month
+                          </p>
+                        </div>
+                        {subscription.status === 'active' && !subscription.cancelAtPeriodEnd && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowCancelDialog(true)}
+                            disabled={actionLoading}
+                          >
+                            {actionLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Cancelling...
+                              </>
+                            ) : (
+                              'Cancel subscription'
+                            )}
+                          </Button>
                         )}
-                      </Button>
-                    )}
-                  </div>
+                      </div>
 
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    {subscription.cancelAtPeriodEnd ? (
-                      <span>
-                        Subscription will end on {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                      </span>
-                    ) : (
-                      <span>
-                        Next billing date: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
+                      {subscription.cancelAtPeriodEnd || subscription.status === 'cancelled' ? (
+                        <div className="flex items-start gap-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                              Your subscription has been cancelled
+                            </p>
+                            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                              You still have access until {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. After that, you can subscribe again or purchase a single event to create events with more than 5 participants.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            Next billing date: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
 
-                  {subscription.status === 'past_due' && (
-                    <div className="flex items-start gap-2 p-4 bg-destructive/10 rounded-lg border border-destructive/20">
-                      <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-destructive">Payment failed</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Please update your payment method to continue your subscription.
-                        </p>
+                      {subscription.status === 'past_due' && (
+                        <div className="flex items-start gap-2 p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+                          <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-destructive">Payment failed</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Please update your payment method to continue your subscription.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Divider between subscription and credits */}
+                  {subscription && credits && credits.balance > 0 && (
+                    <div className="border-t pt-1" />
+                  )}
+
+                  {/* Single event credits section */}
+                  {credits && credits.balance > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Coins className="h-5 w-5 text-blue-500" />
+                        Single event credits
+                      </h3>
+                      <div className="flex items-center gap-4">
+                        <div className="text-3xl font-bold">{credits.balance}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {credits.balance === 1 ? 'credit' : 'credits'} remaining
+                          {credits.capacityTier && PRICING_TIERS[credits.capacityTier as CapacityTier] && (
+                            <> · Up to {PRICING_TIERS[credits.capacityTier as CapacityTier].capacity} participants per event</>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -297,164 +392,308 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
             <CardHeader>
               <CardTitle>{subscription ? 'Change plan' : 'Choose a plan'}</CardTitle>
               <CardDescription>
-                Select the capacity that best fits your event needs
+                Pricing is based on your event's capacity
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent>
+              {/* Free tier notice */}
+              <div className="mb-6 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                    Events up to 5 participants free for testing purposes
+                  </p>
+                </div>
+              </div>
+
               {/* Capacity Slider */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium">Event capacity</label>
                   <div className="text-right">
                     <div className="text-2xl font-bold">
                       Up to {selectedCapacity} participants
                     </div>
-                    {isFree && (
-                      <div className="text-xs text-muted-foreground">Free tier</div>
-                    )}
+                    {}
                   </div>
                 </div>
 
-                <Slider
-                  value={[getSliderValue(selectedCapacity)]}
-                  onValueChange={(values) => {
-                    const capacity = getCapacityFromSlider(values[0]);
-                    setSelectedCapacity(capacity);
-                  }}
-                  min={0}
-                  max={CAPACITY_OPTIONS.length - 1}
-                  step={1}
-                  className="w-full"
-                />
+                <div style={{ padding: '0 13px' }}>
+                  <Slider
+                    value={[getSliderValue(selectedCapacity)]}
+                    onValueChange={(values) => {
+                      const capacity = getCapacityFromSlider(values[0]);
+                      setSelectedCapacity(capacity);
+                    }}
+                    min={0}
+                    max={CAPACITY_OPTIONS.length - 1}
+                    step={1}
+                    className="w-full"
+                  />
 
-                <div className="relative w-full mt-2">
-                  {CAPACITY_OPTIONS.map((option, index) => {
-                    // Calculate position: each step is evenly distributed
-                    const position = (index / (CAPACITY_OPTIONS.length - 1)) * 100;
-                    
-                    return (
-                      <span 
-                        key={option.value} 
-                        className={`absolute text-xs text-muted-foreground -translate-x-1/2 ${
-                          index === 0 || index === CAPACITY_OPTIONS.length - 1 ? '' : 'hidden sm:inline'
-                        }`}
-                        style={{ left: `${position}%` }}
-                      >
-                        {option.value}
-                      </span>
-                    );
-                  })}
+                  <div className="relative w-full h-5 mt-2">
+                    {CAPACITY_OPTIONS.map((option, index) => {
+                      const position = (index / (CAPACITY_OPTIONS.length - 1)) * 100;
+                      // Match Radix slider thumb offset: thumbHalf * (1 - 2 * pct/100)
+                      const thumbOffset = 12.5 * (1 - 2 * position / 100);
+
+                      return (
+                        <span
+                          key={option.value}
+                          className={`absolute text-xs text-muted-foreground -translate-x-1/2 ${
+                            index === 0 || index === CAPACITY_OPTIONS.length - 1 ? '' : 'hidden sm:inline'
+                          }`}
+                          style={{ left: `calc(${position}% + ${thumbOffset}px)` }}
+                        >
+                          {option.value}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
               {/* Pricing Display */}
               {!isFree && (
-                <>
-                  <div className="grid md:grid-cols-2 gap-4 pt-4 border-t">
-                    {/* Single Event Payment */}
-                    <Card className="border-2">
-                      <CardHeader className="pb-4">
-                        <CardTitle className="text-lg">Single event</CardTitle>
-                        <div className="text-3xl font-bold">
-                          {formatPrice(currentPricing.singleEventPrice)}
+                <div className="grid md:grid-cols-2 gap-4" style={{ marginTop: '2rem' }}>
+                  {/* Single Event Payment */}
+                  <Card className="border-2 flex flex-col">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="text-lg">Single event</CardTitle>
+                      <div className="text-3xl font-bold">
+                        {formatPrice(currentPricing.singleEventPrice)}
+                      </div>
+                      <CardDescription>One-time payment</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col flex-1 gap-3">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary" />
+                          <span>Up to {currentPricing.capacity} participants</span>
                         </div>
-                        <CardDescription>One-time payment</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-primary" />
-                            <span>Up to {currentPricing.capacity} participants</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-primary" />
-                            <span>Valid for one event</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-primary" />
-                            <span>Unlimited rounds</span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary" />
+                          <span>Valid for one event</span>
                         </div>
-                        <Button
-                          className="w-full"
-                          variant="outline"
-                          onClick={() => handleSubscribe('single')}
-                          disabled={actionLoading}
-                        >
-                          {actionLoading ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <CreditCard className="mr-2 h-4 w-4" />
-                              Pay once
-                            </>
-                          )}
-                        </Button>
-                      </CardContent>
-                    </Card>
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary" />
+                          <span>Unlimited rounds</span>
+                        </div>
+                      </div>
+                      <div className="flex-1" />
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={() => handleSubscribe('single')}
+                        disabled={actionLoading}
+                      >
+                        {actionLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Pay once
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
 
-                    {/* Premium Subscription */}
-                    <Card className="border-2 border-primary">
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">Premium subscription</CardTitle>
-                          <Badge>Popular</Badge>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="text-3xl font-bold">
-                            {formatPrice(displayedPrice)}
-                          </div>
-                            <CardDescription>per month</CardDescription>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-primary" />
-                            <span>Up to {currentPricing.capacity} participants</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-primary" />
-                            <span className="font-semibold">Unlimited events</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-primary" />
-                            <span>Priority support</span>
-                          </div>
-                        </div>
-                        <Button
-                          className="w-full"
-                          onClick={() => handleSubscribe('subscription')}
-                          disabled={actionLoading}
+                  {/* Unlimited Events Subscription */}
+                  <Card className="border-2 border-primary flex flex-col">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">Unlimited events</CardTitle>
+                        <Badge>Popular</Badge>
+                      </div>
+                      {/* Annually / Monthly toggle */}
+                      <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
+                        <button
+                          type="button"
+                          onClick={() => setBillingInterval('annual')}
+                          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                            billingInterval === 'annual'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
                         >
-                          {actionLoading ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <CreditCard className="mr-2 h-4 w-4" />
-                              Subscribe
-                            </>
-                          )}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </>
+                          Annually
+                          <span className="ml-1 text-[10px] text-green-600 dark:text-green-400 font-semibold">-17%</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBillingInterval('monthly')}
+                          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                            billingInterval === 'monthly'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Monthly
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {billingInterval === 'monthly' ? (
+                          <>
+                            <div className="text-3xl font-bold">
+                              {formatPrice(currentPricing.premiumMonthlyPrice)}
+                            </div>
+                            <CardDescription>per month</CardDescription>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-3xl font-bold">
+                              {formatPrice(Math.round(currentPricing.premiumAnnualPrice / 12))}
+                            </div>
+                            <CardDescription>
+                              per month, billed {formatPrice(currentPricing.premiumAnnualPrice)} annually
+                            </CardDescription>
+                          </>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex flex-col flex-1 gap-3">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary" />
+                          <span>Up to {currentPricing.capacity} participants</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary" />
+                          <span className="font-semibold">Unlimited events</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary" />
+                          <span>Priority support</span>
+                        </div>
+                      </div>
+                      <div className="flex-1" />
+                      <Button
+                        className="w-full"
+                        onClick={() => handleSubscribe('subscription')}
+                        disabled={actionLoading}
+                      >
+                        {actionLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Subscribe
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {isFree && (
-                <div className="text-center py-6 bg-muted/50 rounded-lg">
+                <div className="text-center py-6 bg-muted/50 rounded-lg" style={{ marginTop: '2rem' }}>
                   <p className="text-sm text-muted-foreground">
-                    Free tier includes up to 10 participants - perfect for testing!
+                    Free tier includes up to 5 participants — perfect for testing!
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Invoices & Receipts */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Invoices & receipts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {invoicesLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : invoices.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No invoices yet. Invoices will appear here after your first payment.
+                </p>
+              ) : (
+                <div className="divide-y">
+                  {invoices.map((invoice) => (
+                    <div key={invoice.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">
+                            {invoice.number || invoice.description}
+                          </span>
+                          <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                            {invoice.status === 'paid' ? 'Paid' : invoice.status}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {invoice.type === 'subscription' ? 'Subscription' : 'Single event'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          {invoice.date && (
+                            <span>{new Date(invoice.date).toLocaleDateString()}</span>
+                          )}
+                          <span className="font-medium">
+                            {new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: invoice.currency || 'usd',
+                            }).format(invoice.amount / 100)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        {invoice.pdfUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
+                              <Download className="h-3.5 w-3.5 mr-1.5" />
+                              PDF
+                            </a>
+                          </Button>
+                        )}
+                        {invoice.hostedUrl && !invoice.pdfUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <a href={invoice.hostedUrl} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                              View
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Billing Details */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Billing details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                You'll be able to add and edit your billing details (company name, Tax ID, address) after your first payment. These details will appear on all your invoices.
+              </p>
             </CardContent>
           </Card>
 
@@ -467,19 +706,19 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
               <div>
                 <h4 className="font-semibold mb-1">What's included in the free tier?</h4>
                 <p className="text-sm text-muted-foreground">
-                  Events with up to 10 participants are completely free - perfect for testing Wonderelo and running smaller networking sessions.
+                  Events with up to 5 participants are completely free and include all features — unlimited rounds, all networking modes, and full event management. It's the same experience as paid tiers, just with a smaller group size.
                 </p>
               </div>
               <div>
-                <h4 className="font-semibold mb-1">How does the monthly subscription work?</h4>
+                <h4 className="font-semibold mb-1">How does the subscription work?</h4>
                 <p className="text-sm text-muted-foreground">
-                  With a monthly subscription, you get unlimited events at your chosen capacity. You can cancel anytime and keep access until the end of the billing period.
+                  With a subscription, you get unlimited events at your chosen capacity. You can choose monthly or annual billing and cancel anytime — you'll keep access until the end of your billing period.
                 </p>
               </div>
               <div>
-                <h4 className="font-semibold mb-1">What happens if I exceed my participant limit?</h4>
+                <h4 className="font-semibold mb-1">How do I choose the right capacity?</h4>
                 <p className="text-sm text-muted-foreground">
-                  You can upgrade your plan at any time. If you're on a single event payment, you'll need to purchase a higher tier for your next event.
+                  The event capacity is set when you create your event and cannot be changed during a round. Choose based on the expected number of participants for your event — for most events, this number is known in advance.
                 </p>
               </div>
               <div>
@@ -488,17 +727,37 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
                   Yes, you can cancel anytime. You'll retain access until the end of your current billing period.
                 </p>
               </div>
-              <div>
-                <h4 className="font-semibold mb-1">What's the difference between single event and subscription?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Single event is a one-time payment for a specific event. Premium subscription gives you unlimited events with monthly billing.
-                </p>
-              </div>
             </CardContent>
           </Card>
         </>
       )}
 
+      {/* Cancel Subscription Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Cancel subscription?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel your subscription? You will retain access until the end of your current billing period
+              {subscription?.currentPeriodEnd && (
+                <> ({new Date(subscription.currentPeriodEnd).toLocaleDateString()})</>
+              )}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep subscription</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelSubscription}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, cancel subscription
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -54,6 +54,7 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m =
 const AdminIceBreakers = lazy(() => import('./components/AdminIceBreakers').then(m => ({ default: m.AdminIceBreakers })));
 const AdminNotificationTexts = lazy(() => import('./components/AdminNotificationTexts').then(m => ({ default: m.AdminNotificationTexts })));
 const AdminGiftCards = lazy(() => import('./components/AdminGiftCards').then(m => ({ default: m.AdminGiftCards })));
+const AdminBilling = lazy(() => import('./components/AdminBilling').then(m => ({ default: m.AdminBilling })));
 const AdminOrganizers = lazy(() => import('./components/AdminOrganizers').then(m => ({ default: m.AdminOrganizers })));
 const AdminParticipants = lazy(() => import('./components/AdminParticipants').then(m => ({ default: m.AdminParticipants })));
 const AdminSessions = lazy(() => import('./components/AdminSessions').then(m => ({ default: m.AdminSessions })));
@@ -868,6 +869,34 @@ function AdminGiftCardsRoute() {
       <Suspense fallback={<RouteLoader />}>
         <AdminGiftCards
           accessToken={accessToken}
+        />
+      </Suspense>
+    </>
+  );
+}
+
+function AdminBillingRoute() {
+  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <AuthenticatedNav
+        currentView="admin"
+        currentUser={currentUser}
+        isAdminUser={isAdminUser()}
+        onNavigateToDashboard={() => navigate('/dashboard')}
+        onNavigateToRounds={() => navigate('/rounds')}
+        onNavigateToAccountSettings={() => navigate('/account-settings')}
+        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
+        onNavigateToBilling={() => navigate('/billing')}
+        onNavigateToAdmin={() => navigate('/admin')}
+        onSignOut={handleSignOut}
+      />
+      <Suspense fallback={<RouteLoader />}>
+        <AdminBilling
+          accessToken={accessToken}
+          onBack={() => navigate('/admin')}
         />
       </Suspense>
     </>
@@ -1893,6 +1922,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/ice-breakers', element: h(AdminRoute, null, h(AdminIceBreakersRoute)) }),
             h(Route, { path: '/admin/notification-texts', element: h(AdminRoute, null, h(AdminNotificationTextsRoute)) }),
             h(Route, { path: '/admin/gift-cards', element: h(AdminRoute, null, h(AdminGiftCardsRoute)) }),
+            h(Route, { path: '/admin/billing', element: h(AdminRoute, null, h(AdminBillingRoute)) }),
             h(Route, { path: '/admin/blog', element: h(AdminRoute, null, h(AdminBlogRoute)) }),
             h(Route, { path: '/admin/organizers', element: h(AdminRoute, null, h(AdminOrganizersRoute)) }),
             h(Route, { path: '/admin/participants', element: h(AdminRoute, null, h(AdminParticipantsRoute)) }),

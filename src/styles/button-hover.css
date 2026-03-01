@@ -1,0 +1,9 @@
+/* Button hover effect — brightness + shadow, no layout shift */
+@media (hover: hover) {
+  [data-slot="button"]:hover:not(:disabled) {
+    filter: brightness(1.35);
+  }
+  [data-slot="button"]:active:not(:disabled) {
+    filter: brightness(0.95);
+  }
+}

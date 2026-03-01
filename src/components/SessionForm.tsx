@@ -8,7 +8,7 @@ import { Switch } from './ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
-import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle } from 'lucide-react';
+import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle, Sparkles } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -26,6 +26,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { debugLog, errorLog } from '../utils/debug';
 import { fetchSystemParameters, type SystemParameters } from '../utils/systemParameters';
 import { useIsDesktop } from '../hooks/useResponsive';
+import { Slider } from './ui/slider';
+import { CAPACITY_OPTIONS } from '../config/pricing';
 
 interface SessionFormProps {
   initialData?: NetworkingSession | null;
@@ -157,8 +159,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     roundDuration: initialData?.roundDuration || (systemParams?.defaultRoundDuration ?? 10),
     numberOfRounds: initialData?.numberOfRounds || (systemParams?.defaultNumberOfRounds ?? 1),
     gapBetweenRounds: initialData?.gapBetweenRounds || (systemParams?.defaultGapBetweenRounds ?? 10),
-    limitParticipants: initialData?.limitParticipants ?? (systemParams?.defaultLimitParticipants ?? false),
-    maxParticipants: initialData?.maxParticipants || (systemParams?.defaultMaxParticipants ?? 20),
+    limitParticipants: initialData?.limitParticipants ?? true,
+    maxParticipants: initialData?.maxParticipants || 50,
     groupSize: initialData?.groupSize || (systemParams?.defaultGroupSize ?? 2),
     limitGroups: initialData?.limitGroups ?? (systemParams?.defaultLimitGroups ?? false),
     maxGroups: initialData?.maxGroups || 10,
@@ -186,8 +188,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         roundDuration: systemParams.defaultRoundDuration ?? prev.roundDuration,
         numberOfRounds: systemParams.defaultNumberOfRounds ?? prev.numberOfRounds,
         gapBetweenRounds: systemParams.defaultGapBetweenRounds ?? prev.gapBetweenRounds,
-        limitParticipants: systemParams.defaultLimitParticipants ?? prev.limitParticipants,
-        maxParticipants: systemParams.defaultMaxParticipants ?? prev.maxParticipants,
+        limitParticipants: prev.limitParticipants,
+        maxParticipants: prev.maxParticipants,
         groupSize: systemParams.defaultGroupSize ?? prev.groupSize,
         limitGroups: systemParams.defaultLimitGroups ?? prev.limitGroups,
       }));
@@ -625,8 +627,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         roundDuration: 10,
         numberOfRounds: 1,
         gapBetweenRounds: 10,
-        limitParticipants: false,
-        maxParticipants: 20,
+        limitParticipants: true,
+        maxParticipants: 50,
         groupSize: 2,
         status: 'draft',
         registrationStart: undefined,
@@ -1010,6 +1012,73 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         {/* Form Section */}
         <form onSubmit={handleSubmit} className="space-y-6">
       
+      {/* Event Capacity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Event capacity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Free tier notice */}
+          <div className="mb-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                Events up to 5 participants free for testing purposes
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium">Maximum participants</label>
+              <div className="text-right">
+                <div className="text-2xl font-bold">
+                  Up to {formData.maxParticipants} participants
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '0 13px' }}>
+              <Slider
+                value={[CAPACITY_OPTIONS.findIndex(opt => opt.value === formData.maxParticipants) >= 0
+                  ? CAPACITY_OPTIONS.findIndex(opt => opt.value === formData.maxParticipants)
+                  : 1]}
+                onValueChange={(values) => {
+                  const capacity = CAPACITY_OPTIONS[values[0]]?.value || 50;
+                  setFormData({ ...formData, maxParticipants: capacity, limitParticipants: true });
+                }}
+                min={0}
+                max={CAPACITY_OPTIONS.length - 1}
+                step={1}
+                className="w-full"
+              />
+
+              <div className="relative w-full h-5 mt-2">
+                {CAPACITY_OPTIONS.map((option, index) => {
+                  const position = (index / (CAPACITY_OPTIONS.length - 1)) * 100;
+                  const thumbOffset = 12.5 * (1 - 2 * position / 100);
+
+                  return (
+                    <span
+                      key={option.value}
+                      className={`absolute text-xs text-muted-foreground -translate-x-1/2 ${
+                        index === 0 || index === CAPACITY_OPTIONS.length - 1 ? '' : 'hidden sm:inline'
+                      }`}
+                      style={{ left: `calc(${position}% + ${thumbOffset}px)` }}
+                    >
+                      {option.value}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Basic Info */}
       <Card>
         <CardHeader>

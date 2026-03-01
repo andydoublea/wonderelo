@@ -1979,6 +1979,155 @@ app.post('/make-server-ce05600a/admin/default-round-rules', async (c) => {
 });
 
 // ============================================================
+// Admin: Billing management (subscriptions & credits without Stripe)
+// ============================================================
+
+// GET billing info for a user
+app.get('/make-server-ce05600a/admin/users/:userId/billing', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const subscription = await db.getSubscription(userId);
+    const credits = await db.getCredits(userId);
+    const transactions = await db.getCreditTransactions(userId);
+
+    return c.json({
+      success: true,
+      subscription: subscription || null,
+      credits,
+      transactions,
+    });
+  } catch (error) {
+    errorLog('Error fetching billing info:', error);
+    return c.json({ error: 'Failed to fetch billing info' }, 500);
+  }
+});
+
+// Grant or update subscription
+app.post('/make-server-ce05600a/admin/users/:userId/subscription', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const body = await c.req.json();
+    const { capacityTier, status, plan } = body;
+
+    const validTiers = ['50', '200', '500', '1000', '5000'];
+    if (!validTiers.includes(capacityTier)) {
+      return c.json({ error: 'Invalid capacity tier. Must be one of: 50, 200, 500, 1000, 5000' }, 400);
+    }
+
+    const periodEnd = new Date();
+    periodEnd.setDate(periodEnd.getDate() + 30);
+
+    await db.upsertSubscription(userId, {
+      stripeCustomerId: 'admin_granted',
+      stripeSubscriptionId: `admin_${Date.now()}`,
+      capacityTier,
+      status: status || 'active',
+      plan: plan || 'premium',
+      currentPeriodEnd: periodEnd.toISOString(),
+      cancelAtPeriodEnd: false,
+    });
+
+    debugLog('💳 Admin granted subscription:', { userId, capacityTier });
+    return c.json({ success: true, message: `Subscription granted: tier ${capacityTier}` });
+  } catch (error) {
+    errorLog('Error granting subscription:', error);
+    return c.json({ error: 'Failed to grant subscription' }, 500);
+  }
+});
+
+// Cancel subscription
+app.delete('/make-server-ce05600a/admin/users/:userId/subscription', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    await db.updateSubscription(userId, {
+      status: 'cancelled',
+      cancelAtPeriodEnd: false,
+    });
+
+    debugLog('💳 Admin cancelled subscription:', userId);
+    return c.json({ success: true, message: 'Subscription cancelled' });
+  } catch (error) {
+    errorLog('Error cancelling subscription:', error);
+    return c.json({ error: 'Failed to cancel subscription' }, 500);
+  }
+});
+
+// Add credits
+app.post('/make-server-ce05600a/admin/users/:userId/credits', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const body = await c.req.json();
+    const { amount, capacityTier } = body;
+
+    const validTiers = ['50', '200', '500', '1000', '5000'];
+    if (!validTiers.includes(capacityTier)) {
+      return c.json({ error: 'Invalid capacity tier' }, 400);
+    }
+    if (!amount || amount < 1 || amount > 100) {
+      return c.json({ error: 'Amount must be between 1 and 100' }, 400);
+    }
+
+    await db.addCredits(userId, amount, {
+      type: 'purchase',
+      capacityTier,
+      description: `Admin granted ${amount} credit(s) at tier ${capacityTier}`,
+    });
+
+    debugLog('💳 Admin added credits:', { userId, amount, capacityTier });
+    return c.json({ success: true, message: `Added ${amount} credits at tier ${capacityTier}` });
+  } catch (error) {
+    errorLog('Error adding credits:', error);
+    return c.json({ error: 'Failed to add credits' }, 500);
+  }
+});
+
+// Reset credits to zero
+app.post('/make-server-ce05600a/admin/users/:userId/credits/reset', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const credits = await db.getCredits(userId);
+
+    if (credits.balance > 0) {
+      await db.addCredits(userId, -credits.balance, {
+        type: 'refund',
+        description: 'Admin reset credits to zero',
+      });
+    }
+
+    debugLog('💳 Admin reset credits:', userId);
+    return c.json({ success: true, message: 'Credits reset to zero' });
+  } catch (error) {
+    errorLog('Error resetting credits:', error);
+    return c.json({ error: 'Failed to reset credits' }, 500);
+  }
+});
+
+// ============================================================
 // Public: Analytics Events
 // ============================================================
 

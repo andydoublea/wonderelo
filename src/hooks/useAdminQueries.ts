@@ -36,6 +36,7 @@ export const adminQueryKeys = {
   participantDetail: (id: string) => ['admin', 'participants', id] as const,
   participantAuditLog: (id: string) => ['admin', 'participants', id, 'audit-log'] as const,
   sessions: ['admin', 'sessions'] as const,
+  billing: (userId: string) => ['admin', 'billing', userId] as const,
 } as const;
 
 // ========================================
@@ -412,5 +413,101 @@ export function useAdminSessions(accessToken?: string) {
       }));
     },
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+// ========================================
+// ADMIN BILLING (Subscriptions & Credits)
+// ========================================
+
+export function useAdminBilling(userId: string | null, accessToken: string) {
+  return useQuery({
+    queryKey: adminQueryKeys.billing(userId || ''),
+    queryFn: async () => {
+      if (!userId) return null;
+      const token = accessToken || await getAccessToken();
+      const data = await adminFetch(`/admin/users/${userId}/billing`, token);
+      return data;
+    },
+    enabled: !!userId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useGrantSubscription(accessToken: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, capacityTier }: { userId: string; capacityTier: string }) => {
+      const token = accessToken || await getAccessToken();
+      return adminFetch(`/admin/users/${userId}/subscription`, token, {
+        method: 'POST',
+        body: JSON.stringify({ capacityTier, status: 'active', plan: 'premium' }),
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.billing(variables.userId) });
+      toast.success('Subscription granted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to grant subscription');
+    },
+  });
+}
+
+export function useCancelAdminSubscription(accessToken: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const token = accessToken || await getAccessToken();
+      return adminFetch(`/admin/users/${userId}/subscription`, token, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: (_data, userId) => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.billing(userId) });
+      toast.success('Subscription cancelled');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to cancel subscription');
+    },
+  });
+}
+
+export function useAddCredits(accessToken: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, amount, capacityTier }: { userId: string; amount: number; capacityTier: string }) => {
+      const token = accessToken || await getAccessToken();
+      return adminFetch(`/admin/users/${userId}/credits`, token, {
+        method: 'POST',
+        body: JSON.stringify({ amount, capacityTier }),
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.billing(variables.userId) });
+      toast.success(`Added ${variables.amount} credit(s)`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to add credits');
+    },
+  });
+}
+
+export function useResetCredits(accessToken: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const token = accessToken || await getAccessToken();
+      return adminFetch(`/admin/users/${userId}/credits/reset`, token, {
+        method: 'POST',
+      });
+    },
+    onSuccess: (_data, userId) => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.billing(userId) });
+      toast.success('Credits reset to zero');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to reset credits');
+    },
   });
 }

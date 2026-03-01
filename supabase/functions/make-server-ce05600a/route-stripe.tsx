@@ -76,8 +76,9 @@ export function registerStripeRoutes(app: Hono) {
         return c.json({ hasSubscription: false });
       }
 
-      // If there's a Stripe subscription, verify its status
-      if (subscription.stripeSubscriptionId) {
+      // If there's a real Stripe subscription (not admin-granted), verify its status
+      const isAdminGranted = subscription.stripeCustomerId === 'admin_granted' || subscription.stripeSubscriptionId?.startsWith('admin_');
+      if (subscription.stripeSubscriptionId && !isAdminGranted) {
         try {
           const stripe = getStripe();
           const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
@@ -99,8 +100,14 @@ export function registerStripeRoutes(app: Hono) {
         }
       }
 
+      // Show subscription if active OR cancelled but still within paid period
+      const isActiveStatus = ['active', 'trialing', 'past_due'].includes(subscription.status);
+      const isCancelledButValid = subscription.status === 'cancelled' &&
+        subscription.currentPeriodEnd &&
+        new Date(subscription.currentPeriodEnd) > new Date();
+
       return c.json({
-        hasSubscription: ['active', 'trialing', 'past_due'].includes(subscription.status),
+        hasSubscription: isActiveStatus || isCancelledButValid,
         subscription: {
           plan: subscription.plan || 'premium',
           capacityTier: subscription.capacityTier,
@@ -134,11 +141,12 @@ export function registerStripeRoutes(app: Hono) {
       const stripe = getStripe();
       const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
 
-      // Get or create Stripe customer
+      // Get or create Stripe customer (skip admin_granted fake customer IDs)
       const profile = await db.getOrganizerById(auth.user.id);
-      let customerId = (await db.getSubscription(auth.user.id))?.stripeCustomerId;
+      const existingSub = await db.getSubscription(auth.user.id);
+      let customerId = existingSub?.stripeCustomerId;
 
-      if (!customerId) {
+      if (!customerId || customerId === 'admin_granted') {
         const customer = await stripe.customers.create({
           email: profile?.email || auth.user.email,
           metadata: {
@@ -210,11 +218,12 @@ export function registerStripeRoutes(app: Hono) {
       const stripe = getStripe();
       const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
 
-      // Get or create Stripe customer
+      // Get or create Stripe customer (skip admin_granted fake customer IDs)
       const profile = await db.getOrganizerById(auth.user.id);
-      let customerId = (await db.getSubscription(auth.user.id))?.stripeCustomerId;
+      const existingSubForPayment = await db.getSubscription(auth.user.id);
+      let customerId = existingSubForPayment?.stripeCustomerId;
 
-      if (!customerId) {
+      if (!customerId || customerId === 'admin_granted') {
         const customer = await stripe.customers.create({
           email: profile?.email || auth.user.email,
           metadata: {
@@ -273,16 +282,23 @@ export function registerStripeRoutes(app: Hono) {
         return c.json({ error: 'No active subscription found' }, 404);
       }
 
-      const stripe = getStripe();
+      // Admin-granted subscriptions: cancel directly in DB (no Stripe call)
+      if (subscription.stripeCustomerId === 'admin_granted' || subscription.stripeSubscriptionId?.startsWith('admin_')) {
+        await db.updateSubscription(auth.user.id, {
+          cancelAtPeriodEnd: true,
+        });
+      } else {
+        const stripe = getStripe();
 
-      // Cancel at period end (user keeps access until billing period expires)
-      await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-        cancel_at_period_end: true,
-      });
+        // Cancel at period end (user keeps access until billing period expires)
+        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+          cancel_at_period_end: true,
+        });
 
-      await db.updateSubscription(auth.user.id, {
-        cancelAtPeriodEnd: true,
-      });
+        await db.updateSubscription(auth.user.id, {
+          cancelAtPeriodEnd: true,
+        });
+      }
 
       debugLog('✅ Subscription cancelled at period end for user:', auth.user.id);
 
@@ -312,7 +328,7 @@ export function registerStripeRoutes(app: Hono) {
       let event: Stripe.Event;
 
       try {
-        event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+        event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
       } catch (err) {
         errorLog('⚠️ Webhook signature verification failed:', err);
         return c.json({ error: 'Invalid signature' }, 400);
@@ -433,6 +449,77 @@ export function registerStripeRoutes(app: Hono) {
     }
   });
 
+  // ── GET /invoices ─────────────────────────────────────────
+  // Returns list of invoices/charges for the authenticated user from Stripe
+  app.get(`${prefix}/invoices`, async (c) => {
+    try {
+      const auth = await authenticateUser(c);
+      if (!auth) return c.json({ error: 'Unauthorized' }, 401);
+
+      const subscription = await db.getSubscription(auth.user.id);
+
+      // Admin-granted subscriptions have no invoices
+      if (!subscription?.stripeCustomerId || subscription.stripeCustomerId === 'admin_granted') {
+        return c.json({ invoices: [] });
+      }
+
+      const stripe = getStripe();
+
+      // Fetch invoices from Stripe
+      const invoices = await stripe.invoices.list({
+        customer: subscription.stripeCustomerId,
+        limit: 50,
+      });
+
+      // Also fetch one-time payment charges (checkout sessions in payment mode)
+      const charges = await stripe.charges.list({
+        customer: subscription.stripeCustomerId,
+        limit: 50,
+      });
+
+      // Map invoices (subscription payments)
+      const invoiceItems = invoices.data.map((inv) => ({
+        id: inv.id,
+        type: 'subscription' as const,
+        amount: inv.amount_paid,
+        currency: inv.currency,
+        status: inv.status,
+        date: inv.created ? new Date(inv.created * 1000).toISOString() : null,
+        description: inv.lines?.data?.[0]?.description || 'Subscription payment',
+        pdfUrl: inv.invoice_pdf || null,
+        hostedUrl: inv.hosted_invoice_url || null,
+        number: inv.number,
+      }));
+
+      // Map charges (one-time payments) — only include those not already in invoices
+      const invoiceChargeIds = new Set(invoices.data.map(inv => inv.charge).filter(Boolean));
+      const chargeItems = charges.data
+        .filter(ch => ch.paid && !invoiceChargeIds.has(ch.id))
+        .map((ch) => ({
+          id: ch.id,
+          type: 'single_event' as const,
+          amount: ch.amount,
+          currency: ch.currency,
+          status: ch.paid ? 'paid' : ch.status,
+          date: new Date(ch.created * 1000).toISOString(),
+          description: ch.description || 'Single event payment',
+          pdfUrl: ch.receipt_url || null,
+          hostedUrl: ch.receipt_url || null,
+          number: null,
+        }));
+
+      // Combine and sort by date descending
+      const allInvoices = [...invoiceItems, ...chargeItems].sort(
+        (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+      );
+
+      return c.json({ invoices: allInvoices });
+    } catch (error) {
+      errorLog('Error getting invoices:', error);
+      return c.json({ error: 'Failed to get invoices' }, 500);
+    }
+  });
+
   // ── GET /capacity-check ───────────────────────────────────
   // Checks if user can create/publish a session with given participant count
   app.get(`${prefix}/capacity-check`, async (c) => {
@@ -468,9 +555,8 @@ export async function checkCapacity(userId: string, requestedCapacity: number): 
   currentTier: string;
   suggestion?: string;
 }> {
-  // Free tier: configurable limit from admin_settings (default 5)
-  const freeTierLimit = (await db.getAdminSetting('free_tier_max_participants')) || 5;
-  if (requestedCapacity <= freeTierLimit) {
+  // Free tier: up to 10 participants
+  if (requestedCapacity <= 10) {
     return { allowed: true, reason: 'Free tier', currentTier: 'free' };
   }
 
@@ -526,7 +612,7 @@ export async function checkCapacity(userId: string, requestedCapacity: number): 
 }
 
 // ============================================================
-// Credit consumption (called when session is published/scheduled)
+// Credit consumption (called when first participant registers)
 // ============================================================
 
 export async function consumeEventCredit(userId: string, sessionId: string): Promise<boolean> {
@@ -536,7 +622,7 @@ export async function consumeEventCredit(userId: string, sessionId: string): Pro
   await db.deductCredit(userId, 1, {
     type: 'consumed',
     sessionId,
-    description: 'Event credit used for session publish',
+    description: 'Event credit used for first participant registration',
   });
 
   return true;

@@ -5,19 +5,19 @@ import { cva, type VariantProps } from "class-variance-authority@0.7.1";
 import { cn } from "./utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium cursor-pointer transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/85 active:bg-primary/75 active:scale-[0.98]",
+        default: "bg-primary text-primary-foreground shadow-sm hover:shadow-lg active:shadow-sm",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 active:bg-destructive/80 active:scale-[0.98] focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white shadow-sm hover:shadow-lg active:shadow-sm focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border bg-background text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80 active:scale-[0.98] dark:bg-input/30 dark:border-input dark:hover:bg-input/50 dark:active:bg-input/60",
+          "border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground hover:shadow-md active:bg-accent/80 active:shadow-sm dark:bg-input/30 dark:border-input dark:hover:bg-input/50 dark:active:bg-input/60",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70 active:scale-[0.98]",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-sm active:bg-secondary/70",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground active:bg-accent/80 active:scale-[0.98] dark:hover:bg-accent/50 dark:active:bg-accent/60",
+          "hover:bg-accent hover:text-accent-foreground active:bg-accent/80 dark:hover:bg-accent/50 dark:active:bg-accent/60",
         link: "text-primary underline-offset-4 hover:underline active:opacity-80",
       },
       size: {

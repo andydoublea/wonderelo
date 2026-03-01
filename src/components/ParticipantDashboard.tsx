@@ -1161,7 +1161,7 @@ export function ParticipantDashboard() {
       firstName={firstName}
       lastName={lastName}
     >
-      <div className="space-y-8 max-w-md mx-auto">
+      <div className="space-y-8 max-w-md mx-auto text-center">
         {/* Upcoming section */}
         <div>
           <h2 className="mb-4">Upcoming rounds</h2>

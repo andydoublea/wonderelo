@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -41,6 +41,14 @@ const adminTools = [
     icon: TrendingDown,
     route: '/admin/registration-funnel',
     color: 'bg-red-500',
+    category: 'user-management',
+  },
+  {
+    id: 'billing',
+    title: 'Billing management',
+    icon: CreditCard,
+    route: '/admin/billing',
+    color: 'bg-yellow-500',
     category: 'user-management',
   },
   {
