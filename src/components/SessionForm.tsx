@@ -8,7 +8,7 @@ import { Switch } from './ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
-import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle, Sparkles } from 'lucide-react';
+import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle, Sparkles, Loader2, Coins, CreditCard } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -26,8 +26,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { debugLog, errorLog } from '../utils/debug';
 import { fetchSystemParameters, type SystemParameters } from '../utils/systemParameters';
 import { useIsDesktop } from '../hooks/useResponsive';
-import { Slider } from './ui/slider';
-import { CAPACITY_OPTIONS } from '../config/pricing';
+import { getAccessToken } from '../utils/supabase/getAccessToken';
+import { useNavigate } from 'react-router';
+import { PRICING_TIERS, getTierForCapacity, formatPrice, type CapacityTier } from '../config/pricing';
+// Slider removed — capacity uses free-form input now
+// CAPACITY_OPTIONS import removed — slider replaced with free-form input
 
 interface SessionFormProps {
   initialData?: NetworkingSession | null;
@@ -42,10 +45,21 @@ interface SessionFormProps {
 
 export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organizerName, profileImageUrl, userSlug, isDuplicate }: SessionFormProps) {
   const isDesktop = useIsDesktop();
+  const navigate = useNavigate();
   const [availableIceBreakers, setAvailableIceBreakers] = useState<string[]>([]);
   const [systemParams, setSystemParams] = useState<SystemParameters | null>(null);
   const [useCustomTimes, setUseCustomTimes] = useState(false);
-  
+  const [showCreditDialog, setShowCreditDialog] = useState(false);
+  const [creditCheckLoading, setCreditCheckLoading] = useState(false);
+  const [creditInfo, setCreditInfo] = useState<{
+    hasSubscription: boolean;
+    credits: { balance: number; capacityTier: string }[];
+    totalCredits: number;
+    requiredTier: CapacityTier;
+    eventCapacity: number;
+  } | null>(null);
+  const [pendingSessionData, setPendingSessionData] = useState<Omit<NetworkingSession, 'id'> | null>(null);
+
   // Check if first round has already started or passed
   const hasFirstRoundStarted = (): boolean => {
     if (!initialData || isDuplicate) return false;
@@ -383,7 +397,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     onSubmit(sessionData);
   };
 
-  const handleMakeLive = (e: React.FormEvent) => {
+  const handleMakeLive = async (e: React.FormEvent) => {
     e.preventDefault();
     
     debugLog('🚀 handleMakeLive called');
@@ -523,10 +537,10 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     const sessionData = {
       ...formData,
       endTime: calculatedEndTime,
-      teams: formData.enableTeams 
+      teams: formData.enableTeams
         ? (formData.teams || []).filter(name => name.trim())
         : [],
-      topics: formData.enableTopics 
+      topics: formData.enableTopics
         ? (formData.topics || []).filter(name => name.trim())
         : [],
       meetingPoints: validMeetingPoints,
@@ -535,7 +549,85 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       registrationStart: registrationStartISO
     };
 
-    onSubmit(sessionData);
+    // If session is already published (update) or in free tier, skip credit dialog
+    const isAlreadyLive = formData.status === 'published' || formData.status === 'scheduled';
+    const maxParticipants = formData.maxParticipants || 5;
+    const isFreeEvent = maxParticipants <= 5;
+
+    if (isAlreadyLive || isFreeEvent) {
+      onSubmit(sessionData);
+      return;
+    }
+
+    // First-time publish with paid tier: check subscription/credits
+    setPendingSessionData(sessionData);
+    setCreditCheckLoading(true);
+    setShowCreditDialog(true);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        // Can't check — let backend handle it
+        onSubmit(sessionData);
+        setShowCreditDialog(false);
+        return;
+      }
+
+      const [subRes, credRes] = await Promise.all([
+        fetch(`${apiBaseUrl}/subscription`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${apiBaseUrl}/credits`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+
+      const subData = subRes.ok ? await subRes.json() : { hasSubscription: false };
+      const credData = credRes.ok ? await credRes.json() : { credits: [] };
+
+      const hasActiveSub = subData.hasSubscription && subData.subscription?.status === 'active';
+      const creditsList = Array.isArray(credData.credits) ? credData.credits.filter((c: any) => c.balance > 0) : [];
+      const totalCredits = creditsList.reduce((sum: number, c: any) => sum + c.balance, 0);
+
+      if (hasActiveSub) {
+        // Has subscription — publish directly, no credit needed
+        onSubmit(sessionData);
+        setShowCreditDialog(false);
+        return;
+      }
+
+      const requiredTier = getTierForCapacity(maxParticipants);
+
+      setCreditInfo({
+        hasSubscription: false,
+        credits: creditsList,
+        totalCredits,
+        requiredTier,
+        eventCapacity: maxParticipants,
+      });
+    } catch (err) {
+      errorLog('Error checking credits:', err);
+      // On error, still let user try — backend will reject if no credits
+      onSubmit(sessionData);
+      setShowCreditDialog(false);
+    } finally {
+      setCreditCheckLoading(false);
+    }
+  };
+
+  const handleConfirmPublish = () => {
+    if (pendingSessionData) {
+      onSubmit(pendingSessionData);
+    }
+    setShowCreditDialog(false);
+    setPendingSessionData(null);
+    setCreditInfo(null);
+  };
+
+  const handleSaveDraftAndBuyCredit = () => {
+    if (pendingSessionData) {
+      onSubmit({ ...pendingSessionData, status: 'draft' as const });
+    }
+    setShowCreditDialog(false);
+    setPendingSessionData(null);
+    setCreditInfo(null);
+    navigate('/billing');
   };
 
   const handleScheduleMakingLive = (e: React.FormEvent) => {
@@ -1032,49 +1124,33 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium">Maximum participants</label>
-              <div className="text-right">
-                <div className="text-2xl font-bold">
-                  Up to {formData.maxParticipants} participants
-                </div>
-              </div>
-            </div>
-
-            <div style={{ padding: '0 13px' }}>
-              <Slider
-                value={[CAPACITY_OPTIONS.findIndex(opt => opt.value === formData.maxParticipants) >= 0
-                  ? CAPACITY_OPTIONS.findIndex(opt => opt.value === formData.maxParticipants)
-                  : 1]}
-                onValueChange={(values) => {
-                  const capacity = CAPACITY_OPTIONS[values[0]]?.value || 50;
-                  setFormData({ ...formData, maxParticipants: capacity, limitParticipants: true });
+            <label className="text-sm font-medium" htmlFor="eventCapacity">Expected number of participants</label>
+            <div className="flex items-center gap-3" style={{ marginTop: '6px' }}>
+              <Input
+                id="eventCapacity"
+                type="number"
+                min="2"
+                max="10000"
+                placeholder="e.g. 50"
+                value={formData.maxParticipants}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setFormData({ ...formData, maxParticipants: '' as any, limitParticipants: false });
+                  } else {
+                    const parsedValue = parseInt(value);
+                    if (!isNaN(parsedValue)) {
+                      setFormData({ ...formData, maxParticipants: parsedValue, limitParticipants: true });
+                    }
+                  }
                 }}
-                min={0}
-                max={CAPACITY_OPTIONS.length - 1}
-                step={1}
-                className="w-full"
+                style={{ maxWidth: '160px' }}
               />
-
-              <div className="relative w-full h-5 mt-2">
-                {CAPACITY_OPTIONS.map((option, index) => {
-                  const position = (index / (CAPACITY_OPTIONS.length - 1)) * 100;
-                  const thumbOffset = 12.5 * (1 - 2 * position / 100);
-
-                  return (
-                    <span
-                      key={option.value}
-                      className={`absolute text-xs text-muted-foreground -translate-x-1/2 ${
-                        index === 0 || index === CAPACITY_OPTIONS.length - 1 ? '' : 'hidden sm:inline'
-                      }`}
-                      style={{ left: `calc(${position}% + ${thumbOffset}px)` }}
-                    >
-                      {option.value}
-                    </span>
-                  );
-                })}
-              </div>
+              <span className="text-sm text-muted-foreground">participants</span>
             </div>
+            <p className="text-xs text-muted-foreground" style={{ marginTop: '4px' }}>
+              This determines the pricing tier for your event
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -1453,54 +1529,6 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <Label>Limit total number of participants</Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p>Useful when your venue has capacity limitations</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-              <Switch
-                checked={formData.limitParticipants}
-                onCheckedChange={(checked) => setFormData({ ...formData, limitParticipants: checked })}
-              />
-            </div>
-
-            {formData.limitParticipants && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxParticipants">Maximum participants</Label>
-                  <Input
-                    id="maxParticipants"
-                    type="number"
-                    min="2"
-                    max="1000"
-                    value={formData.maxParticipants}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === '') {
-                        setFormData({ ...formData, maxParticipants: '' as any });
-                      } else {
-                        const parsedValue = parseInt(value);
-                        if (!isNaN(parsedValue)) {
-                          setFormData({ ...formData, maxParticipants: parsedValue });
-                        }
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -1876,6 +1904,143 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       </DialogContent>
     </Dialog>
 
+    {/* Credit Confirmation Dialog */}
+    <Dialog open={showCreditDialog} onOpenChange={(open) => {
+      if (!open) {
+        setShowCreditDialog(false);
+        setPendingSessionData(null);
+        setCreditInfo(null);
+      }
+    }}>
+      <DialogContent style={{ maxWidth: '420px' }}>
+        <DialogHeader>
+          <DialogTitle>Publish event</DialogTitle>
+        </DialogHeader>
+        {creditCheckLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : creditInfo ? (() => {
+          const requiredTierCapacity = PRICING_TIERS[creditInfo.requiredTier].capacity;
+          // Exact match — credit for the same tier as the event
+          const exactCredit = creditInfo.credits.find(c => c.capacityTier === creditInfo.requiredTier && c.balance > 0);
+          // Any usable credit (equal or higher tier)
+          const usableCredit = creditInfo.credits.find(c => {
+            const tierCap = PRICING_TIERS[c.capacityTier as CapacityTier]?.capacity || 0;
+            return tierCap >= requiredTierCapacity && c.balance > 0;
+          });
+          // Higher-tier credit available but no exact match
+          const isUsingHigherTier = !exactCredit && !!usableCredit;
+          const hasUsableCredit = !!usableCredit;
+          // Price of the matching tier credit (for the suggestion)
+          const requiredTierPrice = PRICING_TIERS[creditInfo.requiredTier]?.singleEventPrice || 0;
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Credits per tier */}
+              {creditInfo.credits.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  {creditInfo.credits.map((c) => {
+                    const tierCap = PRICING_TIERS[c.capacityTier as CapacityTier]?.capacity || 0;
+                    const isUsable = tierCap >= requiredTierCapacity;
+                    return (
+                      <div
+                        key={c.capacityTier}
+                        className="flex items-center justify-between"
+                        style={{
+                          padding: '8px 12px',
+                          borderBottom: '1px solid var(--border)',
+                          background: isUsable ? '#f0fdf4' : undefined,
+                        }}
+                      >
+                        <span className="text-sm">
+                          Up to {tierCap} participants
+                        </span>
+                        <span className={`text-sm font-medium ${isUsable ? 'text-green-700' : 'text-muted-foreground'}`}>
+                          {c.balance} {c.balance === 1 ? 'credit' : 'credits'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {hasUsableCredit && !isUsingHigherTier ? (
+                /* Exact tier match — simple message */
+                <p className="text-sm text-muted-foreground">
+                  1 credit (up to {PRICING_TIERS[usableCredit!.capacityTier as CapacityTier]?.capacity} participants) will be used.
+                </p>
+              ) : isUsingHigherTier ? (
+                /* No exact match but higher tier available — suggest cheaper option */
+                <div className="p-3 border rounded-lg" style={{ background: '#eff6ff', borderColor: '#bfdbfe' }}>
+                  <div className="text-sm" style={{ color: '#1e40af' }}>
+                    You don't have a credit for up to {requiredTierCapacity} participants ({formatPrice(requiredTierPrice)}), but you can use your <span className="font-medium">up to {PRICING_TIERS[usableCredit!.capacityTier as CapacityTier]?.capacity}</span> credit instead.
+                  </div>
+                  <div className="text-xs" style={{ color: '#3b82f6', marginTop: '4px' }}>
+                    Tip: A credit for up to {requiredTierCapacity} participants costs only {formatPrice(requiredTierPrice)}.
+                  </div>
+                </div>
+              ) : creditInfo.credits.length > 0 ? (
+                /* Has credits but none usable for this tier */
+                <div className="p-3 border rounded-lg border-amber-200" style={{ background: '#fffbeb' }}>
+                  <div className="text-sm font-medium" style={{ color: '#92400e' }}>
+                    No credits for this tier
+                  </div>
+                  <div className="text-xs" style={{ color: '#a16207' }}>
+                    You need a credit for up to {requiredTierCapacity} participants ({formatPrice(requiredTierPrice)}). Purchase on the Billing page.
+                  </div>
+                </div>
+              ) : (
+                /* No credits at all */
+                <div className="p-3 border rounded-lg border-amber-200" style={{ background: '#fffbeb' }}>
+                  <div className="text-sm font-medium" style={{ color: '#92400e' }}>
+                    No credits available
+                  </div>
+                  <div className="text-xs" style={{ color: '#a16207' }}>
+                    Purchase credits or subscribe for unlimited events on the Billing page.
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })() : null}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => {
+            setShowCreditDialog(false);
+            setPendingSessionData(null);
+            setCreditInfo(null);
+          }}>
+            Cancel
+          </Button>
+          {creditInfo && (() => {
+            const requiredCap = PRICING_TIERS[creditInfo.requiredTier].capacity;
+            const exactMatch = creditInfo.credits.some(c => c.capacityTier === creditInfo.requiredTier && c.balance > 0);
+            const hasUsable = creditInfo.credits.some(c => {
+              const tierCap = PRICING_TIERS[c.capacityTier as CapacityTier]?.capacity || 0;
+              return tierCap >= requiredCap && c.balance > 0;
+            });
+            const usingHigherTier = !exactMatch && hasUsable;
+            return hasUsable ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {usingHigherTier && (
+                  <Button variant="outline" onClick={handleSaveDraftAndBuyCredit}>
+                    Save as draft & buy credit
+                  </Button>
+                )}
+                <Button onClick={handleConfirmPublish}>
+                  {usingHigherTier ? 'Use this credit' : 'Publish'}
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={handleSaveDraftAndBuyCredit}>
+                Save as draft & buy credit
+              </Button>
+            );
+          })()}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     {/* Preview Section */}
     {isDesktop && (
     <div>
@@ -1883,7 +2048,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     </div>
     )}
   </div>
-  
+
   </TooltipProvider>
   );
 }

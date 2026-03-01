@@ -1,13 +1,12 @@
 import { Button } from './ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuLabel
 } from './ui/dropdown-menu';
-import { Settings, Bell, CreditCard, LogOut, ChevronDown, FileText } from 'lucide-react';
+import { Settings, CreditCard, LogOut, ChevronDown, FileText } from 'lucide-react';
 import { APP_VERSION } from '../utils/version';
 import { useNavigate } from 'react-router';
 
@@ -143,18 +142,14 @@ export function AuthenticatedNav({
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={onNavigateToAccountSettings}>
                   <Settings className="mr-2 h-4 w-4" />
                   Account
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onNavigateToEventPageSettings}>
                   <FileText className="mr-2 h-4 w-4" />
-                  Event page settings
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  <Bell className="mr-2 h-4 w-4" />
-                  Notifications
+                  Event page
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onNavigateToBilling}>
                   <CreditCard className="mr-2 h-4 w-4" />

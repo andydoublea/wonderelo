@@ -8,6 +8,7 @@ import { ArrowRight, Users, Calendar, Clock, QrCode, Heart, Shield, Star, Coffee
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from './ui/carousel';
 import { Navigation } from './Navigation';
+import { CtaSection } from './CtaSection';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
@@ -837,37 +838,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       </section>
 
       {/* CTA */}
-      <section className="py-10 md:py-20 px-6">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="mb-4"><span style={{ color: '#5C2277' }}>Add value to your event with networking rounds!</span></h2>
-          <p className="mb-8 text-muted-foreground">
-            Be the event people remember for the connections they made.
-          </p>
-
-          <div className="flex justify-center">
-            <Button size="lg" onClick={onGetStarted}>
-              <Calendar className="mr-2 h-5 w-5" />
-              Let's get unforgettable!
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">Five minute set up</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">For events of every size</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">No worry pricing</span>
-            </div>
-          </div>
-        </div>
-      </section>
+      <CtaSection />
 
       {/* Lead Magnet */}
       <section className="py-20 px-6 bg-muted/30">

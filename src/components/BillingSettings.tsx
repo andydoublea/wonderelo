@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { Slider } from './ui/slider';
-import { Check, Loader2, CreditCard, Calendar, AlertCircle, Sparkles, Coins, AlertTriangle, Download, FileText, ExternalLink, Settings } from 'lucide-react';
+import { Loader2, CreditCard, Calendar, AlertCircle, Coins, AlertTriangle, Download, FileText, ExternalLink, Settings, Mail, Pencil } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import {
   AlertDialog,
@@ -18,7 +17,8 @@ import {
 import { toast } from 'sonner@2.0.3';
 import { apiBaseUrl } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
-import { PRICING_TIERS, CAPACITY_OPTIONS, formatPrice, getTierForCapacity, type CapacityTier } from '../config/pricing';
+import { PRICING_TIERS, formatPrice, type CapacityTier } from '../config/pricing';
+import { PricingPanel } from './PricingPanel';
 
 interface Subscription {
   plan: string;
@@ -43,37 +43,71 @@ interface Invoice {
   number: string | null;
 }
 
+interface CreditTransaction {
+  id: number;
+  amount: number;
+  type: string;       // 'purchase', 'consumed', 'refund'
+  capacityTier: string;
+  description: string | null;
+  createdAt: string;
+}
+
+interface BillingDetails {
+  name: string | null;
+  email: string | null;
+  address: {
+    line1: string | null;
+    line2: string | null;
+    city: string | null;
+    state: string | null;
+    postalCode: string | null;
+    country: string | null;
+  } | null;
+  taxIds: { type: string; value: string }[];
+}
+
 interface BillingSettingsProps {
   accessToken: string;
 }
 
 export function BillingSettings({ accessToken }: BillingSettingsProps) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [credits, setCredits] = useState<{ balance: number; capacityTier: string } | null>(null);
+  const [credits, setCredits] = useState<{ balance: number; capacityTier: string }[]>([]);
+  const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [selectedCapacity, setSelectedCapacity] = useState(50); // Default to 50
-  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('annual');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
-
+  const [billingDetails, setBillingDetails] = useState<BillingDetails | null>(null);
+  const [billingDetailsLoading, setBillingDetailsLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [invoiceEmail, setInvoiceEmail] = useState('');
+  const [invoiceEmailEditing, setInvoiceEmailEditing] = useState(false);
+  const [invoiceEmailSaving, setInvoiceEmailSaving] = useState(false);
+  const [invoicesTab, setInvoicesTab] = useState<'invoices' | 'credits'>('invoices');
 
   useEffect(() => {
     loadSubscription();
     loadCredits();
     loadInvoices();
+    loadBillingDetails();
 
-    // Check for payment success/cancel in URL
+    // Check for payment success/cancel/portal return in URL
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get('payment');
-    
+    const portalReturn = params.get('portal');
+
     if (paymentStatus === 'success') {
       toast.success('Payment completed successfully!');
       // Remove query params from URL
       window.history.replaceState({}, '', '/billing');
     } else if (paymentStatus === 'cancelled') {
       toast.error('Payment was cancelled');
+      window.history.replaceState({}, '', '/billing');
+    } else if (portalReturn === 'returned') {
+      // Returned from Stripe Customer Portal — reload billing details
+      toast.success('Billing details updated');
       window.history.replaceState({}, '', '/billing');
     }
   }, []);
@@ -124,7 +158,13 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
 
       if (response.ok) {
         const data = await response.json();
-        setCredits(data.credits || null);
+        // Backend now returns array of credits per tier
+        const creditsList = Array.isArray(data.credits) ? data.credits : (data.credits ? [data.credits] : []);
+        setCredits(creditsList.filter((c: any) => c.balance > 0));
+        // Store transactions for usage history
+        if (Array.isArray(data.transactions)) {
+          setCreditTransactions(data.transactions);
+        }
       }
     } catch (error) {
       errorLog('Error loading credits:', error);
@@ -154,49 +194,94 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
     }
   };
 
-  const handleSubscribe = async (paymentType: 'single' | 'subscription') => {
-    const tier = getTierForCapacity(selectedCapacity);
-    if (tier === 'free') return;
-
+  const loadBillingDetails = async () => {
     try {
-      setActionLoading(true);
-      const capacity = selectedCapacity;
-
-      const endpoint = paymentType === 'subscription' 
-        ? '/create-subscription'
-        : '/create-event-payment';
-
-      const body = paymentType === 'subscription'
-        ? { capacity, interval: billingInterval === 'annual' ? 'yearly' : 'monthly' }
-        : { capacity };
-
+      setBillingDetailsLoading(true);
       const response = await fetch(
-        `${apiBaseUrl}${endpoint}`,
+        `${apiBaseUrl}/billing-details`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setBillingDetails(data.billingDetails || null);
+        if (data.billingDetails?.email) {
+          setInvoiceEmail(data.billingDetails.email);
+        }
+      }
+    } catch (error) {
+      errorLog('Error loading billing details:', error);
+    } finally {
+      setBillingDetailsLoading(false);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    try {
+      setPortalLoading(true);
+      const response = await fetch(
+        `${apiBaseUrl}/create-portal-session`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to open billing portal');
+      }
+
+      const data = await response.json();
+      if (data.portalUrl) {
+        window.location.href = data.portalUrl;
+      }
+    } catch (error) {
+      errorLog('Error opening billing portal:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to open billing portal');
+      setPortalLoading(false);
+    }
+  };
+
+  const handleSaveInvoiceEmail = async () => {
+    if (!invoiceEmail.trim() || !invoiceEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    try {
+      setInvoiceEmailSaving(true);
+      const response = await fetch(
+        `${apiBaseUrl}/update-invoice-email`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ email: invoiceEmail.trim() }),
         }
       );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create payment');
+        throw new Error(error.error || 'Failed to update email');
       }
 
-      const data = await response.json();
-      
-      // Redirect to Stripe Checkout
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      }
+      toast.success('Invoice email updated');
+      setInvoiceEmailEditing(false);
+      // Reload billing details to reflect the change
+      loadBillingDetails();
     } catch (error) {
-      errorLog('Error creating payment:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create payment');
-      setActionLoading(false);
+      errorLog('Error updating invoice email:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update invoice email');
+    } finally {
+      setInvoiceEmailSaving(false);
     }
   };
 
@@ -246,30 +331,10 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  // Get the tier for current slider value
-  const currentTier = getTierForCapacity(selectedCapacity);
-  const currentPricing = PRICING_TIERS[currentTier];
-  const isFree = currentTier === 'free';
-
-  const displayedPrice = currentPricing.premiumMonthlyPrice;
-
-  // Map capacity to slider value (0-5)
-  const getSliderValue = (capacity: number): number => {
-    const index = CAPACITY_OPTIONS.findIndex(opt => opt.value === capacity);
-    return index >= 0 ? index : 1;
-  };
-
-  const getCapacityFromSlider = (value: number): number => {
-    return CAPACITY_OPTIONS[value]?.value || 50;
-  };
-
   return (
     <div className="container mx-auto p-6 max-w-4xl flex-1">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Billing and subscription</h1>
-        <p className="text-muted-foreground">
-          Manage your subscription and billing information
-        </p>
       </div>
 
       {loading ? (
@@ -280,13 +345,13 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
       ) : (
         <>
           {/* Your plan — merged subscription + credits */}
-          {(subscription || (credits && credits.balance > 0)) && (
+          {(subscription || credits.length > 0) && (
             <Card className={`mb-8 ${subscription && (subscription.cancelAtPeriodEnd || subscription.status === 'cancelled') ? 'border-amber-200 dark:border-amber-800' : ''}`}>
               <CardHeader>
                 <CardTitle>Your plan</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-5">
+                <div className="space-y-6">
                   {/* Subscription section */}
                   {subscription && (
                     <div className="space-y-4">
@@ -360,26 +425,28 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
                   )}
 
                   {/* Divider between subscription and credits */}
-                  {subscription && credits && credits.balance > 0 && (
-                    <div className="border-t pt-1" />
+                  {subscription && credits.length > 0 && (
+                    <div className="border-t pt-2" />
                   )}
 
-                  {/* Single event credits section */}
-                  {credits && credits.balance > 0 && (
+                  {/* Single event credits section — one row per tier */}
+                  {credits.length > 0 && (
                     <div className="space-y-2">
                       <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Coins className="h-5 w-5 text-blue-500" />
                         Single event credits
                       </h3>
-                      <div className="flex items-center gap-4">
-                        <div className="text-3xl font-bold">{credits.balance}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {credits.balance === 1 ? 'credit' : 'credits'} remaining
-                          {credits.capacityTier && PRICING_TIERS[credits.capacityTier as CapacityTier] && (
-                            <> · Up to {PRICING_TIERS[credits.capacityTier as CapacityTier].capacity} participants per event</>
-                          )}
+                      {credits.map((credit) => (
+                        <div key={credit.capacityTier} className="flex items-center gap-4">
+                          <div className="text-3xl font-bold">{credit.balance}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {credit.balance === 1 ? 'credit' : 'credits'} remaining
+                            {PRICING_TIERS[credit.capacityTier as CapacityTier] && (
+                              <> · Up to {PRICING_TIERS[credit.capacityTier as CapacityTier].capacity} participants per event</>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -388,296 +455,194 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
           )}
 
           {/* Pricing Selector */}
+          <PricingPanel accessToken={accessToken} hasSubscription={!!subscription} />
+
+          {/* Invoices & Credit history (tabbed) */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>{subscription ? 'Change plan' : 'Choose a plan'}</CardTitle>
-              <CardDescription>
-                Pricing is based on your event's capacity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Free tier notice */}
-              <div className="mb-6 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                  <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                    Events up to 5 participants free for testing purposes
-                  </p>
-                </div>
-              </div>
-
-              {/* Capacity Slider */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-medium">Event capacity</label>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold">
-                      Up to {selectedCapacity} participants
-                    </div>
-                    {}
-                  </div>
-                </div>
-
-                <div style={{ padding: '0 13px' }}>
-                  <Slider
-                    value={[getSliderValue(selectedCapacity)]}
-                    onValueChange={(values) => {
-                      const capacity = getCapacityFromSlider(values[0]);
-                      setSelectedCapacity(capacity);
+              <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--border)' }}>
+                <button
+                  type="button"
+                  onClick={() => setInvoicesTab('invoices')}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: invoicesTab === 'invoices' ? 'var(--foreground)' : 'var(--muted-foreground)',
+                    borderBottom: invoicesTab === 'invoices' ? '2px solid var(--foreground)' : '2px solid transparent',
+                    background: 'none',
+                    border: 'none',
+                    borderBottomWidth: '2px',
+                    borderBottomStyle: 'solid',
+                    borderBottomColor: invoicesTab === 'invoices' ? 'var(--foreground)' : 'transparent',
+                    cursor: 'pointer',
+                    marginBottom: '-1px',
+                  }}
+                >
+                  Invoices
+                </button>
+                {creditTransactions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setInvoicesTab('credits')}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: invoicesTab === 'credits' ? 'var(--foreground)' : 'var(--muted-foreground)',
+                      background: 'none',
+                      border: 'none',
+                      borderBottomWidth: '2px',
+                      borderBottomStyle: 'solid',
+                      borderBottomColor: invoicesTab === 'credits' ? 'var(--foreground)' : 'transparent',
+                      cursor: 'pointer',
+                      marginBottom: '-1px',
                     }}
-                    min={0}
-                    max={CAPACITY_OPTIONS.length - 1}
-                    step={1}
-                    className="w-full"
-                  />
-
-                  <div className="relative w-full h-5 mt-2">
-                    {CAPACITY_OPTIONS.map((option, index) => {
-                      const position = (index / (CAPACITY_OPTIONS.length - 1)) * 100;
-                      // Match Radix slider thumb offset: thumbHalf * (1 - 2 * pct/100)
-                      const thumbOffset = 12.5 * (1 - 2 * position / 100);
-
-                      return (
-                        <span
-                          key={option.value}
-                          className={`absolute text-xs text-muted-foreground -translate-x-1/2 ${
-                            index === 0 || index === CAPACITY_OPTIONS.length - 1 ? '' : 'hidden sm:inline'
-                          }`}
-                          style={{ left: `calc(${position}% + ${thumbOffset}px)` }}
-                        >
-                          {option.value}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
+                  >
+                    Credit history
+                  </button>
+                )}
               </div>
-
-              {/* Pricing Display */}
-              {!isFree && (
-                <div className="grid md:grid-cols-2 gap-4" style={{ marginTop: '2rem' }}>
-                  {/* Single Event Payment */}
-                  <Card className="border-2 flex flex-col">
-                    <CardHeader className="pb-4">
-                      <CardTitle className="text-lg">Single event</CardTitle>
-                      <div className="text-3xl font-bold">
-                        {formatPrice(currentPricing.singleEventPrice)}
-                      </div>
-                      <CardDescription>One-time payment</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col flex-1 gap-3">
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-primary" />
-                          <span>Up to {currentPricing.capacity} participants</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-primary" />
-                          <span>Valid for one event</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-primary" />
-                          <span>Unlimited rounds</span>
-                        </div>
-                      </div>
-                      <div className="flex-1" />
-                      <Button
-                        className="w-full"
-                        variant="outline"
-                        onClick={() => handleSubscribe('single')}
-                        disabled={actionLoading}
-                      >
-                        {actionLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="mr-2 h-4 w-4" />
-                            Pay once
-                          </>
-                        )}
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Unlimited Events Subscription */}
-                  <Card className="border-2 border-primary flex flex-col">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">Unlimited events</CardTitle>
-                        <Badge>Popular</Badge>
-                      </div>
-                      {/* Annually / Monthly toggle */}
-                      <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
-                        <button
-                          type="button"
-                          onClick={() => setBillingInterval('annual')}
-                          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                            billingInterval === 'annual'
-                              ? 'bg-background text-foreground shadow-sm'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Annually
-                          <span className="ml-1 text-[10px] text-green-600 dark:text-green-400 font-semibold">-17%</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBillingInterval('monthly')}
-                          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                            billingInterval === 'monthly'
-                              ? 'bg-background text-foreground shadow-sm'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Monthly
-                        </button>
-                      </div>
-                      <div className="space-y-1">
-                        {billingInterval === 'monthly' ? (
-                          <>
-                            <div className="text-3xl font-bold">
-                              {formatPrice(currentPricing.premiumMonthlyPrice)}
-                            </div>
-                            <CardDescription>per month</CardDescription>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-3xl font-bold">
-                              {formatPrice(Math.round(currentPricing.premiumAnnualPrice / 12))}
-                            </div>
-                            <CardDescription>
-                              per month, billed {formatPrice(currentPricing.premiumAnnualPrice)} annually
-                            </CardDescription>
-                          </>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex flex-col flex-1 gap-3">
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-primary" />
-                          <span>Up to {currentPricing.capacity} participants</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-primary" />
-                          <span className="font-semibold">Unlimited events</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-primary" />
-                          <span>Priority support</span>
-                        </div>
-                      </div>
-                      <div className="flex-1" />
-                      <Button
-                        className="w-full"
-                        onClick={() => handleSubscribe('subscription')}
-                        disabled={actionLoading}
-                      >
-                        {actionLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="mr-2 h-4 w-4" />
-                            Subscribe
-                          </>
-                        )}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
-              {isFree && (
-                <div className="text-center py-6 bg-muted/50 rounded-lg" style={{ marginTop: '2rem' }}>
-                  <p className="text-sm text-muted-foreground">
-                    Free tier includes up to 5 participants — perfect for testing!
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Invoices & Receipts */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Invoices & receipts
-              </CardTitle>
             </CardHeader>
             <CardContent>
-              {invoicesLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : invoices.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  No invoices yet. Invoices will appear here after your first payment.
-                </p>
-              ) : (
-                <div className="divide-y">
-                  {invoices.map((invoice) => (
-                    <div key={invoice.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">
-                            {invoice.number || invoice.description}
-                          </span>
-                          <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
-                            {invoice.status === 'paid' ? 'Paid' : invoice.status}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {invoice.type === 'subscription' ? 'Subscription' : 'Single event'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          {invoice.date && (
-                            <span>{new Date(invoice.date).toLocaleDateString()}</span>
-                          )}
-                          <span className="font-medium">
-                            {new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: invoice.currency || 'usd',
-                            }).format(invoice.amount / 100)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        {invoice.pdfUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                          >
-                            <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
-                              <Download className="h-3.5 w-3.5 mr-1.5" />
-                              PDF
-                            </a>
-                          </Button>
-                        )}
-                        {invoice.hostedUrl && !invoice.pdfUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                          >
-                            <a href={invoice.hostedUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                              View
-                            </a>
-                          </Button>
-                        )}
-                      </div>
+              {invoicesTab === 'invoices' ? (
+                <>
+                  {invoicesLoading ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
                     </div>
-                  ))}
-                </div>
+                  ) : invoices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">
+                      No invoices yet. Invoices will appear here after your first payment.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'left', padding: '8px 12px 8px 0', whiteSpace: 'nowrap' }}>Date</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'left', padding: '8px 12px' }}>Description</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'left', padding: '8px 12px', whiteSpace: 'nowrap' }}>Type</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'right', padding: '8px 12px', whiteSpace: 'nowrap' }}>Amount</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'center', padding: '8px 12px', whiteSpace: 'nowrap' }}>Status</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'right', padding: '8px 0 8px 12px', whiteSpace: 'nowrap' }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoices.map((invoice) => (
+                            <tr key={invoice.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td className="text-sm" style={{ padding: '10px 12px 10px 0', whiteSpace: 'nowrap' }}>
+                                {invoice.date ? new Date(invoice.date).toLocaleDateString() : '—'}
+                              </td>
+                              <td className="text-sm" style={{ padding: '10px 12px' }}>
+                                {invoice.number || invoice.description}
+                              </td>
+                              <td className="text-sm text-muted-foreground" style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                                {invoice.type === 'subscription' ? 'Subscription' : 'Single event'}
+                              </td>
+                              <td className="text-sm font-medium" style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                {new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: invoice.currency || 'eur',
+                                }).format(invoice.amount / 100)}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
+                                  {invoice.status === 'paid' ? 'Paid' : invoice.status}
+                                </Badge>
+                              </td>
+                              <td style={{ padding: '10px 0 10px 12px', textAlign: 'right' }}>
+                                {invoice.pdfUrl && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    asChild
+                                  >
+                                    <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
+                                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                                      PDF
+                                    </a>
+                                  </Button>
+                                )}
+                                {invoice.hostedUrl && !invoice.pdfUrl && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    asChild
+                                  >
+                                    <a href={invoice.hostedUrl} target="_blank" rel="noopener noreferrer">
+                                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                                      View
+                                    </a>
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {creditTransactions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">
+                      No credit transactions yet.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'left', padding: '8px 12px 8px 0', whiteSpace: 'nowrap' }}>Date</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'left', padding: '8px 12px' }}>Type</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'left', padding: '8px 12px' }}>Details</th>
+                            <th className="text-xs font-medium text-muted-foreground" style={{ textAlign: 'right', padding: '8px 0 8px 12px', whiteSpace: 'nowrap' }}>Credits</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {creditTransactions.map((tx) => (
+                            <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td className="text-sm" style={{ padding: '10px 12px 10px 0', whiteSpace: 'nowrap' }}>
+                                {new Date(tx.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short', day: 'numeric', year: 'numeric',
+                                })}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                    tx.type === 'purchase' ? 'bg-green-500' :
+                                    tx.type === 'consumed' ? 'bg-orange-500' :
+                                    tx.type === 'refund' ? 'bg-blue-500' : 'bg-gray-400'
+                                  }`} />
+                                  <span className="text-sm">
+                                    {tx.type === 'purchase' ? 'Purchased' :
+                                     tx.type === 'consumed' ? 'Used for event' :
+                                     tx.type === 'refund' ? 'Refunded' : tx.type}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="text-sm text-muted-foreground" style={{ padding: '10px 12px' }}>
+                                {tx.description || (tx.capacityTier && PRICING_TIERS[tx.capacityTier as CapacityTier]
+                                  ? `Up to ${PRICING_TIERS[tx.capacityTier as CapacityTier].capacity} participants`
+                                  : '—')}
+                              </td>
+                              <td style={{ padding: '10px 0 10px 12px', textAlign: 'right' }}>
+                                <span className={`text-sm font-medium ${
+                                  tx.amount > 0 ? 'text-green-600' : 'text-orange-600'
+                                }`}>
+                                  {tx.amount > 0 ? '+' : ''}{tx.amount}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -685,15 +650,168 @@ export function BillingSettings({ accessToken }: BillingSettingsProps) {
           {/* Billing Details */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Billing details
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Billing details
+                </CardTitle>
+                {billingDetails && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenBillingPortal}
+                    disabled={portalLoading}
+                  >
+                    {portalLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        Opening...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                        Edit billing details
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                You'll be able to add and edit your billing details (company name, Tax ID, address) after your first payment. These details will appear on all your invoices.
-              </p>
+              {billingDetailsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-64" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ) : billingDetails ? (
+                <div className="space-y-3">
+                  {/* Name */}
+                  {billingDetails.name && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Name</p>
+                      <p className="text-sm font-medium">{billingDetails.name}</p>
+                    </div>
+                  )}
+
+                  {/* Address */}
+                  {billingDetails.address && (billingDetails.address.line1 || billingDetails.address.city) && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Address</p>
+                      <p className="text-sm">
+                        {[
+                          billingDetails.address.line1,
+                          billingDetails.address.line2,
+                          [billingDetails.address.city, billingDetails.address.postalCode].filter(Boolean).join(' '),
+                          billingDetails.address.country,
+                        ].filter(Boolean).join(', ')}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tax IDs */}
+                  {billingDetails.taxIds.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Tax ID</p>
+                      {billingDetails.taxIds.map((tid, i) => (
+                        <p key={i} className="text-sm font-medium">{tid.value}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Invoice email */}
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Invoice email</p>
+                    {invoiceEmailEditing ? (
+                      <div className="flex items-center gap-2" style={{ marginTop: '4px' }}>
+                        <input
+                          type="email"
+                          value={invoiceEmail}
+                          onChange={(e) => setInvoiceEmail(e.target.value)}
+                          className="flex-1 text-sm border rounded-md"
+                          style={{ padding: '6px 10px', outline: 'none' }}
+                          placeholder="email@company.com"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveInvoiceEmail();
+                            if (e.key === 'Escape') {
+                              setInvoiceEmailEditing(false);
+                              setInvoiceEmail(billingDetails.email || '');
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleSaveInvoiceEmail}
+                          disabled={invoiceEmailSaving}
+                        >
+                          {invoiceEmailSaving ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            'Save'
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setInvoiceEmailEditing(false);
+                            setInvoiceEmail(billingDetails.email || '');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm">{billingDetails.email || 'Not set'}</p>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceEmailEditing(true)}
+                          className="text-muted-foreground"
+                          style={{ padding: '2px' }}
+                          title="Edit invoice email"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* If no details filled yet (customer exists but empty) */}
+                  {!billingDetails.name && !billingDetails.address?.line1 && billingDetails.taxIds.length === 0 && !billingDetails.email && (
+                    <p className="text-sm text-muted-foreground">
+                      No billing details set yet. Click "Edit billing details" to add your company name, address, and Tax ID.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Billing details will be available after your first payment. You'll be able to add your company name, address, and Tax ID.
+                  </p>
+                  {(subscription || credits.length > 0) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenBillingPortal}
+                      disabled={portalLoading}
+                    >
+                      {portalLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                          Opening...
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                          Add billing details
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

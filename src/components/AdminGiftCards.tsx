@@ -400,7 +400,7 @@ export function AdminGiftCards({ accessToken }: AdminGiftCardsProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="absolute">Fixed amount (€)</SelectItem>
+                    <SelectItem value="absolute">Fixed amount ($)</SelectItem>
                     <SelectItem value="percentage">Percentage (%)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -408,7 +408,7 @@ export function AdminGiftCards({ accessToken }: AdminGiftCardsProps) {
 
               <div>
                 <Label htmlFor="discountValue">
-                  {formData.discountType === 'absolute' ? 'Amount (€)' : 'Percentage (%)'}
+                  {formData.discountType === 'absolute' ? 'Amount ($)' : 'Percentage (%)'}
                 </Label>
                 <Input
                   id="discountValue"

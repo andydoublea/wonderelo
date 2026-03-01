@@ -65,6 +65,8 @@ const AdminParameters = lazy(() => import('./components/AdminParameters').then(m
 const AdminOrganizerRequests = lazy(() => import('./components/AdminOrganizerRequests').then(m => ({ default: m.AdminOrganizerRequests })));
 const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({ default: m.ThemeManager })));
 const AdminLeads = lazy(() => import('./components/AdminLeads').then(m => ({ default: m.AdminLeads })));
+const AdminStyleGuide = lazy(() => import('./components/AdminStyleGuide').then(m => ({ default: m.AdminStyleGuide })));
+const AdminPricing = lazy(() => import('./components/AdminPricing').then(m => ({ default: m.AdminPricing })));
 const UseCaseLandingPage = lazy(() => import('./components/UseCaseLandingPage').then(m => ({ default: m.UseCaseLandingPage })));
 const OurStoryPage = lazy(() => import('./components/OurStoryPage').then(m => ({ default: m.OurStoryPage })));
 
@@ -1082,6 +1084,22 @@ function AdminPagePreviewRoute() {
   );
 }
 
+function AdminStyleGuideRoute() {
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <AdminStyleGuide />
+    </Suspense>
+  );
+}
+
+function AdminPricingRoute() {
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <AdminPricing />
+    </Suspense>
+  );
+}
+
 function AdminParametersRoute() {
   const { accessToken } = useApp();
   const navigate = useNavigate();
@@ -1660,7 +1678,7 @@ function AppProviderWithRouter() {
   };
 
   const isAdminUser = () => {
-    const adminEmails = ['jan.sramka+admin@gmail.com', 'jan.sramka@gmail.com', 'admin@oliwonder.com'];
+    const adminEmails = ['jan.sramka+admin@gmail.com', 'jan.sramka@gmail.com', 'andy.double.a+org@gmail.com'];
     return currentUser?.email && adminEmails.includes(currentUser.email);
   };
 
@@ -1821,6 +1839,47 @@ function AppProviderWithRouter() {
             debugLog('⏭️ SIGNED_IN event detected but ignoring (handled by handleSignInComplete)');
             return;
           } else if (event === 'SIGNED_OUT') {
+            // During initialization or after external redirects (e.g. Stripe payment),
+            // SIGNED_OUT can fire spuriously. Verify there's truly no session before clearing.
+            if (isInitializingAuthRef.current) {
+              debugLog('⏭️ Ignoring SIGNED_OUT during auth initialization');
+              return;
+            }
+
+            // Double-check: if localStorage still has a session, don't sign out
+            // (this handles the case where detectSessionInUrl fires SIGNED_OUT
+            // due to query params like ?payment=success from Stripe redirects)
+            const storedSession = localStorage.getItem('oliwonder-supabase-auth');
+            if (storedSession) {
+              try {
+                const parsed = JSON.parse(storedSession);
+                if (parsed?.refresh_token) {
+                  debugLog('⏭️ Ignoring SIGNED_OUT — stored session still exists, attempting recovery');
+                  // Try to recover the session
+                  supabase.auth.setSession({
+                    access_token: parsed.access_token,
+                    refresh_token: parsed.refresh_token,
+                  }).then(({ error: setError }) => {
+                    if (setError) {
+                      debugLog('❌ Session recovery failed:', setError.message);
+                      // Now truly sign out
+                      setIsAuthenticated(false);
+                      setCurrentUser(null);
+                      setAccessToken('');
+                      localStorage.removeItem('oliwonder_authenticated');
+                      localStorage.removeItem('oliwonder_current_user');
+                      navigate('/');
+                    } else {
+                      debugLog('✅ Session recovered successfully');
+                    }
+                  });
+                  return;
+                }
+              } catch (e) {
+                // Invalid stored session, proceed with sign out
+              }
+            }
+
             setIsAuthenticated(false);
             setCurrentUser(null);
             setAccessToken('');
@@ -1934,6 +1993,8 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/organizer-requests', element: h(AdminRoute, null, h(AdminOrganizerRequestsRoute)) }),
             h(Route, { path: '/admin/leads', element: h(AdminRoute, null, h(AdminLeadsRoute)) }),
             h(Route, { path: '/admin/registration-funnel', element: h(AdminRoute, null, h(AdminRegistrationFunnelRoute)) }),
+            h(Route, { path: '/admin/style-guide', element: h(AdminRoute, null, h(AdminStyleGuideRoute)) }),
+            h(Route, { path: '/admin/pricing', element: h(AdminRoute, null, h(AdminPricingRoute)) }),
             h(Route, { path: '/verify', element: h(EmailVerification) }),
             h(Route, { path: '/p/:token', element: h(ParticipantDashboard) }),
             h(Route, { path: '/p/:token/match', element: h(MatchInfo) }),

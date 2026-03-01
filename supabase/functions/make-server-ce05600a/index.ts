@@ -353,7 +353,7 @@ app.post('/make-server-ce05600a/sessions', async (c) => {
         if (capacityResult.currentTier !== 'free') {
           const subscription = await db.getSubscription(user.id);
           if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
-            await consumeEventCredit(user.id, sessionId);
+            await consumeEventCredit(user.id, sessionId, capacityResult.currentTier, newSession.name);
             debugLog('💳 Event credit consumed for session:', sessionId);
           }
         }
@@ -425,7 +425,8 @@ app.put('/make-server-ce05600a/sessions/:sessionId', async (c) => {
         if (capacityResult.currentTier !== 'free') {
           const subscription = await db.getSubscription(user.id);
           if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
-            await consumeEventCredit(user.id, sessionId);
+            const sessionName = body.name || existingSession.name;
+            await consumeEventCredit(user.id, sessionId, capacityResult.currentTier, sessionName);
             debugLog('💳 Event credit consumed for session:', sessionId);
           }
         }
@@ -1873,14 +1874,24 @@ app.post('/make-server-ce05600a/admin/gift-cards/create', async (c) => {
     const body = await c.req.json();
     const cards = await db.getAllGiftCards();
 
+    // Check for duplicate code
+    if (cards.some((c: any) => c.code === body.code)) {
+      return c.json({ error: 'A gift card with this code already exists' }, 400);
+    }
+
     const newCard = {
+      id: crypto.randomUUID(),
       code: body.code,
-      description: body.description || '',
-      credits: body.credits || 0,
+      discountType: body.discountType || 'absolute', // 'absolute' | 'percentage'
+      discountValue: body.discountValue || 0,
+      applicableTo: body.applicableTo || 'single_event', // 'single_event' | 'monthly_subscription' | 'yearly_subscription'
+      validFrom: body.validFrom || new Date().toISOString().split('T')[0],
+      validUntil: body.validUntil || '',
+      maxUses: body.maxUses || undefined,
+      usedCount: 0,
+      usedBy: [],
       isActive: true,
       createdAt: new Date().toISOString(),
-      usedBy: null,
-      usedAt: null,
     };
 
     cards.push(newCard);
@@ -1939,6 +1950,77 @@ app.delete('/make-server-ce05600a/admin/gift-cards/:code', async (c) => {
   } catch (error) {
     errorLog('Error deleting gift card:', error);
     return c.json({ error: 'Failed to delete gift card' }, 500);
+  }
+});
+
+// ============================================================
+// Gift card: Validate (public, requires auth)
+// ============================================================
+
+app.post('/make-server-ce05600a/validate-gift-card', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { code } = body;
+    if (!code) {
+      return c.json({ error: 'Gift card code is required' }, 400);
+    }
+
+    const cards = await db.getAllGiftCards();
+    const card = cards.find((c: any) => c.code === code.toUpperCase().trim());
+
+    if (!card) {
+      return c.json({ error: 'Invalid gift card code' }, 404);
+    }
+
+    if (!card.isActive) {
+      return c.json({ error: 'This gift card is no longer active' }, 400);
+    }
+
+    // Check expiration
+    if (card.validUntil && new Date(card.validUntil) < new Date()) {
+      return c.json({ error: 'This gift card has expired' }, 400);
+    }
+
+    // Check if not yet valid
+    if (card.validFrom && new Date(card.validFrom) > new Date()) {
+      return c.json({ error: 'This gift card is not yet valid' }, 400);
+    }
+
+    // Check max uses
+    if (card.maxUses && (card.usedCount || 0) >= card.maxUses) {
+      return c.json({ error: 'This gift card has reached its maximum uses' }, 400);
+    }
+
+    // Check if user already used this card
+    const usedBy = card.usedBy || [];
+    if (usedBy.some((u: any) => u.organizerId === user.id)) {
+      return c.json({ error: 'You have already used this gift card' }, 400);
+    }
+
+    // Return gift card info (don't redeem yet — that happens at checkout)
+    return c.json({
+      valid: true,
+      giftCard: {
+        code: card.code,
+        discountType: card.discountType,
+        discountValue: card.discountValue,
+        applicableTo: card.applicableTo,
+      },
+    });
+  } catch (error) {
+    errorLog('Error validating gift card:', error);
+    return c.json({ error: 'Failed to validate gift card' }, 500);
   }
 });
 
@@ -2110,13 +2192,16 @@ app.post('/make-server-ce05600a/admin/users/:userId/credits/reset', async (c) =>
     }
 
     const userId = c.req.param('userId');
-    const credits = await db.getCredits(userId);
+    const creditsList = await db.getCredits(userId);
 
-    if (credits.balance > 0) {
-      await db.addCredits(userId, -credits.balance, {
-        type: 'refund',
-        description: 'Admin reset credits to zero',
-      });
+    for (const credit of creditsList) {
+      if (credit.balance > 0) {
+        await db.addCredits(userId, -credit.balance, {
+          type: 'refund',
+          capacityTier: credit.capacityTier,
+          description: 'Admin reset credits to zero',
+        });
+      }
     }
 
     debugLog('💳 Admin reset credits:', userId);

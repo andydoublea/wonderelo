@@ -1,9 +1,34 @@
-/* Button hover effect — brightness + shadow, no layout shift */
+/* Button hover effect — brightness for filled buttons, subtle bg for outline/ghost */
 @media (hover: hover) {
-  [data-slot="button"]:hover:not(:disabled) {
-    filter: brightness(1.35);
+  /* Filled (primary, destructive, secondary) buttons — brightness on hover */
+  [data-slot="button"][data-variant="default"]:hover:not(:disabled),
+  [data-slot="button"]:not([data-variant]):hover:not(:disabled),
+  [data-slot="button"][data-variant="destructive"]:hover:not(:disabled),
+  [data-slot="button"][data-variant="secondary"]:hover:not(:disabled) {
+    filter: brightness(1.15);
   }
+
   [data-slot="button"]:active:not(:disabled) {
     filter: brightness(0.95);
   }
+
+  /* Outline buttons — keep border visible, no brightness wash-out */
+  [data-slot="button"][data-variant="outline"]:hover:not(:disabled) {
+    filter: none;
+  }
+
+  /* Ghost buttons — no brightness filter */
+  [data-slot="button"][data-variant="ghost"]:hover:not(:disabled) {
+    filter: none;
+  }
+}
+
+/* White button hover — keep white bg, no shadow, keep outline */
+.btn-hover-white {
+  transition: background-color 0.2s ease !important;
+}
+.btn-hover-white:hover {
+  background-color: #ffffff !important;
+  filter: none !important;
+  box-shadow: none !important;
 }

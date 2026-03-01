@@ -1332,18 +1332,18 @@ export async function updateSubscription(userId: string, updates: {
 // CREDITS (Single Event Payments)
 // ============================================================
 
-export async function getCredits(userId: string): Promise<{ balance: number; capacityTier: string }> {
+export async function getCredits(userId: string): Promise<{ balance: number; capacityTier: string }[]> {
   const { data, error } = await db()
     .from('credits')
     .select('*')
     .eq('user_id', userId)
-    .maybeSingle();
+    .gt('balance', 0);
   if (error) throw error;
-  if (!data) return { balance: 0, capacityTier: '50' };
-  return {
-    balance: data.balance || 0,
-    capacityTier: data.capacity_tier || '50',
-  };
+  if (!data || data.length === 0) return [];
+  return data.map((row: any) => ({
+    balance: row.balance || 0,
+    capacityTier: row.capacity_tier || '50',
+  }));
 }
 
 export async function addCredits(userId: string, amount: number, metadata: {
@@ -1354,18 +1354,28 @@ export async function addCredits(userId: string, amount: number, metadata: {
   sessionId?: string;
   description?: string;
 }) {
-  // Update or create credits balance
-  const existing = await getCredits(userId);
-  const newBalance = existing.balance + amount;
+  // Update or create credits balance for this specific capacity tier
+  const tier = metadata.capacityTier || '50';
+
+  // Get existing balance for this specific tier
+  const { data: existingRow } = await db()
+    .from('credits')
+    .select('balance')
+    .eq('user_id', userId)
+    .eq('capacity_tier', tier)
+    .maybeSingle();
+
+  const currentBalance = existingRow?.balance || 0;
+  const newBalance = currentBalance + amount;
 
   const { error: upsertError } = await db()
     .from('credits')
     .upsert({
       user_id: userId,
       balance: newBalance,
-      capacity_tier: metadata.capacityTier || existing.capacityTier,
+      capacity_tier: tier,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+    }, { onConflict: 'user_id,capacity_tier' });
   if (upsertError) throw upsertError;
 
   // Record transaction
@@ -1375,7 +1385,7 @@ export async function addCredits(userId: string, amount: number, metadata: {
       user_id: userId,
       amount,
       type: metadata.type,
-      capacity_tier: metadata.capacityTier || existing.capacityTier,
+      capacity_tier: tier,
       stripe_session_id: metadata.stripeSessionId || null,
       stripe_customer_id: metadata.stripeCustomerId || null,
       session_id: metadata.sessionId || null,
@@ -1387,6 +1397,7 @@ export async function addCredits(userId: string, amount: number, metadata: {
 
 export async function deductCredit(userId: string, amount: number, metadata: {
   type: string;
+  capacityTier?: string;
   sessionId?: string;
   description?: string;
 }) {

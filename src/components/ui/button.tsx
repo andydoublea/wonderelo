@@ -9,13 +9,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:shadow-lg active:shadow-sm",
+        default: "bg-primary text-primary-foreground shadow-sm",
         destructive:
-          "bg-destructive text-white shadow-sm hover:shadow-lg active:shadow-sm focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white shadow-sm focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground hover:shadow-md active:bg-accent/80 active:shadow-sm dark:bg-input/30 dark:border-input dark:hover:bg-input/50 dark:active:bg-input/60",
+          "border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-accent/80 dark:bg-input/30 dark:border-input dark:hover:bg-input/50 dark:active:bg-input/60",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-sm active:bg-secondary/70",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70",
         ghost:
           "hover:bg-accent hover:text-accent-foreground active:bg-accent/80 dark:hover:bg-accent/50 dark:active:bg-accent/60",
         link: "text-primary underline-offset-4 hover:underline active:opacity-80",
@@ -46,6 +46,7 @@ const Button = React.forwardRef<
   return (
     <Comp
       data-slot="button"
+      data-variant={variant || "default"}
       className={cn(buttonVariants({ variant, size, className }))}
       ref={ref}
       {...props}

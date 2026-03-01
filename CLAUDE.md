@@ -115,12 +115,35 @@ supabase stop
 
 ## Local dev workflow
 
-1. Start Docker (required for local Supabase)
-2. Run `npm run dev:local` (or `supabase start && npm run dev`)
-3. Open `http://localhost:3001`
-4. Frontend connects to **local Supabase** (via `.env.local`)
-5. Supabase Studio at `http://localhost:3001:54323` for DB management
-6. Email testing at `http://localhost:54324` (Inbucket)
+**Development runs on local Docker Supabase** — NOT staging or production.
+
+1. Start Docker Desktop (required for local Supabase)
+2. Run `supabase start` (starts PostgreSQL, Auth, Edge Functions, Studio — all in Docker)
+3. Run `npm run dev` (or use Claude worktree's `launch.json` with `npx vite --port 3011`)
+4. Open `http://localhost:3011` (worktree) or `http://localhost:3001` (main)
+5. Frontend connects to **local Docker Supabase** at `http://127.0.0.1:54321`
+6. Supabase Studio at `http://127.0.0.1:54323` for DB management
+7. Email testing at `http://127.0.0.1:54324` (Inbucket/Mailpit)
+
+### Stripe for local development
+
+Edge functions need Stripe keys for payment flows. Add your Stripe **test** keys to **two** files (both are in `.gitignore`):
+
+1. **`.env`** (project root) — read by `config.toml` via `env()` for `supabase start`
+2. **`supabase/functions/.env`** — auto-loaded by `supabase functions serve`
+
+```bash
+# Both files should contain:
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+APP_URL=http://127.0.0.1:3011
+```
+
+Get test keys from https://dashboard.stripe.com/test/apikeys
+
+After adding keys, restart Supabase: `supabase stop && supabase start`
+
+**Alternative for testing without Stripe:** Use Admin panel → Billing management to grant subscriptions and credits directly (bypasses Stripe entirely).
 
 ### How environment detection works
 
@@ -158,7 +181,9 @@ Each Claude Code session creates a **git worktree** at `.claude/worktrees/<rando
 | `supabase/migrations/` | Database migrations |
 | `vite.config.ts` | Vite build config (port, aliases, output) |
 | `vercel.json` | Vercel deployment config |
-| `.env.local` | Local environment overrides (not committed) |
+| `.env` | Stripe keys + secrets for local Docker edge functions (not committed) |
+| `.env.local` | Local Vite environment overrides (not committed) |
+| `supabase/functions/.env` | Edge function secrets for `supabase functions serve` (not committed) |
 | `package.json` | Scripts and dependencies |
 
 ---

@@ -702,7 +702,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                         e.preventDefault();
                         e.stopPropagation();
                         setFormData({
-                          email: 'admin@oliwonder.com',
+                          email: 'andy.double.a+org@gmail.com',
                           password: 'test123456'
                         });
                         setError('');
@@ -715,7 +715,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                       disabled={isLoading}
                       className="text-xs w-full"
                     >
-                      Quick test login (admin@oliwonder.com)
+                      Quick test login (andy.double.a+org@gmail.com)
                     </Button>
                   </div>
                   )}

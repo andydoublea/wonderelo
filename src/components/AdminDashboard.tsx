@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -13,130 +12,146 @@ interface AdminDashboardProps {
 const adminTools = [
   {
     id: 'organizers',
-    title: 'Organizer management',
+    title: 'Organizers',
+    description: 'Manage event organizers and their sessions',
     icon: Users,
     route: '/admin/organizers',
-    color: 'bg-purple-500',
     category: 'user-management',
   },
   {
     id: 'participants',
-    title: 'Participant management',
+    title: 'Participants',
+    description: 'Search and manage participants across sessions',
     icon: UserCheck,
     route: '/admin/participants',
-    color: 'bg-green-500',
     category: 'user-management',
   },
   {
     id: 'sessions',
-    title: 'Session management',
+    title: 'Sessions',
+    description: 'Browse all networking sessions',
     icon: Calendar,
     route: '/admin/sessions',
-    color: 'bg-orange-500',
     category: 'user-management',
   },
   {
     id: 'registration-funnel',
     title: 'Registration funnel',
+    description: 'Analytics on organizer signup flow',
     icon: TrendingDown,
     route: '/admin/registration-funnel',
-    color: 'bg-red-500',
     category: 'user-management',
   },
   {
     id: 'billing',
-    title: 'Billing management',
+    title: 'Billing',
+    description: 'Grant subscriptions, manage credits',
     icon: CreditCard,
     route: '/admin/billing',
-    color: 'bg-yellow-500',
     category: 'user-management',
+  },
+  {
+    id: 'pricing',
+    title: 'Pricing',
+    description: 'Configure tier prices',
+    icon: DollarSign,
+    route: '/admin/pricing',
+    category: 'settings',
   },
   {
     id: 'theme',
     title: 'Theme manager',
+    description: 'Visual themes and color palettes',
     icon: Palette,
     route: '/admin/theme',
-    color: 'bg-gradient-to-br from-purple-500 to-pink-500',
     category: 'settings',
   },
   {
     id: 'parameters',
     title: 'Parameters',
+    description: 'Timing, validation, and system defaults',
     icon: Settings,
     route: '/admin/parameters',
-    color: 'bg-emerald-500',
     category: 'settings',
   },
   {
     id: 'ice-breakers',
     title: 'Ice breakers',
+    description: 'Manage question pool for events',
     icon: MessageCircle,
     route: '/admin/ice-breakers',
-    color: 'bg-blue-500',
     category: 'settings',
   },
   {
     id: 'notification-texts',
     title: 'Notification texts',
+    description: 'SMS and email templates',
     icon: Mail,
     route: '/admin/notification-texts',
-    color: 'bg-indigo-500',
     category: 'settings',
   },
   {
     id: 'gift-cards',
     title: 'Gift cards',
+    description: 'Create and manage promo codes',
     icon: Gift,
     route: '/admin/gift-cards',
-    color: 'bg-pink-500',
     category: 'settings',
   },
   {
     id: 'leads',
-    title: 'Lead magnet submissions',
+    title: 'Lead submissions',
+    description: 'Lead magnet form entries',
     icon: FileText,
     route: '/admin/leads',
-    color: 'bg-teal-500',
     category: 'settings',
   },
   {
     id: 'blog',
-    title: 'Blog management',
+    title: 'Blog',
+    description: 'Manage blog posts and content',
     icon: BookOpen,
     route: '/admin/blog',
-    color: 'bg-indigo-500',
     category: 'settings',
   },
   {
     id: 'default-rules',
     title: 'Default round rules',
+    description: 'Organizer request defaults',
     icon: ListOrdered,
     route: '/admin/organizer-requests',
-    color: 'bg-pink-500',
     category: 'settings',
   },
   {
     id: 'page-preview',
     title: 'Page preview',
+    description: 'Preview public-facing pages',
     icon: Eye,
     route: '/admin/page-preview',
-    color: 'bg-cyan-500',
     category: 'settings',
   },
   {
     id: 'statuses-guide',
-    title: 'Statuses and flags guide',
+    title: 'Statuses guide',
+    description: 'Reference for all status flags',
     icon: BookOpen,
     route: '/admin/statuses-guide',
-    color: 'bg-orange-500',
     category: 'documentation',
   },
   {
     id: 'participant-flow',
     title: 'Participant flow',
+    description: 'Status transition documentation',
     icon: UserCheck,
     route: '/admin/participant-flow',
-    color: 'bg-blue-500',
+    category: 'documentation',
+  },
+  {
+    id: 'style-guide',
+    title: 'Style guide',
+    description: 'Buttons, typography, colors, patterns',
+    icon: SwatchBook,
+    route: '/admin/style-guide',
     category: 'documentation',
   },
 ];
@@ -151,83 +166,78 @@ export function AdminDashboard({ accessToken, onBack }: AdminDashboardProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen" style={{ background: '#fafafa' }}>
       {/* Header */}
-      <div className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
+      <div className="border-b" style={{ background: 'white', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div className="container mx-auto" style={{ padding: '12px 24px' }}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Shield className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h1 
-                    className="text-2xl font-bold cursor-pointer hover:text-primary/80 transition-colors" 
-                    onClick={onBack}
-                  >
-                    Wonderelo admin
-                  </h1>
-                </div>
-              </div>
-            </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={onBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to dashboard
-              </Button>
+              <Shield className="h-5 w-5 text-primary" />
+              <h1
+                className="text-lg font-semibold cursor-pointer"
+                onClick={onBack}
+                style={{ letterSpacing: '-0.01em' }}
+              >
+                Admin
+              </h1>
+              <Badge variant="outline" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                {BUILD_VERSION}
+              </Badge>
             </div>
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Dashboard
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-12">
-        <div className="max-w-7xl mx-auto space-y-12">
+      <div className="container mx-auto" style={{ padding: '24px', maxWidth: '720px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {categories.map((category) => {
             const toolsInCategory = adminTools.filter((tool) => tool.category === category.id);
-            
+
             return (
               <div key={category.id}>
-                {/* Category Header */}
-                <h2 className="text-2xl font-bold mb-6 text-slate-800">{category.title}</h2>
-                
-                {/* Category Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {toolsInCategory.map((tool) => {
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" style={{ marginBottom: '8px', paddingLeft: '4px' }}>
+                  {category.title}
+                </h2>
+
+                <div className="border rounded-lg overflow-hidden" style={{ background: 'white' }}>
+                  {toolsInCategory.map((tool, index) => {
                     const Icon = tool.icon;
                     return (
-                      <Card
+                      <div
                         key={tool.id}
-                        className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md overflow-hidden relative"
+                        className="flex items-center gap-3 cursor-pointer"
                         onClick={() => navigate(tool.route)}
+                        style={{
+                          padding: '10px 14px',
+                          borderBottom: index < toolsInCategory.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          transition: 'background 150ms',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f8f8f8'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
                       >
-                        {/* Gradient Background */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-white to-slate-50 group-hover:from-slate-50 group-hover:to-white transition-all duration-300" />
-                        
-                        {/* Content */}
-                        <div className="relative p-6 flex flex-col items-center justify-center min-h-[180px] text-center">
-                          {/* Icon */}
-                          <div className={`${tool.color} p-4 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                            <Icon className="h-8 w-8 text-white" />
-                          </div>
-                          
-                          {/* Title */}
-                          <h3 className="font-semibold text-lg text-slate-800 group-hover:text-primary transition-colors">
-                            {tool.title}
-                          </h3>
-                          
-                          {/* Hover Arrow */}
-                          <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <div className="text-primary text-sm font-medium">
-                              Open →
-                            </div>
-                          </div>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#f4f4f5',
+                          flexShrink: 0,
+                        }}>
+                          <Icon className="text-muted-foreground" style={{ width: '16px', height: '16px' }} />
                         </div>
-
-                        {/* Bottom Border Accent */}
-                        <div className={`h-1 ${tool.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300`} />
-                      </Card>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="text-sm font-medium" style={{ lineHeight: '1.3' }}>{tool.title}</div>
+                          <div className="text-xs text-muted-foreground" style={{ lineHeight: '1.3' }}>{tool.description}</div>
+                        </div>
+                        <ChevronRight className="text-muted-foreground" style={{ width: '14px', height: '14px', flexShrink: 0, opacity: 0.4 }} />
+                      </div>
                     );
                   })}
                 </div>
