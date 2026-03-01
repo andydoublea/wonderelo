@@ -24,6 +24,7 @@ Always double-check `--project-ref` before running any Supabase CLI commands.
 - NEVER use production Supabase credentials during local development
 - Before ANY infrastructure change, verify current state first
 - Before committing, ALWAYS ask the user which branch to commit to. Never assume the branch — wait for explicit confirmation (e.g. "commit to development", "commit to staging").
+- When pushing to `main`, ALWAYS also deploy edge functions to production (`npm run deploy:edge:prod`) — they don't auto-deploy. Frontend auto-deploys via Vercel, but edge functions require manual deployment.
 
 ---
 
