@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router';
+import { useTranslation } from '../hooks/useTranslation';
 
 export function Footer() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <footer
@@ -23,12 +25,12 @@ export function Footer() {
             >
               Wonderelo
             </h2>
-            <p className="text-sm text-muted-foreground">Magic by networking</p>
+            <p className="text-sm text-muted-foreground">{t('footer.tagline', 'Magic by networking')}</p>
           </div>
 
           {/* Product */}
           <div>
-            <h3 className="text-sm font-semibold mb-4">Product</h3>
+            <h3 className="text-sm font-semibold mb-4">{t('footer.product', 'Product')}</h3>
             <ul className="space-y-3">
               <li>
                 <a
@@ -36,7 +38,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); navigate('/'); setTimeout(() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }), 100); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Features
+                  {t('nav.features', 'Features')}
                 </a>
               </li>
               <li>
@@ -45,7 +47,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); navigate('/'); setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }), 100); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  How it works
+                  {t('nav.howItWorks', 'How it works')}
                 </a>
               </li>
               <li>
@@ -54,7 +56,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); navigate('/pricing'); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Pricing
+                  {t('nav.pricing', 'Pricing')}
                 </a>
               </li>
             </ul>
@@ -62,7 +64,7 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <h3 className="text-sm font-semibold mb-4">Company</h3>
+            <h3 className="text-sm font-semibold mb-4">{t('footer.company', 'Company')}</h3>
             <ul className="space-y-3">
               <li>
                 <a
@@ -70,7 +72,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); navigate('/our-story'); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Our story
+                  {t('footer.ourStory', 'Our story')}
                 </a>
               </li>
               <li>
@@ -79,7 +81,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); navigate('/blog'); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Newsroom
+                  {t('footer.newsroom', 'Newsroom')}
                 </a>
               </li>
               <li>
@@ -87,7 +89,7 @@ export function Footer() {
                   href="mailto:hello@wonderelo.com"
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Contact us
+                  {t('footer.contactUs', 'Contact us')}
                 </a>
               </li>
             </ul>
@@ -95,7 +97,7 @@ export function Footer() {
 
           {/* Support */}
           <div>
-            <h3 className="text-sm font-semibold mb-4">Support</h3>
+            <h3 className="text-sm font-semibold mb-4">{t('footer.support', 'Support')}</h3>
             <ul className="space-y-3">
               <li>
                 <a
@@ -103,7 +105,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Help center
+                  {t('footer.helpCenter', 'Help center')}
                 </a>
               </li>
             </ul>
@@ -111,7 +113,7 @@ export function Footer() {
 
           {/* Legal */}
           <div>
-            <h3 className="text-sm font-semibold mb-4">Legal</h3>
+            <h3 className="text-sm font-semibold mb-4">{t('footer.legal', 'Legal')}</h3>
             <ul className="space-y-3">
               <li>
                 <a
@@ -119,7 +121,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Terms of use
+                  {t('footer.termsOfUse', 'Terms of use')}
                 </a>
               </li>
               <li>
@@ -128,7 +130,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); }}
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Privacy policy
+                  {t('footer.privacyPolicy', 'Privacy policy')}
                 </a>
               </li>
             </ul>
@@ -139,7 +141,7 @@ export function Footer() {
         <div className="pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Wonderelo. All rights reserved.
+              {t('footer.copyright', '© {year} Wonderelo. All rights reserved.', { year: new Date().getFullYear() })}
             </p>
             <div className="flex items-center gap-6">
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">

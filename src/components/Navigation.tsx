@@ -5,15 +5,17 @@ import { User, LogOut, ChevronDown, Mic, HandHeart, Music, Heart, Coffee, BookOp
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 import { toast } from 'sonner@2.0.3';
+import { useTranslation } from '../hooks/useTranslation';
+import { LanguageSwitcher } from './i18n/LanguageSwitcher';
 
 const whoIsItForItems = [
-  { label: 'Conferences & barcamps', path: '/for/conferences', icon: Mic },
-  { label: 'Meetups', path: '/for/meetups', icon: HandHeart },
-  { label: 'Festivals & Parties', path: '/for/festivals', icon: Music },
-  { label: 'Weddings', path: '/for/weddings', icon: Heart },
-  { label: 'Bars & cafés', path: '/for/bars', icon: Coffee },
-  { label: 'Schools & universities', path: '/for/schools', icon: BookOpen },
-  { label: 'Company teams', path: '/for/teams', icon: GitBranch },
+  { key: 'nav.for.conferences', fallback: 'Conferences & barcamps', path: '/for/conferences', icon: Mic },
+  { key: 'nav.for.meetups', fallback: 'Meetups', path: '/for/meetups', icon: HandHeart },
+  { key: 'nav.for.festivals', fallback: 'Festivals & Parties', path: '/for/festivals', icon: Music },
+  { key: 'nav.for.weddings', fallback: 'Weddings', path: '/for/weddings', icon: Heart },
+  { key: 'nav.for.bars', fallback: 'Bars & cafés', path: '/for/bars', icon: Coffee },
+  { key: 'nav.for.schools', fallback: 'Schools & universities', path: '/for/schools', icon: BookOpen },
+  { key: 'nav.for.teams', fallback: 'Company teams', path: '/for/teams', icon: GitBranch },
 ];
 
 interface NavigationProps {
@@ -23,6 +25,7 @@ interface NavigationProps {
 
 export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [participantToken, setParticipantToken] = useState<string | null>(null);
   const [whoIsItForOpen, setWhoIsItForOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -52,7 +55,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                 onMouseLeave={() => setWhoIsItForOpen(false)}
               >
                 <Button variant="ghost" className="gap-1">
-                  Who is it for?
+                  {t('nav.whoIsItFor', 'Who is it for?')}
                   <ChevronDown className={`h-4 w-4 transition-transform ${whoIsItForOpen ? 'rotate-180' : ''}`} />
                 </Button>
                 {whoIsItForOpen && (
@@ -73,7 +76,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                           >
                             <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            {item.label}
+                            {t(item.key, item.fallback)}
                           </button>
                         );
                       })}
@@ -87,7 +90,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                   document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
                 }, 100);
               }}>
-                How it works
+                {t('nav.howItWorks', 'How it works')}
               </Button>
               <Button variant="ghost" onClick={() => {
                 navigate('/');
@@ -95,14 +98,19 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 }, 100);
               }}>
-                Features
+                {t('nav.features', 'Features')}
               </Button>
               <Button variant="ghost" onClick={() => navigate('/pricing')}>
-                Pricing
+                {t('nav.pricing', 'Pricing')}
               </Button>
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            {/* Language switcher */}
+            <div className="hidden md:block">
+              <LanguageSwitcher />
+            </div>
+
             {/* Mobile hamburger */}
             <Button
               variant="ghost"
@@ -121,12 +129,12 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline">
                       <User className="h-4 w-4 mr-2" />
-                      My account
+                      {t('nav.myAccount', 'My account')}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => navigate(`/p/${participantToken}`)}>
-                      My dashboard
+                      {t('nav.myDashboard', 'My dashboard')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
@@ -136,7 +144,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                       }}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
-                      Log out
+                      {t('nav.logOut', 'Log out')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -144,12 +152,12 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                 <>
                   {onSignIn && (
                     <Button variant="ghost" onClick={onSignIn}>
-                      Log in
+                      {t('nav.logIn', 'Log in')}
                     </Button>
                   )}
                   {onGetStarted && (
                     <Button onClick={onGetStarted}>
-                      Sign up
+                      {t('nav.signUp', 'Sign up')}
                     </Button>
                   )}
                 </>
@@ -168,13 +176,18 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
             </SheetTitle>
           </SheetHeader>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto', padding: '0.5rem 0' }}>
+            {/* Language switcher (mobile) */}
+            <div style={{ padding: '0.5rem 1.5rem' }}>
+              <LanguageSwitcher />
+            </div>
+
             {/* Who is it for - expandable */}
             <div>
               <button
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 500, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
                 onClick={() => setMobileWhoOpen(!mobileWhoOpen)}
               >
-                Who is it for?
+                {t('nav.whoIsItFor', 'Who is it for?')}
                 <ChevronDown className={`h-4 w-4 transition-transform ${mobileWhoOpen ? 'rotate-180' : ''}`} />
               </button>
               {mobileWhoOpen && (
@@ -190,7 +203,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         <Icon style={{ width: '1rem', height: '1rem', flexShrink: 0 }} />
-                        {item.label}
+                        {t(item.key, item.fallback)}
                       </button>
                     );
                   })}
@@ -207,7 +220,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                 setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }), 100);
               }}
             >
-              How it works
+              {t('nav.howItWorks', 'How it works')}
             </button>
             <button
               style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 500, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
@@ -219,7 +232,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                 setTimeout(() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }), 100);
               }}
             >
-              Features
+              {t('nav.features', 'Features')}
             </button>
             <button
               style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 500, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
@@ -227,7 +240,7 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               onClick={() => { navigate('/pricing'); setMobileMenuOpen(false); }}
             >
-              Pricing
+              {t('nav.pricing', 'Pricing')}
             </button>
           </div>
 
@@ -236,12 +249,12 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
             <div style={{ marginTop: 'auto', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {onSignIn && (
                 <Button variant="outline" className="w-full" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>
-                  Log in
+                  {t('nav.logIn', 'Log in')}
                 </Button>
               )}
               {onGetStarted && (
                 <Button className="w-full" onClick={() => { onGetStarted(); setMobileMenuOpen(false); }}>
-                  Sign up free
+                  {t('nav.signUpFree', 'Sign up free')}
                 </Button>
               )}
             </div>

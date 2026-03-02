@@ -68,6 +68,9 @@ const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({
 const AdminLeads = lazy(() => import('./components/AdminLeads').then(m => ({ default: m.AdminLeads })));
 const AdminStyleGuide = lazy(() => import('./components/AdminStyleGuide').then(m => ({ default: m.AdminStyleGuide })));
 const AdminPricing = lazy(() => import('./components/AdminPricing').then(m => ({ default: m.AdminPricing })));
+const AdminTranslations = lazy(() => import('./components/AdminTranslations').then(m => ({ default: m.AdminTranslations })));
+import { I18nLoader } from './components/i18n/I18nLoader';
+import { InlineEditToggle } from './components/i18n/InlineEditToggle';
 const UseCaseLandingPage = lazy(() => import('./components/UseCaseLandingPage').then(m => ({ default: m.UseCaseLandingPage })));
 const OurStoryPage = lazy(() => import('./components/OurStoryPage').then(m => ({ default: m.OurStoryPage })));
 
@@ -1144,6 +1147,17 @@ function AdminPricingRoute() {
   );
 }
 
+function AdminTranslationsRoute() {
+  const { accessToken } = useApp();
+  const navigate = useNavigate();
+
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <AdminTranslations accessToken={accessToken} onBack={() => navigate('/admin')} />
+    </Suspense>
+  );
+}
+
 function AdminParametersRoute() {
   const { accessToken } = useApp();
   const navigate = useNavigate();
@@ -2040,6 +2054,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/registration-funnel', element: h(AdminRoute, null, h(AdminRegistrationFunnelRoute)) }),
             h(Route, { path: '/admin/style-guide', element: h(AdminRoute, null, h(AdminStyleGuideRoute)) }),
             h(Route, { path: '/admin/pricing', element: h(AdminRoute, null, h(AdminPricingRoute)) }),
+            h(Route, { path: '/admin/translations', element: h(AdminRoute, null, h(AdminTranslationsRoute)) }),
 
             // CRM routes (admin-protected, own layout)
             h(Route, { path: '/crm', element: h(AdminRoute, null, h(Suspense, { fallback: h(RouteLoader) }, h(CrmLayout))) },
@@ -2085,6 +2100,8 @@ function AppProviderWithRouter() {
           )}
           <Toaster />
           <AnalyticsTracker />
+          <I18nLoader />
+          <InlineEditToggle />
         </QueryProvider>
       </TimeProvider>
     </AppContext.Provider>

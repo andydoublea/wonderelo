@@ -18,6 +18,7 @@ import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
+import { registerI18nRoutes } from './route-i18n.ts';
 
 const app = new Hono();
 
@@ -2820,5 +2821,8 @@ registerStripeRoutes(app);
 
 // Register CRM routes
 registerCrmRoutes(app);
+
+// Register i18n routes
+registerI18nRoutes(app);
 
 Deno.serve(app.fetch);

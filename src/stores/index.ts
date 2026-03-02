@@ -40,6 +40,17 @@ export {
 } from './participantStore';
 export type { Participant, ParticipantRound, Contact } from './participantStore';
 
+// i18n Store
+export {
+  useI18nStore,
+  useCurrentLanguage,
+  useTranslations,
+  useAvailableLanguages,
+  useIsInlineEditMode,
+  useI18nLoaded
+} from './i18nStore';
+export type { Language } from './i18nStore';
+
 // UI Store
 export {
   useUIStore,
