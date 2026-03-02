@@ -12,6 +12,7 @@ import { CtaSection } from './CtaSection';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+import { useTranslation } from '../hooks/useTranslation';
 
 const eventTypes = [
   { icon: Mic, title: 'Conferences & barcamps', description: 'Ensure everyone leaves with new contacts — even introverts and solo attendees.', path: '/for/conferences' },
@@ -123,6 +124,7 @@ interface HomepageProps {
 export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerAuthenticated }: HomepageProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const [participantCode, setParticipantCode] = useState('');
 
   // Lead magnet form state
@@ -238,14 +240,14 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center justify-center gap-3">
             <p className="text-sm text-muted-foreground">
-              Joining as a participant?
+              {t('homepage.participant.joining', 'Joining as a participant?')}
             </p>
             <div className="flex items-center gap-2">
               <div className="relative flex items-center">
                 <span className="absolute left-3 text-muted-foreground pointer-events-none z-10">#</span>
                 <Input
                   type="text"
-                  placeholder="Enter code here"
+                  placeholder={t('homepage.participant.placeholder', 'Enter code here')}
                   value={participantCode}
                   onChange={(e) => setParticipantCode(e.target.value)}
                   onKeyDown={(e) => {
@@ -266,7 +268,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   navigate(`/${cleanCode}`);
                 }}
               >
-                Join
+                {t('homepage.participant.join', 'Join')}
               </Button>
             </div>
           </div>
@@ -278,16 +280,16 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h1 className="mb-6 max-w-4xl mx-auto text-4xl">
-              <span style={{ color: '#5C2277' }}>Add value to your event with{' '}<br />networking rounds!</span>
+              <span style={{ color: '#5C2277' }}>{t('homepage.hero.title', 'Add value to your event with networking rounds!')}</span>
             </h1>
             <p className="mb-12 max-w-2xl mx-auto text-muted-foreground">
-              Easily turn networking from side effect into program highlight! Perfect for conferences, meet-ups, festivals, internal meetings and private events.
+              {t('homepage.hero.subtitle', 'Easily turn networking from side effect into program highlight! Perfect for conferences, meet-ups, festivals, internal meetings and private events.')}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Button onClick={onGetStarted} className="bg-primary text-primary-foreground" size="lg">
                 <Calendar className="mr-2 h-5 w-5" />
-                Start for free
+                {t('homepage.hero.cta', 'Start for free')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -307,15 +309,15 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-muted-foreground">
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">Five minute set up</span>
+              <span className="text-sm">{t('homepage.hero.badge1', 'Five minute set up')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">For events of every size</span>
+              <span className="text-sm">{t('homepage.hero.badge2', 'For events of every size')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">No worry pricing</span>
+              <span className="text-sm">{t('homepage.hero.badge3', 'No worry pricing')}</span>
             </div>
           </div>
 
@@ -326,7 +328,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       <section className="py-12 px-6 border-y border-border/40">
         <div className="container mx-auto max-w-5xl">
           <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
-            As seen in
+            {t('homepage.asSeenIn', 'As seen in')}
           </p>
           <div className="grid grid-cols-3 gap-4 md:flex md:items-center md:justify-between md:gap-10 opacity-60 grayscale hover:opacity-80 hover:grayscale-0 transition-all duration-500">
             <img src="/logos/business-insider.svg" alt="Business Insider" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact, Languages } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -128,6 +128,14 @@ const adminTools = [
     description: 'Manage blog posts and content',
     icon: BookOpen,
     route: '/admin/blog',
+    category: 'settings',
+  },
+  {
+    id: 'translations',
+    title: 'Translations',
+    description: 'Manage languages and translations',
+    icon: Languages,
+    route: '/admin/translations',
     category: 'settings',
   },
   {
