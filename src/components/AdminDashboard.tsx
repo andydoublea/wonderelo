@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -10,6 +10,14 @@ interface AdminDashboardProps {
 }
 
 const adminTools = [
+  {
+    id: 'crm',
+    title: 'CRM',
+    description: 'Contacts, pipeline, email, reports',
+    icon: Contact,
+    route: '/crm',
+    category: 'user-management',
+  },
   {
     id: 'organizers',
     title: 'Organizers',

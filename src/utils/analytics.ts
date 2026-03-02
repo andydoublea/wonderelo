@@ -23,6 +23,78 @@ interface AnalyticsEvent {
 // Generate a unique session ID for this browser session
 const analyticsSessionId = `as_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
+// ==========================================
+// CRM Visitor Tracking
+// ==========================================
+
+const VISITOR_COOKIE = '_wnd_vid';
+const UTM_STORAGE_KEY = '_wnd_utm';
+
+/** Get or create a persistent visitor ID */
+function getVisitorId(): string {
+  try {
+    let vid = localStorage.getItem(VISITOR_COOKIE);
+    if (!vid) {
+      vid = `v_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      localStorage.setItem(VISITOR_COOKIE, vid);
+    }
+    return vid;
+  } catch {
+    return `v_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+  }
+}
+
+/** Capture UTM parameters from URL on page load */
+function captureUtmParams(): { utm_source?: string; utm_medium?: string; utm_campaign?: string } {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const utm: Record<string, string> = {};
+    if (params.get('utm_source')) utm.utm_source = params.get('utm_source')!;
+    if (params.get('utm_medium')) utm.utm_medium = params.get('utm_medium')!;
+    if (params.get('utm_campaign')) utm.utm_campaign = params.get('utm_campaign')!;
+    if (Object.keys(utm).length > 0) {
+      localStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(utm));
+      return utm;
+    }
+    const stored = localStorage.getItem(UTM_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+let lastPageViewTime = Date.now();
+
+/** Track a CRM page visit (separate from analytics events) */
+function trackCrmVisit() {
+  const now = Date.now();
+  const durationSeconds = Math.round((now - lastPageViewTime) / 1000);
+  lastPageViewTime = now;
+
+  const visitorId = getVisitorId();
+  const utm = captureUtmParams();
+
+  // Fire and forget — don't block the UI
+  fetch(`${apiBaseUrl}/crm/track`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${publicAnonKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      visitor_id: visitorId,
+      page_url: window.location.pathname,
+      page_title: document.title,
+      referrer: document.referrer || undefined,
+      utm_source: utm.utm_source,
+      utm_medium: utm.utm_medium,
+      utm_campaign: utm.utm_campaign,
+      duration_seconds: durationSeconds > 0 && durationSeconds < 3600 ? durationSeconds : undefined,
+      session_id: analyticsSessionId,
+    }),
+  }).catch(() => {});
+}
+
 // Event queue for batching
 let eventQueue: AnalyticsEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -146,6 +218,8 @@ export function trackPageView(pageName?: string) {
     action: 'view',
     label: pageName || window.location.pathname,
   });
+  // Also track in CRM website visits
+  trackCrmVisit();
 }
 
 /**
@@ -215,4 +289,34 @@ export function trackFunnelStep(step: string, metadata?: Record<string, any>) {
  */
 export function flushAnalytics() {
   return flushEvents();
+}
+
+/**
+ * Identify a visitor by email (call on login, signup, lead form submit).
+ * Links all anonymous website visits from this visitor to their CRM contact.
+ */
+export function identifyVisitor(email: string) {
+  const visitorId = getVisitorId();
+  fetch(`${apiBaseUrl}/crm/track`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${publicAnonKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      visitor_id: visitorId,
+      page_url: window.location.pathname,
+      page_title: document.title,
+      session_id: analyticsSessionId,
+      // Signal the backend to link this visitor to a contact
+      metadata: { identify_email: email },
+    }),
+  }).catch(() => {});
+}
+
+/**
+ * Get the current visitor ID (for external use)
+ */
+export function getAnalyticsVisitorId(): string {
+  return getVisitorId();
 }

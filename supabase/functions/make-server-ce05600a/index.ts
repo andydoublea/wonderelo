@@ -17,6 +17,7 @@ import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnet
 import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
+import { registerCrmRoutes } from './route-crm.ts';
 
 const app = new Hono();
 
@@ -2816,5 +2817,8 @@ registerParticipantRoutes(app, getCurrentTime);
 
 // Register Stripe payment routes
 registerStripeRoutes(app);
+
+// Register CRM routes
+registerCrmRoutes(app);
 
 Deno.serve(app.fetch);

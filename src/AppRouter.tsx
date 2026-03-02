@@ -71,6 +71,22 @@ const AdminPricing = lazy(() => import('./components/AdminPricing').then(m => ({
 const UseCaseLandingPage = lazy(() => import('./components/UseCaseLandingPage').then(m => ({ default: m.UseCaseLandingPage })));
 const OurStoryPage = lazy(() => import('./components/OurStoryPage').then(m => ({ default: m.OurStoryPage })));
 
+// Lazy load CRM components
+const CrmLayout = lazy(() => import('./components/crm/CrmLayout'));
+const CrmDashboard = lazy(() => import('./components/crm/CrmDashboard'));
+const CrmContacts = lazy(() => import('./components/crm/CrmContacts').then(m => ({ default: m.CrmContacts })));
+const CrmContactDetail = lazy(() => import('./components/crm/CrmContactDetail').then(m => ({ default: m.CrmContactDetail })));
+const CrmCompanies = lazy(() => import('./components/crm/CrmCompanies'));
+const CrmCompanyDetail = lazy(() => import('./components/crm/CrmCompanyDetail'));
+const CrmPipeline = lazy(() => import('./components/crm/CrmPipeline'));
+const CrmActivities = lazy(() => import('./components/crm/CrmActivities'));
+const CrmVisitors = lazy(() => import('./components/crm/CrmVisitors'));
+const CrmEmail = lazy(() => import('./components/crm/CrmEmail'));
+const CrmTasks = lazy(() => import('./components/crm/CrmTasks'));
+const CrmSegments = lazy(() => import('./components/crm/CrmSegments'));
+const CrmReports = lazy(() => import('./components/crm/CrmReports'));
+const CrmSettings = lazy(() => import('./components/crm/CrmSettings'));
+
 // Loading component for lazy loaded routes
 const RouteLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -2024,6 +2040,24 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/registration-funnel', element: h(AdminRoute, null, h(AdminRegistrationFunnelRoute)) }),
             h(Route, { path: '/admin/style-guide', element: h(AdminRoute, null, h(AdminStyleGuideRoute)) }),
             h(Route, { path: '/admin/pricing', element: h(AdminRoute, null, h(AdminPricingRoute)) }),
+
+            // CRM routes (admin-protected, own layout)
+            h(Route, { path: '/crm', element: h(AdminRoute, null, h(Suspense, { fallback: h(RouteLoader) }, h(CrmLayout))) },
+              h(Route, { index: true, element: h(CrmDashboard) }),
+              h(Route, { path: 'contacts', element: h(CrmContacts) }),
+              h(Route, { path: 'contacts/:id', element: h(CrmContactDetail) }),
+              h(Route, { path: 'companies', element: h(CrmCompanies) }),
+              h(Route, { path: 'companies/:id', element: h(CrmCompanyDetail) }),
+              h(Route, { path: 'pipeline', element: h(CrmPipeline) }),
+              h(Route, { path: 'activities', element: h(CrmActivities) }),
+              h(Route, { path: 'visitors', element: h(CrmVisitors) }),
+              h(Route, { path: 'email', element: h(CrmEmail) }),
+              h(Route, { path: 'tasks', element: h(CrmTasks) }),
+              h(Route, { path: 'segments', element: h(CrmSegments) }),
+              h(Route, { path: 'reports', element: h(CrmReports) }),
+              h(Route, { path: 'settings', element: h(CrmSettings) }),
+            ),
+
             h(Route, { path: '/verify', element: h(EmailVerification) }),
             h(Route, { path: '/p/:token', element: h(ParticipantDashboard) }),
             h(Route, { path: '/p/:token/match', element: h(MatchInfo) }),
