@@ -449,7 +449,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             {/* Step 4 - Participants meet & network */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
               <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30 md:order-2" style={{ aspectRatio: '16/9' }}>
-                <img src="/how-it-works-4.png" alt="Participants meet and network" className="w-full h-full object-cover" />
+                <img src="/Wonderelo-step4.png" alt="Participants meet and network" className="w-full h-full object-cover" />
               </div>
               <div className="md:order-1">
                 <div className="mb-5">
@@ -459,7 +459,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   <h3 className="text-xl font-semibold" style={{ marginBottom: '12px' }}>Participants meet & network</h3>
                 </div>
                 <p className="text-muted-foreground leading-relaxed">
-                  Wonderelo shows every participant their match and designated meeting point. The round runs according to the preset duration and locations — ice breakers handle the rest.
+                  Wonderelo shows every participant their designated meeting point and match partners. They find each other using a unique Wonderimage™. The round runs according to the preset duration and locations — ice breakers handle the rest.
                 </p>
               </div>
             </div>
