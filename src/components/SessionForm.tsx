@@ -921,35 +921,36 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       return;
     }
     
-    // Validate that minutes are multiple of 5
+    // Validate that minutes are multiple of the configured interval
+    const interval = systemParams?.timePickerIntervalMinutes || 5;
     const [hours, minutes] = formData.startTime.split(':');
-    if (parseInt(minutes) % 5 !== 0) {
-      setTimeError('Time must be in 5-minute intervals (e.g., 14:00, 14:05, 14:10).');
+    if (parseInt(minutes) % interval !== 0) {
+      setTimeError(`Time must be in ${interval}-minute intervals.`);
       return;
     }
-    
+
     // Check if scheduled time is at least minimalTimeToFirstRound minutes from now (internal validation)
     const scheduledDateTime = new Date(`${formData.date}T${formData.startTime}:00`);
     const now = new Date();
     const timeBuffer = (systemParams?.minimalTimeToFirstRound || 10) - 1;
     const minTimeFromNow = new Date(now.getTime() + timeBuffer * 60 * 1000);
-    
-    // Round minTimeFromNow to next 5-minute interval for comparison
+
+    // Round minTimeFromNow to next interval for comparison
     const minMinutes = minTimeFromNow.getMinutes();
-    const roundedMinutes = Math.ceil(minMinutes / 5) * 5;
+    const roundedMinutes = Math.ceil(minMinutes / interval) * interval;
     minTimeFromNow.setMinutes(roundedMinutes);
     minTimeFromNow.setSeconds(0);
     minTimeFromNow.setMilliseconds(0);
-    
+
     // Normalize scheduledDateTime to remove milliseconds
     scheduledDateTime.setSeconds(0);
     scheduledDateTime.setMilliseconds(0);
-    
+
     if (scheduledDateTime < minTimeFromNow) {
       // Show user-friendly message with minimalTimeToFirstRound minutes
       const displayTime = new Date(now.getTime() + (systemParams?.minimalTimeToFirstRound || 10) * 60 * 1000);
       const displayMinutes = displayTime.getMinutes();
-      const displayRoundedMinutes = Math.ceil(displayMinutes / 5) * 5;
+      const displayRoundedMinutes = Math.ceil(displayMinutes / interval) * interval;
       displayTime.setMinutes(displayRoundedMinutes);
       displayTime.setSeconds(0);
       displayTime.setMilliseconds(0);
@@ -1228,7 +1229,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-outside ml-5">
             <li className="pl-1">First round must be at least {systemParams?.minimalTimeToFirstRound || 10} minutes in the future</li>
             <li className="pl-1">Participants receive SMS notification {systemParams?.confirmationWindowMinutes || 5} minutes before the round to confirm attendance</li>
-            <li className="pl-1">Time must be rounded to 5 minutes</li>
+            <li className="pl-1">Time must be rounded to {systemParams?.timePickerIntervalMinutes || 5} minutes</li>
           </ul>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1266,6 +1267,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                 error={!firstRoundStarted && (!!timeError || fieldErrors.startTime)}
                 disabled={firstRoundStarted}
                 asapMinutesOffset={systemParams?.minimalTimeToFirstRound || 10}
+                minuteInterval={systemParams?.timePickerIntervalMinutes || 5}
               />
               {timeError && !firstRoundStarted && (
                 <p className="text-sm text-destructive">{timeError}</p>
@@ -1886,6 +1888,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                 placeholder="Select time"
                 asapButtonText="Now"
                 useNowForAsap={true}
+                minuteInterval={systemParams?.timePickerIntervalMinutes || 5}
               />
             </div>
           </div>

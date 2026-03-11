@@ -1,15 +1,75 @@
 -- Wonderelo Test Seed Data
--- Organizer: admin@test.com / test123456
--- Creates: 1 organizer, 2 sessions (1 published, 1 draft), 6 participants, registrations
-
--- Note: Auth user must be created separately via Supabase Auth API
--- The organizer profile ID must match the auth user ID
+-- Organizer accounts (survive `supabase db reset`):
+--   admin@test.com / test123456 (organizer, slug: test-event)
+--   andy.double.a+org@gmail.com / Rukuku (admin, slug: andyconf)
+--
+-- CRITICAL: NEVER remove these auth user inserts. The organizer login
+-- breaks every time auth.users are missing. This has been reported many times.
 
 -- ============================================================
--- 1. Organizer profile (ID will be set after auth user creation)
+-- 0. Auth users (MUST be created before organizer_profiles)
 -- ============================================================
--- Placeholder - will be replaced by setup script
--- Using a fixed UUID for the seed
+-- admin@test.com / test123456
+INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, aud, role, confirmation_token, email_change, email_change_token_new, email_change_token_current, phone_change, phone_change_token, reauthentication_token, recovery_token)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000000',
+  'admin@test.com',
+  crypt('test123456', gen_salt('bf')),
+  now(),
+  now(),
+  now(),
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
+  '{}'::jsonb,
+  'authenticated',
+  'authenticated',
+  '', '', '', '', '', '', '', ''
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at, last_sign_in_at)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001',
+  jsonb_build_object('sub', '00000000-0000-0000-0000-000000000001', 'email', 'admin@test.com'),
+  'email',
+  '00000000-0000-0000-0000-000000000001',
+  now(),
+  now(),
+  now()
+) ON CONFLICT (provider_id, provider) DO NOTHING;
+
+-- andy.double.a+org@gmail.com / Rukuku (primary dev/admin account)
+INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, aud, role, confirmation_token, email_change, email_change_token_new, email_change_token_current, phone_change, phone_change_token, reauthentication_token, recovery_token)
+VALUES (
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000000',
+  'andy.double.a+org@gmail.com',
+  crypt('Rukuku', gen_salt('bf')),
+  now(),
+  now(),
+  now(),
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
+  '{}'::jsonb,
+  'authenticated',
+  'authenticated',
+  '', '', '', '', '', '', '', ''
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at, last_sign_in_at)
+VALUES (
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000002',
+  jsonb_build_object('sub', '00000000-0000-0000-0000-000000000002', 'email', 'andy.double.a+org@gmail.com'),
+  'email',
+  '00000000-0000-0000-0000-000000000002',
+  now(),
+  now(),
+  now()
+) ON CONFLICT (provider_id, provider) DO NOTHING;
+
+-- ============================================================
+-- 1. Organizer profiles
+-- ============================================================
 INSERT INTO organizer_profiles (id, email, organizer_name, url_slug, role, description)
 VALUES (
   '00000000-0000-0000-0000-000000000001',
@@ -18,6 +78,16 @@ VALUES (
   'test-event',
   'organizer',
   'Speed networking events for tech professionals'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO organizer_profiles (id, email, organizer_name, url_slug, role, description)
+VALUES (
+  '00000000-0000-0000-0000-000000000002',
+  'andy.double.a+org@gmail.com',
+  'Andyho konfera',
+  'andyconf',
+  'admin',
+  'Primary dev/admin account'
 ) ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================

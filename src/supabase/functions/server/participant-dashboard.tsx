@@ -73,7 +73,7 @@ function getPreviewMockData(scenario: string) {
   if (scenario === 'no-match' || scenario === 'waiting-match') {
     const futureTime = new Date(now.getTime() + 30 * 60000);
     roundStartTime = `${futureTime.getHours().toString().padStart(2, '0')}:${futureTime.getMinutes().toString().padStart(2, '0')}`;
-    status = scenario === 'waiting-match' ? 'waiting-for-match' : 'confirmed';
+    status = scenario === 'waiting-match' ? 'confirmed' : 'confirmed';
   } else if (scenario.includes('matched') || scenario.includes('walking') || scenario.includes('checked-in') || scenario === 'met-confirmed') {
     const futureTime = new Date(now.getTime() + 10 * 60000);
     roundStartTime = `${futureTime.getHours().toString().padStart(2, '0')}:${futureTime.getMinutes().toString().padStart(2, '0')}`;
@@ -81,9 +81,9 @@ function getPreviewMockData(scenario: string) {
     if (scenario.includes('matched') && !scenario.includes('walking') && !scenario.includes('checked')) {
       status = 'matched';
     } else if (scenario.includes('walking')) {
-      status = 'walking-to-meeting-point';
+      status = 'matched'; // Walking is a UI phase, DB status stays matched until check-in
     } else if (scenario.includes('checked-in')) {
-      status = 'waiting-for-meet-confirmation';
+      status = 'checked-in';
     } else if (scenario === 'met-confirmed') {
       status = 'met';
     } else {
@@ -148,7 +148,7 @@ function parseRoundStartTime(date: string, startTime: string): Date {
 }
 
 // Helper function to dynamically update session status based on round times
-function updateSessionStatusBasedOnRounds(session: any, now: Date = new Date()): void {
+export function updateSessionStatusBasedOnRounds(session: any, now: Date = new Date()): void {
   if (!session || !session.rounds || session.rounds.length === 0) {
     return;
   }
@@ -227,6 +227,7 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
     // Process each registration and calculate dynamic status
     const enrichedRegistrations = [];
     const statusUpdates: Array<{ participantId: string; sessionId: string; roundId: string; status: string }> = [];
+    const roundCompletions: Array<{ participantId: string; sessionId: string; roundId: string }> = [];
 
     for (const reg of registrations) {
       let currentStatus = reg.status;
@@ -235,21 +236,37 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
       if (reg.roundDate && reg.startTime) {
         const now = getCurrentTime(c);
         const roundStartTime = parseRoundStartTime(reg.roundDate, reg.startTime);
-        const roundEndTime = new Date(roundStartTime.getTime() + (reg.duration || 10) * 60000);
+        const walkingTimeMs = (systemParams.walkingTimeMinutes || 3) * 60000;
+        const findingTimeMs = (systemParams.findingTimeMinutes || 1) * 60000;
+        const roundEndTime = new Date(roundStartTime.getTime() + walkingTimeMs + findingTimeMs + (reg.duration || 10) * 60000);
+        const walkingDeadline = reg.matchedAt
+          ? new Date(new Date(reg.matchedAt).getTime() + walkingTimeMs)
+          : null;
 
-        // PRIORITY 1: Check if round completed
-        if (now >= roundEndTime) {
-          if (!['completed', 'checked-in', 'unconfirmed', 'confirmed', 'matched', 'waiting-for-match', 'no-match', 'met', 'missed', 'left-alone', 'registered'].includes(reg.status)) {
-            currentStatus = 'completed';
-            statusChanged = true;
-            debugLog(`🔄 [${reg.roundName}] Status: "${reg.status}" → "completed" (round ended)`);
-          }
+        // AUTO-DETECTION 1: "registered" → "unconfirmed" (T-0 passed, never confirmed)
+        if (now >= roundStartTime && reg.status === 'registered') {
+          currentStatus = 'unconfirmed';
+          statusChanged = true;
+          debugLog(`🔄 [${reg.roundName}] Status: "${reg.status}" → "unconfirmed" (confirmation window expired)`);
         }
 
-        // PRIORITY 3: Trigger matching if round just started (T-0)
-        const twoMinutes = 2 * 60 * 1000;
-        if (now >= roundStartTime && now < new Date(roundStartTime.getTime() + twoMinutes)) {
-          if (reg.status === 'confirmed') {
+        // AUTO-DETECTION 2: "matched" → "missed" (walking deadline expired, never checked in)
+        if (walkingDeadline && now >= walkingDeadline && reg.status === 'matched') {
+          currentStatus = 'missed';
+          statusChanged = true;
+          debugLog(`🔄 [${reg.roundName}] Status: "${reg.status}" → "missed" (walking deadline expired)`);
+        }
+
+        // AUTO-DETECTION 3: Round completed → set round_completed_at (preserve last active status)
+        if (now >= roundEndTime && !reg.roundCompletedAt) {
+          roundCompletions.push({ participantId: reg.participantId, sessionId: reg.sessionId, roundId: reg.roundId });
+          debugLog(`✅ [${reg.roundName}] Round completed for participant ${reg.participantId}`);
+        }
+
+        // TRIGGER MATCHING: if round just started (T-0) and participant is confirmed or no-match (retry)
+        const tenMinutes = 10 * 60 * 1000;
+        if (now >= roundStartTime && now < new Date(roundStartTime.getTime() + tenMinutes)) {
+          if (reg.status === 'confirmed' || reg.status === 'no-match') {
             (async () => {
               try {
                 debugLog(`🎯 [${reg.roundName}] Triggering matching at T-0...`);
@@ -262,22 +279,23 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
         }
       }
 
+      // Persist status changes (only safe auto-transitions)
       if (statusChanged) {
-        // Only persist safe background status changes
-        const allowedCalculatedStatuses = ['completed', 'unconfirmed'];
-        const protectedStatuses = [
-          'confirmed', 'matched', 'walking-to-meeting-point', 'waiting-for-meet-confirmation',
-          'met', 'checked-in', 'no-match', 'missed', 'left-alone'
-        ];
+        const allowedAutoStatuses = ['unconfirmed', 'missed'];
+        const terminalStatuses = ['unconfirmed', 'no-match', 'missed', 'cancelled'];
 
-        if (allowedCalculatedStatuses.includes(currentStatus) && !protectedStatuses.includes(reg.status) && !reg.confirmedAt) {
+        if (allowedAutoStatuses.includes(currentStatus) && !terminalStatuses.includes(reg.status)) {
           statusUpdates.push({ participantId: reg.participantId, sessionId: reg.sessionId, roundId: reg.roundId, status: currentStatus });
         }
       }
 
-      // Build enriched registration
+      // Build enriched registration (use computed status if it changed)
       const enrichedReg = {
         ...reg,
+        status: currentStatus,
+        roundCompletedAt: reg.roundCompletedAt || (roundCompletions.some(rc =>
+          rc.participantId === reg.participantId && rc.roundId === reg.roundId
+        ) ? new Date().toISOString() : null),
         sessionDate: reg.roundDate || reg.sessionDate,
         roundStartTime: reg.startTime,
         roundDuration: reg.duration,
@@ -292,7 +310,17 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
     const sessionPromises = sessionIds.map(async (sessionId) => {
       const session = await db.getSessionById(sessionId);
       if (session) {
+        const originalStatus = session.status;
         updateSessionStatusBasedOnRounds(session, getCurrentTime(c));
+        // Persist status change to DB if it was auto-completed
+        if (session.status === 'completed' && originalStatus !== 'completed') {
+          try {
+            await db.updateSession(sessionId, { status: 'completed' });
+            debugLog(`Session ${sessionId} auto-completed (was: ${originalStatus})`);
+          } catch (error) {
+            errorLog(`Failed to auto-complete session ${sessionId}:`, error);
+          }
+        }
       }
       return session;
     });
@@ -304,12 +332,16 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
     const organizerSlug = firstReg?.organizerUrlSlug || '';
 
     // Apply background status updates asynchronously
-    if (statusUpdates.length > 0) {
+    if (statusUpdates.length > 0 || roundCompletions.length > 0) {
       (async () => {
         try {
           for (const update of statusUpdates) {
             await db.updateRegistrationStatus(update.participantId, update.sessionId, update.roundId, update.status);
             debugLog(`✅ [BACKGROUND UPDATE] Updated ${update.roundId}: → "${update.status}"`);
+          }
+          for (const rc of roundCompletions) {
+            await db.setRoundCompletedAt(rc.participantId, rc.sessionId, rc.roundId);
+            debugLog(`✅ [BACKGROUND UPDATE] Round completed: ${rc.roundId} for ${rc.participantId}`);
           }
         } catch (error) {
           errorLog('Error updating participant statuses (background):', error);

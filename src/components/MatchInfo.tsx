@@ -6,6 +6,7 @@ import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
 
 interface MatchData {
   matchId: string;
@@ -179,7 +180,7 @@ export function MatchInfo() {
       errorLog('[MatchInfo] Error checking in:', err);
       setIsSubmitting(false);
       // Show error but don't block navigation
-      alert('Check-in failed, but you can still proceed');
+      toast.error('Check-in failed, but you can still proceed');
       navigate(`/p/${token}/match-partner`);
     }
   };

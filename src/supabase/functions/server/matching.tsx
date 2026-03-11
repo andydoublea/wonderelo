@@ -37,8 +37,49 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
     const lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
 
     if (!lockAcquired) {
-      console.log(`⚠️ Matching already completed or in progress for this round`);
-      return { success: true, message: 'Matching already completed', matches: [] };
+      const existingLock = await db.getMatchingLock(sessionId, roundId);
+
+      // matchCount === -1 means another process is still running matching
+      if (existingLock && existingLock.matchCount === -1) {
+        console.log(`⏳ Matching is currently in progress — skipping`);
+        return { success: true, message: 'Matching in progress', matches: [] };
+      }
+
+      // Check if previous matching produced results — allow retry if it was a solo/no-match run
+      // but now more participants might be confirmed
+      if (existingLock && existingLock.matchCount === 0) {
+        // Previous matching found no matches — check if there are now more matchable participants
+        // Count BOTH 'confirmed' AND 'no-match' (no-match from previous solo run will be reverted)
+        const allRegs = await db.getRegistrationsForRound(sessionId, roundId);
+        const confirmedNow = allRegs.filter((r: any) => r.status === 'confirmed');
+        const noMatchFromPrevious = allRegs.filter((r: any) => r.status === 'no-match');
+        const potentialParticipants = confirmedNow.length + noMatchFromPrevious.length;
+
+        if (potentialParticipants >= (round?.groupSize || session?.groupSize || 2)) {
+          console.log(`🔄 Previous matching found 0 matches, but now ${potentialParticipants} potential participants (${confirmedNow.length} confirmed + ${noMatchFromPrevious.length} no-match) — retrying`);
+          // Delete the old lock so we can re-run
+          await db.deleteMatchingLock(sessionId, roundId);
+          // Also revert any no-match statuses from the previous run
+          for (const reg of allRegs) {
+            if (reg.status === 'no-match') {
+              await db.updateRegistrationStatus(reg.participantId, sessionId, roundId, 'confirmed', {});
+            }
+          }
+          // Re-acquire lock and continue
+          const retryLock = await db.tryAcquireMatchingLock(sessionId, roundId);
+          if (!retryLock) {
+            console.log(`⚠️ Retry lock acquisition failed — another process is running`);
+            return { success: true, message: 'Matching retry in progress', matches: [] };
+          }
+          // Fall through to continue with matching
+        } else {
+          console.log(`⚠️ Matching already completed (0 matches, ${potentialParticipants} potential — not enough to retry)`);
+          return { success: true, message: 'Matching already completed', matches: [] };
+        }
+      } else {
+        console.log(`⚠️ Matching already completed with ${existingLock?.matchCount || 0} matches`);
+        return { success: true, message: 'Matching already completed', matches: [] };
+      }
     }
 
     // 3. Load all registrations for this round (with participant data via JOIN)
@@ -78,7 +119,14 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
     // 7. Run matching algorithm
     const groupSize = round.groupSize || session.groupSize || 2;
     const matchingType = session.matchingType || 'across-teams';
-    const matches = await runMatchingAlgorithm(confirmedRegs, groupSize, sessionId, roundId, matchingType);
+
+    // Get available meeting points (round-level override, then session-level)
+    const availableMeetingPoints = (round.meetingPoints?.length > 0
+      ? round.meetingPoints
+      : session.meetingPoints) || [];
+    console.log(`📍 Available meeting points: ${availableMeetingPoints.length} (${availableMeetingPoints.map((mp: any) => mp.name).join(', ')})`);
+
+    const matches = await runMatchingAlgorithm(confirmedRegs, groupSize, sessionId, roundId, matchingType, availableMeetingPoints);
 
     console.log(`🎉 Created ${matches.length} matches`);
 
@@ -95,17 +143,22 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
         meetingPoint: match.meetingPoint,
       });
 
-      // Update each participant's registration
+      // Update each participant's registration with identification numbers
       for (const participantId of match.participantIds) {
         const partnerNames = match.participants
           .filter((p: any) => p.participantId !== participantId)
           .map((p: any) => `${p.firstName} ${p.lastName}`);
+
+        // Generate stable identification number + options for this participant
+        const idData = db.generateIdentificationData();
 
         await db.updateRegistrationStatus(participantId, sessionId, roundId, 'matched', {
           matchId,
           matchPartnerNames: partnerNames,
           meetingPointId: match.meetingPoint,
           matchedAt: new Date().toISOString(),
+          identificationNumber: idData.number,
+          identificationOptions: idData.options,
         });
       }
     }
@@ -139,16 +192,19 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
 
       console.log(`✅ Added odd participant to match ${smallestMatch.matchId}, new size: ${smallestMatch.participantIds.length}`);
 
-      // Update odd participant's registration
+      // Update odd participant's registration with identification number
       const partnerNames = smallestMatch.participants
         .filter((p: any) => p.participantId !== oddReg.participantId)
         .map((p: any) => `${p.firstName} ${p.lastName}`);
 
+      const oddIdData = db.generateIdentificationData();
       await db.updateRegistrationStatus(oddReg.participantId, sessionId, roundId, 'matched', {
         matchId: smallestMatch.matchId,
         matchPartnerNames: partnerNames,
         meetingPointId: smallestMatch.meetingPoint,
         matchedAt: new Date().toISOString(),
+        identificationNumber: oddIdData.number,
+        identificationOptions: oddIdData.options,
       });
 
       // Update existing partners' registration to include the new partner
@@ -205,7 +261,7 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
 /**
  * Matching algorithm - creates optimal groups based on scoring
  */
-async function runMatchingAlgorithm(participants: any[], groupSize: number, sessionId: string, roundId: string, matchingType: string) {
+async function runMatchingAlgorithm(participants: any[], groupSize: number, sessionId: string, roundId: string, matchingType: string, meetingPoints: any[] = []) {
   const matches: any[] = [];
   const availableParticipants = [...participants];
 
@@ -214,6 +270,9 @@ async function runMatchingAlgorithm(participants: any[], groupSize: number, sess
 
   // Calculate scores for all possible pairings
   const scoredPairs = calculatePairingScores(availableParticipants, meetingHistory, matchingType);
+
+  // Track meeting point assignment index for round-robin distribution
+  let meetingPointIndex = 0;
 
   // Greedy matching: repeatedly pick the best scoring group
   while (availableParticipants.length >= groupSize) {
@@ -231,6 +290,18 @@ async function runMatchingAlgorithm(participants: any[], groupSize: number, sess
       }
     }
 
+    // Assign meeting point: round-robin from available meeting points, or participant's pre-selected one
+    let assignedMeetingPoint: string;
+    if (meetingPoints.length > 0) {
+      // Round-robin assignment from configured meeting points
+      const mp = meetingPoints[meetingPointIndex % meetingPoints.length];
+      assignedMeetingPoint = mp.name || mp.id;
+      meetingPointIndex++;
+    } else {
+      // Fallback: use participant's pre-selected meeting point, or first non-empty one in group
+      assignedMeetingPoint = bestGroup.find((p: any) => p.meetingPoint)?.meetingPoint || 'TBD';
+    }
+
     // Create match
     matches.push({
       participantIds: bestGroup.map((p: any) => p.participantId),
@@ -242,7 +313,7 @@ async function runMatchingAlgorithm(participants: any[], groupSize: number, sess
         team: p.team,
         topics: p.topics || []
       })),
-      meetingPoint: bestGroup[0].meetingPoint || 'TBD',
+      meetingPoint: assignedMeetingPoint,
       createdAt: new Date().toISOString()
     });
   }

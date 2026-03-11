@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner@2.0.3';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Calendar, Clock, Users, Loader2, X, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Users, Loader2, X, CheckCircle, BookUser } from 'lucide-react';
 import { ParticipantLayout } from './ParticipantLayout';
 import { RoundItem } from './RoundItem';
 import { ServiceType, NetworkingSession, Round } from '../App';
@@ -106,6 +106,7 @@ export function ParticipantDashboard() {
   const [sessions, setSessions] = useState<SessionWithRounds[]>(cachedDashboard.sessions);
   const [isLoading, setIsLoading] = useState(!cachedDashboard.hasCache);
   const [isFetching, setIsFetching] = useState(false); // Track if fetch is in progress
+  const [hasFreshData, setHasFreshData] = useState(false); // Tracks if we've received fresh API data (prevents confirm button flash)
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState(cachedDashboard.email);
   const [firstName, setFirstName] = useState(cachedDashboard.firstName);
@@ -115,7 +116,23 @@ export function ParticipantDashboard() {
   
   // Track last optimistic update to prevent refetch from overwriting it
   const lastOptimisticUpdateRef = useRef<number>(0);
-  
+
+  // Track if user came from /match page — read once on mount, used by all redirect-prevention checks
+  // This prevents race condition where T-0 useEffect cleans URL before status useEffect reads it
+  const cameFromMatchRef = useRef<boolean>(
+    new URLSearchParams(window.location.search).get('from') === 'match'
+  );
+
+  // Clean up ?from=match from URL on mount (once, without triggering re-render)
+  useEffect(() => {
+    if (cameFromMatchRef.current) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('from');
+      window.history.replaceState({}, '', url.toString());
+      debugLog('🧹 Cleaned ?from=match from URL');
+    }
+  }, []);
+
   // Debug state - capture server responses
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const showDebug = window.location.search.includes('debug=true');
@@ -132,6 +149,9 @@ export function ParticipantDashboard() {
   
   // Team and topic selections
   const [roundSelections, setRoundSelections] = useState<Map<string, { team?: string; topic?: string; topics?: string[] }>>(new Map());
+
+  // Shared contacts per round (for completed rounds display)
+  const [sharedContactsByRound, setSharedContactsByRound] = useState<Map<string, { firstName: string; lastName: string }[]>>(new Map());
 
   // Get current time from TimeContext
   const { getCurrentTime, simulatedTime } = useTime();
@@ -277,13 +297,8 @@ export function ParticipantDashboard() {
   // Proactive T-0 navigation: navigate to /match immediately when the next round starts
   useEffect(() => {
     // Skip auto-redirects if user just came back from /match page
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('from') === 'match') {
+    if (cameFromMatchRef.current) {
       debugLog('🚫 [T-0] Skipping redirect — user came back from /match');
-      // Clean up the URL parameter without triggering navigation
-      const url = new URL(window.location.href);
-      url.searchParams.delete('from');
-      window.history.replaceState({}, '', url.toString());
       return;
     }
 
@@ -316,7 +331,7 @@ export function ParticipantDashboard() {
       if (localStorage.getItem(redirectKey) !== 'true') {
         localStorage.setItem(redirectKey, 'true');
         debugLog(`🚀 [T-0] Round ${roundId} has started! Navigating to /match immediately`);
-        navigate(`/p/${token}/match`);
+        navigate(`/p/${token}/match-point`);
       }
       return;
     }
@@ -332,7 +347,7 @@ export function ParticipantDashboard() {
         if (localStorage.getItem(redirectKey) !== 'true') {
           localStorage.setItem(redirectKey, 'true');
           debugLog(`🚀 [T-0] Timer fired! Navigating to /match for round ${roundId}`);
-          navigate(`/p/${token}/match`);
+          navigate(`/p/${token}/match-point`);
         }
       }, msUntilStart);
 
@@ -352,8 +367,7 @@ export function ParticipantDashboard() {
     if (!token || !registrations || registrations.length === 0) return;
 
     // Skip auto-redirects if user just came back from /match page
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('from') === 'match') {
+    if (cameFromMatchRef.current) {
       debugLog('🚫 [AUTO-REDIRECT] Skipping — user came back from /match');
       return;
     }
@@ -381,7 +395,7 @@ export function ParticipantDashboard() {
       localStorage.setItem(redirectKey, 'true');
       
       debugLog('🔀 Redirecting to /match page (first time no-match detected)');
-      navigate(`/p/${token}/match`);
+      navigate(`/p/${token}/match-point`);
       return;
     }
     
@@ -408,7 +422,7 @@ export function ParticipantDashboard() {
       localStorage.setItem(redirectKey, 'true');
       
       debugLog('🔀 Redirecting to /match page (first time matched detected)');
-      navigate(`/p/${token}/match`);
+      navigate(`/p/${token}/match-point`);
     }
   }, [registrations, token, navigate]);
 
@@ -540,6 +554,12 @@ export function ParticipantDashboard() {
             errorMessage = `Error ${response.status}: ${errorText}`;
           }
         }
+
+        // If token is invalid (404), clear it from localStorage to prevent redirect loops
+        if (response.status === 404) {
+          localStorage.removeItem('participant_token');
+          debugLog('🗑️ Cleared invalid participant_token from localStorage');
+        }
         
         throw new Error(errorMessage);
       }
@@ -581,7 +601,8 @@ export function ParticipantDashboard() {
       debugLog('🔍 [DASHBOARD] FULL DATA:', JSON.stringify(data, null, 2));
       
       setRegistrations(regs);
-      
+      setHasFreshData(true);
+
       // Cache each registration with its session data for round detail pages
       regs.forEach((reg: Registration) => {
         const session = data.sessions?.find((s: any) => s.id === reg.sessionId);
@@ -684,6 +705,34 @@ export function ParticipantDashboard() {
     }
   };
 
+  // Fetch shared contacts for completed rounds display
+  useEffect(() => {
+    if (!token || sessions.length === 0) return;
+
+    const fetchSharedContacts = async () => {
+      try {
+        const response = await fetch(
+          `${apiBaseUrl}/participant/${token}/shared-contacts`,
+          { headers: { 'Authorization': `Bearer ${publicAnonKey}` } }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const byRound = new Map<string, { firstName: string; lastName: string }[]>();
+        for (const sc of data.sharedContacts || []) {
+          if (!sc.roundId) continue;
+          const existing = byRound.get(sc.roundId) || [];
+          existing.push({ firstName: sc.partner.firstName, lastName: sc.partner.lastName });
+          byRound.set(sc.roundId, existing);
+        }
+        setSharedContactsByRound(byRound);
+      } catch (err) {
+        debugLog('[Dashboard] Failed to fetch shared contacts:', err);
+      }
+    };
+
+    fetchSharedContacts();
+  }, [token, sessions.length]);
+
   const confirmUnregister = async () => {
     if (!pendingUnregister) return;
     
@@ -710,7 +759,7 @@ export function ParticipantDashboard() {
       const response = await fetch(
         `${apiBaseUrl}/p/${token}/unregister/${round.id}?sessionId=${session.id}`,
         {
-          method: 'DELETE',
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
             'Content-Type': 'application/json',
@@ -878,6 +927,17 @@ export function ParticipantDashboard() {
       await fetchData();
     }
   };
+
+  // Stable callback for confirmation window expiry — avoids RoundItem useEffect re-runs
+  const handleConfirmationWindowExpired = useCallback(() => {
+    const timeSinceLastUpdate = Date.now() - lastOptimisticUpdateRef.current;
+    if (timeSinceLastUpdate < 15000) {
+      debugLog(`⏰ Confirmation window expired BUT skipping refetch - recent optimistic update (${timeSinceLastUpdate}ms ago)`);
+      return;
+    }
+    debugLog('⏰ Confirmation window expired, refetching data...');
+    fetchData();
+  }, []);
 
   const handleRoundToggle = async (session: NetworkingSession, round: Round, isCurrentlyRegistered: boolean, currentStatus?: string) => {
     try {
@@ -1048,9 +1108,14 @@ export function ParticipantDashboard() {
               </div>
               <h3 className="mb-2">Failed to load dashboard</h3>
               <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()}>
-                Try again
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => window.location.reload()}>
+                  Try again
+                </Button>
+                <Button variant="outline" onClick={() => { localStorage.removeItem('participant_token'); navigate('/'); }}>
+                  Go to homepage
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1147,6 +1212,8 @@ export function ParticipantDashboard() {
   
   debugLog(`[Section filtering] Results: ${upcomingSessions.length} upcoming, ${pastSessions.length} completed`);
 
+
+
   // Get primary organizer (first upcoming or first past registration)
   const primaryRegistration = registrations.find(r => {
     const session = sessions.find(s => s.session.id === r.sessionId);
@@ -1189,10 +1256,15 @@ export function ParticipantDashboard() {
                     <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
                       <div className="flex items-start justify-between mb-1">
                         <div className="flex-1">
-                          <h3 className="mb-2">
+                          <h3 className="mb-2 text-left">
                             {organizerReg?.organizerName || 'Unknown organizer'}
                           </h3>
-                          <Badge variant="outline" className="mb-2">{session.name}</Badge>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline">{session.name}</Badge>
+                            {organizerReg?.organizerUrlSlug && (
+                              <span className="text-xs text-muted-foreground">#{organizerReg.organizerUrlSlug}</span>
+                            )}
+                          </div>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
@@ -1232,10 +1304,7 @@ export function ParticipantDashboard() {
                       debugLog(`  → Showing ${registeredRounds.length} upcoming rounds for session \"${session.name}\"`);
                       
                       if (registeredRounds.length === 0) return null;
-                      
-                      // Get organizer info from first registration
-                      const organizerReg = registrations.find(r => r.sessionId === session.id);
-                      
+
                       return (
                         <div className="mt-3">
                           <div className="space-y-2">
@@ -1249,7 +1318,8 @@ export function ParticipantDashboard() {
                               
                               // Allow unregister button for all statuses EXCEPT when matching/matched or already met
                               // This allows participants to unregister even after confirming attendance (before matching starts)
-                              const shouldShowUnregisterButton = !['unconfirmed', 'waiting-for-match', 'matched', 'walking-to-meeting-point', 'waiting-for-meet-confirmation', 'met'].includes(currentStatus || '');
+                              // Allow unregister only from 'registered' or 'confirmed' (before matching)
+                              const shouldShowUnregisterButton = ['registered', 'confirmed'].includes(currentStatus || '');
                               debugLog(`🔍 [UNREGISTER BUTTON] Round \"${round.name}\": status=\"${currentStatus}\", showButton=${shouldShowUnregisterButton}`);
                               
                               return (
@@ -1269,17 +1339,7 @@ export function ParticipantDashboard() {
                                   isNextUpcoming={roundKey === globalNextUpcomingRoundId}
                                   onConfirmAttendance={handleConfirmAttendance}
                                   lastConfirmTimestamp={lastOptimisticUpdateRef.current}
-                                  onConfirmationWindowExpired={() => {
-                                    // Skip refetch if there was a recent optimistic update (within last 15 seconds)
-                                    const timeSinceLastUpdate = Date.now() - lastOptimisticUpdateRef.current;
-                                    if (timeSinceLastUpdate < 15000) {
-                                      debugLog(`⏰ Confirmation window expired BUT skipping refetch - recent optimistic update (${timeSinceLastUpdate}ms ago)`);
-                                      return;
-                                    }
-                                    
-                                    debugLog('⏰ Confirmation window expired, refetching data...');
-                                    fetchData();
-                                  }}
+                                  onConfirmationWindowExpired={handleConfirmationWindowExpired}
                                   matchDetails={roundRegistration?.matchId ? {
                                     matchId: roundRegistration.matchId,
                                     matchPartnerNames: roundRegistration.matchPartnerNames || [],
@@ -1287,25 +1347,27 @@ export function ParticipantDashboard() {
                                     identificationImageUrl: roundRegistration.identificationImageUrl
                                   } : undefined}
                                   registeredCount={round.registeredCount}
+                                  showDuration={true}
+                                  hasFreshData={hasFreshData}
                                 />
                               );
                             })}
                           </div>
-
-                          {/* Show all rounds button */}
-                          {organizerReg && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-3 w-full"
-                              onClick={() => navigate(`/${organizerReg.organizerUrlSlug}`)}
-                            >
-                              + Add more rounds
-                            </Button>
-                          )}
                         </div>
                       );
                     })()}
+
+                    {/* Link to organizer page to see/add more rounds */}
+                    {organizerReg?.organizerUrlSlug && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 w-full"
+                        onClick={() => navigate(`/${organizerReg.organizerUrlSlug}`)}
+                      >
+                        + Add more rounds
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
                 );
@@ -1332,7 +1394,23 @@ export function ParticipantDashboard() {
         <div>
           <h2 className="mb-4">Completed rounds</h2>
           <div className="space-y-4">
-            {[...pastSessions].reverse().map(({ session, registeredRoundIds, registrationStatusMap }) => {
+            {[...pastSessions].sort((a, b) => {
+              // Sort by most recent round start time (freshest first)
+              const getLatestRoundTime = (s: typeof a) => {
+                let latest = 0;
+                for (const round of s.session.rounds || []) {
+                  if (!s.registeredRoundIds.has(round.id)) continue;
+                  try {
+                    const [h, m] = (round.startTime || '').split(':').map(Number);
+                    const d = new Date(round.date || s.session.date || '');
+                    d.setHours(h, m, 0, 0);
+                    if (d.getTime() > latest) latest = d.getTime();
+                  } catch { /* skip */ }
+                }
+                return latest;
+              };
+              return getLatestRoundTime(b) - getLatestRoundTime(a);
+            }).map(({ session, registeredRoundIds, registrationStatusMap }) => {
               // Get organizer info from first registration
               const organizerReg = registrations.find(r => r.sessionId === session.id);
               
@@ -1341,7 +1419,7 @@ export function ParticipantDashboard() {
                   <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
                     <div className="flex items-start justify-between mb-1">
                       <div className="flex-1">
-                        <h3 className="mb-2">
+                        <h3 className="mb-2 text-left">
                           {organizerReg?.organizerName || 'Unknown organizer'}
                         </h3>
                         <Badge variant="outline" className="mb-2">{session.name}</Badge>
@@ -1376,51 +1454,66 @@ export function ParticipantDashboard() {
                       });
                     
                     if (registeredRounds.length === 0) return null;
-                    
-                    // Get organizer info from first registration
-                    const organizerReg = registrations.find(r => r.sessionId === session.id);
-                    
+
                     return (
                       <div className="mt-3">
                         <div className="space-y-2">
                           {[...registeredRounds].reverse().map((round) => {
                             const status = registrationStatusMap?.get(round.id);
-                            
+
+                            const roundContacts = sharedContactsByRound.get(round.id);
+
                             return (
                               <div
                                 key={round.id}
                                 className="border rounded border-muted p-2"
                               >
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">{round.name}</span>
-                                  {status && (
-                                    <ParticipantStatusBadge status={status} />
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">{round.name}</span>
+                                    {status && (
+                                      <ParticipantStatusBadge status={status} />
+                                    )}
+                                  </div>
+                                  {roundContacts && roundContacts.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                      {roundContacts.map((contact, i) => (
+                                        <button
+                                          key={i}
+                                          onClick={() => navigate(`/p/${token}/address-book`)}
+                                          className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                                        >
+                                          <BookUser className="h-3 w-3" />
+                                          {contact.firstName} {contact.lastName}
+                                        </button>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
                               </div>
                             );
                           })}
                         </div>
-                        
-                        {/* Show all rounds button */}
-                        {organizerReg && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3 w-full"
-                            onClick={() => navigate(`/${organizerReg.organizerUrlSlug}`)}
-                          >
-                            + Add more rounds
-                          </Button>
-                        )}
                       </div>
                     );
                   })()}
+
+                  {/* Link to organizer page to see/add more rounds */}
+                  {organizerReg?.organizerUrlSlug && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 w-full"
+                      onClick={() => navigate(`/${organizerReg.organizerUrlSlug}`)}
+                    >
+                      + Add more rounds
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
               );
             })}
-            
+
             {pastSessions.length === 0 && (
               <Card className="transition-all max-w-md">
                 <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
@@ -1453,53 +1546,25 @@ export function ParticipantDashboard() {
       <AlertDialog open={showUnregisterDialog} onOpenChange={setShowUnregisterDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingUnregister?.status === 'verification_pending' ? 'Reject verification' : 'Confirm unregistration'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Confirm unregistration</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingUnregister?.status === 'verification_pending' ? (
+              Are you sure you want to unregister from{' '}
+              <span className="font-medium">{pendingUnregister?.round.name}</span>
+              {pendingUnregister?.session.name && (
                 <>
-                  Are you sure you want to reject verification for{' '}
-                  <span className="font-medium">{pendingUnregister?.round.name}</span>?
-                  {pendingUnregister?.session.name && (
-                    <>
-                      {' '}in <span className="font-medium">{pendingUnregister.session.name}</span>
-                    </>
-                  )}
-                  {pendingUnregister?.session.date && (
-                    <>
-                      {' '}on{' '}
-                      <span className="font-medium">
-                        {new Date(pendingUnregister.session.date).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </>
-                  )}
+                  {' '}in <span className="font-medium">{pendingUnregister.session.name}</span>
                 </>
-              ) : (
+              )}
+              {pendingUnregister?.session.date && (
                 <>
-                  Are you sure you want to unregister from{' '}
-                  <span className="font-medium">{pendingUnregister?.round.name}</span>?
-                  {pendingUnregister?.session.name && (
-                    <>
-                      {' '}in <span className="font-medium">{pendingUnregister.session.name}</span>
-                    </>
-                  )}
-                  {pendingUnregister?.session.date && (
-                    <>
-                      {' '}on{' '}
-                      <span className="font-medium">
-                        {new Date(pendingUnregister.session.date).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </>
-                  )}
+                  {' '}on{' '}
+                  <span className="font-medium">
+                    {new Date(pendingUnregister.session.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </span>
                 </>
               )}?
             </AlertDialogDescription>
@@ -1512,7 +1577,7 @@ export function ParticipantDashboard() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnregister}>
-              {pendingUnregister?.status === 'verification_pending' ? 'Reject verification' : 'Unregister'}
+              Unregister
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

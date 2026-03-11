@@ -1,399 +1,335 @@
-import { SystemParameters } from './AdminParameters';
-import { Calendar, Bell, Lock, CheckCircle, Users, MapPin, Flag, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { SystemParameters } from '../utils/systemParameters';
+import { Calendar, Bell, Lock, CheckCircle, Users, MapPin, Search, MessageCircle, Share2, AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 
 interface TimelineVisualizationProps {
   parameters: SystemParameters;
 }
 
+interface TimelineStep {
+  id: string;
+  time: string;
+  title: string;
+  description: string;
+  bgColor: string;
+  icon: React.ReactNode;
+  durationLabel?: string;
+  isEmphasized?: boolean;
+  warning?: string;
+  isRelative?: boolean;
+}
+
+interface NotificationEvent {
+  id: string;
+  time: string;
+  minutesBefore: number;
+  label: string;
+  warning?: string;
+}
+
+function buildSteps(p: SystemParameters, validations: Record<string, boolean>): TimelineStep[] {
+  return [
+    {
+      id: 'registration',
+      time: '',
+      title: 'Registration opens',
+      description: 'Participants can register for the round',
+      bgColor: 'bg-green-500',
+      icon: <Calendar className="h-4 w-4" />,
+    },
+    {
+      id: 'safety-close',
+      time: `T\u2212${p.safetyWindowMinutes}`,
+      title: 'Registration closes',
+      description: 'No new registrations accepted',
+      bgColor: validations.safetyWindowConflict ? 'bg-red-500' : 'bg-orange-500',
+      icon: <Lock className="h-4 w-4" />,
+      durationLabel: `${p.safetyWindowMinutes - p.confirmationWindowMinutes} min`,
+      warning: validations.safetyWindowConflict ? 'Safety window must be \u2265 confirmation window' : undefined,
+    },
+    {
+      id: 'confirmation',
+      time: `T\u2212${p.confirmationWindowMinutes}`,
+      title: 'Confirmation window',
+      description: 'Participants must confirm attendance',
+      bgColor: 'bg-yellow-500',
+      icon: <CheckCircle className="h-4 w-4" />,
+      durationLabel: `${p.confirmationWindowMinutes} min`,
+    },
+    {
+      id: 'matching',
+      time: 'T\u22120',
+      title: 'MATCHING',
+      description: 'Algorithm creates groups, matches revealed',
+      bgColor: 'bg-purple-600',
+      icon: <Users className="h-5 w-5" />,
+      isEmphasized: true,
+    },
+    {
+      id: 'walking',
+      time: '',
+      title: 'Walk to meeting point',
+      description: 'Participants walk to meeting point',
+      bgColor: 'bg-blue-500',
+      icon: <MapPin className="h-4 w-4" />,
+      durationLabel: `up to ${p.walkingTimeMinutes} min`,
+      isRelative: true,
+    },
+    {
+      id: 'finding',
+      time: '',
+      title: 'Find each other',
+      description: 'Partners identify each other',
+      bgColor: 'bg-cyan-500',
+      icon: <Search className="h-4 w-4" />,
+      durationLabel: `up to ${p.findingTimeMinutes} min`,
+      isRelative: true,
+    },
+    {
+      id: 'networking',
+      time: '',
+      title: 'Networking',
+      description: 'Conversation time',
+      bgColor: 'bg-indigo-500',
+      icon: <MessageCircle className="h-4 w-4" />,
+      durationLabel: `${p.defaultRoundDuration} min`,
+      isRelative: true,
+    },
+    {
+      id: 'contact-sharing',
+      time: '',
+      title: 'Contacts revealed',
+      description: 'App shows partner contacts (if shared)',
+      bgColor: 'bg-emerald-500',
+      icon: <Share2 className="h-4 w-4" />,
+      durationLabel: p.contactSharingDelayMinutes > 0
+        ? `after ${p.contactSharingDelayMinutes} min of networking`
+        : 'immediately when networking starts',
+      isRelative: true,
+    },
+  ];
+}
+
+function buildNotifications(p: SystemParameters, validations: Record<string, boolean>): NotificationEvent[] {
+  const events: NotificationEvent[] = [];
+
+  if (p.notificationEarlyEnabled) {
+    events.push({
+      id: 'early',
+      time: `T\u2212${p.notificationEarlyMinutes}`,
+      minutesBefore: p.notificationEarlyMinutes,
+      label: 'Early notification sent',
+      warning: validations.earlyNotificationConflict
+        ? `Must be before confirmation window (T\u2212${p.confirmationWindowMinutes})`
+        : undefined,
+    });
+  }
+
+  if (p.notificationLateEnabled) {
+    events.push({
+      id: 'late',
+      time: `T\u2212${p.notificationLateMinutes}`,
+      minutesBefore: p.notificationLateMinutes,
+      label: 'Late reminder sent',
+      warning: validations.lateNotificationConflict
+        ? `Must be before confirmation window (T\u2212${p.confirmationWindowMinutes})`
+        : validations.lateNotificationTooEarly
+        ? 'Timing must be positive'
+        : undefined,
+    });
+  }
+
+  return events;
+}
+
+function getValidations(p: SystemParameters) {
+  return {
+    // Strict less than: notification at same time as confirmation is OK
+    lateNotificationConflict: p.notificationLateEnabled && p.notificationLateMinutes < p.confirmationWindowMinutes,
+    earlyNotificationConflict: p.notificationEarlyEnabled && p.notificationEarlyMinutes < p.confirmationWindowMinutes,
+    safetyWindowConflict: p.safetyWindowMinutes < p.confirmationWindowMinutes,
+    lateNotificationTooEarly: p.notificationLateEnabled && p.notificationLateMinutes <= 0,
+    minimalTimeConflict: p.minimalTimeToFirstRound < p.safetyWindowMinutes,
+  };
+}
+
+// Determine where a notification should be inserted in the timeline
+function getNotificationInsertIndex(minutesBefore: number, p: SystemParameters): number {
+  // Before safety window close
+  if (minutesBefore > p.safetyWindowMinutes) return 1;
+  // Between safety and confirmation (or at confirmation boundary)
+  if (minutesBefore >= p.confirmationWindowMinutes) return 2;
+  // After confirmation (conflict)
+  return 3;
+}
+
 export function TimelineVisualization({ parameters }: TimelineVisualizationProps) {
-  // Calculate total timeline span (from -safetyWindow to +walking+duration)
-  const totalMinutes = parameters.safetyWindowMinutes + parameters.walkingTimeMinutes + parameters.defaultRoundDuration;
-  
-  // Calculate position as percentage (T-0 is at 50%)
-  const calculatePosition = (minutesFromStart: number) => {
-    // minutesFromStart: negative = before T-0, positive = after T-0
-    const offset = minutesFromStart + parameters.safetyWindowMinutes;
-    return (offset / totalMinutes) * 100;
-  };
-  
-  // Validation checks
-  const validations = {
-    lateNotificationConflict: parameters.notificationLateMinutes <= parameters.confirmationWindowMinutes,
-    earlyNotificationConflict: parameters.notificationEarlyMinutes <= parameters.confirmationWindowMinutes,
-    safetyWindowConflict: parameters.safetyWindowMinutes < parameters.confirmationWindowMinutes,
-    lateNotificationTooEarly: parameters.notificationLateMinutes <= 0,
-    minimalTimeConflict: parameters.minimalTimeToFirstRound < parameters.safetyWindowMinutes
-  };
-  
-  const hasAnyValidationIssue = Object.values(validations).some(v => v);
-  
+  const validations = getValidations(parameters);
+  const hasConflicts = Object.values(validations).some(v => v);
+  const conflictCount = Object.values(validations).filter(v => v).length;
+
+  const steps = buildSteps(parameters, validations);
+  const notifications = buildNotifications(parameters, validations);
+
+  // Sort notifications by time (earliest first)
+  notifications.sort((a, b) => b.minutesBefore - a.minutesBefore);
+
+  // Interleave notifications with steps
+  type TimelineItem = { type: 'step'; step: TimelineStep } | { type: 'notification'; notification: NotificationEvent };
+  const items: TimelineItem[] = [];
+
+  // Track which notification insert indices we need
+  const notifsByIndex = new Map<number, NotificationEvent[]>();
+  for (const n of notifications) {
+    const idx = getNotificationInsertIndex(n.minutesBefore, parameters);
+    if (!notifsByIndex.has(idx)) notifsByIndex.set(idx, []);
+    notifsByIndex.get(idx)!.push(n);
+  }
+
+  for (let i = 0; i < steps.length; i++) {
+    // Insert any notifications before this step
+    const notifsHere = notifsByIndex.get(i);
+    if (notifsHere) {
+      for (const n of notifsHere) {
+        items.push({ type: 'notification', notification: n });
+      }
+    }
+    items.push({ type: 'step', step: steps[i] });
+  }
+
+  const totalBefore = parameters.safetyWindowMinutes;
+  const totalAfter = parameters.walkingTimeMinutes + parameters.findingTimeMinutes + parameters.defaultRoundDuration;
+
   return (
-    <Card className="mb-8 border-2">
-      <CardHeader>
+    <Card className="border">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Visual timeline
-            </CardTitle>
-            <CardDescription>
-              Interactive visualization of round timing and participant flow
-            </CardDescription>
-          </div>
-          {hasAnyValidationIssue && (
-            <Badge variant="destructive" className="gap-1">
+          <CardTitle className="text-base font-semibold">Round timeline</CardTitle>
+          {hasConflicts && (
+            <Badge variant="destructive" className="gap-1 text-xs">
               <AlertTriangle className="h-3 w-3" />
-              {Object.values(validations).filter(v => v).length} conflict{Object.values(validations).filter(v => v).length > 1 ? 's' : ''}
+              {conflictCount} conflict{conflictCount > 1 ? 's' : ''}
             </Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent>
-        {/* Timeline Container */}
-        <div className="relative h-56 w-full overflow-x-auto pb-8">
-          
-          {/* Background Zones - with min-width for better visibility */}
-          <div className="absolute inset-0 flex px-24 min-w-[1400px]">
-            {/* Zone 1: Registration Open */}
-            <div 
-              className="relative bg-green-100/30 border-r border-green-300/50"
-              style={{ width: `${calculatePosition(-parameters.safetyWindowMinutes)}%` }}
-            >
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] text-green-700 font-medium leading-tight text-center">
-                Reg.<br/>open
+      <CardContent className="pt-0">
+        <div className="space-y-0">
+          {items.map((item, i) => {
+            if (item.type === 'notification') {
+              const n = item.notification;
+              const hasWarning = !!n.warning;
+              return (
+                <div key={n.id} className="flex gap-3 pb-2">
+                  {/* Diamond column */}
+                  <div className="w-7 flex-shrink-0 flex flex-col items-center">
+                    <div className={`w-3.5 h-3.5 rotate-45 border-2 mt-1.5 ${
+                      hasWarning ? 'border-red-400 bg-red-100' : 'border-blue-400 bg-blue-100'
+                    }`} />
+                    <div className="flex-1 w-px bg-border mt-1" />
+                  </div>
+                  {/* Content */}
+                  <div className={`flex-1 px-3 py-1.5 rounded-md text-xs border ${
+                    hasWarning
+                      ? 'bg-red-50 border-red-200 text-red-800'
+                      : 'bg-blue-50 border-blue-200 text-blue-800'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="font-mono font-medium">{n.time}</span>
+                      <span>{n.label}</span>
+                    </div>
+                    {hasWarning && (
+                      <div className="flex items-center gap-1 mt-1 text-red-700">
+                        <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                        <span>{n.warning}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            const step = item.step;
+            const isLast = i === items.length - 1;
+            const hasWarning = !!step.warning;
+
+            return (
+              <div key={step.id} className={`flex gap-3 ${isLast ? '' : 'pb-3'}`}>
+                {/* Circle column */}
+                <div className="w-7 flex-shrink-0 flex flex-col items-center">
+                  <div className={`${
+                    step.isEmphasized
+                      ? 'w-7 h-7 ring-3 ring-purple-200'
+                      : 'w-5 h-5 mt-0.5'
+                  } rounded-full ${step.bgColor} flex items-center justify-center text-white shadow-sm flex-shrink-0 ${
+                    hasWarning ? 'ring-2 ring-red-400' : ''
+                  }`}>
+                    {step.icon}
+                  </div>
+                  {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {step.time && (
+                      <span className={`text-xs font-mono px-1.5 py-0.5 rounded font-medium ${
+                        step.isEmphasized
+                          ? 'bg-purple-100 text-purple-800'
+                          : hasWarning
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {step.time}
+                      </span>
+                    )}
+                    <span className={`font-medium ${
+                      step.isEmphasized ? 'text-base text-purple-900' : 'text-sm'
+                    } ${hasWarning ? 'text-red-800' : ''}`}>
+                      {step.title}
+                    </span>
+                  </div>
+                  <p className={`text-xs mt-0.5 ${hasWarning ? 'text-red-600' : 'text-muted-foreground'}`}>
+                    {step.description}
+                  </p>
+                  {step.durationLabel && (
+                    <span className={`inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded ${
+                      step.isRelative
+                        ? 'bg-slate-100 text-slate-600'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {step.durationLabel}
+                    </span>
+                  )}
+                  {hasWarning && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 w-fit">
+                      <AlertTriangle className="h-3 w-3" />
+                      {step.warning}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-            
-            {/* Zone 2: Safety Window */}
-            <div 
-              className={`relative border-r ${
-                validations.safetyWindowConflict 
-                  ? 'bg-red-100/40 border-red-400' 
-                  : 'bg-orange-100/30 border-orange-300/50'
-              }`}
-              style={{ 
-                width: `${calculatePosition(-parameters.confirmationWindowMinutes) - calculatePosition(-parameters.safetyWindowMinutes)}%` 
-              }}
-            >
-              <div className={`absolute top-2 left-1/2 -translate-x-1/2 text-[10px] font-medium leading-tight text-center ${
-                validations.safetyWindowConflict ? 'text-red-700' : 'text-orange-700'
-              }`}>
-                Safety<br/>window
-              </div>
-            </div>
-            
-            {/* Zone 3: Confirmation Window */}
-            <div 
-              className="relative bg-yellow-100/40 border-r border-yellow-400/50"
-              style={{ 
-                width: `${calculatePosition(0) - calculatePosition(-parameters.confirmationWindowMinutes)}%` 
-              }}
-            >
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] text-yellow-800 font-medium flex flex-col items-center gap-0.5 leading-tight text-center">
-                <span className="animate-pulse">⏰</span>
-                <span>Confirm<br/>attend.</span>
-              </div>
-            </div>
-            
-            {/* Zone 4: Walking */}
-            <div 
-              className="relative bg-blue-100/30 border-r border-blue-300/50"
-              style={{ 
-                width: `${calculatePosition(parameters.walkingTimeMinutes) - calculatePosition(0)}%` 
-              }}
-            >
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] text-blue-700 font-medium leading-tight text-center">
-                Walking<br/>to point
-              </div>
-            </div>
-            
-            {/* Zone 5: Networking */}
-            <div 
-              className="relative bg-purple-100/30"
-              style={{ 
-                width: `${100 - calculatePosition(parameters.walkingTimeMinutes)}%` 
-              }}
-            >
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] text-purple-700 font-medium leading-tight text-center">
-                Networking<br/>session
-              </div>
-            </div>
-          </div>
-          
-          {/* Main Timeline Axis */}
-          <div className="absolute top-1/2 left-24 right-24 h-1 bg-border -translate-y-1/2 min-w-[calc(1400px-12rem)]" />
-          
-          {/* Time Points Container - positioned to align with zones */}
-          <div className="absolute inset-0 px-24 min-w-[1400px]">
-            <TooltipProvider>
-              
-              {/* Event Created / Registration Opens */}
-              <TimelinePoint
-                position={0}
-                icon={<Calendar className="h-4 w-4" />}
-                label="Event created"
-                color="bg-green-600"
-                tooltip="Registration opens. Participants can start registering for rounds."
-              />
-              
-              {/* Early Notification */}
-              {parameters.notificationEarlyEnabled && (
-                <TimelinePoint
-                  position={calculatePosition(-parameters.notificationEarlyMinutes)}
-                  icon={<Bell className="h-3 w-3" />}
-                  label={`T-${parameters.notificationEarlyMinutes}`}
-                  color={validations.earlyNotificationConflict ? "bg-red-600" : "bg-blue-600"}
-                  tooltip={`Early notification sent to registered participants (${parameters.notificationEarlyMinutes} minutes before round start)`}
-                  size="small"
-                  aboveAxis
-                  warning={validations.earlyNotificationConflict ? "Early notification must be sent BEFORE confirmation window starts!" : undefined}
-                />
-              )}
-              
-              {/* Safety Window Closes */}
-              <TimelinePoint
-                position={calculatePosition(-parameters.safetyWindowMinutes)}
-                icon={<Lock className="h-4 w-4" />}
-                label={`T-${parameters.safetyWindowMinutes}`}
-                color={validations.safetyWindowConflict ? "bg-red-600" : "bg-orange-600"}
-                tooltip="Registration closes. New participants cannot register. Ongoing registrations can still complete."
-                warning={validations.safetyWindowConflict ? "Safety window must close BEFORE or AT confirmation window start!" : undefined}
-              />
-              
-              {/* Late Notification */}
-              {parameters.notificationLateEnabled && (
-                <TimelinePoint
-                  position={calculatePosition(-parameters.notificationLateMinutes)}
-                  icon={<Bell className="h-3 w-3" />}
-                  label={`T-${parameters.notificationLateMinutes}`}
-                  color={validations.lateNotificationConflict || validations.lateNotificationTooEarly ? "bg-red-600" : "bg-amber-600"}
-                  tooltip={`Late reminder sent to registered participants (${parameters.notificationLateMinutes} minutes before round start)`}
-                  size="small"
-                  aboveAxis
-                  warning={
-                    validations.lateNotificationConflict 
-                      ? "Late notification must be sent BEFORE confirmation window starts (as a last reminder before participants need to confirm)!" 
-                      : validations.lateNotificationTooEarly
-                      ? "Late notification timing must be positive!"
-                      : undefined
-                  }
-                />
-              )}
-              
-              {/* Confirmation Window Starts */}
-              <TimelinePoint
-                position={calculatePosition(-parameters.confirmationWindowMinutes)}
-                icon={<CheckCircle className="h-4 w-4" />}
-                label={`T-${parameters.confirmationWindowMinutes}`}
-                color="bg-yellow-600"
-                tooltip="Confirmation window opens. Participants must confirm their attendance to be included in matching."
-              />
-              
-              {/* MATCHING (T-0) - EMPHASIZED */}
-              <TimelinePoint
-                position={calculatePosition(0)}
-                icon={<Users className="h-5 w-5" />}
-                label="T-0 MATCHING"
-                color="bg-purple-600"
-                tooltip="Round starts! Algorithm creates groups and reveals matches to participants."
-                size="large"
-                emphasized
-              />
-              
-              {/* Walking Period End */}
-              <TimelinePoint
-                position={calculatePosition(parameters.walkingTimeMinutes)}
-                icon={<MapPin className="h-4 w-4" />}
-                label={`+${parameters.walkingTimeMinutes}min`}
-                color="bg-blue-600"
-                tooltip={`Walking time ends. Participants should have reached their meeting point after ${parameters.walkingTimeMinutes} minutes.`}
-              />
-              
-              {/* Round Ends */}
-              <TimelinePoint
-                position={100}
-                icon={<Flag className="h-4 w-4" />}
-                label={`+${parameters.walkingTimeMinutes + parameters.defaultRoundDuration}min`}
-                color="bg-green-600"
-                tooltip="Round ends. Networking session complete."
-              />
-              
-            </TooltipProvider>
-            
-            {/* Validation Warnings Overlay */}
-            {validations.lateNotificationConflict && parameters.notificationLateEnabled && (
-              <div 
-                className="absolute top-1/2 h-12 border-2 border-red-500 bg-red-100/20 rounded -translate-y-1/2 pointer-events-none"
-                style={{
-                  left: `${calculatePosition(-parameters.notificationLateMinutes)}%`,
-                  width: `${calculatePosition(-parameters.confirmationWindowMinutes) - calculatePosition(-parameters.notificationLateMinutes)}%`
-                }}
-              />
-            )}
-            
-          </div>
-          
+            );
+          })}
         </div>
-        
-        {/* Legend */}
-        <div className="mt-6 pt-4 border-t space-y-3">
-          <div className="text-sm font-medium text-muted-foreground">Legend:</div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-600"></div>
-              <span>Event milestones</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-              <span>Notifications</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-orange-600"></div>
-              <span>Registration closes</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-yellow-600"></div>
-              <span>Confirmation phase</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-purple-600"></div>
-              <span>Matching & networking</span>
-            </div>
+
+        {/* Validation warnings (for conflicts not tied to a specific timeline step) */}
+        {validations.minimalTimeConflict && (
+          <div className="mt-3 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+            <span>
+              <strong>Min time to first round</strong> ({parameters.minimalTimeToFirstRound} min) must be ≥ registration close window ({parameters.safetyWindowMinutes} min)
+            </span>
           </div>
-          
-          {/* Validation Messages */}
-          {hasAnyValidationIssue && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-red-900">
-                <AlertTriangle className="h-4 w-4" />
-                Timeline conflicts detected:
-              </div>
-              <ul className="text-xs text-red-800 space-y-1 ml-6 list-disc">
-                {validations.lateNotificationConflict && (
-                  <li>Late notification (T-{parameters.notificationLateMinutes}) must be sent BEFORE confirmation window starts (as a last reminder before participants need to confirm)</li>
-                )}
-                {validations.earlyNotificationConflict && (
-                  <li>Early notification (T-{parameters.notificationEarlyMinutes}) must be sent BEFORE confirmation window starts (T-{parameters.confirmationWindowMinutes})</li>
-                )}
-                {validations.safetyWindowConflict && (
-                  <li>Safety window (T-{parameters.safetyWindowMinutes}) must close BEFORE or AT confirmation window start (T-{parameters.confirmationWindowMinutes})</li>
-                )}
-                {validations.lateNotificationTooEarly && (
-                  <li>Late notification timing cannot be zero or negative</li>
-                )}
-                {validations.minimalTimeConflict && (
-                  <li>Minimal time to first round ({parameters.minimalTimeToFirstRound}min) should be at least {parameters.safetyWindowMinutes}min to allow proper registration time</li>
-                )}
-              </ul>
-            </div>
-          )}
+        )}
+
+        {/* Summary */}
+        <div className="mt-4 pt-3 border-t text-xs text-muted-foreground">
+          Total: {totalBefore} min before matching + {totalAfter} min after = <span className="font-medium text-foreground">{totalBefore + totalAfter} min</span> round span
         </div>
-        
       </CardContent>
     </Card>
-  );
-}
-
-// TimelinePoint Component
-interface TimelinePointProps {
-  position: number; // Percentage 0-100
-  icon: React.ReactNode;
-  label: string;
-  color: string;
-  tooltip: string;
-  size?: 'small' | 'normal' | 'large';
-  aboveAxis?: boolean;
-  emphasized?: boolean;
-  warning?: string;
-}
-
-function TimelinePoint({ 
-  position, 
-  icon, 
-  label, 
-  color, 
-  tooltip, 
-  size = 'normal',
-  aboveAxis = false,
-  emphasized = false,
-  warning
-}: TimelinePointProps) {
-  const sizeClasses = {
-    small: 'w-6 h-6',
-    normal: 'w-8 h-8',
-    large: 'w-12 h-12'
-  };
-  
-  const labelSizeClasses = {
-    small: 'text-[10px]',
-    normal: 'text-xs',
-    large: 'text-sm font-semibold'
-  };
-  
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div 
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-help z-10"
-          style={{ left: `${position}%` }}
-        >
-          {/* Vertical line to axis */}
-          <div 
-            className={`absolute left-1/2 w-0.5 ${warning ? 'bg-red-400' : 'bg-border'} -translate-x-1/2`}
-            style={{
-              [aboveAxis ? 'bottom' : 'top']: '50%',
-              height: aboveAxis ? '40px' : '40px'
-            }}
-          />
-          
-          {/* Icon circle */}
-          <div 
-            className={`
-              ${sizeClasses[size]} 
-              ${color} 
-              ${warning ? 'ring-4 ring-red-400 animate-pulse' : ''}
-              ${emphasized ? 'ring-4 ring-purple-300 shadow-lg scale-110' : 'shadow-md'}
-              rounded-full flex items-center justify-center text-white
-              transition-all duration-200 hover:scale-110 hover:shadow-xl
-              relative
-            `}
-            style={{
-              [aboveAxis ? 'bottom' : 'top']: aboveAxis ? '45px' : '45px'
-            }}
-          >
-            {icon}
-            {warning && (
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-2.5 w-2.5 text-white" />
-              </div>
-            )}
-          </div>
-          
-          {/* Label */}
-          <div 
-            className={`
-              absolute left-1/2 -translate-x-1/2 whitespace-nowrap
-              ${labelSizeClasses[size]}
-              ${warning ? 'text-red-700 font-semibold' : 'text-muted-foreground'}
-              ${emphasized ? 'font-bold text-purple-900' : ''}
-            `}
-            style={{
-              [aboveAxis ? 'bottom' : 'top']: aboveAxis ? `${45 + parseInt(sizeClasses[size].split('-')[1]) * 4 + 4}px` : `${45 + parseInt(sizeClasses[size].split('-')[1]) * 4 + 4}px`
-            }}
-          >
-            {label}
-          </div>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent className={`max-w-xs ${warning ? 'bg-red-100 border-red-300' : ''}`}>
-        <p className={warning ? 'text-red-900 font-medium' : ''}>{tooltip}</p>
-        {warning && (
-          <p className="mt-1 text-xs text-red-700">⚠️ {warning}</p>
-        )}
-      </TooltipContent>
-    </Tooltip>
   );
 }

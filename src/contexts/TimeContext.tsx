@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 interface TimeContextType {
   getCurrentTime: () => Date;
@@ -56,13 +56,13 @@ export function TimeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const getCurrentTime = () => {
+  const getCurrentTime = useCallback(() => {
     if (simulatedOffset !== 0) {
       // Return real time + offset, so simulated time keeps running
       return new Date(new Date().getTime() + simulatedOffset);
     }
     return new Date();
-  };
+  }, [simulatedOffset]);
 
   return (
     <TimeContext.Provider value={{ getCurrentTime, setSimulatedTime, simulatedTime }}>

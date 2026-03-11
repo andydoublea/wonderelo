@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -45,6 +45,8 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
     email: '',
     password: ''
   });
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
   
   // Show quick test logins only on dev/staging (not production)
   const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -74,7 +76,8 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
       e.stopPropagation();
     }
     
-    if (!isFormValid()) return;
+    const currentForm = formDataRef.current;
+    if (!currentForm.email || !currentForm.password) return;
 
     setIsLoading(true);
     setError('');
@@ -83,8 +86,8 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
       // Use Supabase client directly for authentication
       const { supabase } = await import('../utils/supabase/client');
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+        email: currentForm.email,
+        password: currentForm.password,
       });
 
       if (signInError) {
@@ -565,7 +568,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            navigate('/p/test-token-alice');
+                            navigate('/p/tok-alice-001');
                           }}
                           className="text-xs w-full"
                         >
@@ -577,7 +580,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            navigate('/p/test-token-bob');
+                            navigate('/p/tok-bob-001');
                           }}
                           className="text-xs w-full"
                         >
@@ -698,19 +701,14 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
                     <p className="text-xs text-muted-foreground mb-2">Quick test login:</p>
                     <Button
                       variant="secondary"
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setFormData({
-                          email: 'andy.double.a+org@gmail.com',
-                          password: 'test123456'
-                        });
+                        const newData = { email: 'andy.double.a+org@gmail.com', password: 'Rukuku' };
+                        setFormData(newData);
+                        formDataRef.current = newData;
                         setError('');
-
-                        // Auto-submit after a short delay
-                        setTimeout(() => {
-                          handleSubmit();
-                        }, 100);
+                        handleSubmit();
                       }}
                       disabled={isLoading}
                       className="text-xs w-full"

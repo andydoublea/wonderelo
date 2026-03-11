@@ -338,6 +338,41 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     return () => clearInterval(interval);
   }, [sessions, registeredRoundsPerSession, getCurrentTime]);
 
+  // Force re-render when the nearest registration deadline passes
+  // This prevents stale "Register" buttons showing after registration closes
+  const [, setDeadlineTick] = useState(0);
+  useEffect(() => {
+    const now = getCurrentTime();
+    const params = getParametersOrDefault();
+    let nearestDeadlineMs = Infinity;
+
+    for (const session of sessions) {
+      if (!session.rounds || !session.date) continue;
+      for (const round of session.rounds) {
+        if (!round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') continue;
+        try {
+          const [hours, minutes] = round.startTime.split(':').map(Number);
+          const roundStart = new Date(round.date || session.date);
+          roundStart.setHours(hours, minutes, 0, 0);
+          const deadline = roundStart.getTime() - params.safetyWindowMinutes * 60 * 1000;
+          // Only consider future deadlines
+          if (deadline > now.getTime() && deadline < nearestDeadlineMs) {
+            nearestDeadlineMs = deadline;
+          }
+        } catch { /* skip invalid */ }
+      }
+    }
+
+    if (nearestDeadlineMs < Infinity) {
+      const msUntilDeadline = nearestDeadlineMs - now.getTime();
+      // Set a timeout to fire exactly when the deadline passes (+ 500ms buffer)
+      const timer = setTimeout(() => {
+        setDeadlineTick(t => t + 1);
+      }, msUntilDeadline + 500);
+      return () => clearTimeout(timer);
+    }
+  }, [sessions, getCurrentTime]);
+
   // Sort countries: detected country first, then alphabetically
   const sortedCountryCodes = [...COUNTRY_CODES].sort((a, b) => {
     if (a.code === detectedCountryCode) return -1;
@@ -1439,7 +1474,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
                     <h2 className="mb-3">{session.sessionName}</h2>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     {session.meetingPoints.map((point) => (
                       <Card key={point.id} className="overflow-hidden">
                         {point.imageUrl && (!point.type || point.type === 'physical') && (
@@ -2153,27 +2188,29 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
                               const isRoundSelected = sessionRounds.has(round.id);
                               
                               const roundSelectionData = roundSelections.get(round.id) || {};
-                              
-                              // Check if this is the first unregistered round in the session
-                              const isFirstUnregistered = !registeredRoundsPerSession.get(session.id)?.has(round.id) && 
-                                session.rounds.slice(0, roundIndex).every((r) => 
-                                  registeredRoundsPerSession.get(session.id)?.has(r.id) || false
-                                );
-                              
+
                               const isRegisteredRound = registeredRoundsPerSession.get(session.id)?.has(round.id) || false;
-                              
+
                               // Don't show rounds where participant has 'no-match' status
                               const participantStatus = isRegisteredRound ? participantStatusMap.get(round.id) : undefined;
                               if (participantStatus === 'no-match') {
                                 return null;
                               }
-                              
+
                               // Check if this is the globally next upcoming registered round
                               const roundKey = `${session.id}:${round.id}`;
                               const isNextUpcoming = roundKey === globalNextUpcomingRoundId;
-                              
+
                               // Check if round is still registerable
                               const canRegister = isRoundRegisterable(session, round);
+
+                              // Check if this is the first registerable round in the session
+                              // (show "Registration closes in" countdown for this round)
+                              const isFirstRegisterable = canRegister &&
+                                !isRegisteredRound &&
+                                session.rounds.slice(0, roundIndex).every((r) =>
+                                  !isRoundRegisterable(session, r) || registeredRoundsPerSession.get(session.id)?.has(r.id)
+                                );
                               
                               // Filter logic: Don't show non-registerable rounds unless they are:
                               // 1. Already registered for this round OR
@@ -2212,7 +2249,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
                                   onTeamSelect={handleTeamSelect}
                                   onTopicSelect={handleTopicSelect}
                                   onMultipleTopicsSelect={handleMultipleTopicsSelect}
-                                  showRegistrationClosesCountdown={isFirstUnregistered}
+                                  showRegistrationClosesCountdown={isFirstRegisterable}
                                   // Show unregister button and confirm attendance for registered rounds
                                   showUnregisterButton={isRegisteredRound && !!participantToken}
                                   onUnregister={() => handleUnregister(round.id, round.name)}

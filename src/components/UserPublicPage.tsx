@@ -677,21 +677,6 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
             </DialogContent>
           </Dialog>
 
-          <div className="mt-12 pt-8 border-t text-center">
-            <div className="text-sm text-muted-foreground">
-              <p>
-                Powered by{' '}
-                <a 
-                  href="https://wonderelo.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-medium hover:text-foreground transition-colors"
-                >
-                  Wonderelo
-                </a>
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -799,21 +784,6 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
             <Skeleton className="h-10 w-full" />
           </div>
 
-          <div className="mt-12 pt-8 border-t text-center">
-            <div className="text-sm text-muted-foreground">
-              <p>
-                Powered by{' '}
-                <a 
-                  href="https://wonderelo.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-medium hover:text-foreground transition-colors"
-                >
-                  Wonderelo
-                </a>
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -910,21 +880,6 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
           />
         </div>
 
-        <div className="mt-12 pt-8 border-t text-center">
-          <div className="text-sm text-muted-foreground">
-            <p>
-              Powered by{' '}
-              <a 
-                href="https://wonderelo.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="font-medium hover:text-foreground transition-colors"
-              >
-                Wonderelo
-              </a>
-            </p>
-          </div>
-        </div>
       </div>
 
       <Dialog open={magicLinkDialogOpen} onOpenChange={setMagicLinkDialogOpen}>
@@ -1032,7 +987,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
               </div>
               <div className="flex-1">
                 <p className="font-medium mb-1">Exchange contacts... or not</p>
-                <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().networkingDurationMinutes || 15} minutes after the meeting.</p>
+                <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().defaultRoundDuration || 10} minutes after the meeting.</p>
               </div>
             </div>
           </div>

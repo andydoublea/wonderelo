@@ -621,7 +621,7 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
     console.log('📋 Current registration status:', registration.status);
 
     // If already confirmed or later status, just return success (idempotent)
-    if (['confirmed', 'matched', 'completed'].includes(registration.status)) {
+    if (['confirmed', 'matched', 'checked-in', 'met'].includes(registration.status)) {
       console.log(`✅ Round already in status "${registration.status}", returning success (idempotent)`);
       return c.json({
         success: true,
@@ -631,7 +631,7 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
       });
     }
 
-    // Only 'registered' status can be confirmed (reject 'unconfirmed', 'no-match', etc.)
+    // Only 'registered' status can be confirmed (reject 'unconfirmed', 'no-match', 'missed', 'cancelled')
     if (registration.status !== 'registered') {
       console.log('❌ Cannot confirm - status not allowed:', registration.status);
       return c.json({
@@ -707,19 +707,8 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
       return c.json({ error: 'Registration not found' }, 404);
     }
 
-    // Allow confirmation if status is 'registered', 'confirmed', 'matched', or 'completed'
-    const allowedStatuses = ['registered', 'confirmed', 'matched', 'completed', 'unconfirmed'];
-    if (!allowedStatuses.includes(registration.status)) {
-      debugLog(`⚠️ Cannot confirm: current status is "${registration.status}" (allowed: ${allowedStatuses.join(', ')})`);
-      return c.json({
-        error: 'Cannot confirm',
-        message: `Round status is "${registration.status}". Only "registered" rounds can be confirmed.`,
-        currentStatus: registration.status
-      }, 400);
-    }
-
     // If already confirmed or later status, just return success (idempotent)
-    if (['confirmed', 'matched', 'completed'].includes(registration.status)) {
+    if (['confirmed', 'matched', 'checked-in', 'met'].includes(registration.status)) {
       debugLog(`✅ Round already in status "${registration.status}", returning success (idempotent)`);
       return c.json({
         success: true,
@@ -729,13 +718,39 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
       });
     }
 
+    // Only 'registered' status can be confirmed (reject terminal statuses)
+    if (registration.status !== 'registered') {
+      debugLog(`⚠️ Cannot confirm: current status is "${registration.status}"`);
+      return c.json({
+        error: 'Cannot confirm',
+        message: `Round status is "${registration.status}". Only "registered" rounds can be confirmed.`,
+        currentStatus: registration.status
+      }, 400);
+    }
+
+    // Validate confirmation window — reject if round already started
+    const session = await db.getSessionById(sessionId);
+    const round = session?.rounds?.find((r: any) => r.id === roundId);
+    if (round && session?.date && round.startTime) {
+      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const now = getCurrentTime(c);
+      if (now > roundStartTime) {
+        debugLog('❌ Confirmation window closed - round already started');
+        return c.json({
+          error: 'Confirmation window closed',
+          message: 'The round has already started. You can no longer confirm attendance.',
+          currentStatus: registration.status
+        }, 400);
+      }
+    }
+
     const now = new Date().toISOString();
 
     await db.updateRegistrationStatus(participantId, sessionId, roundId, 'confirmed', {
       confirmedAt: now,
     });
 
-    debugLog(`✅✅✅ VERIFICATION PASSED: Participant confirmed attendance for round ${roundId}`);
+    debugLog(`✅ Confirmed attendance for round ${roundId}`);
 
     return c.json({
       success: true,
@@ -748,6 +763,71 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
     errorLog('Error confirming attendance (via participantId):', error);
     return c.json({
       error: 'Failed to confirm attendance',
+      details: error instanceof Error ? error.message : String(error)
+    }, 500);
+  }
+});
+
+// Participant unregister/cancel from a round
+app.post('/make-server-ce05600a/p/:token/unregister/:roundId', async (c) => {
+  try {
+    const token = c.req.param('token');
+    const roundId = c.req.param('roundId');
+
+    // Get sessionId from query or body
+    let sessionId = c.req.query('sessionId');
+    if (!sessionId) {
+      try {
+        const body = await c.req.json();
+        sessionId = body.sessionId;
+      } catch {
+        // No body, that's fine if we got it from query
+      }
+    }
+
+    debugLog('🚫 UNREGISTER REQUEST', { token: token?.substring(0, 20) + '...', roundId, sessionId });
+
+    if (!sessionId) {
+      return c.json({ error: 'sessionId is required' }, 400);
+    }
+
+    const participant = await db.getParticipantByToken(token);
+    if (!participant) {
+      return c.json({ error: 'Invalid token' }, 404);
+    }
+
+    // Get specific registration
+    const registration = await db.getRegistration(participant.participantId, sessionId, roundId);
+
+    if (!registration) {
+      return c.json({ error: 'Registration not found' }, 404);
+    }
+
+    // Only allow cancellation from 'registered' or 'confirmed' (before matching)
+    const cancellableStatuses = ['registered', 'confirmed'];
+    if (!cancellableStatuses.includes(registration.status)) {
+      debugLog(`⚠️ Cannot cancel: current status is "${registration.status}"`);
+      return c.json({
+        error: 'Cannot unregister',
+        message: `Cannot unregister when status is "${registration.status}". You can only unregister before matching starts.`,
+        currentStatus: registration.status
+      }, 400);
+    }
+
+    await db.updateRegistrationStatus(participant.participantId, sessionId, roundId, 'cancelled');
+
+    debugLog(`✅ Participant cancelled registration for round ${roundId}`);
+
+    return c.json({
+      success: true,
+      status: 'cancelled',
+      message: 'Successfully unregistered from round'
+    });
+
+  } catch (error) {
+    errorLog('Error unregistering from round:', error);
+    return c.json({
+      error: 'Failed to unregister',
       details: error instanceof Error ? error.message : String(error)
     }, 500);
   }
@@ -939,7 +1019,8 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         safetyWindowMinutes: 6,
         walkingTimeMinutes: 3,
         findingTimeMinutes: 1,
-        networkingDurationMinutes: 15,
+        contactSharingDelayMinutes: 5,
+        timePickerIntervalMinutes: 5,
         notificationEarlyMinutes: 10,
         notificationEarlyEnabled: true,
         notificationLateMinutes: 5,
@@ -970,7 +1051,8 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
       safetyWindowMinutes: 6,
       walkingTimeMinutes: 3,
       findingTimeMinutes: 1,
-      networkingDurationMinutes: 15,
+      contactSharingDelayMinutes: 5,
+      timePickerIntervalMinutes: 5,
       notificationEarlyMinutes: 10,
       notificationEarlyEnabled: true,
       notificationLateMinutes: 5,

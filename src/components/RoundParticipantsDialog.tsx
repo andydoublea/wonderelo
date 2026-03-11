@@ -92,13 +92,13 @@ export function RoundParticipantsDialog({
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string; icon: any }> = {
       'registered': { variant: 'secondary', label: 'Registered', icon: Clock },
       'confirmed': { variant: 'default', label: 'Confirmed', icon: Check },
-      'unconfirmed': { variant: 'destructive', label: 'Unconfirmed', icon: X },
       'matched': { variant: 'default', label: 'Matched', icon: Users },
-      'walking-to-meeting-point': { variant: 'default', label: 'Walking', icon: MapPin },
-      'waiting-for-meet-confirmation': { variant: 'secondary', label: 'Waiting', icon: Clock },
       'checked-in': { variant: 'default', label: 'Checked in', icon: UserCheck },
       'met': { variant: 'default', label: 'Met', icon: Check },
-      'completed': { variant: 'outline', label: 'Completed', icon: Check },
+      'unconfirmed': { variant: 'destructive', label: 'Unconfirmed', icon: X },
+      'no-match': { variant: 'outline', label: 'No match', icon: AlertCircle },
+      'missed': { variant: 'destructive', label: 'Missed', icon: X },
+      'cancelled': { variant: 'destructive', label: 'Cancelled', icon: X },
     };
 
     const config = variants[status] || { variant: 'outline' as const, label: status, icon: AlertCircle };

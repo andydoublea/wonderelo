@@ -43,7 +43,7 @@ const blogPosts = [
 ];
 
 const trustedLogos = [
-  { src: '/logos/ecommercebridge.svg', alt: 'Ecommerce Bridge', style: { height: '32px', width: 'auto', filter: 'brightness(0)' } as React.CSSProperties },
+  { src: '/logos/ecommercebridge.svg', alt: 'Ecommerce Bridge', style: { height: '32px', width: 'auto' } as React.CSSProperties },
   { src: '/logos/upterdam-logo-dark.svg', alt: 'Upterdam', style: { height: '14px', width: 'auto' } as React.CSSProperties },
   { src: '/logos/bezcyklenia.png', alt: 'Bez Cyklenia', style: { height: '30px', width: 'auto' } as React.CSSProperties },
   { src: '/logos/Blancacademy.svg', alt: 'Blanc Academy', style: { height: '28px', width: 'auto' } as React.CSSProperties },
@@ -77,13 +77,13 @@ function TrustedLogosMobile({ logos }: { logos: typeof trustedLogos }) {
           return (
             <div
               key={groupIdx}
-              className="flex items-center justify-center opacity-70"
+              className="flex items-center justify-center"
               style={{
                 position: 'absolute',
                 inset: '0 1.5rem',
                 gap: '1.5rem',
                 transform: 'scale(0.85)',
-                opacity: groupIdx === activeIndex ? 0.7 : 0,
+                opacity: groupIdx === activeIndex ? 1 : 0,
                 transition: 'opacity 0.6s ease-in-out',
               }}
             >
@@ -279,11 +279,11 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
       <section className="relative px-6" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h1 className="mb-6 max-w-4xl mx-auto text-4xl">
-              <span style={{ color: '#5C2277' }}>{t('homepage.hero.title', 'Add value to your event with networking rounds!')}</span>
+            <h1 className="mb-6 mx-auto text-4xl" style={{ maxWidth: '580px' }}>
+              <span style={{ color: '#5C2277' }}>{t('homepage.hero.title', 'Enrich your event by making people really meet!')}</span>
             </h1>
             <p className="mb-12 max-w-2xl mx-auto text-muted-foreground">
-              {t('homepage.hero.subtitle', 'Easily turn networking from side effect into program highlight! Perfect for conferences, meet-ups, festivals, internal meetings and private events.')}
+              {t('homepage.hero.subtitle', 'Easily turn socializing from side effect into program highlight! Networking rounds perfect for conferences, meet-ups, festivals, internal meetings and private events.')}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -299,7 +299,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <div className="mx-auto mb-16" style={{ maxWidth: '600px', marginTop: '-20px' }}>
             <div className="rounded-lg overflow-hidden">
               <img
-                src="/Wonderelo-hero-section-dog.png"
+                src="/Wonderelo-hero-section-networking-rounds.svg"
                 alt="Wonderelo networking session"
                 className="w-full h-auto object-contain"
               />
@@ -309,15 +309,15 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-muted-foreground">
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">{t('homepage.hero.badge1', 'Five minute set up')}</span>
+              <span className="text-sm">{t('homepage.hero.badge1', 'Ready in five minutes')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 fill-current" />
+              <span className="text-sm">{t('homepage.hero.badge3', 'No attendee list needed')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Star className="h-4 w-4 fill-current" />
               <span className="text-sm">{t('homepage.hero.badge2', 'For events of every size')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm">{t('homepage.hero.badge3', 'No worry pricing')}</span>
             </div>
           </div>
 
@@ -330,7 +330,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           <p className="text-center text-sm text-muted-foreground mb-8 tracking-wide uppercase">
             {t('homepage.asSeenIn', 'As seen in')}
           </p>
-          <div className="grid grid-cols-3 gap-4 md:flex md:items-center md:justify-between md:gap-10 opacity-60 grayscale hover:opacity-80 hover:grayscale-0 transition-all duration-500">
+          <div className="grid grid-cols-3 gap-4 md:flex md:items-center md:justify-between md:gap-10">
             <img src="/logos/business-insider.svg" alt="Business Insider" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
             <img src="/logos/digital-journal.svg" alt="Digital Journal" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
             <img src="/logos/big-news-network.svg" alt="Big News Network" className="h-7 max-w-[130px] w-auto object-contain mx-auto md:mx-0" />
@@ -356,19 +356,19 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               <div style={{ width: '100px', height: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img src="/experience-schnitzel.png" alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               </div>
-              <span className="text-sm text-muted-foreground">Food-line bonding over schnitzel</span>
+              <span className="text-sm text-muted-foreground">Waiting for schnitzel, hoping to meet someone</span>
             </div>
             <div className="flex items-center gap-2 bg-background rounded-xl py-2 border border-border/40" style={{ paddingLeft: '40px', paddingRight: '16px' }}>
               <div style={{ width: '100px', height: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img src="/experience-wave.png" alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               </div>
-              <span className="text-sm text-muted-foreground">Brave "Hi…" to their seat neighbour</span>
+              <span className="text-sm text-muted-foreground">Meeting a stranger before the talk starts</span>
             </div>
             <div className="flex items-center gap-2 bg-background rounded-xl py-2 border border-border/40" style={{ paddingLeft: '40px', paddingRight: '16px' }}>
               <div style={{ width: '100px', height: '80px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img src="/experience-fingers.png" alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               </div>
-              <span className="text-sm text-muted-foreground">Hope for accidental hallway collisions</span>
+              <span className="text-sm text-muted-foreground">Bumping into someone in the hallway</span>
             </div>
           </div>
 
@@ -395,7 +395,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             {/* Step 1 - Event page promotion */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-responsive-80 items-center">
               <div className="rounded-2xl overflow-hidden border border-border/40 bg-muted/30" style={{ aspectRatio: '16/9' }}>
-                <img src="/how-it-works-1.png" alt="Event page promotion" className="w-full h-full object-cover" />
+                <img src="/Wonderelo-how-it-works-step1.svg" alt="Event page promotion" className="w-full h-full object-cover" />
               </div>
               <div>
                 <div className="mb-5">
@@ -755,7 +755,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             Trusted by event organizers at
           </p>
           {/* Desktop: show all logos in 2 rows */}
-          <div className="hidden md:grid opacity-70" style={{ gridTemplateColumns: 'repeat(6, auto)', justifyContent: 'center', justifyItems: 'center', alignItems: 'center', gap: '2rem 3rem' }}>
+          <div className="hidden md:grid" style={{ gridTemplateColumns: 'repeat(6, auto)', justifyContent: 'center', justifyItems: 'center', alignItems: 'center', gap: '2rem 3rem' }}>
             {trustedLogos.map((logo) => (
               <img key={logo.alt} src={logo.src} alt={logo.alt} style={logo.style} />
             ))}

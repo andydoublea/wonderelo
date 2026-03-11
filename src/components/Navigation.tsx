@@ -42,8 +42,8 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
             <h2
-              className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate('/')}
+              className="text-primary wonderelo-logo cursor-pointer"
+              onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/'); }}
             >
               Wonderelo
             </h2>

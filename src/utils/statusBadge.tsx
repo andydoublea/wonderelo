@@ -3,26 +3,24 @@ import { Badge } from '../components/ui/badge';
 /**
  * Centralized status badge configurations
  * Prevents duplication across components
+ *
+ * PARTICIPANT STATUSES (9 total, all DB-persisted):
+ * Forward:  registered → confirmed → matched → checked-in → met
+ * Terminal: unconfirmed, no-match, missed, cancelled
  */
 
-export type ParticipantStatus = 
-  | 'verification_pending'
+export type ParticipantStatus =
   | 'registered'
   | 'confirmed'
-  | 'unconfirmed'
-  | 'waiting-for-match'
   | 'matched'
-  | 'walking-to-meeting-point'
-  | 'waiting-for-meet-confirmation'
   | 'checked-in'
-  | 'cancelled'
   | 'met'
-  | 'missed'
-  | 'no-show'
+  | 'unconfirmed'
   | 'no-match'
-  | 'excluded';
+  | 'missed'
+  | 'cancelled';
 
-export type OrganizerStatus = 
+export type OrganizerStatus =
   | 'registered'
   | 'checked-in'
   | 'attended'
@@ -35,14 +33,9 @@ interface StatusBadgeConfig {
 }
 
 /**
- * Participant status badge configurations
+ * Participant status badge configurations (9 statuses)
  */
 const participantStatusConfigs: Record<ParticipantStatus, StatusBadgeConfig> = {
-  'verification_pending': {
-    label: 'verification pending',
-    variant: 'outline',
-    className: 'text-orange-600 border-orange-300'
-  },
   'registered': {
     label: 'registered',
     variant: 'secondary',
@@ -53,65 +46,40 @@ const participantStatusConfigs: Record<ParticipantStatus, StatusBadgeConfig> = {
     variant: 'default',
     className: 'bg-green-100 text-green-700 border-green-300'
   },
-  'unconfirmed': {
-    label: 'unconfirmed',
-    variant: 'outline',
-    className: 'text-yellow-700 border-yellow-300'
-  },
-  'waiting-for-match': {
-    label: 'waiting for match',
-    variant: 'default',
-    className: 'bg-purple-100 text-purple-700 border-purple-300'
-  },
   'matched': {
     label: 'matched',
     variant: 'default',
-    className: ''
-  },
-  'walking-to-meeting-point': {
-    label: 'walking to meeting point',
-    variant: 'default',
-    className: 'bg-indigo-100 text-indigo-700 border-indigo-300'
-  },
-  'waiting-for-meet-confirmation': {
-    label: 'waiting for meet confirmation',
-    variant: 'default',
-    className: 'bg-cyan-100 text-cyan-700 border-cyan-300'
+    className: 'bg-purple-100 text-purple-700 border-purple-300'
   },
   'checked-in': {
     label: 'checked in',
     variant: 'default',
-    className: ''
-  },
-  'cancelled': {
-    label: 'cancelled',
-    variant: 'destructive',
-    className: 'text-red-600'
+    className: 'bg-indigo-100 text-indigo-700 border-indigo-300'
   },
   'met': {
     label: 'met',
     variant: 'default',
     className: 'bg-blue-100 text-blue-700 border-blue-300'
   },
-  'missed': {
-    label: 'missed',
-    variant: 'destructive',
-    className: 'text-red-600'
-  },
-  'no-show': {
-    label: 'no-show',
-    variant: 'destructive',
-    className: ''
+  'unconfirmed': {
+    label: 'unconfirmed',
+    variant: 'outline',
+    className: 'text-yellow-700 border-yellow-300'
   },
   'no-match': {
     label: 'no match',
     variant: 'outline',
     className: 'text-gray-600 border-gray-300 bg-gray-50'
   },
-  'excluded': {
-    label: 'excluded',
+  'missed': {
+    label: 'missed',
     variant: 'outline',
-    className: ''
+    className: 'bg-red-100 text-red-800 border-red-200'
+  },
+  'cancelled': {
+    label: 'cancelled',
+    variant: 'destructive',
+    className: 'text-red-600 bg-red-50 border-red-200'
   }
 };
 
@@ -148,10 +116,10 @@ export function getParticipantStatusConfig(status?: string): StatusBadgeConfig {
   if (!status) {
     return participantStatusConfigs['registered'];
   }
-  
+
   return participantStatusConfigs[status as ParticipantStatus] || {
     label: status,
-    variant: 'outline',
+    variant: 'outline' as const,
     className: ''
   };
 }
@@ -162,7 +130,7 @@ export function getParticipantStatusConfig(status?: string): StatusBadgeConfig {
 export function getOrganizerStatusConfig(status: string): StatusBadgeConfig {
   return organizerStatusConfigs[status as OrganizerStatus] || {
     label: status,
-    variant: 'outline',
+    variant: 'outline' as const,
     className: ''
   };
 }

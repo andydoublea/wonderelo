@@ -28,7 +28,7 @@ interface Participant {
   email: string;
   phone?: string;
   registeredAt: string;
-  status: 'registered' | 'confirmed' | 'matched' | 'checked-in' | 'no-show' | 'excluded' | 'unconfirmed';
+  status: 'registered' | 'confirmed' | 'matched' | 'checked-in' | 'met' | 'unconfirmed' | 'no-match' | 'missed' | 'cancelled';
   teamId?: string;
   topicIds?: string[];
   confirmationSentAt?: string;
@@ -118,7 +118,7 @@ export function RoundParticipantsAdmin({
     confirmed: participants.filter(p => p.status === 'confirmed').length,
     matched: participants.filter(p => p.status === 'matched').length,
     checkedIn: participants.filter(p => p.status === 'checked-in').length,
-    noShow: participants.filter(p => p.status === 'no-show').length,
+    missed: participants.filter(p => p.status === 'missed').length,
   };
 
   if (isLoading) {
@@ -195,12 +195,12 @@ export function RoundParticipantsAdmin({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>No-show</CardDescription>
+            <CardDescription>Missed</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-red-600" />
-              <span className="text-2xl">{stats.noShow}</span>
+              <span className="text-2xl">{stats.missed}</span>
             </div>
           </CardContent>
         </Card>

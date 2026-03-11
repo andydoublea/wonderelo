@@ -15,7 +15,7 @@ interface RoundItemProps {
   isSelected?: boolean;
   isRegistered?: boolean; // If participant is already registered for this round
   isRegisterable?: boolean; // If round is still open for registration (more than safetyWindowMinutes before start)
-  participantStatus?: string; // Participant status: 'verification_pending' | 'registered' | 'confirmed' | etc.
+  participantStatus?: string; // Participant status: 'registered' | 'confirmed' | 'matched' | 'checked-in' | 'met' | etc.
   participantId?: string; // Participant ID (required for match data and confirmation)
   onSelect?: (roundId: string) => void;
   showTimeDisplay?: boolean;
@@ -40,6 +40,8 @@ interface RoundItemProps {
     identificationImageUrl?: string;
   };
   registeredCount?: number; // Number of registered participants for this round
+  showDuration?: boolean; // Show round duration next to name (participant dashboard only)
+  hasFreshData?: boolean; // Whether fresh data has been fetched from API (prevents confirm button flash from cached data)
 }
 
 export function RoundItem({ 
@@ -68,6 +70,8 @@ export function RoundItem({
   lastConfirmTimestamp,
   matchDetails,
   registeredCount,
+  showDuration = false,
+  hasFreshData = true,
 }: RoundItemProps) {
   
   // DEBUG: Log every render with all props
@@ -81,19 +85,38 @@ export function RoundItem({
   const { token } = useParams<{ token?: string }>();
   const navigate = useNavigate();
   
+  const { getCurrentTime } = useTime();
+
+  // Compute initial countdown phase from current time to prevent flash on first render
+  type CountdownPhase = 'before-confirmation' | 'confirmation-window' | 'matching' | 'walking' | 'networking' | 'completed';
+  const computeInitialPhase = (): CountdownPhase => {
+    if (!isRegistered || !session?.date || !round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') {
+      return 'before-confirmation';
+    }
+    if (participantStatus === 'unconfirmed') return 'before-confirmation';
+    try {
+      const now = getCurrentTime();
+      const [h, m] = round.startTime.split(':').map(Number);
+      const rs = new Date(round.date || session.date);
+      rs.setHours(h, m, 0, 0);
+      const params = getParametersOrDefault();
+      const confirmationStart = new Date(rs.getTime() - params.confirmationWindowMinutes * 60 * 1000);
+      if (now < confirmationStart) return 'before-confirmation';
+      if (now < rs) return 'confirmation-window';
+      return 'matching'; // After T-0, will be refined by effect
+    } catch { return 'before-confirmation'; }
+  };
+
   // Countdown timer for registered participants
   const [countdown, setCountdown] = useState<string>('');
-  const [countdownPhase, setCountdownPhase] = useState<'before-confirmation' | 'confirmation-window' | 'waiting-for-match' | 'walking-to-meeting' | 'networking' | 'completed'>('before-confirmation');
+  const [countdownPhase, setCountdownPhase] = useState<CountdownPhase>(computeInitialPhase);
   const [matchData, setMatchData] = useState<any>(null);
-  const [showConfirmButton, setShowConfirmButton] = useState<boolean>(false);
   const [confirmCountdown, setConfirmCountdown] = useState<number>(0);
   const [matchingDots, setMatchingDots] = useState<number>(0);
   const [registrationClosesCountdown, setRegistrationClosesCountdown] = useState<string>('');
-  
+
   // Local state to immediately hide confirm button when clicked (prevents flickering)
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
-  
-  const { getCurrentTime } = useTime();
   
   // Reset isConfirming when participantStatus changes to 'confirmed' or certain other final states
   // But NEVER reset during 'registered' status (participant might have confirmed but backend hasn't synced yet)
@@ -115,7 +138,7 @@ export function RoundItem({
   useEffect(() => {
     if (participantStatus === 'no-match' && token && isRegistered) {
       debugLog(`🔀 [RoundItem] Participant has 'no-match' status, redirecting to match page...`);
-      navigate(`/p/${token}/match`);
+      navigate(`/p/${token}/match-point`);
     }
   }, [participantStatus, token, isRegistered, navigate]);
   
@@ -142,7 +165,7 @@ export function RoundItem({
     
     // Otherwise, fetch from API
     if (!isRegistered || !participantId || !session?.date || !round.startTime) return;
-    if (participantStatus !== 'confirmed' && participantStatus !== 'waiting-for-match' && participantStatus !== 'matched' && participantStatus !== 'walking-to-meeting-point' && participantStatus !== 'waiting-for-meet-confirmation' && participantStatus !== 'met') return;
+    if (participantStatus !== 'confirmed' && participantStatus !== 'matched' && participantStatus !== 'checked-in' && participantStatus !== 'met') return;
 
     const fetchMatchData = async () => {
       try {
@@ -201,7 +224,6 @@ export function RoundItem({
       debugLog(`⛔ [RoundItem] Blocking countdown for UNCONFIRMED participant in round "${round.name}"`);
       setCountdown('');
       setCountdownPhase('before-confirmation');
-      setShowConfirmButton(false);
       return;
     }
 
@@ -246,20 +268,12 @@ export function RoundItem({
         } else {
           setCountdown(`Confirm in ${String(hoursLeft).padStart(2, '0')}:${String(minutesLeft).padStart(2, '0')}:${String(secondsLeft).padStart(2, '0')}`);
         }
-        setShowConfirmButton(false);
       } else if (now >= confirmationStart && now < matchingTime) {
         // Phase 2: Confirmation window (T-5 to T-0)
         setCountdownPhase('confirmation-window');
         const secondsLeft = Math.floor((matchingTime.getTime() - now.getTime()) / 1000);
         setConfirmCountdown(secondsLeft);
         
-        // Show confirm button ONLY if status is 'registered' (not confirmed yet) AND not currently confirming
-        // Status 'confirmed' means they already confirmed - don't show button
-        const shouldShowButton = participantStatus === 'registered' && !isConfirming;
-        
-        debugLog(`[CONFIRM_BUTTON] Round "${round.name}": participantStatus="${participantStatus}", isConfirming=${isConfirming}, shouldShowButton=${shouldShowButton}`);
-        
-        setShowConfirmButton(shouldShowButton);
         setCountdown('');
         
         // Trigger callback when confirmation window expires
@@ -276,8 +290,7 @@ export function RoundItem({
           debugLog(`⚠️ [RoundItem] Participant still "registered" after T-0, waiting for backend to update to "unconfirmed"...`);
           setCountdownPhase('before-confirmation');
           setCountdown('');
-          setShowConfirmButton(false);
-          
+
           // Trigger refetch if callback exists
           if (onConfirmationWindowExpired) {
             onConfirmationWindowExpired();
@@ -304,7 +317,7 @@ export function RoundItem({
             }
           } else if (match.matchRevealedAt) {
             // Phase 4: Walking to meeting point (walkingTimeMinutes after match revealed)
-            setCountdownPhase('walking-to-meeting');
+            setCountdownPhase('walking');
             const matchRevealed = new Date(match.matchRevealedAt);
             const walkingDeadline = new Date(matchRevealed.getTime() + params.walkingTimeMinutes * 60 * 1000);
             const diff = walkingDeadline.getTime() - now.getTime();
@@ -318,28 +331,26 @@ export function RoundItem({
             }
           } else {
             // Match exists but no matchRevealedAt yet
-            setCountdownPhase('waiting-for-match');
+            setCountdownPhase('matching');
             setCountdown('');
           }
         } else {
           // Phase 3: Waiting for match (matching in progress)
-          setCountdownPhase('waiting-for-match');
+          setCountdownPhase('matching');
           setCountdown('');
         }
-        
-        setShowConfirmButton(false);
       }
     };
-    
+
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
-    
+
     return () => clearInterval(interval);
   }, [isRegistered, session?.date, round.startTime, round.duration, getCurrentTime, participantStatus, matchData, onConfirmationWindowExpired, lastConfirmTimestamp]);
 
   // Animate matching dots
   useEffect(() => {
-    if (countdownPhase === 'waiting-for-match') {
+    if (countdownPhase === 'matching') {
       const interval = setInterval(() => {
         setMatchingDots((prev) => (prev + 1) % 4);
       }, 500);
@@ -348,11 +359,11 @@ export function RoundItem({
     }
   }, [countdownPhase]);
   
-  // Auto-trigger matching when entering waiting-for-match phase
+  // Auto-trigger matching when entering matching phase
   useEffect(() => {
     const organizerId = (session as any)?.organizerId || (session as any)?.userId;
     
-    if (countdownPhase === 'waiting-for-match' && !matchData && participantId && session?.id && round.id && organizerId) {
+    if (countdownPhase === 'matching' && !matchData && participantId && session?.id && round.id && organizerId) {
       // Only trigger once per round
       const triggerKey = `matching_triggered_${round.id}`;
       if (sessionStorage.getItem(triggerKey)) {
@@ -516,11 +527,9 @@ export function RoundItem({
         }}
       >
         <div className="flex items-center gap-2">
-          {isRegistered && !showUnregisterButton ? (
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground/40 fill-muted-foreground/10" />
-          ) : !showUnregisterButton && !isRegisterable ? (
+          {!showUnregisterButton && !isRegisterable ? (
             <div className="h-4 w-4 rounded-full bg-muted-foreground/20" />
-          ) : !showUnregisterButton ? (
+          ) : !showUnregisterButton && !isRegistered ? (
             <>
               {isSelected ? (
                 <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -575,81 +584,80 @@ export function RoundItem({
             <>
               {isRegistered ? (
                 <>
-                  {/* Show countdown/status based on phase */}
-                  {countdownPhase === 'before-confirmation' && countdown && (
+                  {/* Show countdown/status based on phase — hide for checked-in/met (already past confirmation) */}
+                  {countdownPhase === 'before-confirmation' && countdown && participantStatus !== 'checked-in' && participantStatus !== 'met' && (
                     <div className={`text-xs ${
                       isRegistered && !showUnregisterButton
                         ? 'text-muted-foreground/40'
-                        : isSelected 
-                        ? 'text-primary/70' 
+                        : isSelected
+                        ? 'text-primary/70'
                         : 'text-muted-foreground'
                     }`}>
                       {countdown}
                     </div>
                   )}
-                  
+
                   {/* Emergency fallback - if countdown phase is before-confirmation but countdown is empty */}
-                  {countdownPhase === 'before-confirmation' && !countdown && (
+                  {countdownPhase === 'before-confirmation' && !countdown && participantStatus !== 'checked-in' && participantStatus !== 'met' && (
                     <div className="text-xs text-muted-foreground">
                       {round.startTime || 'Pending'}
                     </div>
                   )}
                   
-                  {countdownPhase === 'confirmation-window' && (
-                    <>
-                      {(() => {
-                        // Check if there was a recent confirm action (within last 20 seconds)
-                        const timeSinceLastConfirm = lastConfirmTimestamp ? Date.now() - lastConfirmTimestamp : Infinity;
-                        const hasRecentConfirm = timeSinceLastConfirm < 20000;
-                        
-                        const shouldShowButton = showConfirmButton && !isConfirming && !hasRecentConfirm && participantStatus !== 'confirmed';
-                        debugLog(`[BUTTON_DECISION] "${round.name}"`, {
-                          participantStatus,
-                          isConfirming,
-                          showConfirmButton,
-                          hasRecentConfirm,
-                          timeSinceLastConfirm: timeSinceLastConfirm === Infinity ? 'never' : `${Math.round(timeSinceLastConfirm/1000)}s ago`,
-                          willShow: shouldShowButton ? 'BUTTON' : 'COUNTDOWN'
-                        });
-                        
-                        return participantStatus === 'confirmed' || isConfirming || hasRecentConfirm ? (
-                          <div className="text-xs text-muted-foreground">
-                            Matching starts in {String(Math.floor(confirmCountdown / 60)).padStart(2, '0')}:{String(confirmCountdown % 60).padStart(2, '0')}
-                          </div>
-                        ) : showConfirmButton && !isConfirming && (
-                          <button
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isConfirming}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              
-                              // Prevent double-click
-                              if (isConfirming) {
-                                debugLog(`⚠️ [RoundItem] Double-click prevented for round "${round.name}"`);
-                                return;
-                              }
-                              
-                              debugLog(`[BUTTON_CLICKED] "${round.name}" - Setting isConfirming=true`);
-                              setIsConfirming(true); // Immediately hide button
-                              onConfirmAttendance?.(round.id);
-                            }}
-                          >
-                            Confirm attendance ({String(Math.floor(confirmCountdown / 60)).padStart(2, '0')}:{String(confirmCountdown % 60).padStart(2, '0')})
-                          </button>
-                        );
-                      })()}
-                    </>
-                  )}
+                  {countdownPhase === 'confirmation-window' && (() => {
+                    // GUARD: verify we're ACTUALLY in the confirmation window right now
+                    // This prevents flash when countdownPhase state is stale (e.g. between prop change and effect re-run)
+                    try {
+                      const now = getCurrentTime();
+                      const [ch, cm] = round.startTime.split(':').map(Number);
+                      const crs = new Date(round.date || session?.date || '');
+                      crs.setHours(ch, cm, 0, 0);
+                      const cParams = getParametersOrDefault();
+                      const cStart = new Date(crs.getTime() - cParams.confirmationWindowMinutes * 60 * 1000);
+                      if (now < cStart || now >= crs) {
+                        return null; // Not actually in confirmation window — state is stale
+                      }
+                    } catch {
+                      return null;
+                    }
+
+                    // Compute button visibility directly — no intermediate state
+                    // Don't show confirm button when using cached data (prevents flash on dashboard load)
+                    if (!hasFreshData) return null;
+                    const timeSinceLastConfirm = lastConfirmTimestamp ? Date.now() - lastConfirmTimestamp : Infinity;
+                    const hasRecentConfirm = timeSinceLastConfirm < 20000;
+                    const shouldShowButton = participantStatus === 'registered' && !isConfirming && !hasRecentConfirm;
+
+                    return shouldShowButton ? (
+                      <button
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isConfirming}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isConfirming) return;
+                          debugLog(`[BUTTON_CLICKED] "${round.name}" - Setting isConfirming=true`);
+                          setIsConfirming(true);
+                          onConfirmAttendance?.(round.id);
+                        }}
+                      >
+                        Confirm attendance ({String(Math.floor(confirmCountdown / 60)).padStart(2, '0')}:{String(confirmCountdown % 60).padStart(2, '0')})
+                      </button>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        Matching starts in {String(Math.floor(confirmCountdown / 60)).padStart(2, '0')}:{String(confirmCountdown % 60).padStart(2, '0')}
+                      </div>
+                    );
+                  })()}
                   
                   {/* For other rounds, show nothing in before-confirmation or confirmation-window phase */}
                   
-                  {countdownPhase === 'waiting-for-match' && (
+                  {countdownPhase === 'matching' && (
                     <div className="text-xs text-muted-foreground">
                       Matching{'.'.repeat(matchingDots)}
                     </div>
                   )}
                   
-                  {countdownPhase === 'walking-to-meeting' && countdown && (
+                  {countdownPhase === 'walking' && countdown && participantStatus !== 'checked-in' && participantStatus !== 'met' && (
                     <div className="text-xs text-blue-600">
                       {countdown}
                     </div>
@@ -695,40 +703,68 @@ export function RoundItem({
               <XCircle className="h-4 w-4 text-destructive" />
             </button>
           )}
-          {/* Show "View match" button when participant is matched */}
-          {isRegistered && participantStatus === 'matched' && token && (
+          {/* Navigation buttons based on participant status */}
+          {isRegistered && token && participantStatus === 'matched' && (
             <Button
               size="sm"
               variant="outline"
               onClick={(e) => {
                 e.stopPropagation();
-                window.location.href = `/p/${token}/match`;
+                window.location.href = `/p/${token}/match-point`;
+              }}
+              className="text-xs px-2 py-1 h-auto"
+            >
+              <MapPin className="h-3 w-3 mr-1" />
+              Go to meeting point
+            </Button>
+          )}
+          {isRegistered && token && participantStatus === 'checked-in' && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `/p/${token}/match-partner`;
               }}
               className="text-xs px-2 py-1 h-auto"
             >
               <Users className="h-3 w-3 mr-1" />
-              Show your match
+              Find your partner
+            </Button>
+          )}
+          {isRegistered && token && participantStatus === 'met' && countdownPhase !== 'completed' && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `/p/${token}/networking`;
+              }}
+              className="text-xs px-2 py-1 h-auto"
+            >
+              <Users className="h-3 w-3 mr-1" />
+              Back to networking
             </Button>
           )}
         </div>
       </div>
 
-      {/* Match information - shown when matched or later */}
-      {isRegistered && matchData?.match && (participantStatus === 'matched' || participantStatus === 'walking-to-meeting-point' || participantStatus === 'waiting-for-meet-confirmation' || participantStatus === 'met' || countdownPhase === 'walking-to-meeting' || countdownPhase === 'networking') && (
+      {/* Match information - shown only for matched status (meeting point info) */}
+      {isRegistered && matchData?.match && participantStatus === 'matched' && (
         <div className="px-2 pb-2 pt-2 border-t border-muted-foreground/10 space-y-3">
           {/* Identification Image */}
           {matchData.match.identificationImageUrl && (
             <div className="space-y-1">
               <div className="text-xs text-muted-foreground">Your group's identification image:</div>
-              <img 
-                src={matchData.match.identificationImageUrl} 
-                alt="Group identification" 
+              <img
+                src={matchData.match.identificationImageUrl}
+                alt="Group identification"
                 className="w-full h-32 object-cover rounded-md border border-border"
               />
               <div className="text-xs text-muted-foreground italic">Show this image to help your match find you</div>
             </div>
           )}
-          
+
           <div className="text-xs space-y-1">
             {matchData.match.meetingPoint && (
               <div className="flex items-center gap-1">
@@ -749,55 +785,6 @@ export function RoundItem({
               </div>
             )}
           </div>
-          
-          {countdownPhase === 'walking-to-meeting' && !matchData.match.meetConfirmedAt && (
-            <Button
-              size="sm"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={async (e) => {
-                e.stopPropagation();
-                try {
-                  const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
-                  const response = await fetch(
-                    `${apiBaseUrl}/rounds/${round.id}/confirm-meet`,
-                    {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${publicAnonKey}`,
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        participantId,
-                        sessionId: session?.id,
-                      }),
-                    }
-                  );
-                  
-                  if (response.ok) {
-                    const { toast } = await import('sonner@2.0.3');
-                    toast.success('Meeting confirmed! Enjoy your networking.');
-                    // Refetch match data
-                    const matchResponse = await fetch(
-                      `${apiBaseUrl}/rounds/${round.id}/participant/${participantId}/match`,
-                      {
-                        headers: {
-                          'Authorization': `Bearer ${publicAnonKey}`,
-                        },
-                      }
-                    );
-                    if (matchResponse.ok) {
-                      const data = await matchResponse.json();
-                      setMatchData(data);
-                    }
-                  }
-                } catch (error) {
-                  errorLog('Error confirming meet:', error);
-                }
-              }}
-            >
-              We met
-            </Button>
-          )}
         </div>
       )}
       

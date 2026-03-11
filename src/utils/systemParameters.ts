@@ -20,8 +20,11 @@ export interface SystemParameters {
   // Finding time
   findingTimeMinutes: number;
 
-  // Networking duration (shown in "How it works" text)
-  networkingDurationMinutes: number;
+  // Contact sharing delay (minutes after networking starts before contacts are revealed)
+  contactSharingDelayMinutes: number;
+
+  // Time picker interval (minutes between selectable times)
+  timePickerIntervalMinutes: number;
 
   // Popularity indicators (🔥 thresholds)
   fireThreshold1: number;
@@ -60,7 +63,10 @@ const DEFAULT_PARAMETERS: SystemParameters = {
 
   findingTimeMinutes: 1,
 
-  networkingDurationMinutes: 15,
+
+  contactSharingDelayMinutes: 5,
+
+  timePickerIntervalMinutes: 5,
 
   fireThreshold1: 5,
   fireThreshold2: 10,

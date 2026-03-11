@@ -275,10 +275,10 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                           </ul>
                         </li>
                         <li><strong>Assign meeting points:</strong> Randomly assigns meeting point to each group</li>
-                        <li><strong>Update statuses to waiting-for-match:</strong>
+                        <li><strong>Update statuses to matched:</strong>
                           <ul className="ml-6 mt-1 space-y-1 list-disc list-inside">
-                            <li>All matched participants get status <Badge variant="outline" className="ml-1">waiting-for-match</Badge></li>
-                            <li>Saves to both database keys with matchData (partner, meeting point)</li>
+                            <li>All matched participants get status <Badge variant="outline" className="ml-1">matched</Badge></li>
+                            <li>Saves match data to database (partner, meeting point)</li>
                           </ul>
                         </li>
                         <li><strong>Mark matching complete:</strong>
@@ -293,13 +293,12 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                     <div>
                       <h3 className="text-sm font-medium mb-2">What participant sees (after matching):</h3>
                       <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Initially: Badge shows <Badge variant="outline" className="ml-1">Waiting for match</Badge></li>
-                        <li>After auto-refetch (within 60s or sooner if tab visible):
+                        <li>After matching (within 60s poll or sooner):
                           <ul className="ml-6 mt-1 space-y-1 list-disc list-inside">
-                            <li>Status → <Badge className="ml-1 bg-green-500">Matched</Badge></li>
+                            <li>Status → <Badge className="ml-1 bg-purple-500">Matched</Badge></li>
                             <li>Shows partner info (name, team, topic)</li>
-                            <li>Shows meeting point</li>
-                            <li>Shows button <Badge className="ml-1 bg-orange-500">I'm on my way</Badge></li>
+                            <li>Shows meeting point and identification image</li>
+                            <li>Navigate to meeting point page</li>
                           </ul>
                         </li>
                       </ul>
@@ -324,15 +323,16 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                     <div>
                       <h3 className="text-sm font-medium mb-2">What participant does:</h3>
                       <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Clicks "I'm on my way"</li>
+                        <li>Walks to the assigned meeting point</li>
+                        <li>This is a UI phase only — DB status stays <Badge variant="outline" className="ml-1">matched</Badge></li>
                       </ul>
                     </div>
 
                     <div>
                       <h3 className="text-sm font-medium mb-2">System changes:</h3>
                       <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Status → <Badge variant="outline" className="ml-1">walking-to-meeting-point</Badge></li>
-                        <li>Badge → <Badge className="ml-1 bg-orange-500">Walking to meeting point</Badge></li>
+                        <li>No DB status change (stays 'matched')</li>
+                        <li>If participant doesn't check in by matchedAt + walkingTimeMinutes → auto 'missed'</li>
                       </ul>
                     </div>
                   </div>
@@ -363,16 +363,16 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                     <div>
                       <h3 className="text-sm font-medium mb-2">System changes:</h3>
                       <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Status → <Badge variant="outline" className="ml-1">waiting-for-meet-confirmation</Badge></li>
-                        <li>Badge → <Badge variant="outline" className="ml-1">Waiting for meet confirmation</Badge></li>
-                        <li>Shows: "Waiting for your partner to check in..."</li>
+                        <li>Status → <Badge className="ml-1 bg-indigo-100 text-indigo-700">checked-in</Badge></li>
+                        <li>Badge → <Badge className="ml-1 bg-indigo-100 text-indigo-700">Checked in</Badge></li>
+                        <li>Shows: "Waiting for your partner..."</li>
                       </ul>
                     </div>
 
                     <div>
                       <h3 className="text-sm font-medium mb-2">When partner also checks in:</h3>
                       <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Both participants see button <Badge className="ml-1 bg-green-500">Confirm meeting</Badge></li>
+                        <li>Both participants see partner confirmation</li>
                       </ul>
                     </div>
                   </div>
@@ -429,9 +429,9 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                     <div>
                       <h3 className="text-sm font-medium mb-2">Automatic system changes:</h3>
                       <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>When <code className="text-xs bg-muted px-1 py-0.5 rounded">startTime + duration</code> minutes passes</li>
-                        <li>All participants (except unconfirmed) → status <Badge variant="secondary" className="ml-1">completed</Badge></li>
-                        <li>Badge → <Badge variant="secondary" className="ml-1">Completed</Badge></li>
+                        <li>When round end time passes (T-0 + walkingTime + findingTime + duration)</li>
+                        <li>Status is NOT changed — participant keeps their last active status (e.g. 'met', 'checked-in')</li>
+                        <li><code className="text-xs bg-muted px-1 py-0.5 rounded">round_completed_at</code> timestamp is set</li>
                         <li>Round moves to "Completed rounds" section</li>
                       </ul>
                     </div>
@@ -460,10 +460,11 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                   <h3 className="text-sm font-medium mb-2">Backend:</h3>
                   <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Real-time status updates on every dashboard fetch</li>
-                    <li>Checks:
+                    <li>Auto-detection checks:
                       <ul className="ml-6 mt-1 space-y-1 list-disc list-inside">
                         <li><code className="text-xs bg-muted px-1 py-0.5 rounded">now &gt;= roundStart && status === 'registered' → unconfirmed</code></li>
-                        <li><code className="text-xs bg-muted px-1 py-0.5 rounded">now &gt;= roundEnd → completed</code></li>
+                        <li><code className="text-xs bg-muted px-1 py-0.5 rounded">now &gt;= matchedAt + walkingTime && status === 'matched' → missed</code></li>
+                        <li><code className="text-xs bg-muted px-1 py-0.5 rounded">now &gt;= roundEnd → set round_completed_at (keep status)</code></li>
                       </ul>
                     </li>
                   </ul>
@@ -488,54 +489,49 @@ export function AdminParticipantFlow({ onBack }: AdminParticipantFlowProps) {
                   </thead>
                   <tbody className="divide-y">
                     <tr>
-                      <td className="py-2 pr-4"><Badge variant="outline">registered</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After registration, before T-5</td>
-                      <td className="py-2 text-muted-foreground">Blue "Registered" badge, "×" unregister button</td>
+                      <td className="py-2 pr-4"><Badge variant="secondary" className="text-muted-foreground/60">registered</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">After registration</td>
+                      <td className="py-2 text-muted-foreground">"Registered" badge, unregister button</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge variant="outline">waiting-for-attendance-confirmation</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">T-5 to T-0</td>
-                      <td className="py-2 text-muted-foreground">Blue "Registered" badge, green "Confirm attendance" button</td>
+                      <td className="py-2 pr-4"><Badge className="bg-green-100 text-green-700 border-green-300">confirmed</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">After clicking "Confirm attendance"</td>
+                      <td className="py-2 text-muted-foreground">"Confirmed" badge</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge className="bg-green-500">confirmed</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After clicking "Confirm"</td>
-                      <td className="py-2 text-muted-foreground">Green "Confirmed" badge</td>
+                      <td className="py-2 pr-4"><Badge className="bg-purple-100 text-purple-700 border-purple-300">matched</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">After matching algorithm at T-0</td>
+                      <td className="py-2 text-muted-foreground">"Matched" + partner info + meeting point</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge variant="secondary">unconfirmed</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">If didn't confirm by T-0</td>
-                      <td className="py-2 text-muted-foreground">Gray "Unconfirmed" (not matched)</td>
+                      <td className="py-2 pr-4"><Badge className="bg-indigo-100 text-indigo-700 border-indigo-300">checked-in</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">After "I am here" at meeting point</td>
+                      <td className="py-2 text-muted-foreground">"Checked in" badge</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge variant="outline">waiting-for-match</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After matching starts (T-0)</td>
-                      <td className="py-2 text-muted-foreground">Blue "Waiting for match"</td>
+                      <td className="py-2 pr-4"><Badge className="bg-blue-100 text-blue-700 border-blue-300">met</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">After confirming partner found</td>
+                      <td className="py-2 text-muted-foreground">"Met" badge + networking countdown</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge className="bg-green-500">matched</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After matching completes</td>
-                      <td className="py-2 text-muted-foreground">Green "Matched" + partner info + meeting point</td>
+                      <td className="py-2 pr-4"><Badge variant="outline" className="text-yellow-700 border-yellow-300">unconfirmed</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">T-0 passed without confirming</td>
+                      <td className="py-2 text-muted-foreground">"Unconfirmed" (terminal)</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge className="bg-orange-500">walking-to-meeting-point</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After "I'm on my way"</td>
-                      <td className="py-2 text-muted-foreground">Orange "Walking to meeting point"</td>
+                      <td className="py-2 pr-4"><Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">no-match</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">No compatible group found</td>
+                      <td className="py-2 text-muted-foreground">"No match" (terminal)</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge variant="outline">waiting-for-meet-confirmation</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After check-in</td>
-                      <td className="py-2 text-muted-foreground">"Waiting for meet confirmation"</td>
+                      <td className="py-2 pr-4"><Badge variant="destructive">missed</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">Walking deadline expired, no check-in</td>
+                      <td className="py-2 text-muted-foreground">"Missed" (terminal)</td>
                     </tr>
                     <tr>
-                      <td className="py-2 pr-4"><Badge className="bg-green-500">met</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After "Confirm meeting"</td>
-                      <td className="py-2 text-muted-foreground">Green "Met"</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 pr-4"><Badge variant="secondary">completed</Badge></td>
-                      <td className="py-2 pr-4 text-muted-foreground">After round duration passes</td>
-                      <td className="py-2 text-muted-foreground">Gray "Completed"</td>
+                      <td className="py-2 pr-4"><Badge variant="destructive" className="bg-red-50 text-red-600">cancelled</Badge></td>
+                      <td className="py-2 pr-4 text-muted-foreground">User cancelled (from registered/confirmed)</td>
+                      <td className="py-2 text-muted-foreground">"Cancelled" (terminal)</td>
                     </tr>
                   </tbody>
                 </table>

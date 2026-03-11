@@ -1,6 +1,6 @@
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { Calendar, Clock, Users, CheckCircle, XCircle, UserPlus, UserX, UserMinus, Handshake, Minus, AlertCircle, Settings } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, UserPlus, UserX, Handshake, Minus, AlertCircle, Settings, MapPin, Search, MessageCircle } from 'lucide-react';
 
 export function AdminStatusesGuide() {
   return (
@@ -8,9 +8,11 @@ export function AdminStatusesGuide() {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-gray-900 mb-2">Statuses and flags guide</h1>
+          <h1 className="text-gray-900 mb-2">Statuses guide</h1>
           <p className="text-gray-600">
-            Complete reference for all statuses and dynamic flags in the Wonderelo system
+            Complete reference for all statuses in the Wonderelo system.
+            Session statuses and participant statuses are stored in the database.
+            Round statuses are computed dynamically based on time.
           </p>
         </div>
 
@@ -18,9 +20,9 @@ export function AdminStatusesGuide() {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-6">
             <Calendar className="w-6 h-6 text-blue-600" />
-            <h2 className="text-gray-900">Session statuses</h2>
+            <h2 className="text-gray-900">Session statuses (4, DB-stored)</h2>
           </div>
-          
+
           <div className="space-y-4">
             <StatusItem
               badge={<Badge variant="secondary">Draft</Badge>}
@@ -32,7 +34,7 @@ export function AdminStatusesGuide() {
                 "Can be scheduled or published"
               ]}
             />
-            
+
             <StatusItem
               badge={<Badge variant="outline" className="border-blue-500 text-blue-700">Scheduled</Badge>}
               title="Scheduled"
@@ -43,7 +45,7 @@ export function AdminStatusesGuide() {
                 "Can be rescheduled, published immediately, duplicated, or deleted"
               ]}
             />
-            
+
             <StatusItem
               badge={<Badge className="bg-green-600">Published</Badge>}
               title="Published"
@@ -51,57 +53,18 @@ export function AdminStatusesGuide() {
               details={[
                 "Visible on event page",
                 "Participants can register for rounds",
-                "Will automatically change to 'completed' when endTime is reached",
-                "Can be updated, managed, completed, duplicated, or deleted"
+                "Will automatically change to 'completed' when all rounds end"
               ]}
             />
-            
+
             <StatusItem
               badge={<Badge variant="secondary">Completed</Badge>}
               title="Completed"
-              description="Session has ended"
+              description="All rounds have ended"
               details={[
-                "Not visible on event page",
+                "Auto-set when all rounds pass their end time",
                 "Can view results and statistics",
                 "Can be duplicated or deleted"
-              ]}
-            />
-          </div>
-        </Card>
-
-        {/* Session Flags */}
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <AlertCircle className="w-6 h-6 text-purple-600" />
-            <h2 className="text-gray-900">Session flags (dynamic)</h2>
-          </div>
-          
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-            <p className="text-purple-900 text-sm">
-              These are NOT statuses - they are computed on-the-fly based on current time and round times
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <StatusItem
-              badge={<Badge className="bg-green-600">Running</Badge>}
-              title="hasRunningRounds()"
-              description="At least one round is currently in progress"
-              details={[
-                "Calculated: current time is between round startTime and endTime",
-                "Displayed as green badge next to session status",
-                "Does not affect session visibility or registration"
-              ]}
-            />
-            
-            <StatusItem
-              badge={<Badge className="bg-blue-600">Registration open</Badge>}
-              title="hasUpcomingRounds()"
-              description="At least one round is still accepting registrations"
-              details={[
-                "Calculated: at least one round starts more than safetyWindowMinutes in the future",
-                "Used to determine if session should be visible on event page",
-                "Registration closes safetyWindowMinutes before round start (configurable in Parameters)"
               ]}
             />
           </div>
@@ -111,116 +74,115 @@ export function AdminStatusesGuide() {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-6">
             <Clock className="w-6 h-6 text-orange-600" />
-            <h2 className="text-gray-900">Round statuses</h2>
+            <h2 className="text-gray-900">Round statuses (8, computed — NOT stored in DB)</h2>
           </div>
 
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
             <p className="text-orange-900 text-sm">
-              Round status is calculated based on parent session status and current time
+              Round status is calculated dynamically by <code>getRoundStatus()</code> based on session status,
+              current time, and system parameters. It is never written to the database.
             </p>
           </div>
-          
+
           <div className="space-y-4">
             <StatusItem
               badge={<Badge variant="secondary">Draft</Badge>}
               title="Draft"
-              description="Parent session is not yet published"
+              description="Parent session is not yet published, or round is missing date/time"
               details={[
                 "Round exists but is not accessible to public",
                 "Changes to 'scheduled' when session is published or scheduled"
               ]}
             />
-            
+
             <StatusItem
               badge={<Badge variant="outline" className="border-blue-500 text-blue-700">Scheduled</Badge>}
               title="Scheduled"
-              description="Session is published but round registration not yet open"
+              description="Session is published but round registration hasn't opened yet"
               details={[
-                "Session is published but this specific round hasn't opened for registration yet",
-                "Changes to 'open-to-registration' when appropriate time comes"
+                "Session is published or scheduled",
+                "Changes to 'registration-open' when appropriate time comes"
               ]}
             />
-            
+
             <StatusItem
-              badge={<Badge className="bg-green-600">Open to registration</Badge>}
-              title="Open to registration"
+              badge={<Badge className="bg-green-600">Registration open</Badge>}
+              title="Registration open"
               description="Participants can register for this round"
               details={[
-                "Time period: from registration opening until T-6 minutes before start",
-                "Participants can join during this time on event page",
-                "Changes to 'registration-safety-window' at T-6 minutes"
+                "Time: from session publication until T-safetyWindowMinutes",
+                "Participants can join during this window on event page",
+                "Changes to 'confirmation-window' at T-safetyWindowMinutes"
               ]}
             />
-            
+
             <StatusItem
-              badge={<Badge className="bg-blue-500">Registration safety window</Badge>}
-              title="Registration safety window"
-              description="Grace period for completing ongoing registrations"
+              badge={<Badge className="bg-yellow-600">Confirmation window</Badge>}
+              title="Confirmation window"
+              description="No new registrations; participants must confirm attendance"
               details={[
-                "Time period: T-safetyWindowMinutes to T-confirmationWindowMinutes",
-                "New participants cannot start registration on event page",
-                "Participants who started registration before safetyWindow can still complete it",
-                "Changes to 'waiting-for-attendance-confirmation' at confirmationWindow minutes"
+                "Time: T-safetyWindowMinutes to T-0",
+                "New registrations are blocked",
+                "Participants must click 'Confirm attendance' to be included in matching",
+                "Non-confirmed participants become 'unconfirmed' at T-0"
               ]}
             />
-            
+
             <StatusItem
-              badge={<Badge className="bg-yellow-600">Waiting for attendance confirmation</Badge>}
-              title="Waiting for attendance confirmation"
-              description="Confirmation phase before matching"
+              badge={
+                <Badge className="bg-blue-500 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  Walking
+                </Badge>
+              }
+              title="Walking"
+              description="Matching done, participants heading to meeting points"
               details={[
-                "Time period: T-confirmationWindowMinutes to T-0 minutes (configurable)",
-                "Participants must confirm their attendance",
-                "Non-confirmed participants will not be included in matching",
-                "Changes to 'matching' at T-0"
+                "Time: T-0 to T-0 + walkingTimeMinutes",
+                "Matching algorithm runs at T-0, creating groups instantly",
+                "Participants see their match and assigned meeting point",
+                "Participants walk to their meeting point"
               ]}
             />
-            
+
             <StatusItem
-              badge={<Badge className="bg-purple-600">Matching</Badge>}
-              title="Matching"
-              description="Algorithm creates groups and reveals matches"
+              badge={
+                <Badge className="bg-cyan-500 flex items-center gap-1">
+                  <Search className="w-3 h-3" />
+                  Finding
+                </Badge>
+              }
+              title="Finding"
+              description="Participants at meeting point, identifying each other"
               details={[
-                "Time period: T-0 (instant)",
-                "System matches confirmed participants into groups",
-                "Matches are revealed immediately to participants",
-                "matchRevealedAt timestamp is set",
-                "Changes to 'walking-to-meeting-point' immediately after matching"
+                "Time: T-0 + walkingTimeMinutes to T-0 + walkingTime + findingTimeMinutes",
+                "Participants use identification images and numbers to find their match",
+                "Check-in (\"I am here\") can happen during this phase"
               ]}
             />
-            
+
             <StatusItem
-              badge={<Badge className="bg-blue-600">Walking to meeting point</Badge>}
-              title="Walking to meeting point"
-              description="Participants have 3 minutes to find their group and meeting point"
-              details={[
-                "Time period: T-0 to first 'We met' confirmation (max 3 minutes)",
-                "Participants see their group members and assigned meeting point",
-                "Groups can confirm 'We met' when they all arrive",
-                "Individual groups track: matchRevealedAt, meetConfirmedAt",
-                "Changes to 'networking' when group confirms 'We met'"
-              ]}
-            />
-            
-            <StatusItem
-              badge={<Badge className="bg-green-600">Networking</Badge>}
+              badge={
+                <Badge className="bg-indigo-500 flex items-center gap-1">
+                  <MessageCircle className="w-3 h-3" />
+                  Networking
+                </Badge>
+              }
               title="Networking"
-              description="Groups are networking for the configured round duration"
+              description="Participants are having their conversation"
               details={[
-                "Time period: From meetConfirmedAt to meetConfirmedAt + round duration",
-                "Duration is configurable per round (not fixed)",
-                "Individual groups track: meetConfirmedAt, networkingEndAt (meetConfirmedAt + duration)",
-                "QR check-ins can happen during this time",
-                "Round status changes to 'completed' when last group finishes or max time elapsed"
+                "Time: T-0 + walkingTime + findingTime to T-0 + walkingTime + findingTime + round.duration",
+                "Participants are networking for the configured round duration",
+                "Meet confirmation and contact sharing happen during this phase"
               ]}
             />
-            
+
             <StatusItem
               badge={<Badge variant="secondary">Completed</Badge>}
               title="Completed"
-              description="Round has finished"
+              description="Round has finished (all time phases elapsed)"
               details={[
-                "Round duration has elapsed",
+                "Time: after T-0 + walkingTime + findingTime + round.duration",
                 "No further actions available",
                 "Statistics can be viewed"
               ]}
@@ -232,171 +194,168 @@ export function AdminStatusesGuide() {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-6">
             <Users className="w-6 h-6 text-indigo-600" />
-            <h2 className="text-gray-900">Participant statuses</h2>
+            <h2 className="text-gray-900">Participant statuses (9, DB-stored)</h2>
           </div>
 
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
             <p className="text-indigo-900 text-sm">
-              Each participant has a status for each round they register for. Participant dashboard shows ALL statuses including cancelled/missed rounds for complete history.
+              Each participant has a status per round registration. All 9 statuses are persisted in the database.
+              When a round ends, <code>round_completed_at</code> timestamp is set — the status field preserves
+              the last active status (e.g. 'met', 'checked-in', 'missed').
             </p>
           </div>
-          
-          <div className="space-y-4">
+
+          <h3 className="text-gray-900 mb-3 mt-4">Forward path (happy flow)</h3>
+          <div className="space-y-4 mb-6">
             <StatusItem
               badge={
-                <Badge variant="outline" className="border-orange-300 text-orange-600 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  Verification pending
-                </Badge>
-              }
-              title="Verification pending"
-              description="Participant registered but hasn't confirmed their email yet"
-              details={[
-                "Participant submitted registration form without existing token",
-                "Verification email sent with confirmation link",
-                "Status changes to 'Registered' after email verification",
-                "Can resend verification email if needed",
-                "🔒 SECURITY: Each verification email only verifies the specific rounds included in that email. Multiple pending registrations require separate verifications to prevent unauthorized registrations.",
-                "🔄 UX: If participant registers for additional rounds while still having pending verifications, old verification emails are invalidated and ONE new email is sent that verifies ALL pending rounds at once.",
-                "📧 OLD LINKS: If participant clicks an old/invalidated verification link, they see a friendly error message instructing them to check their inbox for the most recent verification email."
-              ]}
-            />
-            
-            <StatusItem
-              badge={
-                <Badge className="bg-blue-600 flex items-center gap-1">
+                <Badge variant="secondary" className="text-muted-foreground/60 flex items-center gap-1">
                   <UserPlus className="w-3 h-3" />
                   Registered
                 </Badge>
               }
               title="Registered"
-              description="Email verified (or verification skipped) - participant signed up for the round"
+              description="Participant signed up for the round"
               details={[
-                "Status after email verification OR if participant already had token",
-                "Waiting for confirmation phase (T-5 minutes)",
-                "Can cancel registration before confirmation phase",
-                "Visible to participant and organizer"
+                "Set by: registration endpoint",
+                "Trigger: participant submits registration form",
+                "Next: 'confirmed' (user clicks Confirm) or 'unconfirmed' (T-0 passes) or 'cancelled' (user cancels)"
               ]}
             />
-            
+
             <StatusItem
               badge={
-                <Badge variant="default" className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Waiting for attendance confirmation
-                </Badge>
-              }
-              title="Waiting for attendance confirmation"
-              description="⚡ AUTO: System automatically changed participant status at T-5 minutes before round start"
-              details={[
-                "🤖 AUTOMATIC TRANSITION: Frontend (RoundItem.tsx) detects confirmation-window phase and calls backend endpoint",
-                "⏰ Time period: T-5 to T-0 minutes (5 minute window)",
-                "🎯 Participant must confirm attendance before T-0 to be included in matching",
-                "🔔 Notification: Push notification will be sent when implemented (currently auto-status change only)",
-                "📱 User sees: Countdown timer and 'Confirm attendance' button in participant dashboard",
-                "✅ Success path: Clicking confirm → status changes to 'Confirmed'",
-                "❌ Failure path: Not confirming by T-0 → status changes to 'Unconfirmed'",
-                "🔐 Backend: Logs status change and participant action to audit log",
-                "📊 Visibility: Participant and organizer both see this status",
-                "🔄 API endpoint: POST /rounds/:roundId/enter-confirmation-window/:participantId",
-                "💾 Database: Sets confirmationWindowEnteredAt timestamp"
-              ]}
-            />
-            
-            <StatusItem
-              badge={
-                <Badge className="bg-green-600 flex items-center gap-1">
+                <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
                   Confirmed
                 </Badge>
               }
               title="Confirmed"
-              description="Participant confirmed attendance during confirmation phase (T-5 to T-0)"
+              description="Participant confirmed attendance during confirmation window"
               details={[
-                "Participant clicked 'Confirm attendance' button during confirmation window",
+                "Set by: confirm endpoint",
+                "Trigger: user clicks 'Confirm attendance' (during confirmation window, before T-0)",
                 "Will be included in matching algorithm at T-0",
-                "Can still report no-show if needed"
+                "Next: 'matched' or 'no-match' (after matching) or 'cancelled' (user cancels)"
               ]}
             />
-            
+
             <StatusItem
               badge={
-                <Badge className="bg-orange-600 flex items-center gap-1">
-                  <XCircle className="w-3 h-3" />
-                  Unconfirmed
+                <Badge className="bg-purple-100 text-purple-700 border-purple-300 flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  Matched
                 </Badge>
               }
-              title="Unconfirmed"
-              description="Participant did not confirm attendance in time"
+              title="Matched"
+              description="Pair/group assigned by matching algorithm"
               details={[
-                "Participant did not respond during T-5 to T-4 window",
-                "Not included in matching",
-                "Considered as not attending"
+                "Set by: matching algorithm (matching.tsx)",
+                "Trigger: matching runs at T-0, assigns participant to a group",
+                "Participant sees their match, meeting point, and identification image",
+                "Next: 'checked-in' (user clicks 'I am here') or 'missed' (walking deadline expires)"
               ]}
             />
-            
+
             <StatusItem
               badge={
-                <Badge variant="destructive" className="flex items-center gap-1">
-                  <Minus className="w-3 h-3" />
-                  Cancelled
+                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-300 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  Checked-in
                 </Badge>
               }
-              title="Cancelled"
-              description="Participant cancelled their registration"
+              title="Checked-in"
+              description="Arrived at meeting point"
               details={[
-                "Participant actively cancelled before confirmation phase",
-                "Not included in any matching",
-                "Can re-register if registration is still open",
-                "Still visible in participant's dashboard history"
+                "Set by: check-in endpoint (route-participants.tsx)",
+                "Trigger: user clicks 'I am here' at the meeting point",
+                "Next: 'met' (user confirms partner found)"
               ]}
             />
-            
+
             <StatusItem
               badge={
-                <Badge className="bg-emerald-600 flex items-center gap-1">
+                <Badge className="bg-blue-100 text-blue-700 border-blue-300 flex items-center gap-1">
                   <Handshake className="w-3 h-3" />
                   Met
                 </Badge>
               }
               title="Met"
-              description="Participant successfully met with their match"
+              description="Partners found each other and are networking"
               details={[
-                "Both participant and match completed QR check-in",
-                "Meeting confirmed as successful",
-                "Final positive status"
+                "Set by: confirm-match endpoint (route-participants.tsx)",
+                "Trigger: user confirms they found their partner",
+                "Final positive status — no further transitions",
+                "When round ends, round_completed_at is set but status stays 'met'"
               ]}
             />
-            
+          </div>
+
+          <h3 className="text-gray-900 mb-3">Terminal statuses (drop-off / failure)</h3>
+          <div className="space-y-4">
             <StatusItem
               badge={
-                <Badge className="bg-pink-600 flex items-center gap-1">
+                <Badge variant="outline" className="text-yellow-700 border-yellow-300 flex items-center gap-1">
+                  <XCircle className="w-3 h-3" />
+                  Unconfirmed
+                </Badge>
+              }
+              title="Unconfirmed"
+              description="Didn't confirm attendance before T-0"
+              details={[
+                "Set by: auto-detection in dashboard + matching algorithm",
+                "Trigger: T-0 passes while status is still 'registered'",
+                "Terminal status — no transitions out",
+                "Not included in matching"
+              ]}
+            />
+
+            <StatusItem
+              badge={
+                <Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  No match
+                </Badge>
+              }
+              title="No match"
+              description="No suitable pair/group found by matching algorithm"
+              details={[
+                "Set by: matching algorithm (matching.tsx)",
+                "Trigger: participant confirmed but was left over (odd count, no compatible match)",
+                "Terminal status — no transitions out"
+              ]}
+            />
+
+            <StatusItem
+              badge={
+                <Badge variant="destructive" className="flex items-center gap-1">
                   <UserX className="w-3 h-3" />
                   Missed
                 </Badge>
               }
               title="Missed"
-              description="Participant confirmed but did not show up (no-show)"
+              description="Matched but didn't show up (walking deadline expired)"
               details={[
-                "Participant confirmed attendance but did not arrive",
-                "Did not complete QR check-in",
-                "Negative outcome for participant"
+                "Set by: auto-detection in dashboard",
+                "Trigger: matchedAt + walkingTimeMinutes passed, status still 'matched' (no check-in)",
+                "Terminal status — no transitions out"
               ]}
             />
-            
+
             <StatusItem
               badge={
-                <Badge className="bg-amber-600 flex items-center gap-1">
-                  <UserMinus className="w-3 h-3" />
-                  Left alone
+                <Badge variant="destructive" className="bg-red-50 border-red-200 text-red-600 flex items-center gap-1">
+                  <Minus className="w-3 h-3" />
+                  Cancelled
                 </Badge>
               }
-              title="Left alone"
-              description="Participant showed up but their match did not"
+              title="Cancelled"
+              description="Participant explicitly cancelled their registration"
               details={[
-                "Participant arrived and checked in",
-                "Their matched partner(s) did not show up",
-                "Participant waited but meeting did not happen"
+                "Set by: cancel/unregister endpoint",
+                "Trigger: user clicks 'Unregister' (allowed from 'registered' or 'confirmed', before matching)",
+                "Terminal status — no transitions out",
+                "Can re-register if registration is still open"
               ]}
             />
           </div>
@@ -404,8 +363,8 @@ export function AdminStatusesGuide() {
 
         {/* Lifecycle Flow */}
         <Card className="p-6">
-          <h2 className="text-gray-900 mb-6">Typical lifecycle flow</h2>
-          
+          <h2 className="text-gray-900 mb-6">Lifecycle flows</h2>
+
           <div className="space-y-6">
             {/* Session Flow */}
             <div>
@@ -426,244 +385,188 @@ export function AdminStatusesGuide() {
 
             {/* Round Flow */}
             <div>
-              <h3 className="text-gray-900 mb-3">Round</h3>
+              <h3 className="text-gray-900 mb-3">Round (computed from time)</h3>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">Draft</Badge>
                 <span className="text-gray-400">→</span>
                 <Badge variant="outline" className="border-blue-500 text-blue-700">Scheduled</Badge>
                 <span className="text-gray-400">→</span>
-                <Badge className="bg-green-600">Open to registration</Badge>
-                <span className="text-gray-400 text-xs"> (until T-6)</span>
+                <Badge className="bg-green-600">Registration open</Badge>
+                <span className="text-gray-400 text-xs">(until T-safety)</span>
                 <span className="text-gray-400">→</span>
-                <Badge className="bg-blue-500">Safety window</Badge>
-                <span className="text-gray-400 text-xs"> (T-6 to T-5)</span>
+                <Badge className="bg-yellow-600">Confirmation window</Badge>
+                <span className="text-gray-400 text-xs">(T-safety to T-0)</span>
                 <span className="text-gray-400">→</span>
-                <Badge className="bg-yellow-600">Waiting for confirmation</Badge>
-                <span className="text-gray-400 text-xs"> (T-5 to T-0)</span>
+                <Badge className="bg-blue-500">Walking</Badge>
+                <span className="text-gray-400 text-xs">(T-0 + walking)</span>
                 <span className="text-gray-400">→</span>
-                <Badge className="bg-purple-600">Matching</Badge>
-                <span className="text-gray-400 text-xs"> (T-0)</span>
+                <Badge className="bg-cyan-500">Finding</Badge>
+                <span className="text-gray-400 text-xs">(+ finding)</span>
                 <span className="text-gray-400">→</span>
-                <Badge className="bg-blue-600">Walking to meeting point</Badge>
-                <span className="text-gray-400 text-xs"> (max 3 min)</span>
-                <span className="text-gray-400">→</span>
-                <Badge className="bg-green-600">Networking</Badge>
-                <span className="text-gray-400 text-xs"> (configurable duration)</span>
+                <Badge className="bg-indigo-500">Networking</Badge>
+                <span className="text-gray-400 text-xs">(+ duration)</span>
                 <span className="text-gray-400">→</span>
                 <Badge variant="secondary">Completed</Badge>
               </div>
               <p className="text-gray-600 text-sm mt-2">
-                T = round start time. Duration per round is configurable (not fixed).
+                T = round start time. All sub-phases are based on system parameters.
               </p>
             </div>
 
-            {/* Participant Flow */}
+            {/* Participant Flow - Happy */}
             <div>
               <h3 className="text-gray-900 mb-3">Participant (happy path)</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-gray-600 text-sm mb-2">New participant (no token):</p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="border-orange-300 text-orange-600">Verification pending</Badge>
-                    <span className="text-gray-400">→</span>
-                    <Badge className="bg-blue-600">Registered</Badge>
-                    <span className="text-gray-400 text-xs"> (T-5 auto)</span>
-                    <span className="text-gray-400">→</span>
-                    <Badge variant="default">Waiting for confirmation</Badge>
-                    <span className="text-gray-400">→</span>
-                    <Badge className="bg-green-600">Confirmed</Badge>
-                    <span className="text-gray-400">→</span>
-                    <Badge className="bg-emerald-600">Met</Badge>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm mb-2">Returning participant (has token):</p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="bg-blue-600">Registered</Badge>
-                    <span className="text-gray-400 text-xs"> (T-5 auto)</span>
-                    <span className="text-gray-400">→</span>
-                    <Badge variant="default">Waiting for confirmation</Badge>
-                    <span className="text-gray-400">→</span>
-                    <Badge className="bg-green-600">Confirmed</Badge>
-                    <span className="text-gray-400">→</span>
-                    <Badge className="bg-emerald-600">Met</Badge>
-                  </div>
-                  <p className="text-gray-500 text-xs mt-1 ml-2">Skips Verification pending (email already verified)</p>
-                </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="text-muted-foreground/60">Registered</Badge>
+                <span className="text-gray-400">→</span>
+                <Badge className="bg-green-100 text-green-700 border-green-300">Confirmed</Badge>
+                <span className="text-gray-400">→</span>
+                <Badge className="bg-purple-100 text-purple-700 border-purple-300">Matched</Badge>
+                <span className="text-gray-400">→</span>
+                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-300">Checked-in</Badge>
+                <span className="text-gray-400">→</span>
+                <Badge className="bg-blue-100 text-blue-700 border-blue-300">Met</Badge>
+                <span className="text-gray-400 text-xs ml-1">+ round_completed_at</span>
               </div>
             </div>
 
+            {/* Participant Flow - Unhappy */}
             <div>
               <h3 className="text-gray-900 mb-3">Participant (unhappy paths)</h3>
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-blue-600">Registered</Badge>
+                  <Badge variant="secondary" className="text-muted-foreground/60">Registered</Badge>
                   <span className="text-gray-400">→</span>
-                  <Badge variant="destructive">Cancelled</Badge>
-                  <span className="text-gray-500 text-sm ml-2">(participant cancels)</span>
+                  <Badge variant="destructive" className="bg-red-50 text-red-600">Cancelled</Badge>
+                  <span className="text-gray-500 text-sm ml-2">(user cancels before matching)</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-blue-600">Registered</Badge>
-                  <span className="text-gray-400 text-xs"> (T-5 auto)</span>
+                  <Badge variant="secondary" className="text-muted-foreground/60">Registered</Badge>
                   <span className="text-gray-400">→</span>
-                  <Badge variant="default">Waiting for confirmation</Badge>
-                  <span className="text-gray-400">→</span>
-                  <Badge className="bg-orange-600">Unconfirmed</Badge>
-                  <span className="text-gray-500 text-sm ml-2">(no confirmation by T-0)</span>
+                  <Badge variant="outline" className="text-yellow-700 border-yellow-300">Unconfirmed</Badge>
+                  <span className="text-gray-500 text-sm ml-2">(T-0 passes, never confirmed)</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-blue-600">Registered</Badge>
+                  <Badge className="bg-green-100 text-green-700 border-green-300">Confirmed</Badge>
                   <span className="text-gray-400">→</span>
-                  <Badge variant="default">Waiting for confirmation</Badge>
-                  <span className="text-gray-400">→</span>
-                  <Badge className="bg-green-600">Confirmed</Badge>
-                  <span className="text-gray-400">→</span>
-                  <Badge className="bg-pink-600">Missed</Badge>
-                  <span className="text-gray-500 text-sm ml-2">(no-show)</span>
+                  <Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">No match</Badge>
+                  <span className="text-gray-500 text-sm ml-2">(odd one out after matching)</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-blue-600">Registered</Badge>
+                  <Badge className="bg-green-100 text-green-700 border-green-300">Confirmed</Badge>
                   <span className="text-gray-400">→</span>
-                  <Badge variant="default">Waiting for confirmation</Badge>
+                  <Badge variant="destructive" className="bg-red-50 text-red-600">Cancelled</Badge>
+                  <span className="text-gray-500 text-sm ml-2">(user cancels after confirming, before matching)</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-purple-100 text-purple-700 border-purple-300">Matched</Badge>
                   <span className="text-gray-400">→</span>
-                  <Badge className="bg-green-600">Confirmed</Badge>
-                  <span className="text-gray-400">→</span>
-                  <Badge className="bg-amber-600">Left alone</Badge>
-                  <span className="text-gray-500 text-sm ml-2">(match no-show)</span>
+                  <Badge variant="destructive">Missed</Badge>
+                  <span className="text-gray-500 text-sm ml-2">(walking deadline expired, no check-in)</span>
                 </div>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* Session Creation - Time Constraints */}
+        {/* Transition Rules */}
         <Card className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Settings className="w-6 h-6 text-teal-600" />
-            <h2 className="text-gray-900">Session creation - time constraints</h2>
+          <h2 className="text-gray-900 mb-4">Transition rules</h2>
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-900 text-sm font-medium">
+              Status transitions are strictly enforced by the backend. Invalid transitions are rejected.
+            </p>
           </div>
 
-          <div className="space-y-6">
-            {/* Registration Start */}
-            <div>
-              <h3 className="text-gray-900 mb-2">Registration start</h3>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-2">
-                <p className="text-teal-900 text-sm">
-                  <strong>When creating a new session:</strong>
-                </p>
-                <ul className="space-y-1 text-teal-800 text-sm ml-4">
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Cannot be set to the past</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Can be set to current time (button "Publish on event page")</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Can be set to future time (button "Schedule")</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Must be at least 10 minutes before Start time (in input field)</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Validation on publish checks for 9 minutes (not 10) to account for time spent filling the form when using "as soon as possible" option</span>
-                  </li>
-                </ul>
-                <p className="text-teal-900 text-sm mt-3">
-                  <strong>When editing a published session:</strong>
-                </p>
-                <ul className="space-y-1 text-teal-800 text-sm ml-4">
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Button "Publish to event page": Registration start remains unchanged (can be in the past)</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Button "Schedule": Registration start changes to future time</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 pr-4">From</th>
+                  <th className="text-left py-2">Allowed transitions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                <tr>
+                  <td className="py-2 pr-4"><Badge variant="secondary" className="text-muted-foreground/60">registered</Badge></td>
+                  <td className="py-2">→ confirmed, unconfirmed, cancelled</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge className="bg-green-100 text-green-700 border-green-300">confirmed</Badge></td>
+                  <td className="py-2">→ matched, no-match, cancelled</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge className="bg-purple-100 text-purple-700 border-purple-300">matched</Badge></td>
+                  <td className="py-2">→ checked-in, missed</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge className="bg-indigo-100 text-indigo-700 border-indigo-300">checked-in</Badge></td>
+                  <td className="py-2">→ met</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge className="bg-blue-100 text-blue-700 border-blue-300">met</Badge></td>
+                  <td className="py-2 text-gray-500 italic">terminal (no transitions)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge variant="outline" className="text-yellow-700 border-yellow-300">unconfirmed</Badge></td>
+                  <td className="py-2 text-gray-500 italic">terminal (no transitions)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">no-match</Badge></td>
+                  <td className="py-2 text-gray-500 italic">terminal (no transitions)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge variant="destructive">missed</Badge></td>
+                  <td className="py-2 text-gray-500 italic">terminal (no transitions)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4"><Badge variant="destructive" className="bg-red-50 text-red-600">cancelled</Badge></td>
+                  <td className="py-2 text-gray-500 italic">terminal (no transitions)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
 
-            {/* Start Time */}
-            <div>
-              <h3 className="text-gray-900 mb-2">Start time (first round)</h3>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <ul className="space-y-1 text-teal-800 text-sm">
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Must be rounded to 5-minute intervals (e.g., 14:00, 14:05, 14:10)</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Must be at least 9-10 minutes after Registration start</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
+        {/* Auto-detection */}
+        <Card className="p-6">
+          <h2 className="text-gray-900 mb-4">Auto-detection (dashboard poll)</h2>
 
-            {/* End Time */}
-            <div>
-              <h3 className="text-gray-900 mb-2">End time (last round)</h3>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <ul className="space-y-1 text-teal-800 text-sm">
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Automatically calculated based on the last round's start time + duration</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Cannot be manually set</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-blue-900 text-sm">
+              The participant dashboard endpoint runs auto-detection checks on each poll.
+              These transitions are persisted to the database automatically.
+            </p>
+          </div>
 
-            {/* Round Times */}
-            <div>
-              <h3 className="text-gray-900 mb-2">Round times</h3>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <ul className="space-y-1 text-teal-800 text-sm">
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Minimum round duration: 5 minutes</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Rounds must be sequential (cannot overlap)</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Each round follows immediately after the previous one ends</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Publishing Constraints */}
-            <div>
-              <h3 className="text-gray-900 mb-2">Publishing constraints</h3>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <ul className="space-y-1 text-teal-800 text-sm">
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>A draft session can only be published if Start time is at least 9 minutes in the future</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>This means you cannot publish a session 2 minutes before it starts</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>•</span>
-                    <span>Minimum lead time ensures participants have time to register before registration closes at T-6</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 pr-4">Condition</th>
+                  <th className="text-left py-2 pr-4">From</th>
+                  <th className="text-left py-2 pr-4">To</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                <tr>
+                  <td className="py-2 pr-4">now &ge; T-0 (round start passed)</td>
+                  <td className="py-2 pr-4">registered</td>
+                  <td className="py-2 pr-4">unconfirmed</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4">now &ge; matchedAt + walkingTimeMinutes</td>
+                  <td className="py-2 pr-4">matched</td>
+                  <td className="py-2 pr-4">missed</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4">now &ge; round end time</td>
+                  <td className="py-2 pr-4">any active</td>
+                  <td className="py-2 pr-4">keep status, set round_completed_at</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </Card>
 
@@ -673,39 +576,31 @@ export function AdminStatusesGuide() {
           <ul className="space-y-2 text-gray-700 text-sm">
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Session flags (hasRunningRounds, hasUpcomingRounds) are NOT stored in database - they are calculated in real-time</span>
+              <span>Session status and participant status are stored in the database</span>
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Round statuses are also calculated dynamically based on session status and current time</span>
+              <span>Round statuses are computed dynamically by <code>getRoundStatus()</code> — never written to DB</span>
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Only Session status and Participant status are stored in the database</span>
+              <span>Session flags (hasRunningRounds, hasUpcomingRounds) are computed on-the-fly, not stored</span>
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Automatic status transitions happen every 60 seconds in AppRouter.tsx</span>
+              <span>Round completion is tracked via <code>round_completed_at</code> timestamp — NOT a separate status</span>
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Registration closes at T-6 minutes to allow time for safety window (T-6 to T-5) and confirmation (T-5 to T-0) before matching starts</span>
+              <span>Terminal statuses (unconfirmed, no-match, missed, cancelled) have no transitions out</span>
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Individual groups track their own meeting timers during Running phase via: matchRevealedAt, meetConfirmedAt, networkingEndAt</span>
+              <span>Registration closes at T-safetyWindowMinutes. Confirmation window runs from T-safetyWindowMinutes to T-0</span>
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Participant can manually change status in admin panel, overriding automatic transitions</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-orange-600">🔒</span>
-              <span><strong>Email verification security:</strong> When a participant clicks a verification link, ONLY the specific rounds included in that verification email are verified. This prevents malicious actors from registering someone else's email and having it verified when the victim registers for a different round.</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-blue-600">🔄</span>
-              <span><strong>Email verification UX:</strong> When a participant registers for multiple rounds before verifying email, each new registration invalidates previous verification emails and creates a NEW verification link that verifies ALL pending rounds at once. This ensures one-click verification for better user experience.</span>
+              <span>Walking deadline for 'missed' auto-detection: matchedAt + walkingTimeMinutes (configurable)</span>
             </li>
           </ul>
         </Card>
@@ -714,15 +609,15 @@ export function AdminStatusesGuide() {
   );
 }
 
-function StatusItem({ 
-  badge, 
-  title, 
-  description, 
-  details 
-}: { 
-  badge: React.ReactNode; 
-  title: string; 
-  description: string; 
+function StatusItem({
+  badge,
+  title,
+  description,
+  details
+}: {
+  badge: React.ReactNode;
+  title: string;
+  description: string;
   details: string[];
 }) {
   return (

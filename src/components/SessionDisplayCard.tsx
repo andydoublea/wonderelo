@@ -25,7 +25,7 @@ interface SessionDisplayCardProps {
   session: NetworkingSession;
   showSelectionMode?: boolean; // true for registration mode (with rounds), false for overview
   className?: string;
-  variant?: 'running' | 'scheduled' | 'default';
+  variant?: 'active' | 'scheduled' | 'default';
   userSlug?: string; // Optional organizer slug for fetching round rules
   registeredRoundIds?: string[]; // IDs of rounds the participant is registered for
   // Admin mode props
@@ -57,6 +57,9 @@ export function SessionDisplayCard({
   isHighlighted = false,
   hideReportButton = false
 }: SessionDisplayCardProps) {
+  // System parameters (cached with default fallback)
+  const params = getParametersOrDefault();
+
   // State for round selection (preview only)
   const [selectedRounds, setSelectedRounds] = useState<Set<string>>(new Set());
   
@@ -94,9 +97,6 @@ export function SessionDisplayCard({
     // Calculate difference in milliseconds
     const timeDiff = roundStartDateTime.getTime() - now.getTime();
     const minutesDiff = timeDiff / (1000 * 60);
-    
-    // Use system parameters from utility (cached with default fallback)
-    const params = getParametersOrDefault();
     
     // Round is registerable if it's more than safetyWindowMinutes away
     return minutesDiff > params.safetyWindowMinutes;
@@ -167,34 +167,35 @@ export function SessionDisplayCard({
       return;
     }
     
-    // Validate that minutes are multiple of 5
+    // Validate that minutes are multiple of the configured interval
+    const interval = params.timePickerIntervalMinutes || 5;
     const [hours, minutes] = scheduleTime.split(':');
-    if (parseInt(minutes) % 5 !== 0) {
-      setScheduleError('Time must be in 5-minute intervals (e.g., 14:00, 14:05, 14:10).');
+    if (parseInt(minutes) % interval !== 0) {
+      setScheduleError(`Time must be in ${interval}-minute intervals.`);
       return;
     }
-    
+
     // Check if scheduled time is at least 9 minutes from now (internal validation)
     const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}:00`);
     const now = new Date();
     const nineMinutesFromNow = new Date(now.getTime() + 9 * 60 * 1000);
-    
-    // Round nineMinutesFromNow to next 5-minute interval for comparison
+
+    // Round nineMinutesFromNow to next interval for comparison
     const minMinutes = nineMinutesFromNow.getMinutes();
-    const roundedMinutes = Math.ceil(minMinutes / 5) * 5;
+    const roundedMinutes = Math.ceil(minMinutes / interval) * interval;
     nineMinutesFromNow.setMinutes(roundedMinutes);
     nineMinutesFromNow.setSeconds(0);
     nineMinutesFromNow.setMilliseconds(0);
-    
+
     // Normalize scheduledDateTime to remove milliseconds
     scheduledDateTime.setSeconds(0);
     scheduledDateTime.setMilliseconds(0);
-    
+
     if (scheduledDateTime < nineMinutesFromNow) {
       // Show user-friendly message with 10 minutes (even though validation is 9 minutes)
       const displayTime = new Date(now.getTime() + 10 * 60 * 1000);
       const displayMinutes = displayTime.getMinutes();
-      const displayRoundedMinutes = Math.ceil(displayMinutes / 5) * 5;
+      const displayRoundedMinutes = Math.ceil(displayMinutes / interval) * interval;
       displayTime.setMinutes(displayRoundedMinutes);
       displayTime.setSeconds(0);
       displayTime.setMilliseconds(0);
@@ -543,8 +544,9 @@ export function SessionDisplayCard({
                       setScheduleTime(time);
                     }}
                     placeholder="hh:mm"
+                    minuteInterval={params.timePickerIntervalMinutes || 5}
                   />
-                  <p className="text-xs text-muted-foreground">Time will be rounded to 5-minute intervals</p>
+                  <p className="text-xs text-muted-foreground">Time will be rounded to {params.timePickerIntervalMinutes || 5}-minute intervals</p>
                 </div>
               </div>
               {scheduleError && (

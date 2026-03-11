@@ -9,14 +9,16 @@ import { logger } from 'npm:hono/logger';
 import { getGlobalSupabaseClient } from './global-supabase.tsx';
 import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
-import { getParticipantDashboard } from './participant-dashboard.tsx';
+import { getParticipantDashboard, updateSessionStatusBasedOnRounds } from './participant-dashboard.tsx';
 import { getCurrentTime, parseRoundStartTime } from './time-helpers.tsx';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
 import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
 import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
-import { registerStripeRoutes } from './route-stripe.tsx';
+import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
+import { registerCrmRoutes } from './route-crm.ts';
+import { registerI18nRoutes } from './route-i18n.ts';
 
 const app = new Hono();
 
@@ -107,17 +109,9 @@ app.post('/make-server-ce05600a/signup', async (c) => {
 
     const userId = authData.user.id;
 
-    // Auto-generate URL slug from organizer name if not provided
-    let finalSlug = requestedSlug;
-    if (!finalSlug || finalSlug.length < 3) {
-      // Generate slug from organizer name: remove diacritics, lowercase, alphanumeric only
-      const baseName = (organizerName || 'user')
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove diacritics
-        .toLowerCase()
-        .replace(/\s+/g, '')
-        .replace(/[^a-z0-9]/g, '');
-      finalSlug = baseName.length >= 3 ? baseName : baseName + Math.random().toString(36).substring(2, 6);
-    }
+    // Always generate a random URL slug for new registrations
+    // This motivates the organizer to customize their URL later
+    let finalSlug = Math.random().toString(36).substring(2, 10);
 
     // Ensure slug uniqueness by checking DB and appending random suffix if taken
     let slugAttempt = finalSlug;
@@ -141,7 +135,7 @@ app.post('/make-server-ce05600a/signup', async (c) => {
     // Send welcome email (non-blocking)
     const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
     const dashboardUrl = `${appUrl}/dashboard`;
-    const eventPageUrl = urlSlug ? `${appUrl}/${urlSlug}` : undefined;
+    const eventPageUrl = finalSlug ? `${appUrl}/${finalSlug}` : undefined;
     const welcomeEmail = buildWelcomeEmail({
       firstName: organizerName?.split(' ')[0] || 'there',
       dashboardUrl,
@@ -157,33 +151,37 @@ app.post('/make-server-ce05600a/signup', async (c) => {
       })
       .catch(err => console.log('⚠️ Welcome email error:', err));
 
-    // Auto-create sample draft session (non-blocking)
+    // Auto-create sample draft session (awaited to ensure it exists when user reaches dashboard)
     const firstName = organizerName?.split(' ')[0] || 'My';
     const sampleSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     const sampleDate = nextWeek.toISOString().split('T')[0];
-    db.createSession({
-      id: sampleSessionId,
-      userId,
-      name: `${firstName}'s First Networking`,
-      description: 'This is a sample round to help you explore Wonderelo. Feel free to edit or delete it.',
-      date: sampleDate,
-      status: 'draft',
-      limitParticipants: false,
-      maxParticipants: 10,
-      groupSize: 2,
-      enableTeams: false,
-      enableTopics: false,
-      meetingPoints: ['Table 1', 'Table 2', 'Table 3'],
-      iceBreakers: ['What do you do?', 'What brought you here today?', 'What\'s the most interesting project you\'re working on?'],
-      rounds: [
-        { id: `round-sample-1-${Date.now()}`, startTime: '10:00', duration: 5, name: 'Round 1' },
-        { id: `round-sample-2-${Date.now()}`, startTime: '10:10', duration: 5, name: 'Round 2' },
-        { id: `round-sample-3-${Date.now()}`, startTime: '10:20', duration: 5, name: 'Round 3' },
-      ],
-    }).then(() => console.log('✅ Sample session created for', email))
-      .catch(err => console.log('⚠️ Sample session creation error:', err));
+    try {
+      await db.createSession({
+        id: sampleSessionId,
+        userId,
+        name: `${firstName}'s First Networking`,
+        description: 'This is a sample round to help you explore Wonderelo. Feel free to edit or delete it.',
+        date: sampleDate,
+        status: 'draft',
+        limitParticipants: false,
+        maxParticipants: 10,
+        groupSize: 2,
+        enableTeams: false,
+        enableTopics: false,
+        meetingPoints: ['Table 1', 'Table 2', 'Table 3'],
+        iceBreakers: ['What do you do?', 'What brought you here today?', 'What\'s the most interesting project you\'re working on?'],
+        rounds: [
+          { id: `round-sample-1-${Date.now()}`, startTime: '10:00', duration: 5, name: 'Round 1' },
+          { id: `round-sample-2-${Date.now()}`, startTime: '10:10', duration: 5, name: 'Round 2' },
+          { id: `round-sample-3-${Date.now()}`, startTime: '10:20', duration: 5, name: 'Round 3' },
+        ],
+      });
+      console.log('✅ Sample session created for', email);
+    } catch (err) {
+      console.log('⚠️ Sample session creation error:', err);
+    }
 
     const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
       email,
@@ -286,6 +284,21 @@ app.get('/make-server-ce05600a/sessions', async (c) => {
     
     const sessions = await db.getSessionsByUser(user.id);
 
+    // Auto-complete sessions whose rounds have all ended
+    const now = getCurrentTime(c);
+    for (const session of sessions) {
+      const originalStatus = session.status;
+      updateSessionStatusBasedOnRounds(session, now);
+      if (session.status === 'completed' && originalStatus !== 'completed') {
+        try {
+          await db.updateSession(session.id, { status: 'completed' });
+          debugLog(`Session ${session.id} auto-completed via sessions list (was: ${originalStatus})`);
+        } catch (error) {
+          errorLog(`Failed to auto-complete session ${session.id}:`, error);
+        }
+      }
+    }
+
     return c.json({ success: true, sessions });
     
   } catch (error) {
@@ -324,16 +337,43 @@ app.post('/make-server-ce05600a/sessions', async (c) => {
       updatedAt: new Date().toISOString()
     };
     
+    // ── Capacity check when publishing/scheduling ──
+    if (newSession.status === 'published' || newSession.status === 'scheduled') {
+      const maxParticipants = newSession.maxParticipants || 10;
+      try {
+        const capacityResult = await checkCapacity(user.id, maxParticipants);
+        if (!capacityResult.allowed) {
+          debugLog(`❌ Capacity limit for publish: ${capacityResult.reason}`);
+          return c.json({
+            error: 'capacity_exceeded',
+            message: capacityResult.reason,
+            suggestion: capacityResult.suggestion,
+            currentTier: capacityResult.currentTier,
+          }, 403);
+        }
+        // Consume credit for non-subscription organizers (subscription = no credits needed)
+        if (capacityResult.currentTier !== 'free') {
+          const subscription = await db.getSubscription(user.id);
+          if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+            await consumeEventCredit(user.id, sessionId, capacityResult.currentTier, newSession.name);
+            debugLog('💳 Event credit consumed for session:', sessionId);
+          }
+        }
+      } catch (capErr) {
+        debugLog('⚠️ Capacity check failed, allowing publish:', capErr);
+      }
+    }
+
     // Save session
     await db.createSession(newSession);
-    
+
     debugLog('✅ Created session:', sessionId);
-    
+
     return c.json({
       success: true,
       session: newSession
     });
-    
+
   } catch (error) {
     errorLog('Error creating session:', error);
     return c.json({ error: 'Failed to create session' }, 500);
@@ -364,6 +404,52 @@ app.put('/make-server-ce05600a/sessions/:sessionId', async (c) => {
       return c.json({ error: 'Session not found' }, 404);
     }
 
+    const oldStatus = existingSession.status;
+    const newStatus = body.status;
+    const isBecomingLive = (newStatus === 'published' || newStatus === 'scheduled') && oldStatus !== 'published' && oldStatus !== 'scheduled';
+    const isBecomingDraft = newStatus === 'draft' && (oldStatus === 'published' || oldStatus === 'scheduled');
+
+    // ── Capacity check when transitioning to published/scheduled ──
+    if (isBecomingLive) {
+      const maxParticipants = body.maxParticipants || existingSession.maxParticipants || 10;
+      try {
+        const capacityResult = await checkCapacity(user.id, maxParticipants);
+        if (!capacityResult.allowed) {
+          debugLog(`❌ Capacity limit for publish: ${capacityResult.reason}`);
+          return c.json({
+            error: 'capacity_exceeded',
+            message: capacityResult.reason,
+            suggestion: capacityResult.suggestion,
+            currentTier: capacityResult.currentTier,
+          }, 403);
+        }
+        // Consume credit for non-subscription organizers
+        if (capacityResult.currentTier !== 'free') {
+          const subscription = await db.getSubscription(user.id);
+          if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+            const sessionName = body.name || existingSession.name;
+            await consumeEventCredit(user.id, sessionId, capacityResult.currentTier, sessionName);
+            debugLog('💳 Event credit consumed for session:', sessionId);
+          }
+        }
+      } catch (capErr) {
+        debugLog('⚠️ Capacity check failed, allowing publish:', capErr);
+      }
+    }
+
+    // ── Refund credit when unpublishing (draft) with 0 registrations ──
+    if (isBecomingDraft) {
+      try {
+        const regs = await db.getRegistrationsForSession(sessionId);
+        if (regs.length === 0) {
+          await refundEventCredit(user.id, sessionId);
+          debugLog('💳 Credit refunded for unpublished session:', sessionId);
+        }
+      } catch (refundErr) {
+        debugLog('⚠️ Credit refund failed (non-blocking):', refundErr);
+      }
+    }
+
     await db.updateSession(sessionId, body);
     const updatedSession = await db.getSessionById(sessionId);
 
@@ -373,7 +459,7 @@ app.put('/make-server-ce05600a/sessions/:sessionId', async (c) => {
       success: true,
       session: updatedSession
     });
-    
+
   } catch (error) {
     errorLog('Error updating session:', error);
     return c.json({ error: 'Failed to update session' }, 500);
@@ -396,9 +482,23 @@ app.delete('/make-server-ce05600a/sessions/:sessionId', async (c) => {
     }
     
     const sessionId = c.req.param('sessionId');
-    
+
+    // Refund credit if session was published/scheduled and has 0 registrations
+    try {
+      const session = await db.getSessionById(sessionId);
+      if (session && (session.status === 'published' || session.status === 'scheduled')) {
+        const regs = await db.getRegistrationsForSession(sessionId);
+        if (regs.length === 0) {
+          await refundEventCredit(user.id, sessionId);
+          debugLog('💳 Credit refunded for deleted session:', sessionId);
+        }
+      }
+    } catch (refundErr) {
+      debugLog('⚠️ Credit refund on delete failed (non-blocking):', refundErr);
+    }
+
     await db.deleteSession(sessionId);
-    
+
     debugLog('✅ Deleted session:', sessionId);
     
     return c.json({
@@ -521,7 +621,7 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
     console.log('📋 Current registration status:', registration.status);
 
     // If already confirmed or later status, just return success (idempotent)
-    if (['confirmed', 'matched', 'completed'].includes(registration.status)) {
+    if (['confirmed', 'matched', 'checked-in', 'met'].includes(registration.status)) {
       console.log(`✅ Round already in status "${registration.status}", returning success (idempotent)`);
       return c.json({
         success: true,
@@ -531,7 +631,7 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
       });
     }
 
-    // Only 'registered' status can be confirmed (reject 'unconfirmed', 'no-match', etc.)
+    // Only 'registered' status can be confirmed (reject 'unconfirmed', 'no-match', 'missed', 'cancelled')
     if (registration.status !== 'registered') {
       console.log('❌ Cannot confirm - status not allowed:', registration.status);
       return c.json({
@@ -607,19 +707,8 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
       return c.json({ error: 'Registration not found' }, 404);
     }
 
-    // Allow confirmation if status is 'registered', 'confirmed', 'matched', or 'completed'
-    const allowedStatuses = ['registered', 'confirmed', 'matched', 'completed', 'unconfirmed'];
-    if (!allowedStatuses.includes(registration.status)) {
-      debugLog(`⚠️ Cannot confirm: current status is "${registration.status}" (allowed: ${allowedStatuses.join(', ')})`);
-      return c.json({
-        error: 'Cannot confirm',
-        message: `Round status is "${registration.status}". Only "registered" rounds can be confirmed.`,
-        currentStatus: registration.status
-      }, 400);
-    }
-
     // If already confirmed or later status, just return success (idempotent)
-    if (['confirmed', 'matched', 'completed'].includes(registration.status)) {
+    if (['confirmed', 'matched', 'checked-in', 'met'].includes(registration.status)) {
       debugLog(`✅ Round already in status "${registration.status}", returning success (idempotent)`);
       return c.json({
         success: true,
@@ -629,13 +718,39 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
       });
     }
 
+    // Only 'registered' status can be confirmed (reject terminal statuses)
+    if (registration.status !== 'registered') {
+      debugLog(`⚠️ Cannot confirm: current status is "${registration.status}"`);
+      return c.json({
+        error: 'Cannot confirm',
+        message: `Round status is "${registration.status}". Only "registered" rounds can be confirmed.`,
+        currentStatus: registration.status
+      }, 400);
+    }
+
+    // Validate confirmation window — reject if round already started
+    const session = await db.getSessionById(sessionId);
+    const round = session?.rounds?.find((r: any) => r.id === roundId);
+    if (round && session?.date && round.startTime) {
+      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const now = getCurrentTime(c);
+      if (now > roundStartTime) {
+        debugLog('❌ Confirmation window closed - round already started');
+        return c.json({
+          error: 'Confirmation window closed',
+          message: 'The round has already started. You can no longer confirm attendance.',
+          currentStatus: registration.status
+        }, 400);
+      }
+    }
+
     const now = new Date().toISOString();
 
     await db.updateRegistrationStatus(participantId, sessionId, roundId, 'confirmed', {
       confirmedAt: now,
     });
 
-    debugLog(`✅✅✅ VERIFICATION PASSED: Participant confirmed attendance for round ${roundId}`);
+    debugLog(`✅ Confirmed attendance for round ${roundId}`);
 
     return c.json({
       success: true,
@@ -648,6 +763,71 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
     errorLog('Error confirming attendance (via participantId):', error);
     return c.json({
       error: 'Failed to confirm attendance',
+      details: error instanceof Error ? error.message : String(error)
+    }, 500);
+  }
+});
+
+// Participant unregister/cancel from a round
+app.post('/make-server-ce05600a/p/:token/unregister/:roundId', async (c) => {
+  try {
+    const token = c.req.param('token');
+    const roundId = c.req.param('roundId');
+
+    // Get sessionId from query or body
+    let sessionId = c.req.query('sessionId');
+    if (!sessionId) {
+      try {
+        const body = await c.req.json();
+        sessionId = body.sessionId;
+      } catch {
+        // No body, that's fine if we got it from query
+      }
+    }
+
+    debugLog('🚫 UNREGISTER REQUEST', { token: token?.substring(0, 20) + '...', roundId, sessionId });
+
+    if (!sessionId) {
+      return c.json({ error: 'sessionId is required' }, 400);
+    }
+
+    const participant = await db.getParticipantByToken(token);
+    if (!participant) {
+      return c.json({ error: 'Invalid token' }, 404);
+    }
+
+    // Get specific registration
+    const registration = await db.getRegistration(participant.participantId, sessionId, roundId);
+
+    if (!registration) {
+      return c.json({ error: 'Registration not found' }, 404);
+    }
+
+    // Only allow cancellation from 'registered' or 'confirmed' (before matching)
+    const cancellableStatuses = ['registered', 'confirmed'];
+    if (!cancellableStatuses.includes(registration.status)) {
+      debugLog(`⚠️ Cannot cancel: current status is "${registration.status}"`);
+      return c.json({
+        error: 'Cannot unregister',
+        message: `Cannot unregister when status is "${registration.status}". You can only unregister before matching starts.`,
+        currentStatus: registration.status
+      }, 400);
+    }
+
+    await db.updateRegistrationStatus(participant.participantId, sessionId, roundId, 'cancelled');
+
+    debugLog(`✅ Participant cancelled registration for round ${roundId}`);
+
+    return c.json({
+      success: true,
+      status: 'cancelled',
+      message: 'Successfully unregistered from round'
+    });
+
+  } catch (error) {
+    errorLog('Error unregistering from round:', error);
+    return c.json({
+      error: 'Failed to unregister',
       details: error instanceof Error ? error.message : String(error)
     }, 500);
   }
@@ -839,7 +1019,8 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         safetyWindowMinutes: 6,
         walkingTimeMinutes: 3,
         findingTimeMinutes: 1,
-        networkingDurationMinutes: 15,
+        contactSharingDelayMinutes: 5,
+        timePickerIntervalMinutes: 5,
         notificationEarlyMinutes: 10,
         notificationEarlyEnabled: true,
         notificationLateMinutes: 5,
@@ -870,7 +1051,8 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
       safetyWindowMinutes: 6,
       walkingTimeMinutes: 3,
       findingTimeMinutes: 1,
-      networkingDurationMinutes: 15,
+      contactSharingDelayMinutes: 5,
+      timePickerIntervalMinutes: 5,
       notificationEarlyMinutes: 10,
       notificationEarlyEnabled: true,
       notificationLateMinutes: 5,
@@ -1776,14 +1958,24 @@ app.post('/make-server-ce05600a/admin/gift-cards/create', async (c) => {
     const body = await c.req.json();
     const cards = await db.getAllGiftCards();
 
+    // Check for duplicate code
+    if (cards.some((c: any) => c.code === body.code)) {
+      return c.json({ error: 'A gift card with this code already exists' }, 400);
+    }
+
     const newCard = {
+      id: crypto.randomUUID(),
       code: body.code,
-      description: body.description || '',
-      credits: body.credits || 0,
+      discountType: body.discountType || 'absolute', // 'absolute' | 'percentage'
+      discountValue: body.discountValue || 0,
+      applicableTo: body.applicableTo || 'single_event', // 'single_event' | 'monthly_subscription' | 'yearly_subscription'
+      validFrom: body.validFrom || new Date().toISOString().split('T')[0],
+      validUntil: body.validUntil || '',
+      maxUses: body.maxUses || undefined,
+      usedCount: 0,
+      usedBy: [],
       isActive: true,
       createdAt: new Date().toISOString(),
-      usedBy: null,
-      usedAt: null,
     };
 
     cards.push(newCard);
@@ -1846,6 +2038,77 @@ app.delete('/make-server-ce05600a/admin/gift-cards/:code', async (c) => {
 });
 
 // ============================================================
+// Gift card: Validate (public, requires auth)
+// ============================================================
+
+app.post('/make-server-ce05600a/validate-gift-card', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { code } = body;
+    if (!code) {
+      return c.json({ error: 'Gift card code is required' }, 400);
+    }
+
+    const cards = await db.getAllGiftCards();
+    const card = cards.find((c: any) => c.code === code.toUpperCase().trim());
+
+    if (!card) {
+      return c.json({ error: 'Invalid gift card code' }, 404);
+    }
+
+    if (!card.isActive) {
+      return c.json({ error: 'This gift card is no longer active' }, 400);
+    }
+
+    // Check expiration
+    if (card.validUntil && new Date(card.validUntil) < new Date()) {
+      return c.json({ error: 'This gift card has expired' }, 400);
+    }
+
+    // Check if not yet valid
+    if (card.validFrom && new Date(card.validFrom) > new Date()) {
+      return c.json({ error: 'This gift card is not yet valid' }, 400);
+    }
+
+    // Check max uses
+    if (card.maxUses && (card.usedCount || 0) >= card.maxUses) {
+      return c.json({ error: 'This gift card has reached its maximum uses' }, 400);
+    }
+
+    // Check if user already used this card
+    const usedBy = card.usedBy || [];
+    if (usedBy.some((u: any) => u.organizerId === user.id)) {
+      return c.json({ error: 'You have already used this gift card' }, 400);
+    }
+
+    // Return gift card info (don't redeem yet — that happens at checkout)
+    return c.json({
+      valid: true,
+      giftCard: {
+        code: card.code,
+        discountType: card.discountType,
+        discountValue: card.discountValue,
+        applicableTo: card.applicableTo,
+      },
+    });
+  } catch (error) {
+    errorLog('Error validating gift card:', error);
+    return c.json({ error: 'Failed to validate gift card' }, 500);
+  }
+});
+
+// ============================================================
 // Admin: Default round rules
 // ============================================================
 
@@ -1878,6 +2141,158 @@ app.post('/make-server-ce05600a/admin/default-round-rules', async (c) => {
   } catch (error) {
     errorLog('Error saving default round rules:', error);
     return c.json({ error: 'Failed to save round rules' }, 500);
+  }
+});
+
+// ============================================================
+// Admin: Billing management (subscriptions & credits without Stripe)
+// ============================================================
+
+// GET billing info for a user
+app.get('/make-server-ce05600a/admin/users/:userId/billing', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const subscription = await db.getSubscription(userId);
+    const credits = await db.getCredits(userId);
+    const transactions = await db.getCreditTransactions(userId);
+
+    return c.json({
+      success: true,
+      subscription: subscription || null,
+      credits,
+      transactions,
+    });
+  } catch (error) {
+    errorLog('Error fetching billing info:', error);
+    return c.json({ error: 'Failed to fetch billing info' }, 500);
+  }
+});
+
+// Grant or update subscription
+app.post('/make-server-ce05600a/admin/users/:userId/subscription', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const body = await c.req.json();
+    const { capacityTier, status, plan } = body;
+
+    const validTiers = ['50', '200', '500', '1000', '5000'];
+    if (!validTiers.includes(capacityTier)) {
+      return c.json({ error: 'Invalid capacity tier. Must be one of: 50, 200, 500, 1000, 5000' }, 400);
+    }
+
+    const periodEnd = new Date();
+    periodEnd.setDate(periodEnd.getDate() + 30);
+
+    await db.upsertSubscription(userId, {
+      stripeCustomerId: 'admin_granted',
+      stripeSubscriptionId: `admin_${Date.now()}`,
+      capacityTier,
+      status: status || 'active',
+      plan: plan || 'premium',
+      currentPeriodEnd: periodEnd.toISOString(),
+      cancelAtPeriodEnd: false,
+    });
+
+    debugLog('💳 Admin granted subscription:', { userId, capacityTier });
+    return c.json({ success: true, message: `Subscription granted: tier ${capacityTier}` });
+  } catch (error) {
+    errorLog('Error granting subscription:', error);
+    return c.json({ error: 'Failed to grant subscription' }, 500);
+  }
+});
+
+// Cancel subscription
+app.delete('/make-server-ce05600a/admin/users/:userId/subscription', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    await db.updateSubscription(userId, {
+      status: 'cancelled',
+      cancelAtPeriodEnd: false,
+    });
+
+    debugLog('💳 Admin cancelled subscription:', userId);
+    return c.json({ success: true, message: 'Subscription cancelled' });
+  } catch (error) {
+    errorLog('Error cancelling subscription:', error);
+    return c.json({ error: 'Failed to cancel subscription' }, 500);
+  }
+});
+
+// Add credits
+app.post('/make-server-ce05600a/admin/users/:userId/credits', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const body = await c.req.json();
+    const { amount, capacityTier } = body;
+
+    const validTiers = ['50', '200', '500', '1000', '5000'];
+    if (!validTiers.includes(capacityTier)) {
+      return c.json({ error: 'Invalid capacity tier' }, 400);
+    }
+    if (!amount || amount < 1 || amount > 100) {
+      return c.json({ error: 'Amount must be between 1 and 100' }, 400);
+    }
+
+    await db.addCredits(userId, amount, {
+      type: 'purchase',
+      capacityTier,
+      description: `Admin granted ${amount} credit(s) at tier ${capacityTier}`,
+    });
+
+    debugLog('💳 Admin added credits:', { userId, amount, capacityTier });
+    return c.json({ success: true, message: `Added ${amount} credits at tier ${capacityTier}` });
+  } catch (error) {
+    errorLog('Error adding credits:', error);
+    return c.json({ error: 'Failed to add credits' }, 500);
+  }
+});
+
+// Reset credits to zero
+app.post('/make-server-ce05600a/admin/users/:userId/credits/reset', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const userId = c.req.param('userId');
+    const creditsList = await db.getCredits(userId);
+
+    for (const credit of creditsList) {
+      if (credit.balance > 0) {
+        await db.addCredits(userId, -credit.balance, {
+          type: 'refund',
+          capacityTier: credit.capacityTier,
+          description: 'Admin reset credits to zero',
+        });
+      }
+    }
+
+    debugLog('💳 Admin reset credits:', userId);
+    return c.json({ success: true, message: 'Credits reset to zero' });
+  } catch (error) {
+    errorLog('Error resetting credits:', error);
+    return c.json({ error: 'Failed to reset credits' }, 500);
   }
 });
 
@@ -2356,10 +2771,140 @@ app.post('/make-server-ce05600a/cron/onboarding-emails', async (c) => {
   }
 });
 
+// ============================================================
+// ACCESS PASSWORDS (public + admin)
+// ============================================================
+
+// Public: validate access password (no auth required)
+app.post('/make-server-ce05600a/validate-access-password', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { password } = body;
+
+    if (!password) {
+      return c.json({ valid: false }, 400);
+    }
+
+    const match = await db.validateAccessPassword(password.trim());
+
+    if (!match) {
+      return c.json({ valid: false });
+    }
+
+    const userAgent = c.req.header('User-Agent') || null;
+    const ipAddress = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || null;
+
+    await db.logPasswordAccess(match.id, userAgent, ipAddress);
+
+    return c.json({
+      valid: true,
+      personName: match.person_name,
+      passwordId: match.id,
+    });
+  } catch (error) {
+    errorLog('Error validating access password:', error);
+    return c.json({ error: 'Validation failed' }, 500);
+  }
+});
+
+// Admin: list all access passwords
+app.get('/make-server-ce05600a/admin/access-passwords', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const passwords = await db.getAllAccessPasswords();
+    return c.json({ passwords });
+  } catch (error) {
+    errorLog('Error listing access passwords:', error);
+    return c.json({ error: 'Failed to list access passwords' }, 500);
+  }
+});
+
+// Admin: create access password
+app.post('/make-server-ce05600a/admin/access-passwords', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const body = await c.req.json();
+    if (!body.personName || !body.password) {
+      return c.json({ error: 'Person name and password are required' }, 400);
+    }
+
+    const result = await db.createAccessPassword(body.personName.trim(), body.password.trim());
+    return c.json({ success: true, password: result });
+  } catch (error) {
+    errorLog('Error creating access password:', error);
+    return c.json({ error: 'Failed to create access password' }, 500);
+  }
+});
+
+// Admin: toggle access password active/inactive
+app.put('/make-server-ce05600a/admin/access-passwords/:id/toggle', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const id = c.req.param('id');
+    const result = await db.toggleAccessPassword(id);
+    return c.json({ success: true, isActive: result.is_active });
+  } catch (error) {
+    errorLog('Error toggling access password:', error);
+    return c.json({ error: 'Failed to toggle access password' }, 500);
+  }
+});
+
+// Admin: delete access password
+app.delete('/make-server-ce05600a/admin/access-passwords/:id', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const id = c.req.param('id');
+    await db.deleteAccessPassword(id);
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error deleting access password:', error);
+    return c.json({ error: 'Failed to delete access password' }, 500);
+  }
+});
+
+// Admin: view access password logs
+app.get('/make-server-ce05600a/admin/access-passwords/:id/logs', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const id = c.req.param('id');
+    const logs = await db.getAccessPasswordLogs(id);
+    return c.json({ logs });
+  } catch (error) {
+    errorLog('Error fetching access password logs:', error);
+    return c.json({ error: 'Failed to fetch access logs' }, 500);
+  }
+});
+
 // Register participant routes
 registerParticipantRoutes(app, getCurrentTime);
 
 // Register Stripe payment routes
 registerStripeRoutes(app);
+
+// Register CRM routes
+registerCrmRoutes(app);
+
+// Register i18n routes
+registerI18nRoutes(app);
 
 Deno.serve(app.fetch);

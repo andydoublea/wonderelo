@@ -39,53 +39,75 @@ export const hasUpcomingRounds = (session: NetworkingSession): boolean => {
  */
 
 /**
+ * Round status type (8 computed values, NOT stored in DB)
+ *
+ * Pre-round: draft → scheduled → registration-open → confirmation-window
+ * In-round:  walking → finding → networking
+ * Terminal:  completed
+ */
+export type RoundStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'registration-open'
+  | 'confirmation-window'
+  | 'walking'
+  | 'finding'
+  | 'networking'
+  | 'completed';
+
+/**
  * Calculates the current status of a round based on session and time
  */
-export const getRoundStatus = (session: NetworkingSession, round: Round): 'draft' | 'scheduled' | 'open-to-registration' | 'registration-safety-window' | 'matching' | 'running' | 'completed' => {
+export const getRoundStatus = (session: NetworkingSession, round: Round): RoundStatus => {
   // If session is draft, round is draft too
   if (session.status === 'draft') return 'draft';
-  
+
   if (!session.date || !round.startTime) return 'draft';
-  
+
   const now = new Date();
   const params = getParametersOrDefault();
   const roundStart = new Date(`${session.date}T${round.startTime}:00`);
-  // Note: Round end is calculated from theoretical max time:
-  // roundStart + walkingTime (to meeting point) + duration (networking)
-  // Matching is instant (few seconds), so we only account for walking + networking
-  const maxRoundEnd = new Date(roundStart.getTime() + (params.walkingTimeMinutes + round.duration) * 60000);
-  const safetyWindowStart = new Date(roundStart.getTime() - params.safetyWindowMinutes * 60 * 1000);
-  
-  // Completed: round has ended (after max possible duration)
+
+  // Time boundaries (all from round start)
+  const walkingTimeMs = (params.walkingTimeMinutes || 3) * 60 * 1000;
+  const findingTimeMs = (params.findingTimeMinutes || 1) * 60 * 1000;
+  const networkingDurationMs = (round.duration || 10) * 60 * 1000;
+
+  const walkingEnd = new Date(roundStart.getTime() + walkingTimeMs);
+  const findingEnd = new Date(roundStart.getTime() + walkingTimeMs + findingTimeMs);
+  const maxRoundEnd = new Date(roundStart.getTime() + walkingTimeMs + findingTimeMs + networkingDurationMs);
+  const safetyWindowStart = new Date(roundStart.getTime() - (params.safetyWindowMinutes || 6) * 60 * 1000);
+
+  // Completed: round has ended
   if (now >= maxRoundEnd) return 'completed';
-  
-  // Running: from T-0 onwards (matching starts, then walking, then networking)
-  // Note: Individual groups track their own timers via matchRevealedAt, meetConfirmedAt, groupEndedAt
-  if (now >= roundStart && now < maxRoundEnd) return 'running';
-  
-  // Registration safety window: safetyWindow to confirmationWindow (no new registrations, but existing can complete)
-  if (now >= safetyWindowStart && now < roundStart) return 'registration-safety-window';
-  
-  // Open to registration: session is published and before safetyWindow
-  if (session.status === 'published' && now < safetyWindowStart) return 'open-to-registration';
-  
+
+  // Networking: participants met and talking
+  if (now >= findingEnd) return 'networking';
+
+  // Finding: at meeting point, looking for each other
+  if (now >= walkingEnd) return 'finding';
+
+  // Walking: matching done, heading to meeting points
+  if (now >= roundStart) return 'walking';
+
+  // Confirmation window: no new registrations, participants confirming attendance
+  if (now >= safetyWindowStart) return 'confirmation-window';
+
+  // Open to registration: session is published and before safety window
+  if (session.status === 'published' && now < safetyWindowStart) return 'registration-open';
+
   // Scheduled: session is published or scheduled but registration not open yet
   if (session.status === 'scheduled' || session.status === 'published') return 'scheduled';
-  
+
   return 'draft';
 };
 
 /**
- * Checks if a specific round is currently running
+ * Checks if a specific round is currently running (walking, finding, or networking)
  */
 export const isRoundRunning = (session: NetworkingSession, round: Round): boolean => {
-  if (!session.date || !round.startTime) return false;
-  
-  const now = new Date();
-  const roundStart = new Date(`${session.date}T${round.startTime}:00`);
-  const roundEnd = new Date(roundStart.getTime() + round.duration * 60000);
-  
-  return now >= roundStart && now < roundEnd;
+  const status = getRoundStatus(session, round);
+  return status === 'walking' || status === 'finding' || status === 'networking';
 };
 
 /**

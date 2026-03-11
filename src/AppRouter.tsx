@@ -2075,7 +2075,7 @@ function AppProviderWithRouter() {
 
             h(Route, { path: '/verify', element: h(EmailVerification) }),
             h(Route, { path: '/p/:token', element: h(ParticipantDashboard) }),
-            h(Route, { path: '/p/:token/match', element: h(MatchInfo) }),
+            h(Route, { path: '/p/:token/match-point', element: h(MatchInfo) }),
             h(Route, { path: '/p/:token/match-partner', element: h(MatchPartner) }),
             h(Route, { path: '/p/:token/networking', element: h(MatchNetworking) }),
             h(Route, { path: '/p/:token/contact-sharing', element: h(ContactSharing) }),
