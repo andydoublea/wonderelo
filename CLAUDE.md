@@ -55,7 +55,7 @@ development → staging → main
 
 ### Supabase Access Token (shared across projects)
 ```
-sbp_bd8d0a5a7416bebbd5470623d33d807ba8ac0067
+sbp_51f34546525c1b8af7b92f86f7c42bd557dbea4a
 ```
 
 ### Production Supabase
