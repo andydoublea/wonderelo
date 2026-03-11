@@ -261,6 +261,7 @@ function mapSessionFromDb(data: any) {
     topics: data.topics,
     meetingPoints: data.meeting_points,
     iceBreakers: data.ice_breakers,
+    roundDuration: data.round_duration,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -626,6 +627,9 @@ function mapRegistrationFromDb(data: any) {
     notificationsEnabled: data.notifications_enabled,
     unconfirmedReason: data.unconfirmed_reason,
     noMatchReason: data.no_match_reason,
+    roundCompletedAt: data.round_completed_at,
+    identificationNumber: data.identification_number,
+    identificationOptions: data.identification_options,
   };
 }
 
@@ -762,6 +766,8 @@ export async function updateRegistrationStatus(
     if (extra.team !== undefined) dbUpdates.team = extra.team;
     if (extra.topics !== undefined) dbUpdates.topics = extra.topics;
     if (extra.notificationsEnabled !== undefined) dbUpdates.notifications_enabled = extra.notificationsEnabled;
+    if (extra.identificationNumber !== undefined) dbUpdates.identification_number = extra.identificationNumber;
+    if (extra.identificationOptions !== undefined) dbUpdates.identification_options = extra.identificationOptions;
   }
 
   const { error } = await db()
@@ -782,6 +788,58 @@ export async function deleteRegistration(participantId: string, sessionId: strin
     .eq('round_id', roundId);
   if (error) throw error;
 }
+
+/**
+ * Mark a registration as round-completed (sets round_completed_at timestamp).
+ * Does NOT change the status — preserves the last active status.
+ */
+export async function setRoundCompletedAt(
+  participantId: string,
+  sessionId: string,
+  roundId: string
+) {
+  const { error } = await db()
+    .from('registrations')
+    .update({
+      round_completed_at: new Date().toISOString(),
+      last_status_update: new Date().toISOString(),
+    })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId)
+    .is('round_completed_at', null); // Only set once
+  if (error) throw error;
+}
+
+// Generate a random identification number (1-99) and 3 options (1 correct + 2 wrong, shuffled)
+export function generateIdentificationData(): { number: number; options: number[] } {
+  const correctNumber = Math.floor(Math.random() * 99) + 1;
+  return { number: correctNumber, options: generateOptionsForNumber(correctNumber) };
+}
+
+export function generateOptionsForNumber(correctNumber: number): number[] {
+  const options = new Set<number>([correctNumber]);
+  while (options.size < 3) {
+    const num = Math.floor(Math.random() * 99) + 1;
+    options.add(num);
+  }
+  // Shuffle
+  return [...options].sort(() => Math.random() - 0.5);
+}
+
+// Valid participant status transitions (from → allowed to values)
+export const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  'registered': ['confirmed', 'unconfirmed', 'cancelled'],
+  'confirmed': ['matched', 'no-match', 'cancelled'],
+  'matched': ['checked-in', 'missed'],
+  'checked-in': ['met'],
+  // Terminal statuses — no transitions out
+  'met': [],
+  'unconfirmed': [],
+  'no-match': [],
+  'missed': [],
+  'cancelled': [],
+};
 
 // ============================================================
 // MATCHES
@@ -893,6 +951,7 @@ export async function getMatchingLock(sessionId: string, roundId: string) {
 /**
  * Atomically try to acquire matching lock. Returns true if acquired, false if already exists.
  * Uses INSERT with ON CONFLICT to prevent race conditions.
+ * match_count = -1 means "in progress" (not yet completed).
  */
 export async function tryAcquireMatchingLock(sessionId: string, roundId: string): Promise<boolean> {
   const { error } = await db()
@@ -901,7 +960,7 @@ export async function tryAcquireMatchingLock(sessionId: string, roundId: string)
       session_id: sessionId,
       round_id: roundId,
       completed_at: new Date().toISOString(),
-      match_count: 0,
+      match_count: -1,
       unmatched_count: 0,
       solo_participant: false,
     });
@@ -926,6 +985,18 @@ export async function updateMatchingLock(sessionId: string, roundId: string, upd
       unmatched_count: update.unmatchedCount,
       solo_participant: update.soloParticipant || false,
     })
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/**
+ * Delete matching lock to allow re-running matching (used when previous run found 0 matches)
+ */
+export async function deleteMatchingLock(sessionId: string, roundId: string) {
+  const { error } = await db()
+    .from('matching_locks')
+    .delete()
     .eq('session_id', sessionId)
     .eq('round_id', roundId);
   if (error) throw error;

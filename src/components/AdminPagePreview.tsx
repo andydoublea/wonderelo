@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { Switch } from './ui/switch';
+import { Textarea } from './ui/textarea';
+import { ArrowLeft, Eye, Mail, Phone, Copy, BookUser } from 'lucide-react';
 import { ParticipantNav } from './ParticipantNav';
 import { NetworkingSession, Round } from '../App';
 import { RoundItem } from './RoundItem';
@@ -18,10 +20,10 @@ interface AdminPagePreviewProps {
 // ============================================================
 
 const MOCK_PARTICIPANTS = [
-  { id: 'p1', firstName: 'Sarah', lastName: 'Chen', email: 'sarah@example.com' },
-  { id: 'p2', firstName: 'Marcus', lastName: 'Rivera', email: 'marcus@example.com' },
+  { id: 'p1', firstName: 'Sarah', lastName: 'Chen', email: 'sarah@example.com', phone: '+421 912 345 678' },
+  { id: 'p2', firstName: 'Marcus', lastName: 'Rivera', email: 'marcus@example.com', phone: '+421 903 456 789' },
   { id: 'p3', firstName: 'Emma', lastName: 'Johansson', email: 'emma@example.com' },
-  { id: 'p4', firstName: 'Tomáš', lastName: 'Novák', email: 'tomas@example.com' },
+  { id: 'p4', firstName: 'Tomáš', lastName: 'Novák', email: 'tomas@example.com', phone: '+421 917 890 123' },
 ];
 
 const MOCK_ICE_BREAKERS = [
@@ -82,6 +84,7 @@ mockSession.rounds = [mockRound];
 
 type PreviewPage =
   | 'participant-dashboard'
+  | 'address-book'
   | 'meeting-point'
   | 'match-no-match'
   | 'match-partner'
@@ -114,6 +117,7 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
     name: 'Dashboard',
     pages: [
       { id: 'participant-dashboard', label: 'Dashboard', description: 'Participant\'s main dashboard with upcoming rounds' },
+      { id: 'address-book', label: 'Address Book', description: 'Contacts shared after networking rounds' },
     ],
   },
   {
@@ -168,8 +172,11 @@ function PreviewParticipantDashboard() {
                 <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
                   <div className="flex items-start justify-between mb-1">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold mb-2">Andyho konfera</h3>
-                      <Badge variant="outline" className="mb-2">{mockSession.name}</Badge>
+                      <h3 className="text-lg font-semibold mb-2 text-left">Andyho konfera</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline">{mockSession.name}</Badge>
+                        <span className="text-xs text-muted-foreground">#andyconf</span>
+                      </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
@@ -199,9 +206,32 @@ function PreviewParticipantDashboard() {
 
           <div>
             <h2 className="mb-4">Completed rounds</h2>
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-10 w-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No completed rounds yet</p>
+            <div className="space-y-4">
+              <Card className="transition-all hover:border-muted-foreground/20 opacity-60">
+                <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
+                  <div className="flex items-start justify-between mb-1">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-2 text-left">Andyho konfera</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline">Startup Mixer</Badge>
+                        <span className="text-xs text-muted-foreground">#andyconf</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 p-3 rounded-lg border bg-muted/30">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Round 1</span>
+                        <Badge variant="secondary" className="text-xs">Done</Badge>
+                      </div>
+                      <button className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                        <BookUser className="h-3 w-3" />
+                        Marcus Rivera
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
@@ -338,48 +368,36 @@ const MOCK_FEEDBACK_OPTIONS = [
   { id: 'very-interesting', label: 'Very interesting person', icon: '✨' },
   { id: 'continue-chat', label: "I'd like to continue the chat", icon: '🔄' },
   { id: 'very-nice', label: "You're very nice", icon: '😊' },
+  { id: 'not-my-type', label: 'Not quite my type', icon: '🤷' },
+  { id: 'awkward', label: 'A bit awkward', icon: '😬' },
 ];
 
 function PreviewContactSharing() {
-  const [shared, setShared] = useState<Record<string, boolean>>({});
+  const [contactSharing, setContactSharing] = useState<Record<string, boolean>>({});
   const [selectedFeedback, setSelectedFeedback] = useState<Record<string, string[]>>({});
+  const [wondereloRating, setWondereloRating] = useState<string | null>(null);
   return (
     <div className="min-h-[600px] bg-background">
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
         <h1 className="text-4xl font-bold mb-4">How was your conversation?</h1>
-        <p className="text-lg text-muted-foreground mb-8">
-          Share a quick reaction and decide whether to exchange contacts.
-        </p>
 
         {/* Psychological insight */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-10 max-w-md mx-auto text-left">
-          <p className="text-sm text-amber-800">
-            <span className="font-semibold">Did you know?</span> Research shows we consistently underestimate how much others enjoyed talking to us. Your conversation partner probably liked you more than you think!
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6 max-w-md mx-auto text-left">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            <span className="font-semibold">Did you know?</span> Research shows we consistently underestimate how much others enjoyed talking to us. If you enjoyed the conversation, let the other person know — they probably feel the same way!
           </p>
         </div>
 
         <div className="space-y-6 max-w-md mx-auto">
           {[MOCK_PARTICIPANTS[1]].map((p) => (
             <div key={p.id} className="border-2 rounded-2xl overflow-hidden">
-              {/* Partner header with contact toggle */}
-              <div className="flex items-center justify-between p-4">
-                <div className="text-left">
-                  <p className="text-xl font-bold">{p.firstName} {p.lastName}</p>
-                </div>
-                <button
-                  onClick={() => setShared(s => ({ ...s, [p.id]: !s[p.id] }))}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all ${
-                    shared[p.id]
-                      ? 'bg-green-100 text-green-700 border-2 border-green-300'
-                      : 'bg-muted text-muted-foreground border-2 border-border'
-                  }`}
-                >
-                  {shared[p.id] ? '✓ Share contact' : '✕ Don\'t share'}
-                </button>
+              {/* Partner header */}
+              <div className="p-4 pb-3">
+                <p className="text-xl font-bold text-left">{p.firstName} {p.lastName}</p>
               </div>
 
               {/* Feedback buttons */}
-              <div className="px-4 pb-4">
+              <div className="px-4 pb-3">
                 <p className="text-xs text-muted-foreground mb-2 text-left">Send a quick reaction (optional)</p>
                 <div className="flex flex-wrap gap-2">
                   {MOCK_FEEDBACK_OPTIONS.map((option) => {
@@ -407,17 +425,77 @@ function PreviewContactSharing() {
                   })}
                 </div>
               </div>
+
+              {/* Custom feedback */}
+              <div className="px-4 pb-3">
+                <Textarea
+                  placeholder="Write your own feedback (optional)"
+                  className="text-sm resize-none h-16"
+                  readOnly
+                />
+              </div>
+
+              {/* Contact sharing toggle */}
+              <div className="px-4 pb-4 border-t border-border/50 pt-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <p className="text-sm font-medium">Share my contact</p>
+                    <p className="text-xs text-muted-foreground">Both must agree to exchange contacts</p>
+                  </div>
+                  <Switch
+                    checked={contactSharing[p.id] || false}
+                    onCheckedChange={() => setContactSharing(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                  />
+                </div>
+              </div>
             </div>
           ))}
         </div>
 
-        <p className="text-sm text-muted-foreground mt-8 max-w-md mx-auto">
-          Contacts will only be shared if <strong>both</strong> of you agree. Shared contacts will become visible after 15 minutes.
-        </p>
-      </div>
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
-        <div className="max-w-md mx-auto">
-          <Button size="lg" className="w-full">Done</Button>
+        {/* Info box about feedback & contacts delivery */}
+        <div className="bg-muted/50 border border-border rounded-xl p-4 mt-8 max-w-md mx-auto text-left">
+          <p className="text-sm text-muted-foreground">
+            Feedback and contacts will be shared after 15 minutes.
+          </p>
+        </div>
+
+        {/* Wonderelo feedback section */}
+        <div className="mt-8 max-w-md mx-auto">
+          <div className="border-t border-border pt-8">
+            <h2 className="text-lg font-semibold mb-4">How was your Wonderelo experience?</h2>
+
+            <div className="flex justify-center gap-4 mb-4">
+              {[
+                { id: 'sad', emoji: '😞', label: 'Not great' },
+                { id: 'neutral', emoji: '😐', label: 'Okay' },
+                { id: 'happy', emoji: '😊', label: 'Great!' },
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setWondereloRating(wondereloRating === option.id ? null : option.id)}
+                  className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all border-2 ${
+                    wondereloRating === option.id
+                      ? 'border-primary bg-primary/5 scale-110'
+                      : 'border-transparent hover:bg-muted'
+                  }`}
+                >
+                  <span className="text-3xl">{option.emoji}</span>
+                  <span className="text-xs text-muted-foreground">{option.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <Textarea
+              placeholder="Tell us more (optional)"
+              className="text-sm resize-none h-20"
+              readOnly
+            />
+          </div>
+        </div>
+
+        {/* Finish button (not sticky) */}
+        <div className="mt-8 max-w-md mx-auto">
+          <Button size="lg" className="w-full">Finish</Button>
         </div>
       </div>
     </div>
@@ -565,6 +643,104 @@ function PreviewSessionSuccess() {
   );
 }
 
+function PreviewAddressBook() {
+  const mockContacts = [
+    {
+      id: 'c1',
+      firstName: 'Marcus',
+      lastName: 'Rivera',
+      email: 'marcus@example.com',
+      phone: '+421 903 456 789',
+      organizerName: 'Andyho konfera',
+      sessionName: 'Tech Meetup Prague',
+      roundName: 'Round 1',
+      sessionDate: new Date().toISOString(),
+      allPartners: [],
+    },
+    {
+      id: 'c2',
+      firstName: 'Emma',
+      lastName: 'Johansson',
+      email: 'emma@example.com',
+      organizerName: 'Andyho konfera',
+      sessionName: 'Tech Meetup Prague',
+      roundName: 'Round 2',
+      sessionDate: new Date(Date.now() - 7 * 86400000).toISOString(),
+      allPartners: [
+        { firstName: 'Emma', lastName: 'Johansson' },
+        { firstName: 'Tomáš', lastName: 'Novák' },
+      ],
+    },
+  ];
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch { return dateStr; }
+  };
+
+  return (
+    <div className="min-h-[600px] bg-background">
+      <div className="max-w-2xl mx-auto px-6 py-8">
+        <div className="mb-6">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to dashboard
+          </Button>
+          <h1 className="text-3xl font-bold mt-4 mb-1">Address Book</h1>
+          <p className="text-sm text-muted-foreground">
+            {mockContacts.length} contacts from your networking rounds
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {mockContacts.map((contact) => (
+            <div
+              key={contact.id}
+              className="border rounded-xl p-4 bg-card hover:border-muted-foreground/30 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-base font-semibold leading-tight">
+                    {contact.firstName} {contact.lastName}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {[contact.organizerName, contact.sessionName, contact.roundName].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {formatDate(contact.sessionDate)}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm text-primary truncate flex-1">{contact.email}</span>
+                  <Copy className="h-3 w-3 text-muted-foreground" />
+                </div>
+                {contact.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-primary flex-1">{contact.phone}</span>
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+
+              {contact.allPartners && contact.allPartners.length > 1 && (
+                <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
+                  Group: {contact.allPartners.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // Main component
 // ============================================================
@@ -575,6 +751,7 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
   const renderPreview = () => {
     switch (activePage) {
       case 'participant-dashboard': return <PreviewParticipantDashboard />;
+      case 'address-book': return <PreviewAddressBook />;
       case 'meeting-point': return <PreviewMeetingPoint />;
       case 'match-no-match': return <PreviewNoMatch />;
       case 'match-partner': return <PreviewMatchPartner />;

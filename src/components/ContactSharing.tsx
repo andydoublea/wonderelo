@@ -2,16 +2,18 @@ import { useParams, useNavigate } from 'react-router';
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
+import { Switch } from './ui/switch';
+import { Textarea } from './ui/textarea';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
-import { Check, X, Heart, MessageCircle, Sparkles, ThumbsUp } from 'lucide-react';
 
 const FEEDBACK_OPTIONS = [
   { id: 'nice-talk', label: 'Nice talk', icon: '💬' },
   { id: 'very-interesting', label: 'Very interesting person', icon: '✨' },
   { id: 'continue-chat', label: "I'd like to continue the chat", icon: '🔄' },
   { id: 'very-nice', label: "You're very nice", icon: '😊' },
+  { id: 'not-my-type', label: 'Not quite my type', icon: '🤷' },
+  { id: 'awkward', label: 'A bit awkward', icon: '😬' },
 ];
 
 interface Partner {
@@ -35,6 +37,9 @@ export function ContactSharing() {
   const [error, setError] = useState<string | null>(null);
   const [contactSharing, setContactSharing] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState<Record<string, string[]>>({});
+  const [customFeedback, setCustomFeedback] = useState<Record<string, string>>({});
+  const [wondereloRating, setWondereloRating] = useState<string | null>(null);
+  const [wondereloFeedback, setWondereloFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -108,7 +113,15 @@ export function ContactSharing() {
 
     setIsSubmitting(true);
     try {
-      debugLog('[ContactSharing] Saving preferences:', contactSharing, 'feedback:', feedback);
+      // Merge custom feedback into feedback arrays
+      const mergedFeedback: Record<string, string[]> = { ...feedback };
+      for (const [partnerId, text] of Object.entries(customFeedback)) {
+        if (text.trim()) {
+          mergedFeedback[partnerId] = [...(mergedFeedback[partnerId] || []), `custom:${text.trim()}`];
+        }
+      }
+
+      debugLog('[ContactSharing] Saving preferences:', contactSharing, 'feedback:', mergedFeedback, 'wonderelo:', { wondereloRating, wondereloFeedback });
 
       const response = await fetch(
         `${apiBaseUrl}/participant/${token}/contact-sharing`,
@@ -121,7 +134,11 @@ export function ContactSharing() {
           body: JSON.stringify({
             matchId: networkingData.matchId,
             preferences: contactSharing,
-            feedback,
+            feedback: mergedFeedback,
+            wondereloFeedback: wondereloRating || wondereloFeedback ? {
+              rating: wondereloRating,
+              text: wondereloFeedback.trim() || undefined,
+            } : undefined,
           }),
         }
       );
@@ -185,19 +202,16 @@ export function ContactSharing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
         {/* Headline */}
         <h1 className="text-4xl font-bold mb-4">
           How was your conversation?
         </h1>
-        <p className="text-lg text-muted-foreground mb-8">
-          Share a quick reaction and decide whether to exchange contacts.
-        </p>
 
         {/* Psychological insight */}
-        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-10 max-w-md mx-auto text-left">
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6 max-w-md mx-auto text-left">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            <span className="font-semibold">Did you know?</span> Research shows we consistently underestimate how much others enjoyed talking to us. Your conversation partner probably liked you more than you think!
+            <span className="font-semibold">Did you know?</span> Research shows we consistently underestimate how much others enjoyed talking to us. If you enjoyed the conversation, let the other person know — they probably feel the same way!
           </p>
         </div>
 
@@ -208,38 +222,15 @@ export function ContactSharing() {
               key={partner.id}
               className="border-2 rounded-2xl overflow-hidden"
             >
-              {/* Partner header with contact toggle */}
-              <div className="flex items-center justify-between p-4">
-                <div className="text-left">
-                  <p className="text-xl font-bold">
-                    {partner.firstName} {partner.lastName}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => handleContactSharingToggle(partner.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all ${
-                    contactSharing[partner.id]
-                      ? 'bg-green-100 text-green-700 border-2 border-green-300'
-                      : 'bg-muted text-muted-foreground border-2 border-border'
-                  }`}
-                >
-                  {contactSharing[partner.id] ? (
-                    <>
-                      <Check className="h-5 w-5" />
-                      Share contact
-                    </>
-                  ) : (
-                    <>
-                      <X className="h-5 w-5" />
-                      Don't share
-                    </>
-                  )}
-                </button>
+              {/* Partner header */}
+              <div className="p-4 pb-3">
+                <p className="text-xl font-bold text-left">
+                  {partner.firstName} {partner.lastName}
+                </p>
               </div>
 
               {/* Feedback buttons */}
-              <div className="px-4 pb-4">
+              <div className="px-4 pb-3">
                 <p className="text-xs text-muted-foreground mb-2 text-left">Send a quick reaction (optional)</p>
                 <div className="flex flex-wrap gap-2">
                   {FEEDBACK_OPTIONS.map((option) => {
@@ -261,26 +252,85 @@ export function ContactSharing() {
                   })}
                 </div>
               </div>
+
+              {/* Custom feedback */}
+              <div className="px-4 pb-3">
+                <Textarea
+                  placeholder="Write your own feedback (optional)"
+                  value={customFeedback[partner.id] || ''}
+                  onChange={(e) => setCustomFeedback(prev => ({ ...prev, [partner.id]: e.target.value }))}
+                  className="text-sm resize-none h-16"
+                />
+              </div>
+
+              {/* Contact sharing toggle */}
+              <div className="px-4 pb-4 border-t border-border/50 pt-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <p className="text-sm font-medium">Share my contact</p>
+                    <p className="text-xs text-muted-foreground">Both must agree to exchange contacts</p>
+                  </div>
+                  <Switch
+                    checked={contactSharing[partner.id] || false}
+                    onCheckedChange={() => handleContactSharingToggle(partner.id)}
+                  />
+                </div>
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Note about contact sharing */}
-        <p className="text-sm text-muted-foreground mt-8 max-w-md mx-auto">
-          Contacts will only be shared if <strong>both</strong> of you agree. Shared contacts will become visible after 15 minutes.
-        </p>
-      </div>
+        {/* Info box about feedback & contacts delivery */}
+        <div className="bg-muted/50 border border-border rounded-xl p-4 mt-8 max-w-md mx-auto text-left">
+          <p className="text-sm text-muted-foreground">
+            Feedback and contacts will be shared after 15 minutes.
+          </p>
+        </div>
 
-      {/* Sticky save button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
-        <div className="max-w-md mx-auto">
+        {/* Wonderelo feedback section */}
+        <div className="mt-8 max-w-md mx-auto">
+          <div className="border-t border-border pt-8">
+            <h2 className="text-lg font-semibold mb-4">How was your Wonderelo experience?</h2>
+
+            <div className="flex justify-center gap-4 mb-4">
+              {[
+                { id: 'sad', emoji: '😞', label: 'Not great' },
+                { id: 'neutral', emoji: '😐', label: 'Okay' },
+                { id: 'happy', emoji: '😊', label: 'Great!' },
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setWondereloRating(wondereloRating === option.id ? null : option.id)}
+                  className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all border-2 ${
+                    wondereloRating === option.id
+                      ? 'border-primary bg-primary/5 scale-110'
+                      : 'border-transparent hover:bg-muted'
+                  }`}
+                >
+                  <span className="text-3xl">{option.emoji}</span>
+                  <span className="text-xs text-muted-foreground">{option.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <Textarea
+              placeholder="Tell us more (optional)"
+              value={wondereloFeedback}
+              onChange={(e) => setWondereloFeedback(e.target.value)}
+              className="text-sm resize-none h-20"
+            />
+          </div>
+        </div>
+
+        {/* Finish button (not sticky) */}
+        <div className="mt-8 max-w-md mx-auto">
           <Button
             size="lg"
             className="w-full"
             onClick={handleSave}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Saving...' : 'Done'}
+            {isSubmitting ? 'Saving...' : 'Finish'}
           </Button>
         </div>
       </div>

@@ -201,10 +201,44 @@ html {
 }
 
 /* Toast notification styling */
-@layer base {
-  [data-sonner-toast] [data-description] {
-    @apply opacity-90;
-  }
+[data-sonner-toaster] {
+  font-family: inherit !important;
+}
+
+[data-sonner-toast] {
+  border-radius: 0.625rem !important;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.06) !important;
+  padding: 14px 16px !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  gap: 10px !important;
+}
+
+[data-sonner-toast] [data-description] {
+  opacity: 0.8;
+  font-size: 0.8125rem !important;
+}
+
+[data-sonner-toast] [data-title] {
+  font-weight: 500 !important;
+}
+
+/* Icon sizing */
+[data-sonner-toast] [data-icon] svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Close button */
+[data-sonner-toast] [data-close-button] {
+  border-radius: 50% !important;
+  border: 1px solid var(--border) !important;
+  opacity: 0.5;
+  transition: opacity 150ms ease;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1;
 }
 
 /* Highlight animation for updated sessions */

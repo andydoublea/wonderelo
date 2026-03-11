@@ -250,10 +250,11 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
     switch (status) {
       case 'draft': return 'bg-gray-500';
       case 'scheduled': return 'bg-blue-500';
-      case 'open-to-registration': return 'bg-green-500';
-      case 'registration-safety-window': return 'bg-yellow-500';
-      case 'matching': return 'bg-purple-500';
-      case 'running': return 'bg-emerald-500';
+      case 'registration-open': return 'bg-green-500';
+      case 'confirmation-window': return 'bg-yellow-500';
+      case 'walking': return 'bg-blue-500';
+      case 'finding': return 'bg-cyan-500';
+      case 'networking': return 'bg-indigo-500';
       case 'completed': return 'bg-slate-500';
       default: return 'bg-gray-500';
     }

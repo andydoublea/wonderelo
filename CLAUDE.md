@@ -25,6 +25,7 @@ Always double-check `--project-ref` before running any Supabase CLI commands.
 - Before ANY infrastructure change, verify current state first
 - Before committing, ALWAYS ask the user which branch to commit to. Never assume the branch — wait for explicit confirmation (e.g. "commit to development", "commit to staging").
 - When pushing to `main`, ALWAYS also deploy edge functions to production (`npm run deploy:edge:prod`) — they don't auto-deploy. Frontend auto-deploys via Vercel, but edge functions require manual deployment.
+- When the user uploads files (images, assets, etc.), ALWAYS copy them into the project directory (e.g. `public/`) before referencing them. Never link directly to the upload location (e.g. `~/Downloads/`) — those files may be deleted at any time.
 
 ---
 
@@ -125,6 +126,23 @@ supabase stop
 5. Frontend connects to **local Docker Supabase** at `http://127.0.0.1:54321`
 6. Supabase Studio at `http://127.0.0.1:54323` for DB management
 7. Email testing at `http://127.0.0.1:54324` (Inbucket/Mailpit)
+
+### Seed users (survive `supabase db reset`)
+
+`supabase/seed.sql` creates auth users + organizer profiles automatically. After every `supabase db reset`, these accounts are ready to use:
+
+| Email | Password | Role | Slug |
+|-------|----------|------|------|
+| `andy.double.a+org@gmail.com` | `Rukuku` | admin | `andyconf` |
+| `admin@test.com` | `test123456` | organizer | `test-event` |
+
+The admin account (`andy.double.a+org@gmail.com`) is the primary dev account. Always preserve it in the seed.
+
+### Admin settings (system parameters)
+
+**CRITICAL: When modifying `seed.sql`, NEVER overwrite existing `admin_settings` rows.** The admin configures system parameters via the Admin Panel and those values must survive `supabase db reset`. Use `ON CONFLICT (key) DO NOTHING` (not `DO UPDATE`) for `admin_settings` inserts in seed.sql so existing values are preserved. Only insert if the row doesn't exist yet.
+
+When adding NEW parameter fields, update both `seed.sql` (as default for fresh installs) and `src/utils/systemParameters.ts` (as runtime fallback). But never force-overwrite existing parameter values in the seed.
 
 ### Stripe for local development
 

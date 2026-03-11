@@ -17,6 +17,7 @@ interface TimePickerProps {
   asapReferenceTime?: string; // Reference time for ASAP calculation (format: "HH:mm")
   asapButtonText?: string; // Custom text for ASAP button (default "As soon as possible")
   useNowForAsap?: boolean; // If true, ASAP button sets current time instead of calculated time
+  minuteInterval?: number; // Interval between selectable minutes (default 5)
 }
 
 export function TimePicker({ 
@@ -29,7 +30,8 @@ export function TimePicker({
   asapMinutesOffset = 10,
   asapReferenceTime,
   asapButtonText = "As soon as possible",
-  useNowForAsap = false
+  useNowForAsap = false,
+  minuteInterval = 5
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasBeenUsed, setHasBeenUsed] = useState(false);
@@ -66,7 +68,7 @@ export function TimePicker({
     if (targetMinute !== undefined && minutesContainerRef.current) {
       const scrollContainer = minutesContainerRef.current.closest('[data-slot="scroll-area"]')?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement;
       if (scrollContainer) {
-        const minuteIndex = parseInt(targetMinute, 10) / 5;
+        const minuteIndex = parseInt(targetMinute, 10) / minuteInterval;
         const viewportHeight = 208;
         const scrollPosition = (minuteIndex * buttonHeight) - (viewportHeight / 2) + (buttonHeight / 2);
         scrollContainer.scrollTop = Math.max(0, scrollPosition);
@@ -75,7 +77,7 @@ export function TimePicker({
     }
     
     setHasScrolledToDefault(true);
-  }, []);
+  }, [minuteInterval]);
   
   // Function to scroll to default hour "10" when no time is set
   const scrollToDefaultHour = useCallback(() => {
@@ -87,9 +89,10 @@ export function TimePicker({
     i.toString().padStart(2, '0')
   );
 
-  // Generate minutes in 5-minute increments (0, 5, 10, ..., 55)
-  const minutes = Array.from({ length: 12 }, (_, i) => 
-    (i * 5).toString().padStart(2, '0')
+  // Generate minutes based on interval (e.g., every 1, 5, or 15 min)
+  const minuteCount = Math.floor(60 / minuteInterval);
+  const minutes = Array.from({ length: minuteCount }, (_, i) =>
+    (i * minuteInterval).toString().padStart(2, '0')
   );
 
   const handleHourSelect = (hour: string) => {
@@ -144,9 +147,9 @@ export function TimePicker({
     if (useNowForAsap) {
       // Use current time (for "Now" button) - without rounding
       targetTime = new Date();
-      const hours = targetTime.getHours().toString().padStart(2, '0');
-      const mins = targetTime.getMinutes().toString().padStart(2, '0');
-      const newTime = `${hours}:${mins}`;
+      const nowHours = targetTime.getHours().toString().padStart(2, '0');
+      const nowMins = targetTime.getMinutes().toString().padStart(2, '0');
+      const newTime = `${nowHours}:${nowMins}`;
       
       onChange(newTime);
       setHasBeenUsed(true);
@@ -164,8 +167,8 @@ export function TimePicker({
       targetTime = new Date(now.getTime() + asapMinutesOffset * 60 * 1000);
     }
     
-    const minutes = targetTime.getMinutes();
-    const roundedMinutes = Math.ceil(minutes / 5) * 5;
+    const rawMinutes = targetTime.getMinutes();
+    const roundedMinutes = Math.ceil(rawMinutes / minuteInterval) * minuteInterval;
     targetTime.setMinutes(roundedMinutes);
     targetTime.setSeconds(0);
     

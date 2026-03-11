@@ -10,6 +10,10 @@ function db() {
   return getGlobalSupabaseClient();
 }
 
+export function getClient() {
+  return getGlobalSupabaseClient();
+}
+
 // ============================================================
 // ORGANIZER PROFILES
 // ============================================================
@@ -245,21 +249,11 @@ function mapSessionFromDb(data: any) {
     name: data.name,
     description: data.description,
     date: data.date,
-    startTime: data.start_time,
-    endTime: data.end_time,
-    roundDuration: data.round_duration,
-    numberOfRounds: data.number_of_rounds,
-    gapBetweenRounds: data.gap_between_rounds,
     status: data.status,
-    registrationStart: data.registration_start,
-    registrationEnd: data.registration_end,
     limitParticipants: data.limit_participants,
     maxParticipants: data.max_participants,
     groupSize: data.group_size,
-    limitGroups: data.limit_groups,
-    maxGroups: data.max_groups,
     enableTeams: data.enable_teams,
-    allowMultipleTeams: data.allow_multiple_teams,
     matchingType: data.matching_type,
     teams: data.teams,
     enableTopics: data.enable_topics,
@@ -267,10 +261,7 @@ function mapSessionFromDb(data: any) {
     topics: data.topics,
     meetingPoints: data.meeting_points,
     iceBreakers: data.ice_breakers,
-    isRecurring: data.is_recurring,
-    frequency: data.frequency,
-    location: data.location,
-    liveSubStatus: data.live_sub_status,
+    roundDuration: data.round_duration,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -296,13 +287,13 @@ export async function getSessionsByUser(userId: string) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  // Fetch rounds for each session
-  const sessions = [];
-  for (const s of data || []) {
-    const rounds = await getRoundsBySession(s.id);
-    sessions.push({ ...mapSessionFromDb(s), rounds });
-  }
-  return sessions;
+  // Batch fetch all rounds for all sessions in one query
+  const sessionIds = (data || []).map(s => s.id);
+  const roundsBySession = await getRoundsBySessionIds(sessionIds);
+  return (data || []).map(s => ({
+    ...mapSessionFromDb(s),
+    rounds: roundsBySession[s.id] || []
+  }));
 }
 
 export async function getAllSessions() {
@@ -311,12 +302,12 @@ export async function getAllSessions() {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  const sessions = [];
-  for (const s of data || []) {
-    const rounds = await getRoundsBySession(s.id);
-    sessions.push({ ...mapSessionFromDb(s), rounds });
-  }
-  return sessions;
+  const sessionIds = (data || []).map(s => s.id);
+  const roundsBySession = await getRoundsBySessionIds(sessionIds);
+  return (data || []).map(s => ({
+    ...mapSessionFromDb(s),
+    rounds: roundsBySession[s.id] || []
+  }));
 }
 
 export async function createSession(session: any) {
@@ -329,21 +320,11 @@ export async function createSession(session: any) {
       name: sessionData.name,
       description: sessionData.description || null,
       date: sessionData.date || null,
-      start_time: sessionData.startTime || null,
-      end_time: sessionData.endTime || null,
-      round_duration: sessionData.roundDuration || 10,
-      number_of_rounds: sessionData.numberOfRounds || 1,
-      gap_between_rounds: sessionData.gapBetweenRounds ?? 5,
       status: sessionData.status || 'draft',
-      registration_start: sessionData.registrationStart || null,
-      registration_end: sessionData.registrationEnd || null,
       limit_participants: sessionData.limitParticipants || false,
       max_participants: sessionData.maxParticipants || 20,
       group_size: sessionData.groupSize || 2,
-      limit_groups: sessionData.limitGroups || false,
-      max_groups: sessionData.maxGroups || null,
       enable_teams: sessionData.enableTeams || false,
-      allow_multiple_teams: sessionData.allowMultipleTeams || false,
       matching_type: sessionData.matchingType || 'across-teams',
       teams: sessionData.teams || [],
       enable_topics: sessionData.enableTopics || false,
@@ -351,10 +332,6 @@ export async function createSession(session: any) {
       topics: sessionData.topics || [],
       meeting_points: sessionData.meetingPoints || [],
       ice_breakers: sessionData.iceBreakers || [],
-      is_recurring: sessionData.isRecurring || false,
-      frequency: sessionData.frequency || null,
-      location: sessionData.location || null,
-      live_sub_status: sessionData.liveSubStatus || null,
       created_at: sessionData.createdAt || new Date().toISOString(),
       updated_at: sessionData.updatedAt || new Date().toISOString(),
     });
@@ -376,21 +353,11 @@ export async function updateSession(sessionId: string, updates: any) {
   if (updates.name !== undefined) dbUpdates.name = updates.name;
   if (updates.description !== undefined) dbUpdates.description = updates.description;
   if (updates.date !== undefined) dbUpdates.date = updates.date;
-  if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
-  if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
-  if (updates.roundDuration !== undefined) dbUpdates.round_duration = updates.roundDuration;
-  if (updates.numberOfRounds !== undefined) dbUpdates.number_of_rounds = updates.numberOfRounds;
-  if (updates.gapBetweenRounds !== undefined) dbUpdates.gap_between_rounds = updates.gapBetweenRounds;
   if (updates.status !== undefined) dbUpdates.status = updates.status;
-  if (updates.registrationStart !== undefined) dbUpdates.registration_start = updates.registrationStart;
-  if (updates.registrationEnd !== undefined) dbUpdates.registration_end = updates.registrationEnd;
   if (updates.limitParticipants !== undefined) dbUpdates.limit_participants = updates.limitParticipants;
   if (updates.maxParticipants !== undefined) dbUpdates.max_participants = updates.maxParticipants;
   if (updates.groupSize !== undefined) dbUpdates.group_size = updates.groupSize;
-  if (updates.limitGroups !== undefined) dbUpdates.limit_groups = updates.limitGroups;
-  if (updates.maxGroups !== undefined) dbUpdates.max_groups = updates.maxGroups;
   if (updates.enableTeams !== undefined) dbUpdates.enable_teams = updates.enableTeams;
-  if (updates.allowMultipleTeams !== undefined) dbUpdates.allow_multiple_teams = updates.allowMultipleTeams;
   if (updates.matchingType !== undefined) dbUpdates.matching_type = updates.matchingType;
   if (updates.teams !== undefined) dbUpdates.teams = updates.teams;
   if (updates.enableTopics !== undefined) dbUpdates.enable_topics = updates.enableTopics;
@@ -398,10 +365,6 @@ export async function updateSession(sessionId: string, updates: any) {
   if (updates.topics !== undefined) dbUpdates.topics = updates.topics;
   if (updates.meetingPoints !== undefined) dbUpdates.meeting_points = updates.meetingPoints;
   if (updates.iceBreakers !== undefined) dbUpdates.ice_breakers = updates.iceBreakers;
-  if (updates.isRecurring !== undefined) dbUpdates.is_recurring = updates.isRecurring;
-  if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
-  if (updates.location !== undefined) dbUpdates.location = updates.location;
-  if (updates.liveSubStatus !== undefined) dbUpdates.live_sub_status = updates.liveSubStatus;
 
   const { error } = await db()
     .from('sessions')
@@ -453,6 +416,22 @@ export async function getRoundsBySession(sessionId: string) {
     .order('sort_order', { ascending: true });
   if (error) throw error;
   return (data || []).map(mapRoundFromDb);
+}
+
+export async function getRoundsBySessionIds(sessionIds: string[]): Promise<Record<string, any[]>> {
+  if (sessionIds.length === 0) return {};
+  const { data, error } = await db()
+    .from('rounds')
+    .select('*')
+    .in('session_id', sessionIds)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  const grouped: Record<string, any[]> = {};
+  for (const r of data || []) {
+    if (!grouped[r.session_id]) grouped[r.session_id] = [];
+    grouped[r.session_id].push(mapRoundFromDb(r));
+  }
+  return grouped;
 }
 
 export async function getRoundById(roundId: string) {
@@ -648,6 +627,9 @@ function mapRegistrationFromDb(data: any) {
     notificationsEnabled: data.notifications_enabled,
     unconfirmedReason: data.unconfirmed_reason,
     noMatchReason: data.no_match_reason,
+    roundCompletedAt: data.round_completed_at,
+    identificationNumber: data.identification_number,
+    identificationOptions: data.identification_options,
   };
 }
 
@@ -784,6 +766,8 @@ export async function updateRegistrationStatus(
     if (extra.team !== undefined) dbUpdates.team = extra.team;
     if (extra.topics !== undefined) dbUpdates.topics = extra.topics;
     if (extra.notificationsEnabled !== undefined) dbUpdates.notifications_enabled = extra.notificationsEnabled;
+    if (extra.identificationNumber !== undefined) dbUpdates.identification_number = extra.identificationNumber;
+    if (extra.identificationOptions !== undefined) dbUpdates.identification_options = extra.identificationOptions;
   }
 
   const { error } = await db()
@@ -804,6 +788,58 @@ export async function deleteRegistration(participantId: string, sessionId: strin
     .eq('round_id', roundId);
   if (error) throw error;
 }
+
+/**
+ * Mark a registration as round-completed (sets round_completed_at timestamp).
+ * Does NOT change the status — preserves the last active status.
+ */
+export async function setRoundCompletedAt(
+  participantId: string,
+  sessionId: string,
+  roundId: string
+) {
+  const { error } = await db()
+    .from('registrations')
+    .update({
+      round_completed_at: new Date().toISOString(),
+      last_status_update: new Date().toISOString(),
+    })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId)
+    .is('round_completed_at', null); // Only set once
+  if (error) throw error;
+}
+
+// Generate a random identification number (1-99) and 3 options (1 correct + 2 wrong, shuffled)
+export function generateIdentificationData(): { number: number; options: number[] } {
+  const correctNumber = Math.floor(Math.random() * 99) + 1;
+  return { number: correctNumber, options: generateOptionsForNumber(correctNumber) };
+}
+
+export function generateOptionsForNumber(correctNumber: number): number[] {
+  const options = new Set<number>([correctNumber]);
+  while (options.size < 3) {
+    const num = Math.floor(Math.random() * 99) + 1;
+    options.add(num);
+  }
+  // Shuffle
+  return [...options].sort(() => Math.random() - 0.5);
+}
+
+// Valid participant status transitions (from → allowed to values)
+export const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  'registered': ['confirmed', 'unconfirmed', 'cancelled'],
+  'confirmed': ['matched', 'no-match', 'cancelled'],
+  'matched': ['checked-in', 'missed'],
+  'checked-in': ['met'],
+  // Terminal statuses — no transitions out
+  'met': [],
+  'unconfirmed': [],
+  'no-match': [],
+  'missed': [],
+  'cancelled': [],
+};
 
 // ============================================================
 // MATCHES
@@ -915,6 +951,7 @@ export async function getMatchingLock(sessionId: string, roundId: string) {
 /**
  * Atomically try to acquire matching lock. Returns true if acquired, false if already exists.
  * Uses INSERT with ON CONFLICT to prevent race conditions.
+ * match_count = -1 means "in progress" (not yet completed).
  */
 export async function tryAcquireMatchingLock(sessionId: string, roundId: string): Promise<boolean> {
   const { error } = await db()
@@ -923,7 +960,7 @@ export async function tryAcquireMatchingLock(sessionId: string, roundId: string)
       session_id: sessionId,
       round_id: roundId,
       completed_at: new Date().toISOString(),
-      match_count: 0,
+      match_count: -1,
       unmatched_count: 0,
       solo_participant: false,
     });
@@ -948,6 +985,18 @@ export async function updateMatchingLock(sessionId: string, roundId: string, upd
       unmatched_count: update.unmatchedCount,
       solo_participant: update.soloParticipant || false,
     })
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/**
+ * Delete matching lock to allow re-running matching (used when previous run found 0 matches)
+ */
+export async function deleteMatchingLock(sessionId: string, roundId: string) {
+  const { error } = await db()
+    .from('matching_locks')
+    .delete()
     .eq('session_id', sessionId)
     .eq('round_id', roundId);
   if (error) throw error;
@@ -1354,18 +1403,18 @@ export async function updateSubscription(userId: string, updates: {
 // CREDITS (Single Event Payments)
 // ============================================================
 
-export async function getCredits(userId: string): Promise<{ balance: number; capacityTier: string }> {
+export async function getCredits(userId: string): Promise<{ balance: number; capacityTier: string }[]> {
   const { data, error } = await db()
     .from('credits')
     .select('*')
     .eq('user_id', userId)
-    .maybeSingle();
+    .gt('balance', 0);
   if (error) throw error;
-  if (!data) return { balance: 0, capacityTier: '50' };
-  return {
-    balance: data.balance || 0,
-    capacityTier: data.capacity_tier || '50',
-  };
+  if (!data || data.length === 0) return [];
+  return data.map((row: any) => ({
+    balance: row.balance || 0,
+    capacityTier: row.capacity_tier || '50',
+  }));
 }
 
 export async function addCredits(userId: string, amount: number, metadata: {
@@ -1376,18 +1425,28 @@ export async function addCredits(userId: string, amount: number, metadata: {
   sessionId?: string;
   description?: string;
 }) {
-  // Update or create credits balance
-  const existing = await getCredits(userId);
-  const newBalance = existing.balance + amount;
+  // Update or create credits balance for this specific capacity tier
+  const tier = metadata.capacityTier || '50';
+
+  // Get existing balance for this specific tier
+  const { data: existingRow } = await db()
+    .from('credits')
+    .select('balance')
+    .eq('user_id', userId)
+    .eq('capacity_tier', tier)
+    .maybeSingle();
+
+  const currentBalance = existingRow?.balance || 0;
+  const newBalance = currentBalance + amount;
 
   const { error: upsertError } = await db()
     .from('credits')
     .upsert({
       user_id: userId,
       balance: newBalance,
-      capacity_tier: metadata.capacityTier || existing.capacityTier,
+      capacity_tier: tier,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+    }, { onConflict: 'user_id,capacity_tier' });
   if (upsertError) throw upsertError;
 
   // Record transaction
@@ -1397,7 +1456,7 @@ export async function addCredits(userId: string, amount: number, metadata: {
       user_id: userId,
       amount,
       type: metadata.type,
-      capacity_tier: metadata.capacityTier || existing.capacityTier,
+      capacity_tier: tier,
       stripe_session_id: metadata.stripeSessionId || null,
       stripe_customer_id: metadata.stripeCustomerId || null,
       session_id: metadata.sessionId || null,
@@ -1409,6 +1468,7 @@ export async function addCredits(userId: string, amount: number, metadata: {
 
 export async function deductCredit(userId: string, amount: number, metadata: {
   type: string;
+  capacityTier?: string;
   sessionId?: string;
   description?: string;
 }) {
@@ -1477,4 +1537,103 @@ export async function deleteRegistrationDraft(email: string) {
     .delete()
     .eq('email', email);
   if (error) throw error;
+}
+
+// ============================================================
+// ACCESS PASSWORDS
+// ============================================================
+
+export async function validateAccessPassword(password: string) {
+  const { data, error } = await db()
+    .from('access_passwords')
+    .select('id, person_name, is_active')
+    .eq('password', password)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function logPasswordAccess(passwordId: string, userAgent: string | null, ipAddress: string | null) {
+  const { error: logError } = await db()
+    .from('access_password_logs')
+    .insert({
+      password_id: passwordId,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+    });
+  if (logError) throw logError;
+
+  // Atomic increment via PG function
+  const { error: rpcError } = await db().rpc('increment_access_count', { pwd_id: passwordId });
+  if (rpcError) throw rpcError;
+}
+
+export async function getAllAccessPasswords() {
+  const { data, error } = await db()
+    .from('access_passwords')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    personName: p.person_name,
+    password: p.password,
+    isActive: p.is_active,
+    accessCount: p.access_count,
+    lastAccessedAt: p.last_accessed_at,
+    createdAt: p.created_at,
+  }));
+}
+
+export async function createAccessPassword(personName: string, password: string) {
+  const { data, error } = await db()
+    .from('access_passwords')
+    .insert({ person_name: personName, password })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function toggleAccessPassword(id: string) {
+  const { data: current, error: getError } = await db()
+    .from('access_passwords')
+    .select('is_active')
+    .eq('id', id)
+    .single();
+  if (getError) throw getError;
+
+  const { data, error } = await db()
+    .from('access_passwords')
+    .update({ is_active: !current.is_active, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAccessPassword(id: string) {
+  const { error } = await db()
+    .from('access_passwords')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function getAccessPasswordLogs(passwordId: string) {
+  const { data, error } = await db()
+    .from('access_password_logs')
+    .select('*')
+    .eq('password_id', passwordId)
+    .order('accessed_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data || []).map((l: any) => ({
+    id: l.id,
+    accessedAt: l.accessed_at,
+    userAgent: l.user_agent,
+    ipAddress: l.ip_address,
+  }));
 }

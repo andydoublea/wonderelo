@@ -119,7 +119,7 @@ export function SessionPreview({ formData, userEmail = 'user@example.com', organ
             meetingPoints: formData.meetingPoints || []
           }}
           showSelectionMode={true}
-          variant={formData.status === 'running' ? 'running' : formData.status === 'scheduled' ? 'scheduled' : 'default'}
+          variant={formData.status === 'published' ? 'active' : formData.status === 'scheduled' ? 'scheduled' : 'default'}
         />
       </div>
     </div>

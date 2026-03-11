@@ -28,7 +28,8 @@ import {
   UserPlus,
   Handshake,
   UserX,
-  UserMinus
+  UserMinus,
+  MapPin
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { NetworkingSession } from '../App';
@@ -45,7 +46,7 @@ interface RoundRegistration {
   roundName: string;
   startTime: string;
   duration: number;
-  status: 'registered' | 'cancelled' | 'confirmed' | 'unconfirmed' | 'met' | 'missed' | 'left-alone';
+  status: 'registered' | 'confirmed' | 'matched' | 'checked-in' | 'met' | 'unconfirmed' | 'no-match' | 'missed' | 'cancelled';
   registeredAt: string;
   statusUpdatedAt?: string;
 }
@@ -316,12 +317,16 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
       case 'cancelled':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'matched':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'checked-in':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
       case 'met':
         return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
+      case 'no-match':
+        return 'bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300';
       case 'missed':
         return 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200';
-      case 'left-alone':
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
@@ -333,16 +338,20 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
         return <UserPlus className="h-3 w-3" />;
       case 'confirmed':
         return <CheckCircle className="h-3 w-3" />;
+      case 'matched':
+        return <Users className="h-3 w-3" />;
+      case 'checked-in':
+        return <MapPin className="h-3 w-3" />;
       case 'unconfirmed':
         return <XCircle className="h-3 w-3" />;
       case 'cancelled':
         return <Minus className="h-3 w-3" />;
       case 'met':
         return <Handshake className="h-3 w-3" />;
+      case 'no-match':
+        return <HelpCircle className="h-3 w-3" />;
       case 'missed':
         return <UserX className="h-3 w-3" />;
-      case 'left-alone':
-        return <UserMinus className="h-3 w-3" />;
       default:
         return <HelpCircle className="h-3 w-3" />;
     }
@@ -352,7 +361,9 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
     switch (status) {
       case 'scheduled':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'running':
+      case 'walking':
+      case 'finding':
+      case 'networking':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'completed':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
@@ -485,10 +496,10 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
       const rounds = sessionReg?.rounds || [];
       return count + (Array.isArray(rounds) ? rounds.filter(round => round.status === 'missed').length : 0);
     }, 0),
-    leftAlone: filteredRegistrations.reduce((count, reg) => {
+    noMatch: filteredRegistrations.reduce((count, reg) => {
       const sessionReg = reg.sessions.find(s => s.sessionId === session.id);
       const rounds = sessionReg?.rounds || [];
-      return count + (Array.isArray(rounds) ? rounds.filter(round => round.status === 'left-alone').length : 0);
+      return count + (Array.isArray(rounds) ? rounds.filter(round => round.status === 'no-match').length : 0);
     }, 0),
     registrationRate: session.limitParticipants 
       ? Math.round((filteredRegistrations.length / (session.maxParticipants || 1)) * 100)
@@ -566,7 +577,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
     // Calculate contacts exchanged percentage
     // We count "met" status as contacts exchanged
     const metCount = sessionStats.met;
-    const totalMeetings = sessionStats.confirmed + sessionStats.met + sessionStats.missed + sessionStats.leftAlone;
+    const totalMeetings = sessionStats.confirmed + sessionStats.met + sessionStats.missed + sessionStats.noMatch;
     const contactsExchangedPercent = totalMeetings > 0 
       ? Math.round((metCount / totalMeetings) * 100)
       : 0;
@@ -695,16 +706,16 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
                 </div>
               </div>
 
-              {/* Left alone */}
+              {/* No match */}
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-2">
-                  <UserMinus className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium">Left alone</span>
+                  <HelpCircle className="h-4 w-4 text-gray-600" />
+                  <span className="font-medium">No match</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold text-amber-600">{sessionStats.leftAlone}</span>
+                  <span className="text-2xl font-bold text-gray-600">{sessionStats.noMatch}</span>
                   <span className="text-sm text-muted-foreground w-12 text-right">
-                    {sessionStats.totalRoundRegistrations > 0 ? Math.round((sessionStats.leftAlone / sessionStats.totalRoundRegistrations) * 100) : 0}%
+                    {sessionStats.totalRoundRegistrations > 0 ? Math.round((sessionStats.noMatch / sessionStats.totalRoundRegistrations) * 100) : 0}%
                   </span>
                 </div>
               </div>

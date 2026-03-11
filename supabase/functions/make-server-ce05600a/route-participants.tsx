@@ -13,6 +13,7 @@ import { Hono } from 'npm:hono';
 import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
 import { getParticipantDashboard } from './participant-dashboard.tsx';
+import { createMatchesForRound } from './matching.tsx';
 
 export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) => Date) {
 
@@ -92,18 +93,131 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Get participant registrations
       const registrations = await db.getRegistrationsByParticipant(participant.participantId);
 
-      // Find the ACTIVE match (status: matched, checked-in, waiting-for-meet-confirmation)
-      const activeStatuses = ['matched', 'checked-in', 'waiting-for-meet-confirmation'];
-      const activeRegistration = registrations.find((r: any) => activeStatuses.includes(r.status));
+      // Find the ACTIVE match (status: matched, checked-in, met) — exclude completed rounds
+      const activeStatuses = ['matched', 'checked-in', 'met'];
+      const activeRegistration = registrations.find((r: any) =>
+        activeStatuses.includes(r.status) && !r.roundCompletedAt
+      );
 
       if (!activeRegistration) {
-        const noMatchReg = registrations.find((r: any) => r.status === 'no-match');
-        if (noMatchReg) {
-          return c.json({
-            error: 'No active match found',
-            reason: 'no-match',
-            message: noMatchReg.noMatchReason || 'You could not be matched with other participants'
-          }, 404);
+        // Try to trigger matching for confirmed OR no-match participants (retry may re-match)
+        const matchableReg = registrations.find((r: any) =>
+          (r.status === 'confirmed' || r.status === 'no-match') && !r.roundCompletedAt
+        );
+        if (matchableReg) {
+          try {
+            const session = await db.getSessionById(matchableReg.sessionId);
+            const round = session?.rounds?.find((r: any) => r.id === matchableReg.roundId);
+            if (round?.date && round?.startTime) {
+              // Parse round start time with CET timezone correction (times stored as CET)
+              const [year, month, day] = round.date.split('-').map(Number);
+              const [h, m] = round.startTime.split(':').map(Number);
+              const CET_OFFSET_HOURS = 1;
+              const roundStart = new Date(Date.UTC(year, month - 1, day, h - CET_OFFSET_HOURS, m, 0, 0));
+              if (new Date() >= roundStart) {
+                debugLog('[GET /match] Participant not matched yet — triggering matching (retry)');
+                await createMatchesForRound(matchableReg.sessionId, matchableReg.roundId);
+
+                // Re-check registrations after matching — return match data if available
+                const updatedRegs = await db.getRegistrationsByParticipant(participant.participantId);
+                const newActiveReg = updatedRegs.find((r: any) =>
+                  activeStatuses.includes(r.status) && !r.roundCompletedAt
+                );
+                if (newActiveReg) {
+                  debugLog('[GET /match] Matching just produced a result — returning match data');
+                  // Fall through to match data building below by reassigning
+                  const { sessionId, roundId, matchId } = newActiveReg;
+                  if (matchId) {
+                    const match = await db.getMatchById(matchId);
+                    if (match) {
+                      const matchParticipants = await db.getMatchParticipants(matchId);
+                      const matchSession = await db.getSessionById(sessionId);
+                      const matchRound = matchSession?.rounds?.find((r: any) => r.id === roundId);
+
+                      let walkingTimeMinutes = 3;
+                      let findingTimeMinutes = 1;
+                      try {
+                        const systemParams = await db.getAdminSetting('system_parameters');
+                        if (systemParams) {
+                          walkingTimeMinutes = systemParams.walkingTimeMinutes ?? 3;
+                          findingTimeMinutes = systemParams.findingTimeMinutes ?? 1;
+                        }
+                      } catch (e) { /* use defaults */ }
+
+                      const parseRoundStart = (date: string, startTime: string): Date => {
+                        const [year, month, day] = date.split('-').map(Number);
+                        const [hours, minutes] = startTime.split(':').map(Number);
+                        const CET_OFFSET_HOURS = 1;
+                        return new Date(Date.UTC(year, month - 1, day, hours - CET_OFFSET_HOURS, minutes, 0, 0));
+                      };
+
+                      let walkingDeadline: string;
+                      let roundStartTimeISO: string | null = null;
+                      let networkingEndTime: string | null = null;
+
+                      if (matchRound?.date && matchRound?.startTime) {
+                        const roundStartTime = parseRoundStart(matchRound.date, matchRound.startTime);
+                        roundStartTimeISO = roundStartTime.toISOString();
+                        walkingDeadline = new Date(roundStartTime.getTime() + walkingTimeMinutes * 60000).toISOString();
+                        networkingEndTime = new Date(
+                          roundStartTime.getTime()
+                          + walkingTimeMinutes * 60000
+                          + findingTimeMinutes * 60000
+                          + (matchRound.duration || 10) * 60000
+                        ).toISOString();
+                      } else {
+                        const matchedAt = newActiveReg.matchedAt || new Date().toISOString();
+                        walkingDeadline = new Date(new Date(matchedAt).getTime() + walkingTimeMinutes * 60000).toISOString();
+                      }
+
+                      const allMeetingPoints = matchRound?.meetingPoints?.length > 0
+                        ? matchRound.meetingPoints
+                        : (matchSession?.meetingPoints || []);
+                      const meetingPointObj = allMeetingPoints.find((mp: any) =>
+                        (mp.name === match.meetingPoint) || (mp.id === match.meetingPoint)
+                      );
+
+                      return c.json({
+                        success: true,
+                        participantId: participant.participantId,
+                        matchData: {
+                          matchId: match.matchId,
+                          meetingPointName: match.meetingPoint || 'TBD',
+                          meetingPointImageUrl: meetingPointObj?.imageUrl || null,
+                          meetingPointType: meetingPointObj?.type || 'physical',
+                          meetingPointVideoCallUrl: meetingPointObj?.videoCallUrl || null,
+                          identificationImageUrl: null,
+                          participants: matchParticipants.map((p: any) => ({
+                            id: p.participantId,
+                            firstName: p.firstName,
+                            lastName: p.lastName,
+                            identificationNumber: '123'
+                          })),
+                          roundStartTime: roundStartTimeISO,
+                          walkingDeadline: walkingDeadline,
+                          networkingEndTime: networkingEndTime,
+                          confirmations: [],
+                          choices: []
+                        }
+                      });
+                    }
+                  }
+                }
+
+                // Check if matching produced no-match
+                const newNoMatch = updatedRegs.find((r: any) => r.status === 'no-match' && !r.roundCompletedAt);
+                if (newNoMatch) {
+                  return c.json({
+                    error: 'No active match found',
+                    reason: 'no-match',
+                    message: newNoMatch.noMatchReason || 'You could not be matched with other participants'
+                  }, 404);
+                }
+              }
+            }
+          } catch (matchErr) {
+            errorLog('[GET /match] Error triggering matching:', matchErr);
+          }
         }
 
         return c.json({ error: 'No active match found' }, 404);
@@ -129,10 +243,46 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       const session = await db.getSessionById(sessionId);
       const round = session?.rounds?.find((r: any) => r.id === roundId);
 
-      // Calculate walking deadline
-      const walkingTimeMinutes = 3; // Default 3 minutes
+      // Fetch system parameters for phase durations
+      let walkingTimeMinutes = 3;
+      let findingTimeMinutes = 1;
+      try {
+        const systemParams = await db.getAdminSetting('system_parameters');
+        if (systemParams) {
+          walkingTimeMinutes = systemParams.walkingTimeMinutes ?? 3;
+          findingTimeMinutes = systemParams.findingTimeMinutes ?? 1;
+        }
+      } catch (e) {
+        debugLog('[GET /match] Error fetching system params, using defaults');
+      }
+
+      // Helper: parse round date+time with CET timezone correction
+      const parseRoundStart = (date: string, startTime: string): Date => {
+        const [year, month, day] = date.split('-').map(Number);
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const CET_OFFSET_HOURS = 1;
+        return new Date(Date.UTC(year, month - 1, day, hours - CET_OFFSET_HOURS, minutes, 0, 0));
+      };
+
+      // Calculate walking deadline = matchedAt + walkingTimeMinutes
+      // Uses matchedAt (not roundStartTime) so participant always gets full walking time
+      // This is consistent with dashboard's "missed" auto-detection
       const matchedAt = activeRegistration.matchedAt || activeRegistration.lastStatusUpdate || new Date().toISOString();
       const walkingDeadline = new Date(new Date(matchedAt).getTime() + walkingTimeMinutes * 60000).toISOString();
+      let roundStartTimeISO: string | null = null;
+      let networkingEndTime: string | null = null;
+
+      if (round?.date && round?.startTime) {
+        const roundStartTime = parseRoundStart(round.date, round.startTime);
+        roundStartTimeISO = roundStartTime.toISOString();
+        // Networking end = roundStart + walkingTime + findingTime + round.duration
+        networkingEndTime = new Date(
+          roundStartTime.getTime()
+          + walkingTimeMinutes * 60000
+          + findingTimeMinutes * 60000
+          + (round.duration || 10) * 60000
+        ).toISOString();
+      }
 
       // Look up the full meeting point object from the session/round
       const allMeetingPoints = round?.meetingPoints?.length > 0
@@ -156,13 +306,9 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
           lastName: p.lastName,
           identificationNumber: '123'
         })),
-        roundStartTime: round?.date && round?.startTime
-          ? new Date(`${round.date}T${round.startTime}:00`).toISOString()
-          : null,
+        roundStartTime: roundStartTimeISO,
         walkingDeadline: walkingDeadline,
-        networkingEndTime: round?.date && round?.startTime && round?.duration
-          ? new Date(new Date(`${round.date}T${round.startTime}:00`).getTime() + round.duration * 60000).toISOString()
-          : null,
+        networkingEndTime: networkingEndTime,
         confirmations: [],
         choices: []
       };
@@ -307,6 +453,27 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         return c.json({ error: 'Registration not found for this match' }, 404);
       }
 
+      // Idempotent: if already checked-in or met, return success
+      if (registration.status === 'checked-in' || registration.status === 'met') {
+        debugLog(`[POST /check-in] Already ${registration.status}, returning success (idempotent)`);
+        return c.json({
+          success: true,
+          status: registration.status,
+          checkedInAt: registration.checkedInAt || registration.lastStatusUpdate
+        });
+      }
+
+      // Allow check-in from 'matched' or 'missed' status (missed = walking deadline passed but still at venue)
+      const checkInAllowedStatuses = ['matched', 'missed'];
+      if (!checkInAllowedStatuses.includes(registration.status)) {
+        debugLog(`[POST /check-in] Cannot check in: status is "${registration.status}", expected "matched" or "missed"`);
+        return c.json({
+          error: 'Cannot check in',
+          message: `Cannot check in when status is "${registration.status}". You must be matched first.`,
+          currentStatus: registration.status
+        }, 400);
+      }
+
       const now = new Date().toISOString();
 
       // Update status to 'checked-in'
@@ -353,9 +520,11 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Get participant registrations
       const registrations = await db.getRegistrationsByParticipant(participant.participantId);
 
-      // Find the ACTIVE match
-      const activeStatuses = ['matched', 'checked-in', 'waiting-for-meet-confirmation'];
-      const activeRegistration = registrations.find((r: any) => activeStatuses.includes(r.status));
+      // Find the ACTIVE match (status: matched, checked-in, met) — exclude completed rounds
+      const activeStatuses = ['matched', 'checked-in', 'met'];
+      const activeRegistration = registrations.find((r: any) =>
+        activeStatuses.includes(r.status) && !r.roundCompletedAt
+      );
 
       if (!activeRegistration) {
         return c.json({ error: 'No active match found' }, 404);
@@ -370,9 +539,8 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Get match participants
       const matchParticipants = await db.getMatchParticipants(matchId);
 
-      // Get check-in status for all partners
-      const identificationNumbers = [1, 2, 3];
-      const myNumber = identificationNumbers[Math.floor(Math.random() * identificationNumbers.length)];
+      // My stable identification number from DB
+      const myNumber = activeRegistration.identificationNumber || 0;
 
       const partnersWithStatus = [];
       let allCheckedIn = true;
@@ -383,7 +551,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
 
         // Check partner's registration status for this round
         const partnerReg = await db.getRegistration(p.participantId, sessionId, roundId);
-        const isCheckedIn = partnerReg?.status === 'checked-in' || partnerReg?.status === 'waiting-for-meet-confirmation' || partnerReg?.status === 'met';
+        const isCheckedIn = partnerReg?.status === 'checked-in' || partnerReg?.status === 'met';
         const isMet = partnerReg?.status === 'met';
 
         if (!isCheckedIn) allCheckedIn = false;
@@ -394,11 +562,74 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
           firstName: p.firstName,
           lastName: p.lastName,
           isCheckedIn,
-          identificationNumber: identificationNumbers[Math.floor(Math.random() * identificationNumbers.length)].toString()
+          // Partner's stable identification number (not revealed directly to caller)
+          identificationNumber: partnerReg?.identificationNumber?.toString() || '0',
+          // The options the caller sees for this partner (shuffled, 1 correct + 2 wrong)
+          identificationOptions: partnerReg?.identificationOptions || [],
         });
       }
 
-      const shouldStartNetworking = allMet && activeRegistration.status === 'met';
+      // Redirect to networking when YOUR status is 'met' (you or your partner confirmed)
+      const shouldStartNetworking = activeRegistration.status === 'met';
+
+      // Get session and round for timing
+      const session = await db.getSessionById(sessionId);
+      const round = session?.rounds?.find((r: any) => r.id === roundId);
+
+      // Calculate walkingDeadline and findingDeadline
+      let walkingDeadline: string | null = null;
+      let findingDeadline: string | null = null;
+      let walkingTimeMinutes = 3;
+      let findingTimeMinutes = 1;
+
+      try {
+        const systemParams = await db.getAdminSetting('system_parameters');
+        if (systemParams) {
+          walkingTimeMinutes = systemParams.walkingTimeMinutes ?? 3;
+          findingTimeMinutes = systemParams.findingTimeMinutes ?? 1;
+        }
+      } catch (e) {
+        debugLog('[GET /match-partner] Error fetching system params, using defaults');
+      }
+
+      if (round?.date && round?.startTime) {
+        // Parse round start with CET timezone correction
+        const [ryear, rmonth, rday] = round.date.split('-').map(Number);
+        const [rhours, rminutes] = round.startTime.split(':').map(Number);
+        const CET_OFFSET_HOURS = 1;
+        const roundStartTime = new Date(Date.UTC(ryear, rmonth - 1, rday, rhours - CET_OFFSET_HOURS, rminutes, 0, 0));
+
+        // Walking deadline = roundStart + walkingTime
+        const walkingDeadlineMs = roundStartTime.getTime() + walkingTimeMinutes * 60000;
+        walkingDeadline = new Date(walkingDeadlineMs).toISOString();
+
+        const now = new Date();
+
+        // Finding countdown logic:
+        // - Starts when ALL partners checked in, OR when walking time expires
+        // - Does NOT start when only some partners arrived
+        if (allCheckedIn) {
+          // All partners are at the meeting point — finding starts from the last check-in
+          // Collect all check-in timestamps (including self)
+          const checkInTimes: number[] = [];
+          if (activeRegistration.checkedInAt) {
+            checkInTimes.push(new Date(activeRegistration.checkedInAt).getTime());
+          }
+          for (const p of matchParticipants) {
+            if (p.participantId === participant.participantId) continue;
+            const partnerReg = await db.getRegistration(p.participantId, sessionId, roundId);
+            if (partnerReg?.checkedInAt) {
+              checkInTimes.push(new Date(partnerReg.checkedInAt).getTime());
+            }
+          }
+          const lastCheckIn = checkInTimes.length > 0 ? Math.max(...checkInTimes) : now.getTime();
+          findingDeadline = new Date(lastCheckIn + findingTimeMinutes * 60000).toISOString();
+        } else if (now.getTime() >= walkingDeadlineMs) {
+          // Walking time expired — finding starts regardless of who arrived
+          findingDeadline = new Date(walkingDeadlineMs + findingTimeMinutes * 60000).toISOString();
+        }
+        // else: findingDeadline stays null — still waiting for partners
+      }
 
       const matchPartnerData = {
         matchId,
@@ -406,11 +637,12 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         myName: `${participant.firstName || 'Participant'} ${participant.lastName || ''}`.trim(),
         backgroundImageUrl: null,
         partners: partnersWithStatus,
-        availableNumbers: identificationNumbers,
-        shouldStartNetworking
+        shouldStartNetworking,
+        walkingDeadline,
+        findingDeadline,
       };
 
-      debugLog('[GET /match-partner] Match partner data found, shouldStartNetworking:', shouldStartNetworking);
+      debugLog('[GET /match-partner] Match partner data found, shouldStartNetworking:', shouldStartNetworking, 'findingDeadline:', findingDeadline);
 
       return c.json(matchPartnerData);
 
@@ -450,10 +682,78 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       const registrations = await db.getRegistrationsByParticipant(participant.participantId);
       const registration = registrations.find((r: any) => r.matchId === matchId);
 
-      if (registration) {
-        await db.updateRegistrationStatus(participant.participantId, registration.sessionId, registration.roundId, 'met', {
-          metAt: now,
+      if (!registration) {
+        return c.json({ error: 'Registration not found for this match' }, 404);
+      }
+
+      // Idempotent: if already met, return success
+      if (registration.status === 'met') {
+        debugLog('[POST /confirm-match] Already met, returning success (idempotent)');
+        return c.json({
+          success: true,
+          message: 'Match already confirmed'
         });
+      }
+
+      // Only allow confirm-match from 'checked-in' status
+      if (registration.status !== 'checked-in') {
+        debugLog(`[POST /confirm-match] Cannot confirm match: status is "${registration.status}", expected "checked-in"`);
+        return c.json({
+          error: 'Cannot confirm match',
+          message: `Cannot confirm match when status is "${registration.status}". You must check in first.`,
+          currentStatus: registration.status
+        }, 400);
+      }
+
+      // Validate the selected number against the target partner's identification number
+      if (targetParticipantId && selectedNumber !== undefined) {
+        const targetRegs = await db.getRegistrationsByParticipant(targetParticipantId);
+        const targetReg = targetRegs.find((r: any) => r.matchId === matchId);
+
+        if (targetReg) {
+          const correctNumber = targetReg.identificationNumber;
+          debugLog(`[POST /confirm-match] Selected: ${selectedNumber}, Correct: ${correctNumber}`);
+
+          if (correctNumber !== undefined && selectedNumber !== correctNumber) {
+            // WRONG GUESS — regenerate target's identification number + options
+            const newIdData = db.generateIdentificationData();
+            await db.updateRegistrationStatus(targetParticipantId, targetReg.sessionId, targetReg.roundId, targetReg.status, {
+              identificationNumber: newIdData.number,
+              identificationOptions: newIdData.options,
+            });
+
+            debugLog(`[POST /confirm-match] Wrong number! Regenerated partner's number to ${newIdData.number}, options: ${newIdData.options}`);
+
+            return c.json({
+              incorrect: true,
+              message: 'Wrong number. Your partner got a new number — look again!',
+              newOptions: newIdData.options,
+            });
+          }
+        }
+      }
+
+      // Correct number selected — set caller to 'met'
+      await db.updateRegistrationStatus(participant.participantId, registration.sessionId, registration.roundId, 'met', {
+        metAt: now,
+      });
+
+      // Bilateral confirmation: also set the target partner to 'met'
+      // (only 1 of 2 needs to confirm — the other is auto-confirmed)
+      if (targetParticipantId) {
+        try {
+          const targetRegs2 = await db.getRegistrationsByParticipant(targetParticipantId);
+          const targetReg2 = targetRegs2.find((r: any) => r.matchId === matchId);
+          if (targetReg2 && targetReg2.status === 'checked-in') {
+            await db.updateRegistrationStatus(targetParticipantId, targetReg2.sessionId, targetReg2.roundId, 'met', {
+              metAt: now,
+            });
+            debugLog(`[POST /confirm-match] Partner ${targetParticipantId} also set to 'met' (bilateral)`);
+          }
+        } catch (partnerErr) {
+          // Don't fail the whole request if partner update fails
+          errorLog('[POST /confirm-match] Error setting partner to met:', partnerErr);
+        }
       }
 
       debugLog('[POST /confirm-match] Match confirmed successfully');
@@ -494,9 +794,11 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Get participant registrations
       const registrations = await db.getRegistrationsByParticipant(participant.participantId);
 
-      // Find the ACTIVE match (status: checked-in, waiting-for-meet-confirmation, met)
-      const activeStatuses = ['checked-in', 'waiting-for-meet-confirmation', 'met'];
-      const activeRegistration = registrations.find((r: any) => activeStatuses.includes(r.status));
+      // Find the ACTIVE match (status: checked-in, met) — exclude completed rounds
+      const activeStatuses = ['checked-in', 'met'];
+      const activeRegistration = registrations.find((r: any) =>
+        activeStatuses.includes(r.status) && !r.roundCompletedAt
+      );
 
       if (!activeRegistration) {
         return c.json({ error: 'No active networking session found' }, 404);
@@ -535,12 +837,44 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Get my contact sharing preferences
       const myContactSharing = await db.getContactSharing(matchId, participant.participantId);
 
+      // Calculate networking end time
+      // Networking duration = round.duration (the time participants actually have to network)
+      // Start from metAt (when both partners confirmed meeting each other)
+      let networkingEndTime: string;
+      const roundDuration = round?.duration || 10; // minutes
+      if (activeRegistration.metAt) {
+        // Best case: we know when networking actually started
+        networkingEndTime = new Date(new Date(activeRegistration.metAt).getTime() + roundDuration * 60000).toISOString();
+      } else if (round?.date && round?.startTime) {
+        // Fallback: estimate from round schedule
+        const [ryear, rmonth, rday] = round.date.split('-').map(Number);
+        const [rhours, rminutes] = round.startTime.split(':').map(Number);
+        const CET_OFFSET_HOURS = 1;
+        const roundStartTime = new Date(Date.UTC(ryear, rmonth - 1, rday, rhours - CET_OFFSET_HOURS, rminutes, 0, 0));
+        let walkingTimeMinutes = 3;
+        let findingTimeMinutes = 1;
+        try {
+          const systemParams = await db.getAdminSetting('system_parameters');
+          if (systemParams) {
+            walkingTimeMinutes = systemParams.walkingTimeMinutes ?? 3;
+            findingTimeMinutes = systemParams.findingTimeMinutes ?? 1;
+          }
+        } catch (e) {
+          debugLog('[GET /networking] Error fetching system params, using defaults');
+        }
+        const roundEndMs = roundStartTime.getTime()
+          + walkingTimeMinutes * 60000
+          + findingTimeMinutes * 60000
+          + roundDuration * 60000;
+        networkingEndTime = new Date(roundEndMs).toISOString();
+      } else {
+        networkingEndTime = new Date(Date.now() + roundDuration * 60000).toISOString();
+      }
+
       const networkingData = {
         matchId: match.matchId,
         roundName: round?.name || 'Networking Round',
-        networkingEndTime: round?.date && round?.startTime && round?.duration
-          ? new Date(new Date(`${round.date}T${round.startTime}:00`).getTime() + round.duration * 60000).toISOString()
-          : new Date(Date.now() + 10 * 60000).toISOString(),
+        networkingEndTime,
         partners,
         iceBreakers: session?.iceBreakers || [],
         myContactSharing: myContactSharing || {}
@@ -621,6 +955,35 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Find all registrations with a matchId
       const matchedRegs = registrations.filter((r: any) => r.matchId);
 
+      // Build lookup maps for sessions, rounds, and organizers
+      const sessionIds = [...new Set(matchedRegs.map((r: any) => r.sessionId).filter(Boolean))];
+      const roundIds = [...new Set(matchedRegs.map((r: any) => r.roundId).filter(Boolean))];
+      const organizerIds = [...new Set(matchedRegs.map((r: any) => r.organizerId).filter(Boolean))];
+
+      const sessionMap: Record<string, any> = {};
+      for (const sid of sessionIds) {
+        try {
+          const s = await db.getSessionById(sid);
+          if (s) sessionMap[sid] = s;
+        } catch (_) { /* ignore */ }
+      }
+
+      const roundMap: Record<string, any> = {};
+      for (const rid of roundIds) {
+        try {
+          const r = await db.getRoundById(rid);
+          if (r) roundMap[rid] = r;
+        } catch (_) { /* ignore */ }
+      }
+
+      const organizerMap: Record<string, any> = {};
+      for (const oid of organizerIds) {
+        try {
+          const o = await db.getOrganizerById(oid);
+          if (o) organizerMap[oid] = o;
+        } catch (_) { /* ignore */ }
+      }
+
       const sharedContacts: any[] = [];
 
       for (const reg of matchedRegs) {
@@ -634,6 +997,11 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         const matchParticipants = await db.getMatchParticipants(reg.matchId);
         const partners = matchParticipants.filter(p => p.participantId !== participant.participantId);
 
+        // Enrich with session/round/organizer info
+        const session = sessionMap[reg.sessionId];
+        const round = roundMap[reg.roundId];
+        const organizer = organizerMap[reg.organizerId];
+
         for (const partner of partners) {
           const partnerPrefs = allPrefs.find(p => p.participantId === partner.participantId);
 
@@ -645,7 +1013,14 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
             // Both agreed — share contact info
             sharedContacts.push({
               matchId: reg.matchId,
-              roundName: reg.roundName || 'Round',
+              roundId: reg.roundId,
+              roundName: round?.name || 'Round',
+              sessionId: reg.sessionId,
+              sessionName: session?.name || '',
+              sessionDate: session?.date || round?.date || '',
+              organizerName: organizer?.organizerName || organizer?.displayName || '',
+              organizerSlug: organizer?.urlSlug || '',
+              allPartners: partners.map(p => ({ firstName: p.firstName, lastName: p.lastName })),
               partner: {
                 firstName: partner.firstName,
                 lastName: partner.lastName,

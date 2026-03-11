@@ -7,7 +7,7 @@ export interface Participant {
   email: string;
   phone?: string;
   registeredAt: string;
-  status: 'registered' | 'cancelled' | 'confirmed' | 'unconfirmed' | 'met' | 'missed' | 'left-alone' | 'no-match';
+  status: 'registered' | 'confirmed' | 'matched' | 'checked-in' | 'met' | 'unconfirmed' | 'no-match' | 'missed' | 'cancelled';
   teamId?: string;
   topicIds?: string[];
   confirmationSentAt?: string;
@@ -54,7 +54,7 @@ export interface Round {
   duration: number;
   confirmationSentAt?: string;
   matchingCompletedAt?: string;
-  status?: 'draft' | 'scheduled' | 'open-to-registration' | 'registration-safety-window' | 'matching' | 'running' | 'completed';
+  status?: 'draft' | 'scheduled' | 'registration-open' | 'confirmation-window' | 'walking' | 'finding' | 'networking' | 'completed';
   registeredCount?: number; // Number of registered participants for this round
 }
 
