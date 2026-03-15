@@ -1736,8 +1736,7 @@ function AppProviderWithRouter() {
   };
 
   const isAdminUser = () => {
-    const adminEmails = ['jan.sramka+admin@gmail.com', 'jan.sramka@gmail.com', 'andy.double.a+org@gmail.com'];
-    return currentUser?.email && adminEmails.includes(currentUser.email);
+    return currentUser?.role === 'admin';
   };
 
   const handleSignOut = async () => {

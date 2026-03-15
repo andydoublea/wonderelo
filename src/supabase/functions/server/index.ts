@@ -1751,6 +1751,50 @@ app.put('/make-server-ce05600a/admin/users/:userId', async (c) => {
   }
 });
 
+// Admin: Update user role (admin/organizer)
+app.put('/make-server-ce05600a/admin/users/:userId/role', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    // Verify requesting user is admin
+    const requestingProfile = await db.getOrganizerById(user.id);
+    if (!requestingProfile || requestingProfile.role !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403);
+    }
+
+    const userId = c.req.param('userId');
+    const body = await c.req.json();
+    const newRole = body.role;
+
+    if (!['admin', 'organizer'].includes(newRole)) {
+      return c.json({ error: 'Invalid role. Must be "admin" or "organizer"' }, 400);
+    }
+
+    // Prevent removing your own admin role
+    if (userId === user.id && newRole !== 'admin') {
+      return c.json({ error: 'Cannot remove your own admin role' }, 400);
+    }
+
+    await db.updateOrganizerProfile(userId, { role: newRole });
+
+    return c.json({ success: true, message: `User role updated to ${newRole}` });
+
+  } catch (error) {
+    errorLog('Error updating user role:', error);
+    return c.json({ error: 'Failed to update user role' }, 500);
+  }
+});
+
 // ============================================================
 // Admin: Participant management
 // ============================================================

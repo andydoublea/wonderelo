@@ -12,8 +12,12 @@ export function InlineEditToggle() {
   const setInlineEditMode = useI18nStore((s) => s.setInlineEditMode);
 
   // Only show for admin users
-  const adminEmails = ['jan.sramka+admin@gmail.com', 'jan.sramka@gmail.com', 'andy.double.a+org@gmail.com'];
-  const isAdmin = user?.email && adminEmails.includes(user.email);
+  const isAdmin = user?.role === 'admin' || (() => {
+    try {
+      const stored = localStorage.getItem('oliwonder_current_user');
+      return stored ? JSON.parse(stored)?.role === 'admin' : false;
+    } catch { return false; }
+  })();
 
   if (!isAdmin) return null;
 
