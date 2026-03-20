@@ -31,16 +31,37 @@ interface I18nState {
   updateTranslation: (key: string, text: string) => void;
 }
 
+// Pre-load cached translations synchronously to prevent flash of untranslated content
+const getCachedState = (): { translations: Record<string, string>; currentLanguage: string; isLoaded: boolean } => {
+  try {
+    const stored = localStorage.getItem('wonderelo-i18n');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const state = parsed?.state;
+      if (state?.translations && Object.keys(state.translations).length > 0) {
+        return {
+          translations: state.translations,
+          currentLanguage: state.currentLanguage || 'en',
+          isLoaded: true,
+        };
+      }
+    }
+  } catch {}
+  return { translations: {}, currentLanguage: 'en', isLoaded: false };
+};
+
+const cached = getCachedState();
+
 export const useI18nStore = create<I18nState>()(
   devtools(
     persist(
       (set) => ({
-        // Initial state
-        currentLanguage: 'en',
+        // Initial state - pre-filled from localStorage cache to prevent flicker
+        currentLanguage: cached.currentLanguage,
         defaultLanguage: 'en',
-        translations: {},
+        translations: cached.translations,
         availableLanguages: [],
-        isLoaded: false,
+        isLoaded: cached.isLoaded,
         isInlineEditMode: false,
 
         // Actions
@@ -66,6 +87,8 @@ export const useI18nStore = create<I18nState>()(
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
           currentLanguage: state.currentLanguage,
+          translations: state.translations,
+          isLoaded: state.isLoaded,
         }),
       }
     ),
