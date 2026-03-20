@@ -5797,7 +5797,7 @@
 }
 
 :root {
-  --font-size: 16px;
+  --welo-font-size: 16px;
   --background: #fff;
   --foreground: oklch(.145 0 0);
   --card: #fff;
@@ -5875,7 +5875,7 @@
 }
 
 html {
-  font-size: var(--font-size);
+  font-size: var(--welo-font-size);
 }
 
 @keyframes highlight-fade {
