@@ -226,7 +226,8 @@ app.post('/make-server-ce05600a/signin', async (c) => {
       success: true,
       user: data.user,
       accessToken: data.session.access_token,
-      urlSlug: userProfile?.urlSlug
+      urlSlug: userProfile?.urlSlug,
+      onboardingCompletedAt: userProfile?.onboardingCompletedAt,
     });
     
   } catch (error) {
@@ -1159,8 +1160,8 @@ app.put('/make-server-ce05600a/profile', async (c) => {
     }
     
     const body = await c.req.json();
-    const { organizerName, urlSlug, phone, website, description, profileImageUrl } = body;
-    
+    const { organizerName, urlSlug, phone, website, description, profileImageUrl, onboardingCompletedAt } = body;
+
     const currentProfile = await db.getOrganizerById(user.id);
 
     if (!currentProfile) {
@@ -1192,6 +1193,7 @@ app.put('/make-server-ce05600a/profile', async (c) => {
       website: website !== undefined ? website : currentProfile.website,
       description: description !== undefined ? description : currentProfile.description,
       profileImageUrl: profileImageUrl !== undefined ? profileImageUrl : currentProfile.profileImageUrl,
+      onboardingCompletedAt: onboardingCompletedAt !== undefined ? onboardingCompletedAt : currentProfile.onboardingCompletedAt,
     });
 
     return c.json({

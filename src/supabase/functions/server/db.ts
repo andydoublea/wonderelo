@@ -38,6 +38,7 @@ export async function getOrganizerById(id: string) {
     description: data.description,
     profileImageUrl: data.profile_image_url,
     eventType: data.event_type,
+    onboardingCompletedAt: data.onboarding_completed_at,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -116,6 +117,7 @@ export async function updateOrganizerProfile(
     website: string;
     description: string;
     profileImageUrl: string;
+    onboardingCompletedAt: string;
   }>
 ) {
   const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -126,6 +128,7 @@ export async function updateOrganizerProfile(
   if (updates.website !== undefined) dbUpdates.website = updates.website;
   if (updates.description !== undefined) dbUpdates.description = updates.description;
   if (updates.profileImageUrl !== undefined) dbUpdates.profile_image_url = updates.profileImageUrl;
+  if (updates.onboardingCompletedAt !== undefined) dbUpdates.onboarding_completed_at = updates.onboardingCompletedAt;
 
   const { data, error } = await db()
     .from('organizer_profiles')
@@ -144,6 +147,7 @@ export async function updateOrganizerProfile(
     website: data.website,
     description: data.description,
     profileImageUrl: data.profile_image_url,
+    onboardingCompletedAt: data.onboarding_completed_at,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };

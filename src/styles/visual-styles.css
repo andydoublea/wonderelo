@@ -1300,6 +1300,19 @@
   background-color: #ffffff !important;
 }
 
+/* ---- Checklist "Show me where" highlight pulse ---- */
+.checklist-highlight {
+  animation: checklist-pulse 0.6s ease-in-out 4;
+  position: relative;
+  z-index: 10;
+  border-radius: 8px;
+}
+
+@keyframes checklist-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.6); }
+  50% { box-shadow: 0 0 0 8px hsl(var(--primary) / 0.35); }
+}
+
 
 /* ==========================================================================
    HOMEPAGE RESPONSIVE UTILITIES
