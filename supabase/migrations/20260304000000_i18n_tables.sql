@@ -92,7 +92,7 @@ INSERT INTO i18n_keys (key, namespace, default_text, description) VALUES
   ('homepage.participant.joining', 'homepage', 'Joining as a participant?', 'Participant code entry label'),
   ('homepage.participant.placeholder', 'homepage', 'Enter code here', 'Participant code input placeholder'),
   ('homepage.participant.join', 'homepage', 'Join', 'Join button'),
-  ('homepage.hero.title', 'homepage', 'Add value to your event with networking rounds!', 'Hero section main title'),
+  ('homepage.hero.title', 'homepage', 'Enrich your event by making people really meet!', 'Hero section main title'),
   ('homepage.hero.subtitle', 'homepage', 'Easily turn networking from side effect into program highlight! Perfect for conferences, meet-ups, festivals, internal meetings and private events.', 'Hero section subtitle'),
   ('homepage.hero.cta', 'homepage', 'Start for free', 'Hero CTA button'),
   ('homepage.hero.badge1', 'homepage', 'Five minute set up', 'Hero badge 1'),
