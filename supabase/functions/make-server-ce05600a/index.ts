@@ -2853,6 +2853,28 @@ app.post('/make-server-ce05600a/validate-access-password', async (c) => {
   }
 });
 
+// Public: log a site visit (no auth required, called on every page load)
+app.post('/make-server-ce05600a/log-access-visit', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { passwordId } = body;
+
+    if (!passwordId) {
+      return c.json({ ok: false }, 400);
+    }
+
+    const userAgent = c.req.header('User-Agent') || null;
+    const ipAddress = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || null;
+
+    await db.logVisit(passwordId, userAgent, ipAddress);
+
+    return c.json({ ok: true });
+  } catch (error) {
+    errorLog('Error logging access visit:', error);
+    return c.json({ ok: false }, 500);
+  }
+});
+
 // Admin: list all access passwords
 app.get('/make-server-ce05600a/admin/access-passwords', async (c) => {
   try {

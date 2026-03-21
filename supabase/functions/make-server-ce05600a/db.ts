@@ -1565,11 +1565,28 @@ export async function logPasswordAccess(passwordId: string, userAgent: string | 
       password_id: passwordId,
       user_agent: userAgent,
       ip_address: ipAddress,
+      log_type: 'password_entry',
     });
   if (logError) throw logError;
 
   // Atomic increment via PG function
   const { error: rpcError } = await db().rpc('increment_access_count', { pwd_id: passwordId });
+  if (rpcError) throw rpcError;
+}
+
+export async function logVisit(passwordId: string, userAgent: string | null, ipAddress: string | null) {
+  const { error: logError } = await db()
+    .from('access_password_logs')
+    .insert({
+      password_id: passwordId,
+      user_agent: userAgent,
+      ip_address: ipAddress,
+      log_type: 'visit',
+    });
+  if (logError) throw logError;
+
+  // Atomic increment via PG function
+  const { error: rpcError } = await db().rpc('increment_visit_count', { pwd_id: passwordId });
   if (rpcError) throw rpcError;
 }
 
@@ -1586,6 +1603,8 @@ export async function getAllAccessPasswords() {
     isActive: p.is_active,
     accessCount: p.access_count,
     lastAccessedAt: p.last_accessed_at,
+    visitCount: p.visit_count ?? 0,
+    lastVisitedAt: p.last_visited_at,
     createdAt: p.created_at,
   }));
 }
@@ -1639,5 +1658,6 @@ export async function getAccessPasswordLogs(passwordId: string) {
     accessedAt: l.accessed_at,
     userAgent: l.user_agent,
     ipAddress: l.ip_address,
+    logType: l.log_type || 'password_entry',
   }));
 }
