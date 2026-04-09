@@ -68,7 +68,12 @@ export function RoundFormPage({
     } else {
       // Creating new session or duplicating
       const newSession = await onAddSession(sessionData);
-      navigate('/rounds', { state: { successSessionId: (newSession as any)?.id } });
+      // Store success session ID in sessionStorage (more reliable than location.state)
+      const sessionId = (newSession as any)?.id;
+      if (sessionId) {
+        sessionStorage.setItem('wonderelo_success_session', sessionId);
+      }
+      navigate('/rounds');
     }
   };
 

@@ -80,20 +80,23 @@ export function NetworkingDashboard({
       setFilterStatus(status);
     }
 
-    // Show success page for newly created session (from navigation state or URL param)
-    // Don't clear state until we actually find the session — it may not be loaded yet
-    const successSessionId = (location.state as any)?.successSessionId || searchParams.get('success');
+    // Show success page for newly created session
+    // Check sessionStorage first (most reliable), then location.state, then URL param
+    const successSessionId = sessionStorage.getItem('wonderelo_success_session')
+      || (location.state as any)?.successSessionId
+      || searchParams.get('success');
     if (successSessionId && !showSuccessPage) {
       const session = sessions.find(s => s.id === successSessionId);
       if (session) {
         setLastCreatedSession(session);
         setShowSuccessPage(true);
-        // Clear the state NOW (session found) so refresh doesn't re-show success page
+        // Clear all sources so refresh doesn't re-show
+        sessionStorage.removeItem('wonderelo_success_session');
         if ((location.state as any)?.successSessionId) {
           window.history.replaceState({}, '', location.pathname + location.search);
         }
       }
-      // If session not found yet, don't clear state — wait for sessions to load
+      // If session not found yet, don't clear — wait for sessions to load
     }
   }, [searchParams, sessions, location.state]);
 
