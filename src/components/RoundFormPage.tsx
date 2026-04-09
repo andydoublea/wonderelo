@@ -68,10 +68,10 @@ export function RoundFormPage({
     } else {
       // Creating new session or duplicating
       const newSession = await onAddSession(sessionData);
-      // Store success session ID in sessionStorage (more reliable than location.state)
-      const sessionId = (newSession as any)?.id;
-      if (sessionId) {
-        sessionStorage.setItem('wonderelo_success_session', sessionId);
+      // Store the FULL session object in sessionStorage so success page can show immediately
+      // without waiting for sessions to load from API
+      if (newSession) {
+        sessionStorage.setItem('wonderelo_success_session', JSON.stringify(newSession));
       }
       navigate('/rounds');
     }
