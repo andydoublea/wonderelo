@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams, useLocation } from 'react-router';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -52,6 +52,7 @@ export function NetworkingDashboard({
 }: NetworkingDashboardProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [currentView, setCurrentView] = useState<'list' | 'calendar'>('list');
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [editingSession, setEditingSession] = useState<NetworkingSession | null>(null);
@@ -79,16 +80,20 @@ export function NetworkingDashboard({
       setFilterStatus(status);
     }
 
-    // Show success page for newly created session
-    const successSessionId = searchParams.get('success');
+    // Show success page for newly created session (from navigation state or URL param)
+    const successSessionId = (location.state as any)?.successSessionId || searchParams.get('success');
     if (successSessionId) {
       const session = sessions.find(s => s.id === successSessionId);
       if (session) {
         setLastCreatedSession(session);
         setShowSuccessPage(true);
+        // Clear the state so refresh doesn't re-show success page
+        if ((location.state as any)?.successSessionId) {
+          window.history.replaceState({}, '', location.pathname + location.search);
+        }
       }
     }
-  }, [searchParams, sessions]);
+  }, [searchParams, sessions, location.state]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
