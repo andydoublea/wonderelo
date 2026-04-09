@@ -14,6 +14,7 @@ import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
 import { getParticipantDashboard } from './participant-dashboard.tsx';
 import { createMatchesForRound } from './matching.tsx';
+import { parseRoundStartTime } from './time-helpers.tsx';
 
 export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) => Date) {
 
@@ -109,11 +110,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
             const session = await db.getSessionById(matchableReg.sessionId);
             const round = session?.rounds?.find((r: any) => r.id === matchableReg.roundId);
             if (round?.date && round?.startTime) {
-              // Parse round start time with CET timezone correction (times stored as CET)
-              const [year, month, day] = round.date.split('-').map(Number);
-              const [h, m] = round.startTime.split(':').map(Number);
-              const CET_OFFSET_HOURS = 1;
-              const roundStart = new Date(Date.UTC(year, month - 1, day, h - CET_OFFSET_HOURS, m, 0, 0));
+              const roundStart = parseRoundStartTime(round.date, round.startTime);
               if (new Date() >= roundStart) {
                 debugLog('[GET /match] Participant not matched yet — triggering matching (retry)');
                 await createMatchesForRound(matchableReg.sessionId, matchableReg.roundId);
@@ -144,12 +141,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
                         }
                       } catch (e) { /* use defaults */ }
 
-                      const parseRoundStart = (date: string, startTime: string): Date => {
-                        const [year, month, day] = date.split('-').map(Number);
-                        const [hours, minutes] = startTime.split(':').map(Number);
-                        const CET_OFFSET_HOURS = 1;
-                        return new Date(Date.UTC(year, month - 1, day, hours - CET_OFFSET_HOURS, minutes, 0, 0));
-                      };
+                      const parseRoundStart = parseRoundStartTime;
 
                       let walkingDeadline: string;
                       let roundStartTimeISO: string | null = null;
@@ -191,7 +183,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
                             id: p.participantId,
                             firstName: p.firstName,
                             lastName: p.lastName,
-                            identificationNumber: '123'
+                            identificationNumber: p.identificationNumber?.toString() || '0'
                           })),
                           roundStartTime: roundStartTimeISO,
                           walkingDeadline: walkingDeadline,
@@ -256,13 +248,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         debugLog('[GET /match] Error fetching system params, using defaults');
       }
 
-      // Helper: parse round date+time with CET timezone correction
-      const parseRoundStart = (date: string, startTime: string): Date => {
-        const [year, month, day] = date.split('-').map(Number);
-        const [hours, minutes] = startTime.split(':').map(Number);
-        const CET_OFFSET_HOURS = 1;
-        return new Date(Date.UTC(year, month - 1, day, hours - CET_OFFSET_HOURS, minutes, 0, 0));
-      };
+      const parseRoundStart = parseRoundStartTime;
 
       // Calculate walking deadline = matchedAt + walkingTimeMinutes
       // Uses matchedAt (not roundStartTime) so participant always gets full walking time
@@ -593,11 +579,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       }
 
       if (round?.date && round?.startTime) {
-        // Parse round start with CET timezone correction
-        const [ryear, rmonth, rday] = round.date.split('-').map(Number);
-        const [rhours, rminutes] = round.startTime.split(':').map(Number);
-        const CET_OFFSET_HOURS = 1;
-        const roundStartTime = new Date(Date.UTC(ryear, rmonth - 1, rday, rhours - CET_OFFSET_HOURS, rminutes, 0, 0));
+        const roundStartTime = parseRoundStartTime(round.date, round.startTime);
 
         // Walking deadline = roundStart + walkingTime
         const walkingDeadlineMs = roundStartTime.getTime() + walkingTimeMinutes * 60000;
@@ -847,10 +829,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         networkingEndTime = new Date(new Date(activeRegistration.metAt).getTime() + roundDuration * 60000).toISOString();
       } else if (round?.date && round?.startTime) {
         // Fallback: estimate from round schedule
-        const [ryear, rmonth, rday] = round.date.split('-').map(Number);
-        const [rhours, rminutes] = round.startTime.split(':').map(Number);
-        const CET_OFFSET_HOURS = 1;
-        const roundStartTime = new Date(Date.UTC(ryear, rmonth - 1, rday, rhours - CET_OFFSET_HOURS, rminutes, 0, 0));
+        const roundStartTime = parseRoundStartTime(round.date, round.startTime);
         let walkingTimeMinutes = 3;
         let findingTimeMinutes = 1;
         try {
