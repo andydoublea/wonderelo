@@ -81,17 +81,19 @@ export function NetworkingDashboard({
     }
 
     // Show success page for newly created session (from navigation state or URL param)
+    // Don't clear state until we actually find the session — it may not be loaded yet
     const successSessionId = (location.state as any)?.successSessionId || searchParams.get('success');
-    if (successSessionId) {
+    if (successSessionId && !showSuccessPage) {
       const session = sessions.find(s => s.id === successSessionId);
       if (session) {
         setLastCreatedSession(session);
         setShowSuccessPage(true);
-        // Clear the state so refresh doesn't re-show success page
+        // Clear the state NOW (session found) so refresh doesn't re-show success page
         if ((location.state as any)?.successSessionId) {
           window.history.replaceState({}, '', location.pathname + location.search);
         }
       }
+      // If session not found yet, don't clear state — wait for sessions to load
     }
   }, [searchParams, sessions, location.state]);
 
