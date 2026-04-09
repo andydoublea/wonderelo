@@ -68,7 +68,7 @@ export function RoundFormPage({
     } else {
       // Creating new session or duplicating
       const newSession = await onAddSession(sessionData);
-      navigate(`/rounds?success=${newSession.id}`);
+      navigate('/rounds', { state: { successSessionId: (newSession as any)?.id } });
     }
   };
 
