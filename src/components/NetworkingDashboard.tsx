@@ -59,15 +59,21 @@ export function NetworkingDashboard({
   // This avoids timing issues with sessions loading
   const [showSuccessPage, setShowSuccessPage] = useState(() => {
     const stored = sessionStorage.getItem('wonderelo_success_session');
+    console.log('🎉 [NetworkingDashboard] useState init — sessionStorage:', stored ? `YES (${stored.substring(0, 50)}...)` : 'EMPTY');
     return !!stored;
   });
   const [lastCreatedSession, setLastCreatedSession] = useState<NetworkingSession | null>(() => {
     const stored = sessionStorage.getItem('wonderelo_success_session');
     if (stored) {
       try {
+        const parsed = JSON.parse(stored) as NetworkingSession;
         sessionStorage.removeItem('wonderelo_success_session');
-        return JSON.parse(stored) as NetworkingSession;
-      } catch { return null; }
+        console.log('🎉 [NetworkingDashboard] Parsed success session:', parsed?.name, 'id:', parsed?.id);
+        return parsed;
+      } catch (e) {
+        console.error('🎉 [NetworkingDashboard] Failed to parse sessionStorage:', e);
+        return null;
+      }
     }
     return null;
   });
