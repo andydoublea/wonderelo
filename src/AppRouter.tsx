@@ -1563,11 +1563,12 @@ function AppProviderWithRouter() {
         // Optimistically add to local state immediately for instant UI update
         setSessions(prevSessions => [...prevSessions, result.session]);
 
-        // Reload sessions from backend to ensure fresh data and get any server-side changes
-        await loadSessions();
-
         const { toast } = await import('sonner@2.0.3');
         toast.success(`${session.name} created successfully`);
+
+        // Reload sessions from backend in background (non-blocking)
+        // to sync any server-side changes without delaying navigation
+        loadSessions().catch(() => {});
 
         return result.session;
       } else {
