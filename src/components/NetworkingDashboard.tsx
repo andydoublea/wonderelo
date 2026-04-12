@@ -75,6 +75,7 @@ export function NetworkingDashboard({
   const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc'>('date-desc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -389,8 +390,6 @@ export function NetworkingDashboard({
   }
 
   // Main list view
-  const [showFilters, setShowFilters] = useState(false);
-
   return (
     <div>
       <div className="mb-6">
