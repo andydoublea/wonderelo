@@ -67,12 +67,26 @@ export function RoundFormPage({
       navigate(`/rounds?highlight=${initialData.id}`);
     } else {
       // Creating new session or duplicating
-      const newSession = await onAddSession(sessionData);
-      // Store the FULL session object in sessionStorage so success page can show immediately
-      // without waiting for sessions to load from API
-      if (newSession) {
-        sessionStorage.setItem('wonderelo_success_session', JSON.stringify(newSession));
+      // Pre-store session data in sessionStorage BEFORE calling addSession
+      // so success page is guaranteed to show even if addSession returns undefined
+      const tempSession = { ...sessionData, id: `temp-${Date.now()}`, createdAt: new Date().toISOString() };
+      sessionStorage.setItem('wonderelo_success_session', JSON.stringify(tempSession));
+      console.log('🚀 [RoundFormPage] Pre-stored session in sessionStorage:', tempSession.name);
+
+      try {
+        const newSession = await onAddSession(sessionData);
+        console.log('🚀 [RoundFormPage] addSession returned:', newSession ? `${newSession.name} (id: ${newSession.id})` : 'UNDEFINED');
+        // Update with real session data from backend (has real ID)
+        if (newSession) {
+          sessionStorage.setItem('wonderelo_success_session', JSON.stringify(newSession));
+        }
+      } catch (err) {
+        console.error('🚀 [RoundFormPage] addSession FAILED:', err);
+        // addSession failed — remove sessionStorage so success page doesn't show
+        sessionStorage.removeItem('wonderelo_success_session');
+        throw err; // re-throw so SessionForm can handle it
       }
+      console.log('🚀 [RoundFormPage] Navigating to /rounds. sessionStorage has:', sessionStorage.getItem('wonderelo_success_session') ? 'YES' : 'NO');
       navigate('/rounds');
     }
   };
