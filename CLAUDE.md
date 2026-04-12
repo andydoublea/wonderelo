@@ -26,6 +26,9 @@ Always double-check `--project-ref` before running any Supabase CLI commands.
 - Before committing, ALWAYS ask the user which branch to commit to. Never assume the branch — wait for explicit confirmation (e.g. "commit to development", "commit to staging").
 - When pushing to `main`, ALWAYS also deploy edge functions to production (`npm run deploy:edge:prod`) — they don't auto-deploy. Frontend auto-deploys via Vercel, but edge functions require manual deployment.
 - When the user uploads files (images, assets, etc.), ALWAYS copy them into the project directory (e.g. `public/`) before referencing them. Never link directly to the upload location (e.g. `~/Downloads/`) — those files may be deleted at any time.
+- **NEVER ask the user to do Supabase or Vercel admin tasks** (generate tokens, change settings, etc.) — do it yourself via Chrome browser automation or CLI. Use `mcp__Control_Chrome__` tools to navigate Supabase Dashboard, Vercel Dashboard, etc.
+- **Wonderelo and Blanc Brain use DIFFERENT Supabase accounts.** When generating tokens or deploying, always verify you're logged into the correct Supabase account (check which projects are listed). The Wonderelo staging project (`dqoybysbooxngrsxaekd`) is NOT on the same account as Blanc Brain.
+- **ALWAYS verify correct account before any Supabase/Vercel action.** Before generating tokens, deploying, or changing settings: call the Management API (`GET https://api.supabase.com/v1/projects`) or take a screenshot of the dashboard to confirm the correct projects are visible. For Wonderelo, you must see `tpsgnnrkwgvgnsktuicr` (prod) and/or `dqoybysbooxngrsxaekd` (staging) in the project list.
 
 ---
 
@@ -53,9 +56,9 @@ development → staging → main
 
 ## Credentials
 
-### Supabase Access Token (shared across projects)
+### Supabase Access Token (Wonderelo account only — NOT shared with Blanc Brain)
 ```
-sbp_51f34546525c1b8af7b92f86f7c42bd557dbea4a
+sbp_750c5efbb679a399652e34f0ddb7833c51825b4e
 ```
 
 ### Production Supabase

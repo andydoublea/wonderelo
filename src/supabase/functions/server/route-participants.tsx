@@ -111,7 +111,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
             const round = session?.rounds?.find((r: any) => r.id === matchableReg.roundId);
             if (round?.date && round?.startTime) {
               const roundStart = parseRoundStartTime(round.date, round.startTime);
-              if (new Date() >= roundStart) {
+              if (getCurrentTime(c) >= roundStart) {
                 debugLog('[GET /match] Participant not matched yet — triggering matching (retry)');
                 await createMatchesForRound(matchableReg.sessionId, matchableReg.roundId);
 
