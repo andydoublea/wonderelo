@@ -468,10 +468,10 @@ export function ParticipantDashboard() {
         return;
       }
       
-      // Skip refetch if there was a recent optimistic update (within last 10 seconds)
+      // Skip refetch if there was a very recent optimistic update (within last 5 seconds)
       const timeSinceLastUpdate = Date.now() - lastOptimisticUpdateRef.current;
-      if (timeSinceLastUpdate < 20000) {
-        debugLog(`⏰ Skipping refetch - recent optimistic update (${Math.round(timeSinceLastUpdate/1000)}s ago, wait ${Math.round((20000-timeSinceLastUpdate)/1000)}s more)`);
+      if (timeSinceLastUpdate < 5000) {
+        debugLog(`⏰ Skipping refetch - recent optimistic update (${Math.round(timeSinceLastUpdate/1000)}s ago, wait ${Math.round((5000-timeSinceLastUpdate)/1000)}s more)`);
         return;
       }
       
@@ -908,7 +908,10 @@ export function ParticipantDashboard() {
       });
       
       toast.success('Attendance confirmed! You will be matched at the start time.');
-      
+
+      // Reset optimistic guard so the next fetch isn't skipped
+      lastOptimisticUpdateRef.current = 0;
+
       // Also refetch to get any other changes (like matchId, etc.)
       debugLog('🔄 Fetching full dashboard data...');
       await fetchData();

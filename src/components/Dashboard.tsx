@@ -13,6 +13,8 @@ import { OnboardingTour } from './OnboardingTour';
 // import { DownloadableAssets } from './DownloadableAssets';
 import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
+import { useApp } from '../AppRouter';
+import { authenticatedFetch } from '../utils/supabase/apiClient';
 
 interface DashboardProps {
   eventSlug: string;
@@ -31,24 +33,23 @@ export function Dashboard({
 }: DashboardProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser, accessToken, setCurrentUser } = useApp();
   const [copied, setCopied] = useState(false);
   const [downloadingQR, setDownloadingQR] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showTour, setShowTour] = useState(false);
   const [checklistVisible, setChecklistVisible] = useState(
-    () => localStorage.getItem('onboarding_checklist_dismissed') !== 'true'
+    () => !currentUser?.onboardingCompletedAt
   );
 
   // Show onboarding tour for first-time users
   useEffect(() => {
-    const tourCompleted = localStorage.getItem('onboarding_tour_completed');
-    const checklistDismissed = localStorage.getItem('onboarding_checklist_dismissed');
-    if (!tourCompleted && !checklistDismissed && !isLoadingSessions) {
+    if (!currentUser?.onboardingCompletedAt && !isLoadingSessions) {
       // Small delay to let the page render fully
       const timer = setTimeout(() => setShowTour(true), 1000);
       return () => clearTimeout(timer);
     }
-  }, [isLoadingSessions]);
+  }, [isLoadingSessions, currentUser?.onboardingCompletedAt]);
 
   // Debug logging on mount and when sessions change
   useEffect(() => {
@@ -157,135 +158,141 @@ export function Dashboard({
   return (
     <div className="space-y-6 pb-8">
       {/* Event Page URL Section */}
-      <Card data-tour="event-page-url">
-        <CardHeader>
-          <CardTitle>Your event page URL</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 px-4 py-2 bg-muted rounded-md text-sm font-mono break-all hover:bg-muted/80 transition-colors flex items-center gap-2 group"
-            >
-              <span className="flex-1">{publicUrl}</span>
-              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-            </a>
+      <Card data-tour="event-page-url" className="overflow-hidden">
+        <CardContent className="py-4 space-y-3">
+          <h3 className="text-base">Your event page</h3>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block min-w-0 px-3 py-2 bg-muted rounded-md text-sm flex items-center hover:bg-muted/80 transition-colors group"
+            title={publicUrl}
+          >
+            <span className="truncate flex-1">{`wonderelo.com/${eventSlug}`}</span>
+            <ExternalLink className="h-3.5 w-3.5 ml-2 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+          </a>
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
+              size="sm"
               onClick={copyToClipboard}
-              title="Copy to clipboard"
+              title="Copy URL"
             >
-              {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
               Copy
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={downloadQRCode}
               disabled={downloadingQR}
               title="Download QR code"
             >
               {downloadingQR ? (
-                <Download className="h-4 w-4 mr-2 animate-spin" />
+                <Download className="h-4 w-4 mr-1 animate-spin" />
               ) : (
-                <QrCode className="h-4 w-4 mr-2" />
+                <QrCode className="h-4 w-4 mr-1" />
               )}
               QR code
             </Button>
             <Button
               variant="outline"
-              onClick={() => navigate('/event-promo')}
-              title="Event promo page"
+              size="sm"
+              onClick={() => navigate('/event-page-settings')}
+              title="Edit event page"
             >
-              <Presentation className="h-4 w-4 mr-2" />
-              Promo slide
+              <Edit className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/event-promo')}
+              title="Promo slide"
+            >
+              <Presentation className="h-4 w-4 mr-1" />
+              Slide
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {isLoadingSessions ? (
-          <>
-            {['Draft', 'Scheduled', 'Published on event page', 'Completed'].map((status) => (
-              <Card key={status}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-12" />
-                </CardContent>
-              </Card>
-            ))}
-          </>
-        ) : (
-          <>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=draft')}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm">Draft</CardTitle>
-                <Edit className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl">{draftSessions.length}</div>
-              </CardContent>
-            </Card>
+      {/* Statistics — only shown on desktop and when user has more than the sample round */}
+      {sessions.length > 1 && (
+        <div className="hidden md:grid grid-cols-4 gap-4">
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=draft')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Draft</span>
+                <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{draftSessions.length}</div>
+            </CardContent>
+          </Card>
 
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=scheduled')}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm">Scheduled</CardTitle>
-                <CalendarClock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl">{scheduledSessions.length}</div>
-              </CardContent>
-            </Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=scheduled')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Scheduled</span>
+                <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{scheduledSessions.length}</div>
+            </CardContent>
+          </Card>
 
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=published')}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm">Published on event page</CardTitle>
-                <Play className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl">{publishedSessions.length}</div>
-              </CardContent>
-            </Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=published')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Published</span>
+                <Play className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{publishedSessions.length}</div>
+            </CardContent>
+          </Card>
 
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=completed')}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm">Completed</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl">{completedSessions.length}</div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=completed')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Completed</span>
+                <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{completedSessions.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Onboarding Checklist (left) + Published on Event Page (right) */}
       <div className={`grid grid-cols-1 gap-6 ${checklistVisible ? 'md:grid-cols-2' : ''}`}>
         {/* Onboarding Checklist - shown for new organizers */}
         {checklistVisible && (
           <div data-tour="onboarding-checklist">
-            <OnboardingChecklist eventSlug={eventSlug} sessions={sessions} onVisibilityChange={setChecklistVisible} />
+            <OnboardingChecklist eventSlug={eventSlug} sessions={sessions} onVisibilityChange={setChecklistVisible} onDismiss={async () => {
+              try {
+                const now = new Date().toISOString();
+                await authenticatedFetch('/profile', {
+                  method: 'PUT',
+                  body: JSON.stringify({ onboardingCompletedAt: now }),
+                });
+                setCurrentUser({ ...currentUser, onboardingCompletedAt: now });
+              } catch (e) {
+                // Silently fail
+              }
+            }} />
           </div>
         )}
 
         {/* Published on Event Page Section */}
         <Card data-tour="session-card">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3">
               <CardTitle>Published on event page</CardTitle>
-              <div className="flex items-center gap-2">
-                <Button onClick={() => navigate('/rounds/new')} variant="outline" size="sm" data-tour="create-round">
+              <div className="flex flex-wrap items-center gap-2" data-tour="manage-rounds">
+                <Button data-checklist="create-round-btn" onClick={() => navigate('/rounds/new')} variant="outline" size="sm">
                   <PlusCircle className="h-4 w-4 mr-1" />
                   Create new round
                 </Button>
-                <Button onClick={() => navigate('/rounds')} variant="outline" size="sm">
+                <Button data-checklist="show-all-rounds-btn" onClick={() => navigate('/rounds')} variant="outline" size="sm">
                   Show all rounds
                 </Button>
               </div>
@@ -313,15 +320,22 @@ export function Dashboard({
         </Card>
       </div>
 
-      {/* Downloadable Assets - temporarily disabled */}
-      {/* <DownloadableAssets
-        eventSlug={eventSlug}
-        eventPageUrl={publicUrl}
-      /> */}
-
       {/* Onboarding Tour */}
       {showTour && (
-        <OnboardingTour onComplete={() => setShowTour(false)} />
+        <OnboardingTour onComplete={async () => {
+          setShowTour(false);
+          // Persist to server so it doesn't show on other devices
+          try {
+            const now = new Date().toISOString();
+            await authenticatedFetch('/profile', {
+              method: 'PUT',
+              body: JSON.stringify({ onboardingCompletedAt: now }),
+            });
+            setCurrentUser({ ...currentUser, onboardingCompletedAt: now });
+          } catch (e) {
+            // Silently fail — tour won't repeat this session anyway
+          }
+        }} />
       )}
 
     </div>

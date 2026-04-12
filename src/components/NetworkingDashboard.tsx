@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -15,7 +15,7 @@ import { SessionSuccessPage } from './SessionSuccessPage';
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calendar, Users, Clock, Copy, Check, QrCode, Download, Wrench, UserCheck, Edit, Play, CheckCircle2, LayoutGrid, Table as TableIcon, MoreVertical, Trash2, BarChart3, ArrowUpDown, Search, X, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Users, Clock, Copy, Check, QrCode, Download, Wrench, UserCheck, Edit, Play, CheckCircle2, LayoutGrid, Table as TableIcon, MoreVertical, Trash2, BarChart3, ArrowUpDown, Search, X, ArrowUp, ArrowDown, ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { debugLog, errorLog } from '../utils/debug';
 import { ServiceType } from '../App';
 
@@ -52,12 +52,25 @@ export function NetworkingDashboard({
 }: NetworkingDashboardProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
   const [currentView, setCurrentView] = useState<'list' | 'calendar'>('list');
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [editingSession, setEditingSession] = useState<NetworkingSession | null>(null);
-  const [showSuccessPage, setShowSuccessPage] = useState(false);
-  const [lastCreatedSession, setLastCreatedSession] = useState<NetworkingSession | null>(null);
+  // Initialize success page state from sessionStorage BEFORE first render
+  // This avoids timing issues with sessions loading
+  const [showSuccessPage, setShowSuccessPage] = useState(() => {
+    const stored = sessionStorage.getItem('wonderelo_success_session');
+    return !!stored;
+  });
+  const [lastCreatedSession, setLastCreatedSession] = useState<NetworkingSession | null>(() => {
+    const stored = sessionStorage.getItem('wonderelo_success_session');
+    if (stored) {
+      try {
+        sessionStorage.removeItem('wonderelo_success_session');
+        return JSON.parse(stored) as NetworkingSession;
+      } catch { return null; }
+    }
+    return null;
+  });
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc'>('date-desc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -80,20 +93,9 @@ export function NetworkingDashboard({
       setFilterStatus(status);
     }
 
-    // Show success page for newly created session (from navigation state or URL param)
-    const successSessionId = (location.state as any)?.successSessionId || searchParams.get('success');
-    if (successSessionId) {
-      const session = sessions.find(s => s.id === successSessionId);
-      if (session) {
-        setLastCreatedSession(session);
-        setShowSuccessPage(true);
-        // Clear the state so refresh doesn't re-show success page
-        if ((location.state as any)?.successSessionId) {
-          window.history.replaceState({}, '', location.pathname + location.search);
-        }
-      }
-    }
-  }, [searchParams, sessions, location.state]);
+    // Success page is now initialized from sessionStorage in useState (above)
+    // No need to check here — it's already set before first render
+  }, [searchParams, sessions]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -151,7 +153,7 @@ export function NetworkingDashboard({
   const handleBackFromSuccess = () => {
     setShowSuccessPage(false);
     setLastCreatedSession(null);
-    navigate('/rounds');
+    // Don't navigate — we're already on /rounds. Just hide the success page via state.
   };
 
   const handleManageSession = (session: NetworkingSession) => {
@@ -387,21 +389,21 @@ export function NetworkingDashboard({
   }
 
   // Main list view
+  const [showFilters, setShowFilters] = useState(false);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="mb-1">Your networking rounds</h1>
-          <p className="text-muted-foreground">
-            {isLoadingSessions ? 'Loading...' : `${sortedSessions.length} ${sortedSessions.length === 1 ? 'round' : 'rounds'}`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => window.open(`/${eventSlug}`, '_blank')} variant="outline">
+      <div className="mb-6">
+        <h1 className="mb-1">Your networking rounds</h1>
+        <p className="text-muted-foreground mb-3">
+          {isLoadingSessions ? 'Loading...' : `${sortedSessions.length} ${sortedSessions.length === 1 ? 'round' : 'rounds'}`}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => window.open(`/${eventSlug}`, '_blank')} variant="outline" size="sm">
             <ExternalLink className="h-4 w-4 mr-2" />
             Event page
           </Button>
-          <Button onClick={() => navigate('/rounds/new')}>
+          <Button onClick={() => navigate('/rounds/new')} size="sm">
             Create round
           </Button>
         </div>
@@ -410,7 +412,64 @@ export function NetworkingDashboard({
       {/* Filters and search */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          {/* Mobile: compact toolbar */}
+          <div className="flex gap-2 md:hidden mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
+            </div>
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              size="icon"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+          {/* Mobile: expandable filters */}
+          {showFilters && (
+            <div className="flex flex-col gap-3 md:hidden mb-4">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date-asc">Date (oldest first)</SelectItem>
+                  <SelectItem value="date-desc">Date (newest first)</SelectItem>
+                  <SelectItem value="name-asc">Name (A → Z)</SelectItem>
+                  <SelectItem value="name-desc">Name (Z → A)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {/* View mode buttons hidden on mobile */}
+          {/* Desktop: full toolbar */}
+          <div className="hidden md:flex flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -431,7 +490,7 @@ export function NetworkingDashboard({
               </div>
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-[180px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -443,10 +502,10 @@ export function NetworkingDashboard({
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={(value: any) => {
-              debugLog('onValueChange called with:', value); // DEBUG
+              debugLog('onValueChange called with:', value);
               setSortBy(value);
             }}>
-              <SelectTrigger className="w-full md:w-[220px]">
+              <SelectTrigger className="w-[220px]">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>

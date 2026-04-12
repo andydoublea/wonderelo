@@ -27,6 +27,14 @@ const adminTools = [
     category: 'user-management',
   },
   {
+    id: 'administrators',
+    title: 'Administrators',
+    description: 'View and manage platform admins',
+    icon: Shield,
+    route: '/admin/organizers?filter=admins',
+    category: 'user-management',
+  },
+  {
     id: 'participants',
     title: 'Participants',
     description: 'Search and manage participants across sessions',

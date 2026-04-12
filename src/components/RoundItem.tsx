@@ -625,7 +625,7 @@ export function RoundItem({
                     // Don't show confirm button when using cached data (prevents flash on dashboard load)
                     if (!hasFreshData) return null;
                     const timeSinceLastConfirm = lastConfirmTimestamp ? Date.now() - lastConfirmTimestamp : Infinity;
-                    const hasRecentConfirm = timeSinceLastConfirm < 20000;
+                    const hasRecentConfirm = timeSinceLastConfirm < 5000;
                     const shouldShowButton = participantStatus === 'registered' && !isConfirming && !hasRecentConfirm;
 
                     return shouldShowButton ? (

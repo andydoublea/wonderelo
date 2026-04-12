@@ -88,7 +88,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
           Wonderelo
         </h1>
         <p style={{ color: '#888', margin: '0 0 28px 0', fontSize: '14px' }}>
-          This site is currently in preview mode.
+          So you are the special guy with early access! Let's take a look at sneak peek.
         </p>
         <form onSubmit={handleSubmit}>
           <input

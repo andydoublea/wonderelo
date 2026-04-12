@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -14,12 +14,6 @@ interface TourStep {
 // Steps ordered top-to-bottom on the page to minimize jarring scroll jumps
 const tourSteps: TourStep[] = [
   {
-    target: '[data-tour="onboarding-checklist"]',
-    title: 'Getting started checklist',
-    description: 'Follow these steps to set up your first event. Each item checks off automatically as you complete it.',
-    position: 'bottom',
-  },
-  {
     target: '[data-tour="event-page-url"]',
     title: 'Your event page',
     description: 'This is your unique event page URL. Share it with participants or display the QR code at your venue. Participants will register through this page.',
@@ -32,9 +26,9 @@ const tourSteps: TourStep[] = [
     position: 'top',
   },
   {
-    target: '[data-tour="create-round"]',
+    target: '[data-tour="manage-rounds"]',
     title: 'Manage your rounds',
-    description: 'Click here to see all your rounds, create new ones, edit existing ones, or change their status. You can also duplicate rounds to save time.',
+    description: 'Create new rounds, edit existing ones, change their status, or view all your rounds. You can also duplicate rounds to save time.',
     position: 'bottom',
   },
 ];
@@ -101,9 +95,30 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [navHeight, setNavHeight] = useState(0);
+
+  // Elevate nav above main overlay, track its height for the dim layer
+  useEffect(() => {
+    const nav = document.querySelector('.sticky.z-50') as HTMLElement | null;
+    if (nav) {
+      nav.dataset.tourActive = 'true';
+      nav.style.zIndex = '9999';
+      setNavHeight(nav.getBoundingClientRect().height);
+    }
+    return () => {
+      if (nav) {
+        delete nav.dataset.tourActive;
+        nav.style.zIndex = '';
+      }
+    };
+  }, []);
 
   const handleComplete = useCallback(() => {
-    localStorage.setItem('onboarding_tour_completed', 'true');
+    const nav = document.querySelector('[data-tour-active]') as HTMLElement | null;
+    if (nav) {
+      delete nav.dataset.tourActive;
+      nav.style.zIndex = '';
+    }
     onComplete();
   }, [onComplete]);
 
@@ -133,9 +148,9 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
     });
   }, [currentStep, handleComplete]);
 
-  // Re-position on resize
+  // Re-position on resize or scroll
   useEffect(() => {
-    const handleResize = () => {
+    const updatePosition = () => {
       const step = tourSteps[currentStep];
       if (!step) return;
       const targetEl = document.querySelector(step.target);
@@ -144,8 +159,12 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
       setTargetRect(rect);
       setTooltipPosition(computeTooltipPosition(rect, step.position || 'bottom'));
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [currentStep]);
 
   const handleNext = () => {
@@ -166,33 +185,71 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   const step = tourSteps[currentStep];
 
-  // Use a portal to render at document.body level, avoiding any parent stacking context issues.
-  // Use inline styles for position/zIndex since Tailwind v4 may not generate arbitrary z-[...] classes.
+  // Z-index layers:
+  // 9998 — main overlay with cutout (covers page content)
+  // 9999 — sticky nav (above main overlay, stays visible)
+  // 10000 — nav dim layer (semi-transparent, covers just nav height)
+  // 10001 — highlight border around target
+  // 10002 — tooltip
   return createPortal(
     <>
-      {/* Overlay - covers entire viewport (transparent, just captures clicks for dismissal) */}
-      <div
+      {/* Main overlay with cutout - covers page content below nav */}
+      <svg
         style={{
           position: 'fixed',
           inset: 0,
+          width: '100%',
+          height: '100%',
           zIndex: 9998,
         }}
         onClick={handleComplete}
-      />
+      >
+        <defs>
+          <mask id="tour-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            {targetRect && (
+              <rect
+                x={targetRect.left - 4}
+                y={targetRect.top - 4}
+                width={targetRect.width + 8}
+                height={targetRect.height + 8}
+                rx="8"
+                fill="black"
+              />
+            )}
+          </mask>
+        </defs>
+        <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#tour-mask)" />
+      </svg>
 
-      {/* Highlight cutout for target element */}
+      {/* Nav dim layer - sits above the nav to dim it */}
+      {navHeight > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: navHeight,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 10000,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* Highlight border around target element */}
       {targetRect && (
         <div
           style={{
             position: 'fixed',
-            zIndex: 9999,
+            zIndex: 10001,
             pointerEvents: 'none',
             top: targetRect.top - 4,
             left: targetRect.left - 4,
             width: targetRect.width + 8,
             height: targetRect.height + 8,
             borderRadius: '8px',
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
             border: '2px solid hsl(var(--primary))',
           }}
         />
@@ -203,7 +260,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
         <div
           style={{
             position: 'fixed',
-            zIndex: 10000,
+            zIndex: 10002,
             top: tooltipPosition.top,
             left: tooltipPosition.left,
             width: '320px',

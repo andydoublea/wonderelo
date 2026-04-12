@@ -34,7 +34,7 @@ export function MatchInfo() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
-  const MAX_POLL_ATTEMPTS = 30; // 30 * 2s = 60s max wait
+  const MAX_POLL_ATTEMPTS = 60; // 60 * 2s = 120s max wait
 
   const stopPolling = () => {
     if (pollIntervalRef.current) {

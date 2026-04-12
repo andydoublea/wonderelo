@@ -1,6 +1,6 @@
 import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
-import { createMatchesForRound } from './matching.tsx';
+import { parseRoundStartTime } from './time-helpers.tsx';
 
 // ==========================================
 // VERSION: 8.0.0 - PostgreSQL migration
@@ -139,13 +139,7 @@ function getPreviewMockData(scenario: string) {
   };
 }
 
-// Helper function to parse round start time
-function parseRoundStartTime(date: string, startTime: string): Date {
-  const [year, month, day] = date.split('-').map(Number);
-  const [hours, minutes] = startTime.split(':').map(Number);
-  const CET_OFFSET_HOURS = 1;
-  return new Date(Date.UTC(year, month - 1, day, hours - CET_OFFSET_HOURS, minutes, 0, 0));
-}
+// parseRoundStartTime is imported from time-helpers.tsx (DST-aware)
 
 // Helper function to dynamically update session status based on round times
 export function updateSessionStatusBasedOnRounds(session: any, now: Date = new Date()): void {
@@ -263,20 +257,9 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
           debugLog(`✅ [${reg.roundName}] Round completed for participant ${reg.participantId}`);
         }
 
-        // TRIGGER MATCHING: if round just started (T-0) and participant is confirmed or no-match (retry)
-        const tenMinutes = 10 * 60 * 1000;
-        if (now >= roundStartTime && now < new Date(roundStartTime.getTime() + tenMinutes)) {
-          if (reg.status === 'confirmed' || reg.status === 'no-match') {
-            (async () => {
-              try {
-                debugLog(`🎯 [${reg.roundName}] Triggering matching at T-0...`);
-                await createMatchesForRound(reg.sessionId, reg.roundId);
-              } catch (error) {
-                errorLog(`Error triggering matching for ${reg.roundId}:`, error);
-              }
-            })();
-          }
-        }
+        // NOTE: Matching is triggered ONLY from GET /participant/:token/match endpoint
+        // to avoid race conditions from multiple simultaneous triggers.
+        // Dashboard no longer fires matching (was causing double-trigger issues).
       }
 
       // Persist status changes (only safe auto-transitions)

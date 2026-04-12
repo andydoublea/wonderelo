@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
@@ -8,7 +9,7 @@ import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { ArrowLeft, Trash2, Mail, Users, Search, Activity, ChevronUp, ChevronDown, Edit2, RotateCcw, UserX, Globe, Calendar, RefreshCw, Download, UserCheck, History, UserPlus } from 'lucide-react';
+import { ArrowLeft, Trash2, Mail, Users, Search, Activity, ChevronUp, ChevronDown, Edit2, RotateCcw, UserX, Globe, Calendar, RefreshCw, Download, UserCheck, History, UserPlus, Shield, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
@@ -97,6 +98,10 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
   const [loadingAuditLog, setLoadingAuditLog] = useState<{ [organizerId: string]: boolean }>({});
   const [showingAuditLog, setShowingAuditLog] = useState<{ [organizerId: string]: boolean }>({});
   
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showAdminsOnly, setShowAdminsOnly] = useState(searchParams.get('filter') === 'admins');
+  const initialFilterApplied = useRef(false);
+
   // Debug tools for session participants
   const [debugSessionId, setDebugSessionId] = useState<string | null>(null);
   const [debugParticipantKeys, setDebugParticipantKeys] = useState<string[]>([]);
@@ -118,8 +123,14 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
 
       if (response.ok) {
         const result = await response.json();
-        setOrganizers(result.users || []);
-        setFilteredOrganizers(result.users || []);
+        const users = result.users || [];
+        setOrganizers(users);
+        // Apply admins filter if set via URL param
+        if (showAdminsOnly) {
+          setFilteredOrganizers(users.filter((o: Organizer) => o.userRole === 'admin'));
+        } else {
+          setFilteredOrganizers(users);
+        }
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to fetch users');
@@ -270,18 +281,68 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
     }
   };
 
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    if (!term) {
-      setFilteredOrganizers(organizers);
-    } else {
-      const filtered = organizers.filter(user =>
+  const handleToggleAdminRole = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'organizer' : 'admin';
+    const action = newRole === 'admin' ? 'grant admin access to' : 'remove admin access from';
+
+    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/admin/users/${userId}/role`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ role: newRole }),
+        }
+      );
+
+      if (response.ok) {
+        toast.success(`User role updated to ${newRole}`);
+        fetchOrganizers();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to update role');
+      }
+    } catch (error) {
+      errorLog('Error updating user role:', error);
+      toast.error('Network error while updating role');
+    }
+  };
+
+  const applyFilters = (term: string, adminsOnly: boolean) => {
+    let filtered = organizers;
+    if (adminsOnly) {
+      filtered = filtered.filter(user => user.userRole === 'admin');
+    }
+    if (term) {
+      filtered = filtered.filter(user =>
         user.email.toLowerCase().includes(term.toLowerCase()) ||
         user.urlSlug.toLowerCase().includes(term.toLowerCase()) ||
         user.userRole.toLowerCase().includes(term.toLowerCase()) ||
         user.companySize.toLowerCase().includes(term.toLowerCase())
       );
-      setFilteredOrganizers(filtered);
+    }
+    setFilteredOrganizers(filtered);
+  };
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    applyFilters(term, showAdminsOnly);
+  };
+
+  const toggleAdminsOnly = () => {
+    const newValue = !showAdminsOnly;
+    setShowAdminsOnly(newValue);
+    applyFilters(searchTerm, newValue);
+    // Update URL param
+    if (newValue) {
+      setSearchParams({ filter: 'admins' });
+    } else {
+      setSearchParams({});
     }
   };
 
@@ -598,7 +659,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
             </div>
           </CardHeader>
           <CardContent>
-            {/* Search */}
+            {/* Search + Filters */}
             <div className="flex items-center gap-2 mb-4">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
@@ -607,6 +668,14 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
                 onChange={(e) => handleSearch(e.target.value)}
                 className="max-w-sm"
               />
+              <Button
+                variant={showAdminsOnly ? "default" : "outline"}
+                size="sm"
+                onClick={toggleAdminsOnly}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Admins only
+              </Button>
             </div>
 
             {/* Table */}
@@ -659,6 +728,9 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
                                 <div className="flex items-center gap-2">
                                   <Mail className="h-4 w-4 text-muted-foreground" />
                                   <span>{user.email}</span>
+                                  {user.userRole === 'admin' && (
+                                    <Badge variant="destructive" className="text-xs">Admin</Badge>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -771,6 +843,23 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
                                     >
                                       <History className="h-4 w-4 mr-2 text-purple-600" />
                                       {showingAuditLog[user.id] ? 'Hide' : 'View'} audit log
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleToggleAdminRole(user.id, user.userRole)}
+                                    >
+                                      {user.userRole === 'admin' ? (
+                                        <>
+                                          <ShieldOff className="h-4 w-4 mr-2 text-red-600" />
+                                          Remove admin
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Shield className="h-4 w-4 mr-2 text-green-600" />
+                                          Make admin
+                                        </>
+                                      )}
                                     </Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>

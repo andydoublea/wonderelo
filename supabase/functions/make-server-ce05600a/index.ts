@@ -19,6 +19,7 @@ import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
+import { registerDemoRoutes } from './route-demo.ts';
 
 const app = new Hono();
 
@@ -226,7 +227,8 @@ app.post('/make-server-ce05600a/signin', async (c) => {
       success: true,
       user: data.user,
       accessToken: data.session.access_token,
-      urlSlug: userProfile?.urlSlug
+      urlSlug: userProfile?.urlSlug,
+      onboardingCompletedAt: userProfile?.onboardingCompletedAt,
     });
     
   } catch (error) {
@@ -645,7 +647,7 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
     const session = await db.getSessionById(sessionId);
     const round = session?.rounds?.find((r: any) => r.id === roundId);
     if (round && session?.date && round.startTime) {
-      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const roundStartTime = parseRoundStartTime(session.date, round.startTime);
       const now = getCurrentTime(c);
       if (now > roundStartTime) {
         console.log('❌ Confirmation window closed - round already started');
@@ -732,7 +734,7 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
     const session = await db.getSessionById(sessionId);
     const round = session?.rounds?.find((r: any) => r.id === roundId);
     if (round && session?.date && round.startTime) {
-      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const roundStartTime = parseRoundStartTime(session.date, round.startTime);
       const now = getCurrentTime(c);
       if (now > roundStartTime) {
         debugLog('❌ Confirmation window closed - round already started');
@@ -1159,8 +1161,8 @@ app.put('/make-server-ce05600a/profile', async (c) => {
     }
     
     const body = await c.req.json();
-    const { organizerName, urlSlug, phone, website, description, profileImageUrl } = body;
-    
+    const { organizerName, urlSlug, phone, website, description, profileImageUrl, onboardingCompletedAt } = body;
+
     const currentProfile = await db.getOrganizerById(user.id);
 
     if (!currentProfile) {
@@ -1192,6 +1194,7 @@ app.put('/make-server-ce05600a/profile', async (c) => {
       website: website !== undefined ? website : currentProfile.website,
       description: description !== undefined ? description : currentProfile.description,
       profileImageUrl: profileImageUrl !== undefined ? profileImageUrl : currentProfile.profileImageUrl,
+      onboardingCompletedAt: onboardingCompletedAt !== undefined ? onboardingCompletedAt : currentProfile.onboardingCompletedAt,
     });
 
     return c.json({
@@ -1748,6 +1751,50 @@ app.put('/make-server-ce05600a/admin/users/:userId', async (c) => {
   } catch (error) {
     errorLog('Error updating user:', error);
     return c.json({ error: 'Failed to update user' }, 500);
+  }
+});
+
+// Admin: Update user role (admin/organizer)
+app.put('/make-server-ce05600a/admin/users/:userId/role', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    // Verify requesting user is admin
+    const requestingProfile = await db.getOrganizerById(user.id);
+    if (!requestingProfile || requestingProfile.role !== 'admin') {
+      return c.json({ error: 'Admin access required' }, 403);
+    }
+
+    const userId = c.req.param('userId');
+    const body = await c.req.json();
+    const newRole = body.role;
+
+    if (!['admin', 'organizer'].includes(newRole)) {
+      return c.json({ error: 'Invalid role. Must be "admin" or "organizer"' }, 400);
+    }
+
+    // Prevent removing your own admin role
+    if (userId === user.id && newRole !== 'admin') {
+      return c.json({ error: 'Cannot remove your own admin role' }, 400);
+    }
+
+    await db.updateOrganizerProfile(userId, { role: newRole });
+
+    return c.json({ success: true, message: `User role updated to ${newRole}` });
+
+  } catch (error) {
+    errorLog('Error updating user role:', error);
+    return c.json({ error: 'Failed to update user role' }, 500);
   }
 });
 
@@ -2906,5 +2953,8 @@ registerCrmRoutes(app);
 
 // Register i18n routes
 registerI18nRoutes(app);
+
+// Register demo routes
+registerDemoRoutes(app);
 
 Deno.serve(app.fetch);
