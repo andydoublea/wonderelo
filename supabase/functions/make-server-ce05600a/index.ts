@@ -19,6 +19,7 @@ import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
+import { registerDemoRoutes } from './route-demo.ts';
 
 const app = new Hono();
 
@@ -646,7 +647,7 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
     const session = await db.getSessionById(sessionId);
     const round = session?.rounds?.find((r: any) => r.id === roundId);
     if (round && session?.date && round.startTime) {
-      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const roundStartTime = parseRoundStartTime(session.date, round.startTime);
       const now = getCurrentTime(c);
       if (now > roundStartTime) {
         console.log('❌ Confirmation window closed - round already started');
@@ -733,7 +734,7 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
     const session = await db.getSessionById(sessionId);
     const round = session?.rounds?.find((r: any) => r.id === roundId);
     if (round && session?.date && round.startTime) {
-      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const roundStartTime = parseRoundStartTime(session.date, round.startTime);
       const now = getCurrentTime(c);
       if (now > roundStartTime) {
         debugLog('❌ Confirmation window closed - round already started');
@@ -2952,5 +2953,8 @@ registerCrmRoutes(app);
 
 // Register i18n routes
 registerI18nRoutes(app);
+
+// Register demo routes
+registerDemoRoutes(app);
 
 Deno.serve(app.fetch);

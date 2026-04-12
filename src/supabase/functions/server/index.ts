@@ -646,7 +646,7 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
     const session = await db.getSessionById(sessionId);
     const round = session?.rounds?.find((r: any) => r.id === roundId);
     if (round && session?.date && round.startTime) {
-      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const roundStartTime = parseRoundStartTime(session.date, round.startTime);
       const now = getCurrentTime(c);
       if (now > roundStartTime) {
         console.log('❌ Confirmation window closed - round already started');
@@ -733,7 +733,7 @@ app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (
     const session = await db.getSessionById(sessionId);
     const round = session?.rounds?.find((r: any) => r.id === roundId);
     if (round && session?.date && round.startTime) {
-      const roundStartTime = new Date(`${session.date}T${round.startTime}:00`);
+      const roundStartTime = parseRoundStartTime(session.date, round.startTime);
       const now = getCurrentTime(c);
       if (now > roundStartTime) {
         debugLog('❌ Confirmation window closed - round already started');

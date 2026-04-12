@@ -6,6 +6,9 @@
 import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
 
+/** Lock TTL in milliseconds — if a lock is older than this and still in-progress, treat as stale */
+const LOCK_TTL_MS = 60_000; // 60 seconds
+
 /**
  * Main matching function - called when round reaches T-0
  * @param sessionId - Session ID
@@ -13,6 +16,8 @@ import { errorLog, debugLog } from './debug.tsx';
  * @returns Object with success status and created matches
  */
 export async function createMatchesForRound(sessionId: string, roundId: string) {
+  let lockAcquired = false;
+
   try {
     console.log(`🎯 MATCHING START: session=${sessionId}, round=${roundId}`);
 
@@ -34,40 +39,62 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
     console.log(`📋 Round details: name="${round.name}", groupSize=${round.groupSize || 2}`);
 
     // 2. Atomically acquire matching lock (prevents race conditions)
-    const lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
+    lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
 
     if (!lockAcquired) {
       const existingLock = await db.getMatchingLock(sessionId, roundId);
 
+      // Lock was deleted between our failed insert and this fetch — retry acquire
+      if (!existingLock) {
+        console.log(`🔄 Lock disappeared after failed acquire — retrying`);
+        lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
+        if (!lockAcquired) {
+          return { success: true, message: 'Matching in progress (race)', matches: [] };
+        }
+        // Fall through to continue with matching
+      }
+
       // matchCount === -1 means another process is still running matching
-      if (existingLock && existingLock.matchCount === -1) {
-        console.log(`⏳ Matching is currently in progress — skipping`);
-        return { success: true, message: 'Matching in progress', matches: [] };
+      else if (existingLock.matchCount === -1) {
+        // Check if lock is stale (older than TTL)
+        const lockAge = Date.now() - new Date(existingLock.completedAt).getTime();
+        if (lockAge > LOCK_TTL_MS) {
+          console.log(`🔓 Stale matching lock detected (age: ${Math.round(lockAge / 1000)}s) — deleting and retrying`);
+          await db.deleteMatchingLock(sessionId, roundId);
+          lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
+          if (!lockAcquired) {
+            console.log(`⚠️ Retry lock acquisition failed — another process took it`);
+            return { success: true, message: 'Matching in progress (retry)', matches: [] };
+          }
+          // Fall through to continue with matching
+        } else {
+          console.log(`⏳ Matching is currently in progress (age: ${Math.round(lockAge / 1000)}s) — skipping`);
+          return { success: true, message: 'Matching in progress', matches: [] };
+        }
       }
 
       // Check if previous matching produced results — allow retry if it was a solo/no-match run
       // but now more participants might be confirmed
-      if (existingLock && existingLock.matchCount === 0) {
+      else if (existingLock && existingLock.matchCount === 0) {
         // Previous matching found no matches — check if there are now more matchable participants
-        // Count BOTH 'confirmed' AND 'no-match' (no-match from previous solo run will be reverted)
         const allRegs = await db.getRegistrationsForRound(sessionId, roundId);
         const confirmedNow = allRegs.filter((r: any) => r.status === 'confirmed');
         const noMatchFromPrevious = allRegs.filter((r: any) => r.status === 'no-match');
         const potentialParticipants = confirmedNow.length + noMatchFromPrevious.length;
 
-        if (potentialParticipants >= (round?.groupSize || session?.groupSize || 2)) {
-          console.log(`🔄 Previous matching found 0 matches, but now ${potentialParticipants} potential participants (${confirmedNow.length} confirmed + ${noMatchFromPrevious.length} no-match) — retrying`);
+        // Only retry if there are genuinely NEW confirmed participants (not just the same no-match ones)
+        if (confirmedNow.length > 0 && potentialParticipants >= (round?.groupSize || session?.groupSize || 2)) {
+          console.log(`🔄 Previous matching found 0 matches, but now ${potentialParticipants} potential participants (${confirmedNow.length} NEW confirmed + ${noMatchFromPrevious.length} no-match) — retrying`);
           // Delete the old lock so we can re-run
           await db.deleteMatchingLock(sessionId, roundId);
-          // Also revert any no-match statuses from the previous run
-          for (const reg of allRegs) {
-            if (reg.status === 'no-match') {
-              await db.updateRegistrationStatus(reg.participantId, sessionId, roundId, 'confirmed', {});
-            }
+          // Bulk revert no-match statuses from previous run
+          const noMatchIds = noMatchFromPrevious.map((r: any) => r.participantId);
+          if (noMatchIds.length > 0) {
+            await db.bulkUpdateRegistrationStatusByIds(noMatchIds, sessionId, roundId, 'confirmed', {});
           }
           // Re-acquire lock and continue
-          const retryLock = await db.tryAcquireMatchingLock(sessionId, roundId);
-          if (!retryLock) {
+          lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
+          if (!lockAcquired) {
             console.log(`⚠️ Retry lock acquisition failed — another process is running`);
             return { success: true, message: 'Matching retry in progress', matches: [] };
           }
@@ -76,7 +103,55 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
           console.log(`⚠️ Matching already completed (0 matches, ${potentialParticipants} potential — not enough to retry)`);
           return { success: true, message: 'Matching already completed', matches: [] };
         }
-      } else {
+      }
+
+      // Lock exists with matchCount === -2 means previous run failed — allow retry
+      else if (existingLock && existingLock.matchCount === -2) {
+        console.log(`🔄 Previous matching failed — deleting lock and retrying`);
+        await db.deleteMatchingLock(sessionId, roundId);
+        lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
+        if (!lockAcquired) {
+          return { success: true, message: 'Matching retry in progress', matches: [] };
+        }
+        // Fall through
+      }
+
+      // matchCount > 0 means matching completed successfully, BUT there may be late-confirmed participants
+      else if (existingLock && existingLock.matchCount > 0) {
+        const allRegs = await db.getRegistrationsForRound(sessionId, roundId);
+        const lateConfirmed = allRegs.filter((r: any) => r.status === 'confirmed');
+        const noMatchParticipants = allRegs.filter((r: any) => r.status === 'no-match');
+        const potentialNew = lateConfirmed.length + noMatchParticipants.length;
+
+        if (potentialNew >= (round?.groupSize || session?.groupSize || 2)) {
+          console.log(`🔄 Matching completed with ${existingLock.matchCount} matches, but ${lateConfirmed.length} late confirmed + ${noMatchParticipants.length} no-match participants can be re-matched — retrying`);
+          await db.deleteMatchingLock(sessionId, roundId);
+          // Revert no-match to confirmed so they can be re-matched with late arrivals
+          const noMatchIds = noMatchParticipants.map((r: any) => r.participantId);
+          if (noMatchIds.length > 0) {
+            await db.bulkUpdateRegistrationStatusByIds(noMatchIds, sessionId, roundId, 'confirmed', {});
+          }
+          lockAcquired = await db.tryAcquireMatchingLock(sessionId, roundId);
+          if (!lockAcquired) {
+            return { success: true, message: 'Matching retry in progress', matches: [] };
+          }
+          // Fall through — but we need to skip bulkUpdateRegistrationStatusByRound for 'registered'→'unconfirmed'
+          // because those already happened. The matching algorithm will only find 'confirmed' participants.
+        } else if (lateConfirmed.length === 1 && noMatchParticipants.length === 0) {
+          // Solo late arrival — mark as no-match immediately without re-running full matching
+          const solo = lateConfirmed[0];
+          await db.updateRegistrationStatus(solo.participantId, sessionId, roundId, 'no-match', {
+            noMatchReason: 'No other participants available to match with',
+          });
+          console.log(`😞 Solo late participant ${solo.participantId} marked as no-match`);
+          return { success: true, message: 'Late solo participant marked no-match', matches: [] };
+        } else {
+          console.log(`⚠️ Matching already completed with ${existingLock.matchCount} matches (${lateConfirmed.length} late confirmed — not enough to re-match)`);
+          return { success: true, message: 'Matching already completed', matches: [] };
+        }
+      }
+
+      else {
         console.log(`⚠️ Matching already completed with ${existingLock?.matchCount || 0} matches`);
         return { success: true, message: 'Matching already completed', matches: [] };
       }
@@ -96,14 +171,10 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
       return { success: true, message: 'No participants to match', matches: [] };
     }
 
-    // 5. Mark unconfirmed registrations as 'unconfirmed'
-    for (const reg of allRegistrations) {
-      if (reg.status === 'registered') {
-        await db.updateRegistrationStatus(reg.participantId, sessionId, roundId, 'unconfirmed', {
-          unconfirmedReason: 'Did not confirm attendance before round start (T-0)',
-        });
-      }
-    }
+    // 5. Bulk mark unconfirmed registrations (single query instead of loop)
+    await db.bulkUpdateRegistrationStatusByRound(sessionId, roundId, 'registered', 'unconfirmed', {
+      unconfirmedReason: 'Did not confirm attendance before round start (T-0)',
+    });
 
     // 6. Check for solo participant (only 1 confirmed)
     if (confirmedRegs.length === 1) {
@@ -131,6 +202,9 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
     console.log(`🎉 Created ${matches.length} matches`);
 
     // 8. Save matches and update participant statuses
+    // Track used identification numbers per match (for odd participant uniqueness later)
+    const usedNumbersPerMatch = new Map<string, Set<number>>();
+
     for (const match of matches) {
       const matchId = `match-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       match.matchId = matchId;
@@ -143,14 +217,26 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
         meetingPoint: match.meetingPoint,
       });
 
-      // Update each participant's registration with identification numbers
+      // Generate unique identification numbers for all participants in this match
+      const usedNumbers = new Set<number>();
+      const idDataPerParticipant = new Map<string, { number: number; options: number[] }>();
+      for (const participantId of match.participantIds) {
+        let idData = db.generateIdentificationData();
+        while (usedNumbers.has(idData.number)) {
+          idData = db.generateIdentificationData();
+        }
+        usedNumbers.add(idData.number);
+        idDataPerParticipant.set(participantId, idData);
+      }
+      usedNumbersPerMatch.set(matchId, usedNumbers);
+
+      // Update each participant's registration
       for (const participantId of match.participantIds) {
         const partnerNames = match.participants
           .filter((p: any) => p.participantId !== participantId)
           .map((p: any) => `${p.firstName} ${p.lastName}`);
 
-        // Generate stable identification number + options for this participant
-        const idData = db.generateIdentificationData();
+        const idData = idDataPerParticipant.get(participantId)!;
 
         await db.updateRegistrationStatus(participantId, sessionId, roundId, 'matched', {
           matchId,
@@ -192,12 +278,19 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
 
       console.log(`✅ Added odd participant to match ${smallestMatch.matchId}, new size: ${smallestMatch.participantIds.length}`);
 
-      // Update odd participant's registration with identification number
+      // Update odd participant's registration with unique identification number
       const partnerNames = smallestMatch.participants
         .filter((p: any) => p.participantId !== oddReg.participantId)
         .map((p: any) => `${p.firstName} ${p.lastName}`);
 
-      const oddIdData = db.generateIdentificationData();
+      // Ensure unique identification number within this match
+      const matchUsedNumbers = usedNumbersPerMatch.get(smallestMatch.matchId) || new Set();
+      let oddIdData = db.generateIdentificationData();
+      while (matchUsedNumbers.has(oddIdData.number)) {
+        oddIdData = db.generateIdentificationData();
+      }
+      matchUsedNumbers.add(oddIdData.number);
+
       await db.updateRegistrationStatus(oddReg.participantId, sessionId, roundId, 'matched', {
         matchId: smallestMatch.matchId,
         matchPartnerNames: partnerNames,
@@ -226,9 +319,10 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
       }
     }
 
-    // 9. Mark any remaining leftover participants as 'no-match'
-    for (const reg of unmatchedRegs) {
-      await db.updateRegistrationStatus(reg.participantId, sessionId, roundId, 'no-match', {
+    // 9. Bulk mark remaining leftover participants as 'no-match'
+    const remainingUnmatchedIds = unmatchedRegs.map((r: any) => r.participantId);
+    if (remainingUnmatchedIds.length > 0) {
+      await db.bulkUpdateRegistrationStatusByIds(remainingUnmatchedIds, sessionId, roundId, 'no-match', {
         noMatchReason: 'Could not find a suitable match',
       });
     }
@@ -254,6 +348,16 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
     console.error('💥 ERROR in createMatchesForRound:');
     console.error('Error:', error);
     errorLog('Error in createMatchesForRound:', error);
+
+    // Mark lock as failed so it can be retried
+    if (lockAcquired) {
+      try {
+        await db.updateMatchingLock(sessionId, roundId, { matchCount: -2, unmatchedCount: 0 });
+      } catch (lockErr) {
+        console.error('Failed to update lock after error:', lockErr);
+      }
+    }
+
     return { success: false, error: 'Matching failed', details: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -265,7 +369,7 @@ async function runMatchingAlgorithm(participants: any[], groupSize: number, sess
   const matches: any[] = [];
   const availableParticipants = [...participants];
 
-  // Get meeting history for all participants
+  // Get meeting history for all participants (single batch query)
   const meetingHistory = await getMeetingHistory(sessionId, participants);
 
   // Calculate scores for all possible pairings
@@ -322,8 +426,8 @@ async function runMatchingAlgorithm(participants: any[], groupSize: number, sess
 }
 
 /**
- * Get meeting history for participants in this session
- * Uses matches + registrations tables
+ * Get meeting history for participants in this session.
+ * Uses a SINGLE batch query instead of N+1 individual queries.
  */
 async function getMeetingHistory(sessionId: string, participants: any[]) {
   const history: Record<string, Set<string>> = {};
@@ -333,15 +437,11 @@ async function getMeetingHistory(sessionId: string, participants: any[]) {
     history[p.participantId] = new Set();
   }
 
-  // Get all past matches in this session
-  const allMatches = await db.getMatchesForSession(sessionId);
+  // Get ALL match-participant pairs in ONE query
+  const matchParticipantsMap = await db.getMatchParticipantsBatch(sessionId);
 
-  for (const match of allMatches) {
-    // Get participants in this match (via registrations.match_id)
-    const matchParticipants = await db.getMatchParticipants(match.matchId);
-
-    // For each pair in this match, record that they met
-    const pIds = matchParticipants.map(p => p.participantId);
+  // For each match, record that participants met each other
+  for (const [_matchId, pIds] of matchParticipantsMap) {
     for (let i = 0; i < pIds.length; i++) {
       for (let j = i + 1; j < pIds.length; j++) {
         const id1 = pIds[i];

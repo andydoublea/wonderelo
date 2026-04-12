@@ -103,6 +103,9 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
               <Button variant="ghost" onClick={() => navigate('/pricing')}>
                 {t('nav.pricing', 'Pricing')}
               </Button>
+              <Button variant="ghost" onClick={() => navigate('/demo')}>
+                {t('nav.demo', 'Demo')}
+              </Button>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -241,6 +244,14 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
               onClick={() => { navigate('/pricing'); setMobileMenuOpen(false); }}
             >
               {t('nav.pricing', 'Pricing')}
+            </button>
+            <button
+              style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 500, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--muted)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              onClick={() => { navigate('/demo'); setMobileMenuOpen(false); }}
+            >
+              {t('nav.demo', 'Demo')}
             </button>
           </div>
 

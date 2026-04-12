@@ -44,6 +44,7 @@ import ParticipantProfile from './pages/ParticipantProfile';
 import { AddressBook } from './components/AddressBook';
 import { AdminRegistrationFunnel } from './components/AdminRegistrationFunnel';
 import { BootstrapAdmin } from './components/BootstrapAdmin';
+import { DemoPage } from './components/DemoPage';
 
 // Zustand stores
 import { useAppStore, useAuth, useAccessToken } from './stores';
@@ -2089,6 +2090,9 @@ function AppProviderWithRouter() {
 
             // Use case landing pages
             h(Route, { path: '/for/:useCase', element: h(UseCaseLandingPageRoute) }),
+
+            // Demo page (must be before /:slug catch-all)
+            h(Route, { path: '/demo', element: h(DemoPage) }),
 
             // User public pages (must be near end to avoid catching other routes)
             h(Route, { path: '/:slug', element: h(UserPublicPageRoute) }),

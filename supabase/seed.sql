@@ -90,6 +90,17 @@ VALUES (
   'Primary dev/admin account'
 ) ON CONFLICT (id) DO NOTHING;
 
+-- Demo organizer (for /demo page — no auth user needed, demo setup endpoint manages data)
+INSERT INTO organizer_profiles (id, email, organizer_name, url_slug, role, description)
+VALUES (
+  '00000000-0000-0000-0000-00000000de00',
+  'demo@wonderelo.com',
+  'Wonderelo Demo',
+  'demo',
+  'organizer',
+  'Experience Wonderelo speed networking firsthand. This is a live demo event.'
+) ON CONFLICT (id) DO NOTHING;
+
 -- ============================================================
 -- 2. Published session with 3 rounds (today, starting soon)
 -- ============================================================

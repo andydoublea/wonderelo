@@ -927,7 +927,94 @@ export async function getMatchParticipants(matchId: string) {
     email: r.participants?.email,
     team: r.team,
     topics: r.topics,
+    identificationNumber: r.identification_number,
+    identificationOptions: r.identification_options,
   }));
+}
+
+/**
+ * Get ALL match-participant pairs for an entire session in ONE query.
+ * Replaces N+1 pattern of getMatchesForSession() + loop of getMatchParticipants().
+ * Returns a Map<matchId, participantId[]> for building meeting history.
+ */
+export async function getMatchParticipantsBatch(sessionId: string): Promise<Map<string, string[]>> {
+  // No status filter — we need ALL participants who were ever matched (including cancelled/completed)
+  // to build accurate meeting history and prevent re-matching people who already met.
+  const { data, error } = await db()
+    .from('registrations')
+    .select('match_id, participant_id')
+    .eq('session_id', sessionId)
+    .not('match_id', 'is', null);
+  if (error) throw error;
+
+  const map = new Map<string, string[]>();
+  for (const row of (data || [])) {
+    const matchId = row.match_id;
+    if (!map.has(matchId)) {
+      map.set(matchId, []);
+    }
+    map.get(matchId)!.push(row.participant_id);
+  }
+  return map;
+}
+
+/**
+ * Bulk update registration status for multiple participants in a single round.
+ * Used by matching to avoid N individual UPDATE queries.
+ */
+export async function bulkUpdateRegistrationStatusByRound(
+  sessionId: string,
+  roundId: string,
+  fromStatus: string,
+  toStatus: string,
+  extra?: Record<string, any>
+) {
+  const dbUpdates: Record<string, any> = {
+    status: toStatus,
+    last_status_update: new Date().toISOString(),
+  };
+  if (extra) {
+    if (extra.unconfirmedReason !== undefined) dbUpdates.unconfirmed_reason = extra.unconfirmedReason;
+    if (extra.noMatchReason !== undefined) dbUpdates.no_match_reason = extra.noMatchReason;
+  }
+
+  const { error } = await db()
+    .from('registrations')
+    .update(dbUpdates)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId)
+    .eq('status', fromStatus);
+  if (error) throw error;
+}
+
+/**
+ * Bulk update registration status for specific participant IDs in a round.
+ */
+export async function bulkUpdateRegistrationStatusByIds(
+  participantIds: string[],
+  sessionId: string,
+  roundId: string,
+  status: string,
+  extra?: Record<string, any>
+) {
+  if (participantIds.length === 0) return;
+
+  const dbUpdates: Record<string, any> = {
+    status,
+    last_status_update: new Date().toISOString(),
+  };
+  if (extra) {
+    if (extra.noMatchReason !== undefined) dbUpdates.no_match_reason = extra.noMatchReason;
+    if (extra.matchedAt !== undefined) dbUpdates.matched_at = extra.matchedAt;
+  }
+
+  const { error } = await db()
+    .from('registrations')
+    .update(dbUpdates)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId)
+    .in('participant_id', participantIds);
+  if (error) throw error;
 }
 
 // ============================================================

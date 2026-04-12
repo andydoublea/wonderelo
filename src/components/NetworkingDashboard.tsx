@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -52,12 +52,25 @@ export function NetworkingDashboard({
 }: NetworkingDashboardProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
   const [currentView, setCurrentView] = useState<'list' | 'calendar'>('list');
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [editingSession, setEditingSession] = useState<NetworkingSession | null>(null);
-  const [showSuccessPage, setShowSuccessPage] = useState(false);
-  const [lastCreatedSession, setLastCreatedSession] = useState<NetworkingSession | null>(null);
+  // Initialize success page state from sessionStorage BEFORE first render
+  // This avoids timing issues with sessions loading
+  const [showSuccessPage, setShowSuccessPage] = useState(() => {
+    const stored = sessionStorage.getItem('wonderelo_success_session');
+    return !!stored;
+  });
+  const [lastCreatedSession, setLastCreatedSession] = useState<NetworkingSession | null>(() => {
+    const stored = sessionStorage.getItem('wonderelo_success_session');
+    if (stored) {
+      try {
+        sessionStorage.removeItem('wonderelo_success_session');
+        return JSON.parse(stored) as NetworkingSession;
+      } catch { return null; }
+    }
+    return null;
+  });
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc'>('date-desc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -80,20 +93,9 @@ export function NetworkingDashboard({
       setFilterStatus(status);
     }
 
-    // Show success page for newly created session (from navigation state or URL param)
-    const successSessionId = (location.state as any)?.successSessionId || searchParams.get('success');
-    if (successSessionId) {
-      const session = sessions.find(s => s.id === successSessionId);
-      if (session) {
-        setLastCreatedSession(session);
-        setShowSuccessPage(true);
-        // Clear the state so refresh doesn't re-show success page
-        if ((location.state as any)?.successSessionId) {
-          window.history.replaceState({}, '', location.pathname + location.search);
-        }
-      }
-    }
-  }, [searchParams, sessions, location.state]);
+    // Success page is now initialized from sessionStorage in useState (above)
+    // No need to check here — it's already set before first render
+  }, [searchParams, sessions]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -151,7 +153,7 @@ export function NetworkingDashboard({
   const handleBackFromSuccess = () => {
     setShowSuccessPage(false);
     setLastCreatedSession(null);
-    navigate('/rounds');
+    // Don't navigate — we're already on /rounds. Just hide the success page via state.
   };
 
   const handleManageSession = (session: NetworkingSession) => {
