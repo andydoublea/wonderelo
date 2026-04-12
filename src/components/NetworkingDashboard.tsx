@@ -153,7 +153,7 @@ export function NetworkingDashboard({
   const handleBackFromSuccess = () => {
     setShowSuccessPage(false);
     setLastCreatedSession(null);
-    navigate('/rounds');
+    // Don't navigate — we're already on /rounds. Just hide the success page via state.
   };
 
   const handleManageSession = (session: NetworkingSession) => {
