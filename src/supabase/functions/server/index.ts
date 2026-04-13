@@ -2958,12 +2958,17 @@ app.post('/make-server-ce05600a/test/e2e-matching', async (c) => {
     const scenarioId = body.scenario || 'basic-2';
     const supabase = getSupabase();
 
+    // Derive API base URL for HTTP-level tests
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
+    const apiBaseUrl = `${supabaseUrl}/functions/v1/make-server-ce05600a`;
+    const anonKey = c.req.header('Authorization')?.replace('Bearer ', '') || '';
+
     // Run all scenarios if requested
     if (scenarioId === 'all') {
       const scenarios = getScenarioList();
       const results = [];
       for (const s of scenarios) {
-        const result = await runScenario(s.id, supabase);
+        const result = await runScenario(s.id, supabase, apiBaseUrl, anonKey);
         results.push(result);
       }
       const passed = results.filter(r => r.success).length;
@@ -2971,7 +2976,7 @@ app.post('/make-server-ce05600a/test/e2e-matching', async (c) => {
     }
 
     // Run single scenario
-    const result = await runScenario(scenarioId, supabase);
+    const result = await runScenario(scenarioId, supabase, apiBaseUrl, anonKey);
     return c.json(result, result.success ? 200 : 500);
   } catch (error) {
     return c.json({ success: false, error: error instanceof Error ? error.message : String(error) }, 500);
