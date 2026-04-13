@@ -9,12 +9,18 @@ import { createMatchesForRound } from './matching.tsx';
 // Types
 type StepFn = (name: string, fn: () => Promise<any>) => Promise<any>;
 
+interface TestContext {
+  supabase: any;
+  apiBaseUrl: string;  // e.g. http://127.0.0.1:54321/functions/v1/make-server-ce05600a
+  anonKey: string;
+}
+
 interface ScenarioDefinition {
   id: string;
   name: string;
   description: string;
   category: string;
-  run: (step: StepFn, supabase: any) => Promise<void>;
+  run: (step: StepFn, ctx: TestContext) => Promise<void>;
 }
 
 // ============================================================
@@ -31,23 +37,36 @@ function makeId(prefix: string): string {
   return `${prefix}-e2e-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 }
 
-async function createTestSession(supabase: any, organizerId: string, options: { groupSize?: number } = {}) {
+async function createTestSession(supabase: any, organizerId: string, options: { groupSize?: number; futureRound?: boolean } = {}) {
   const sessionId = makeId('session');
   const roundId = makeId('round');
+  const today = new Date().toISOString().split('T')[0];
+
+  // For API Contract tests, use a future round time so confirm endpoint doesn't reject.
+  // For matching-only tests, use 00:00 (past) since we call createMatchesForRound directly.
+  let roundStartTime = '00:00';
+  let roundDate = today;
+  if (options.futureRound) {
+    // Set round to tomorrow at 23:55 CET — guaranteed future regardless of timezone
+    const tomorrow = new Date(Date.now() + 86400000);
+    roundDate = tomorrow.toISOString().split('T')[0];
+    roundStartTime = '23:55';
+  }
+
   await db.createSession({
     id: sessionId,
     userId: organizerId,
     name: `E2E Test`,
-    date: new Date().toISOString().split('T')[0],
+    date: roundDate,
     status: 'published',
     groupSize: options.groupSize || 2,
     maxParticipants: 100,
     meetingPoints: ['Lobby', 'Table 1'],
     iceBreakers: ['Test?'],
-    rounds: [{ id: roundId, startTime: '00:00', duration: 10, name: 'Test Round' }],
+    rounds: [{ id: roundId, startTime: roundStartTime, duration: 10, name: 'Test Round' }],
     registrationStart: new Date(Date.now() - 3600000).toISOString(),
   });
-  return { sessionId, roundId };
+  return { sessionId, roundId, roundStartTime, roundDate };
 }
 
 async function registerParticipants(
@@ -115,7 +134,8 @@ function defineScenario(def: ScenarioDefinition) {
 defineScenario({
   id: 'basic-2', name: '2 participants, 1 match', category: 'Basic Matching',
   description: 'Two participants register, confirm, and get matched into one pair',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup_session', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
@@ -143,7 +163,8 @@ defineScenario({
 defineScenario({
   id: 'basic-4', name: '4 participants, 2 matches', category: 'Basic Matching',
   description: 'Four participants form two pairs',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const names = [{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }, { firstName: 'C', lastName: '3' }, { firstName: 'D', lastName: '4' }];
@@ -169,7 +190,8 @@ defineScenario({
 defineScenario({
   id: 'basic-6', name: '6 participants, 3 matches', category: 'Basic Matching',
   description: 'Six participants form three pairs',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const names = Array.from({ length: 6 }, (_, i) => ({ firstName: `P${i + 1}`, lastName: 'Test' }));
@@ -195,7 +217,8 @@ defineScenario({
 defineScenario({
   id: 'edge-solo', name: 'Solo participant → no-match', category: 'Edge Cases',
   description: 'A single confirmed participant gets no-match',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'Solo', lastName: 'Sam' }], sessionId, roundId, organizerId));
@@ -218,7 +241,8 @@ defineScenario({
 defineScenario({
   id: 'edge-odd-3', name: '3 participants (odd) → group of 3', category: 'Edge Cases',
   description: 'With groupSize=2, odd participant joins existing pair',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }, { firstName: 'C', lastName: '3' }], sessionId, roundId, organizerId));
@@ -243,7 +267,8 @@ defineScenario({
 defineScenario({
   id: 'edge-zero', name: 'No participants', category: 'Edge Cases',
   description: 'Matching runs on empty round',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     await step('matching', async () => {
@@ -259,7 +284,8 @@ defineScenario({
 defineScenario({
   id: 'edge-large-20', name: '20 participants → 10 matches', category: 'Edge Cases',
   description: 'Stress test with 20 participants',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const names = Array.from({ length: 20 }, (_, i) => ({ firstName: `P${String(i + 1).padStart(2, '0')}`, lastName: 'Test' }));
@@ -283,7 +309,8 @@ defineScenario({
 defineScenario({
   id: 'edge-group-3', name: 'GroupSize=3, 6 participants', category: 'Edge Cases',
   description: '6 participants form groups of 3 (all matched)',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { groupSize: 3 }));
     const names = Array.from({ length: 6 }, (_, i) => ({ firstName: `G${i + 1}`, lastName: 'Test' }));
@@ -310,7 +337,8 @@ defineScenario({
 defineScenario({
   id: 'status-unconfirmed', name: 'Unconfirmed get marked', category: 'Status Transitions',
   description: '2 confirm, 2 stay registered → 2 matched + 2 unconfirmed',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const names = [{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }, { firstName: 'C', lastName: '3' }, { firstName: 'D', lastName: '4' }];
@@ -336,7 +364,8 @@ defineScenario({
 defineScenario({
   id: 'status-no-matching', name: 'Confirmed stays confirmed (no matching)', category: 'Status Transitions',
   description: 'Participants confirm but matching never runs',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }], sessionId, roundId, organizerId));
@@ -356,7 +385,8 @@ defineScenario({
 defineScenario({
   id: 'status-no-checkin', name: 'Matched without check-in', category: 'Status Transitions',
   description: 'After matching, participant stays matched (no check-in)',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }], sessionId, roundId, organizerId));
@@ -379,7 +409,8 @@ defineScenario({
 defineScenario({
   id: 'status-full-flow', name: 'Full lifecycle: registered → met', category: 'Status Transitions',
   description: 'Walk through register → confirm → match → check-in → met',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }], sessionId, roundId, organizerId));
@@ -437,7 +468,8 @@ defineScenario({
 defineScenario({
   id: 'status-mixed', name: 'Mixed: 3 confirmed + 3 registered', category: 'Status Transitions',
   description: '3 get matched (group of 3), 3 become unconfirmed',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const names = Array.from({ length: 6 }, (_, i) => ({ firstName: `P${i + 1}`, lastName: 'T' }));
@@ -465,7 +497,8 @@ defineScenario({
 defineScenario({
   id: 'lock-double-run', name: 'Double matching → already completed', category: 'Lock & Retry',
   description: 'Running matching twice, second returns already completed',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }], sessionId, roundId, organizerId));
@@ -493,7 +526,8 @@ defineScenario({
 defineScenario({
   id: 'lock-stale', name: 'Stale lock (>60s) → recovery', category: 'Lock & Retry',
   description: 'Insert stale lock, matching should clear it and succeed',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }], sessionId, roundId, organizerId));
@@ -515,7 +549,8 @@ defineScenario({
 defineScenario({
   id: 'lock-failed', name: 'Failed lock (-2) → retry', category: 'Lock & Retry',
   description: 'Previous matching failed, retry should work',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }], sessionId, roundId, organizerId));
@@ -536,7 +571,8 @@ defineScenario({
 defineScenario({
   id: 'lock-active', name: 'Active lock → skip', category: 'Lock & Retry',
   description: 'Fresh lock (5s old) prevents matching',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }], sessionId, roundId, organizerId));
@@ -566,7 +602,8 @@ defineScenario({
 defineScenario({
   id: 'late-rescue', name: 'Late arrival rescues solo no-match', category: 'Late Arrival',
   description: 'Solo gets no-match, then late arrival → both matched',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'Solo', lastName: 'S' }, { firstName: 'Late', lastName: 'L' }], sessionId, roundId, organizerId));
@@ -601,7 +638,8 @@ defineScenario({
 defineScenario({
   id: 'late-pair', name: 'Two late arrivals form new pair', category: 'Late Arrival',
   description: 'After initial match, two more confirm and form a second pair',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }, { firstName: 'C', lastName: '3' }, { firstName: 'D', lastName: '4' }], sessionId, roundId, organizerId));
@@ -632,7 +670,8 @@ defineScenario({
 defineScenario({
   id: 'late-solo-after', name: 'Solo late after completed matches', category: 'Late Arrival',
   description: 'Matching done with pair, solo late arrival → no-match',
-  run: async (step, supabase) => {
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
     const { organizerId } = await getOrganizerId(supabase);
     const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
     const { ids } = await step('register', () => registerParticipants([{ firstName: 'A', lastName: '1' }, { firstName: 'B', lastName: '2' }, { firstName: 'Late', lastName: 'L' }], sessionId, roundId, organizerId));
@@ -659,6 +698,260 @@ defineScenario({
   }
 });
 
+// --- CATEGORY 6: API CONTRACT (frontend-facing endpoints) ---
+
+async function apiFetch(ctx: TestContext, path: string, options?: any) {
+  const url = `${ctx.apiBaseUrl}${path}`;
+  const res = await fetch(url, {
+    ...options,
+    headers: { 'Authorization': `Bearer ${ctx.anonKey}`, 'Content-Type': 'application/json', ...options?.headers },
+  });
+  const data = await res.json();
+  return { status: res.status, data };
+}
+
+defineScenario({
+  id: 'api-dashboard-statuses', name: 'Dashboard shows correct statuses', category: 'API Contract',
+  description: 'GET /p/:token/dashboard returns correct status at each stage',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { futureRound: true }));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
+
+    await step('dashboard_registered', async () => {
+      const { data } = await apiFetch(ctx, `/p/${tokens[0]}/dashboard`);
+      const reg = data.registrations?.find((r: any) => r.roundId === roundId);
+      assert(reg?.status === 'registered', `expected registered, got ${reg?.status}`);
+      assert(data.firstName === 'Anna', `expected Anna, got ${data.firstName}`);
+      return { status: reg?.status, name: data.firstName };
+    });
+
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+
+    await step('dashboard_confirmed', async () => {
+      const { data } = await apiFetch(ctx, `/p/${tokens[0]}/dashboard`);
+      const reg = data.registrations?.find((r: any) => r.roundId === roundId);
+      assert(reg?.status === 'confirmed', `expected confirmed, got ${reg?.status}`);
+      return { status: reg?.status };
+    });
+
+    await step('matching', async () => {
+      const r = await createMatchesForRound(sessionId, roundId);
+      assert(r.success, 'matching should succeed');
+      return { matchCount: r.matchCount };
+    });
+
+    await step('dashboard_matched', async () => {
+      const { data } = await apiFetch(ctx, `/p/${tokens[0]}/dashboard`);
+      const reg = data.registrations?.find((r: any) => r.roundId === roundId);
+      assert(reg?.status === 'matched', `expected matched, got ${reg?.status}`);
+      assert(reg?.matchId != null, 'should have matchId');
+      assert(reg?.matchPartnerNames?.length > 0, 'should have partner names');
+      return { status: reg?.status, matchId: reg?.matchId?.substring(0, 20), partners: reg?.matchPartnerNames };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'api-match-endpoint', name: 'GET /match returns complete match data', category: 'API Contract',
+  description: 'Match endpoint returns meetingPoint, participants, identification, timing',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { futureRound: true }));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', async () => {
+      const r = await createMatchesForRound(sessionId, roundId);
+      return { matchCount: r.matchCount };
+    });
+
+    await step('get_match_anna', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/match`);
+      assert(status === 200, `expected 200, got ${status}`);
+      const m = data.matchData;
+      assert(m != null, 'matchData should exist');
+      assert(m.matchId != null, 'matchId should exist');
+      assert(m.meetingPointName != null, 'meetingPointName should exist');
+      assert(m.participants?.length === 2, `expected 2 participants, got ${m.participants?.length}`);
+
+      // Verify partner is Boris
+      const partner = m.participants.find((p: any) => p.id !== data.participantId);
+      assert(partner?.firstName === 'Boris', `partner should be Boris, got ${partner?.firstName}`);
+      assert(partner?.identificationNumber != null && partner?.identificationNumber !== '0', `identificationNumber should be set, got ${partner?.identificationNumber}`);
+
+      return {
+        matchId: m.matchId?.substring(0, 20),
+        meetingPoint: m.meetingPointName,
+        participantCount: m.participants?.length,
+        partnerName: `${partner?.firstName} ${partner?.lastName}`,
+        partnerIdNumber: partner?.identificationNumber,
+        hasRoundStartTime: !!m.roundStartTime,
+        hasWalkingDeadline: !!m.walkingDeadline,
+      };
+    });
+
+    await step('get_match_boris', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[1]}/match`);
+      assert(status === 200, `expected 200, got ${status}`);
+      const partner = data.matchData.participants.find((p: any) => p.id !== data.participantId);
+      assert(partner?.firstName === 'Anna', `partner should be Anna, got ${partner?.firstName}`);
+      return { partnerName: `${partner?.firstName} ${partner?.lastName}` };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'api-confirm-endpoint', name: 'Confirm attendance via API', category: 'API Contract',
+  description: 'POST /p/:token/confirm/:roundId returns correct response and updates status',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { futureRound: true }));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }], sessionId, roundId, organizerId));
+
+    await step('confirm_via_api', async () => {
+      const { status, data } = await apiFetch(ctx, `/p/${tokens[0]}/confirm/${roundId}`, {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+      });
+      assert(status === 200, `expected 200, got ${status}: ${JSON.stringify(data)}`);
+      assert(data.success === true, 'should succeed');
+      assert(data.status === 'confirmed', `expected confirmed, got ${data.status}`);
+      assert(data.confirmedAt != null, 'should have confirmedAt');
+      return { status: data.status, confirmedAt: data.confirmedAt };
+    });
+
+    await step('confirm_idempotent', async () => {
+      const { status, data } = await apiFetch(ctx, `/p/${tokens[0]}/confirm/${roundId}`, {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+      });
+      assert(status === 200, 'idempotent confirm should return 200');
+      assert(data.status === 'confirmed', 'status should still be confirmed');
+      return { idempotent: true, status: data.status };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'api-no-match-response', name: 'GET /match returns no-match reason', category: 'API Contract',
+  description: 'Solo participant gets proper no-match response from match endpoint',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    // Round must be in the past so GET /match triggers matching and discovers no-match
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Solo', lastName: 'S' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', async () => {
+      await createMatchesForRound(sessionId, roundId);
+      return {};
+    });
+
+    await step('get_match_no_match', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/match`);
+      assert(status === 404, `expected 404, got ${status}: ${JSON.stringify(data).substring(0, 100)}`);
+      // The endpoint may or may not return reason='no-match' depending on whether it re-triggers matching.
+      // Verify at minimum we get 404 with error message.
+      assert(data.error != null, 'should have error field');
+      // Also verify the DB status is correct
+      const s = await getStatuses(ids, sessionId, roundId);
+      assert(s[ids[0]]?.status === 'no-match', `DB status should be no-match, got ${s[ids[0]]?.status}`);
+      return { httpStatus: 404, dbStatus: s[ids[0]]?.status, reason: data.reason || 'none', noMatchReason: s[ids[0]]?.noMatchReason?.substring(0, 40) };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'api-checkin-flow', name: 'Check-in and met via API', category: 'API Contract',
+  description: 'POST /participant/:token/check-in works and updates status',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { futureRound: true }));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', async () => {
+      const r = await createMatchesForRound(sessionId, roundId);
+      return { matchCount: r.matchCount };
+    });
+
+    // Get matchId from registration
+    let matchId = '';
+    await step('get_match_id', async () => {
+      const s = await getStatuses(ids, sessionId, roundId);
+      matchId = s[ids[0]]?.matchId;
+      assert(matchId, 'should have matchId');
+      return { matchId: matchId?.substring(0, 20) };
+    });
+
+    await step('checkin_anna', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/check-in`, {
+        method: 'POST',
+        body: JSON.stringify({ matchId }),
+      });
+      assert(status === 200, `expected 200, got ${status}: ${JSON.stringify(data).substring(0, 100)}`);
+      return { status: data.status || 'ok' };
+    });
+
+    await step('verify_checkedin', async () => {
+      const s = await getStatuses(ids, sessionId, roundId);
+      assert(s[ids[0]]?.status === 'checked-in', `Anna should be checked-in, got ${s[ids[0]]?.status}`);
+      assert(s[ids[1]]?.status === 'matched', `Boris should still be matched, got ${s[ids[1]]?.status}`);
+      return { anna: s[ids[0]]?.status, boris: s[ids[1]]?.status };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'api-id-numbers-unique', name: 'Identification numbers are unique per match', category: 'API Contract',
+  description: 'Each participant in a match has a different identification number',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const names = Array.from({ length: 4 }, (_, i) => ({ firstName: `P${i + 1}`, lastName: 'T' }));
+    const { ids, tokens } = await step('register', () => registerParticipants(names, sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', async () => {
+      const r = await createMatchesForRound(sessionId, roundId);
+      return { matchCount: r.matchCount };
+    });
+
+    await step('verify_unique_ids', async () => {
+      const statuses = await getStatuses(ids, sessionId, roundId);
+      // Group by matchId
+      const matches: Record<string, number[]> = {};
+      for (const id of ids) {
+        const reg = statuses[id];
+        if (!reg?.matchId) continue;
+        if (!matches[reg.matchId]) matches[reg.matchId] = [];
+        matches[reg.matchId].push(reg.identificationNumber);
+      }
+      // Verify uniqueness within each match
+      for (const [matchId, numbers] of Object.entries(matches)) {
+        const unique = new Set(numbers);
+        assert(unique.size === numbers.length, `Match ${matchId} has duplicate ID numbers: ${numbers}`);
+      }
+      return { matchCount: Object.keys(matches).length, allUnique: true };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
 // ============================================================
 // EXPORTS
 // ============================================================
@@ -672,12 +965,18 @@ export function getScenarioList() {
   }));
 }
 
-export async function runScenario(scenarioId: string, supabase: any) {
+export async function runScenario(scenarioId: string, supabase: any, apiBaseUrl?: string, anonKey?: string) {
   const scenario = SCENARIOS[scenarioId];
   if (!scenario) throw new Error(`Unknown scenario: ${scenarioId}`);
 
   const steps: any[] = [];
   const startTime = Date.now();
+
+  const ctx: TestContext = {
+    supabase,
+    apiBaseUrl: apiBaseUrl || '',
+    anonKey: anonKey || '',
+  };
 
   const stepFn: StepFn = async (name, fn) => {
     const t0 = Date.now();
@@ -692,7 +991,7 @@ export async function runScenario(scenarioId: string, supabase: any) {
   };
 
   try {
-    await scenario.run(stepFn, supabase);
+    await scenario.run(stepFn, ctx);
     return { success: true, scenarioId, name: scenario.name, category: scenario.category, steps, totalMs: Date.now() - startTime };
   } catch (error: any) {
     return { success: false, scenarioId, name: scenario.name, category: scenario.category, error: error.message, steps, totalMs: Date.now() - startTime };
