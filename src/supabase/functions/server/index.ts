@@ -19,6 +19,7 @@ import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
+import { getScenarioList, runScenario } from './e2e-scenarios.ts';
 
 const app = new Hono();
 
@@ -2942,9 +2943,43 @@ app.get('/make-server-ce05600a/admin/access-passwords/:id/logs', async (c) => {
 });
 
 // ============================================================
-// E2E TEST: Full matching flow in a single API call
+// E2E TEST: Scenario-based matching flow tests
 // ============================================================
+
+// List available test scenarios
+app.get('/make-server-ce05600a/test/e2e-scenarios', async (c) => {
+  return c.json({ scenarios: getScenarioList() });
+});
+
+// Run a specific scenario (or all)
 app.post('/make-server-ce05600a/test/e2e-matching', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const scenarioId = body.scenario || 'basic-2';
+    const supabase = getSupabase();
+
+    // Run all scenarios if requested
+    if (scenarioId === 'all') {
+      const scenarios = getScenarioList();
+      const results = [];
+      for (const s of scenarios) {
+        const result = await runScenario(s.id, supabase);
+        results.push(result);
+      }
+      const passed = results.filter(r => r.success).length;
+      return c.json({ success: passed === results.length, passed, total: results.length, results });
+    }
+
+    // Run single scenario
+    const result = await runScenario(scenarioId, supabase);
+    return c.json(result, result.success ? 200 : 500);
+  } catch (error) {
+    return c.json({ success: false, error: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+// Legacy: keep old inline endpoint structure for backward compat (remove later)
+app.post('/make-server-ce05600a/test/e2e-matching-legacy', async (c) => {
   const startTime = Date.now();
   const steps: any[] = [];
   const step = (name: string, fn: () => Promise<any>) => {

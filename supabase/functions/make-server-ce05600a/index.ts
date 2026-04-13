@@ -20,6 +20,7 @@ import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCre
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
 import { registerDemoRoutes } from './route-demo.ts';
+import { getScenarioList, runScenario } from './e2e-scenarios.ts';
 
 const app = new Hono();
 
@@ -2942,6 +2943,225 @@ app.get('/make-server-ce05600a/admin/access-passwords/:id/logs', async (c) => {
   }
 });
 
+// ============================================================
+// E2E TEST: Scenario-based matching flow tests
+// ============================================================
+
+// List available test scenarios
+app.get('/make-server-ce05600a/test/e2e-scenarios', async (c) => {
+  return c.json({ scenarios: getScenarioList() });
+});
+
+// Run a specific scenario (or all)
+app.post('/make-server-ce05600a/test/e2e-matching', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const scenarioId = body.scenario || 'basic-2';
+    const supabase = getSupabase();
+
+    // Run all scenarios if requested
+    if (scenarioId === 'all') {
+      const scenarios = getScenarioList();
+      const results = [];
+      for (const s of scenarios) {
+        const result = await runScenario(s.id, supabase);
+        results.push(result);
+      }
+      const passed = results.filter(r => r.success).length;
+      return c.json({ success: passed === results.length, passed, total: results.length, results });
+    }
+
+    // Run single scenario
+    const result = await runScenario(scenarioId, supabase);
+    return c.json(result, result.success ? 200 : 500);
+  } catch (error) {
+    return c.json({ success: false, error: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+// Legacy: keep old inline endpoint structure for backward compat (remove later)
+app.post('/make-server-ce05600a/test/e2e-matching-legacy', async (c) => {
+  const startTime = Date.now();
+  const steps: any[] = [];
+  const step = (name: string, fn: () => Promise<any>) => {
+    const t0 = Date.now();
+    return fn().then(result => {
+      steps.push({ step: name, ok: true, ...result, ms: Date.now() - t0 });
+      return result;
+    }).catch(err => {
+      steps.push({ step: name, ok: false, error: String(err?.message || err), ms: Date.now() - t0 });
+      throw err;
+    });
+  };
+
+  try {
+    const body = await c.req.json();
+    const participants = body.participants || [
+      { firstName: 'Anna', lastName: 'Prvá' },
+      { firstName: 'Boris', lastName: 'Druhý' },
+    ];
+    const groupSize = body.groupSize || 2;
+
+    // Get organizer userId (use first admin profile)
+    const supabase = getSupabase();
+    const { data: profiles } = await supabase.from('organizer_profiles').select('id, url_slug').limit(1);
+    const organizerId = profiles?.[0]?.id;
+    const organizerSlug = profiles?.[0]?.url_slug || 'test';
+    if (!organizerId) throw new Error('No organizer profile found');
+
+    // 1. Create session with round starting in the past (already past T-0)
+    // We bypass matching time check by calling createMatchesForRound directly,
+    // so the round time doesn't matter. Set it to midnight to avoid any issues.
+    const now = new Date();
+    const roundDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const roundStartTime = '00:00'; // Midnight — guaranteed to be in the past
+
+    const sessionId = `test-e2e-${Date.now()}`;
+    const roundId = `round-e2e-${Date.now()}`;
+
+    await step('create_session', async () => {
+      await db.createSession({
+        id: sessionId,
+        userId: organizerId,
+        name: `E2E Test ${now.toISOString().substring(11, 16)}`,
+        date: roundDate,
+        status: 'published',
+        groupSize,
+        maxParticipants: 50,
+        meetingPoints: ['Lobby', 'Table 1'],
+        iceBreakers: ['What do you do?'],
+        rounds: [{ id: roundId, startTime: roundStartTime, duration: 10, name: 'Test Round' }],
+        registrationStart: new Date(now.getTime() - 3600000).toISOString(),
+      });
+      return { sessionId, roundId, roundStartTime: `${roundStartTime} CET`, roundDate };
+    });
+
+    // 2. Register participants
+    const tokens: string[] = [];
+    const participantIds: string[] = [];
+    for (const p of participants) {
+      await step(`register_${p.firstName}`, async () => {
+        const pid = `participant-e2e-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const token = `e2e-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const email = `e2e-${Date.now()}-${Math.random().toString(36).substring(5)}@test.com`;
+
+        await db.createParticipant({
+          participantId: pid,
+          email,
+          token,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          phone: '',
+          phoneCountry: '+421',
+        });
+
+        await db.createRegistration({
+          participantId: pid,
+          sessionId,
+          roundId,
+          organizerId,
+          status: 'registered',
+        });
+
+        tokens.push(token);
+        participantIds.push(pid);
+        return { name: `${p.firstName} ${p.lastName}`, token, participantId: pid };
+      });
+    }
+
+    // 3. Confirm all participants (bypass time check — write directly)
+    for (let i = 0; i < participants.length; i++) {
+      await step(`confirm_${participants[i].firstName}`, async () => {
+        await db.updateRegistrationStatus(participantIds[i], sessionId, roundId, 'confirmed', {
+          confirmedAt: new Date().toISOString(),
+        });
+        return { name: `${participants[i].firstName} ${participants[i].lastName}`, status: 'confirmed' };
+      });
+    }
+
+    // 4. Pre-check: verify registrations before matching
+    await step('pre_check', async () => {
+      const regs = await db.getRegistrationsForRound(sessionId, roundId);
+      const session = await db.getSessionById(sessionId);
+      const round = session?.rounds?.find((r: any) => r.id === roundId);
+      return {
+        totalRegs: regs.length,
+        statuses: regs.map((r: any) => r.status),
+        sessionFound: !!session,
+        roundFound: !!round,
+        roundDate: session?.date,
+        roundStartTime: round?.startTime,
+        groupSize: round?.groupSize || session?.groupSize || 2,
+      };
+    });
+
+    // 5. Run matching
+    await step('matching', async () => {
+      const result = await createMatchesForRound(sessionId, roundId);
+      return {
+        matchCount: result.matchCount ?? 0,
+        unmatchedCount: result.unmatchedCount ?? 0,
+        message: result.message || '',
+        matchingSuccess: result.success,
+        error: result.error,
+        details: typeof result.details === 'object' ? JSON.stringify(result.details) : result.details,
+        matches: result.matches?.map((m: any) => ({
+          matchId: m.matchId,
+          participantIds: m.participantIds,
+          meetingPoint: m.meetingPoint,
+        })),
+      };
+    });
+
+    // 5. Verify each participant's match
+    for (let i = 0; i < participants.length; i++) {
+      await step(`verify_${participants[i].firstName}`, async () => {
+        const regs = await db.getRegistrationsByParticipant(participantIds[i]);
+        const reg = regs.find((r: any) => r.roundId === roundId);
+        if (!reg) return { status: 'no_registration' };
+
+        if (reg.matchId) {
+          const matchParticipants = await db.getMatchParticipants(reg.matchId);
+          const partners = matchParticipants
+            .filter((mp: any) => mp.participantId !== participantIds[i])
+            .map((mp: any) => `${mp.firstName} ${mp.lastName}`);
+          return {
+            status: reg.status,
+            matchId: reg.matchId,
+            partnerNames: partners,
+            identificationNumber: reg.identificationNumber,
+            meetingPoint: reg.meetingPointId || reg.meetingPoint,
+          };
+        }
+        return { status: reg.status, noMatchReason: reg.noMatchReason };
+      });
+    }
+
+    // 6. Cleanup — delete test data
+    await step('cleanup', async () => {
+      // Delete registrations, matches, matching_locks, participants, session
+      for (const pid of participantIds) {
+        await supabase.from('registrations').delete().eq('participant_id', pid);
+        await supabase.from('participants').delete().eq('id', pid);
+      }
+      await supabase.from('matching_locks').delete().eq('session_id', sessionId);
+      await supabase.from('matches').delete().eq('session_id', sessionId);
+      await supabase.from('sessions').delete().eq('id', sessionId);
+      return { cleaned: true };
+    });
+
+    return c.json({ success: true, steps, totalMs: Date.now() - startTime });
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      steps,
+      totalMs: Date.now() - startTime,
+    }, 500);
+  }
+});
+
 // Register participant routes
 registerParticipantRoutes(app, getCurrentTime);
 
@@ -2954,7 +3174,5 @@ registerCrmRoutes(app);
 // Register i18n routes
 registerI18nRoutes(app);
 
-// Register demo routes
 registerDemoRoutes(app);
-
 Deno.serve(app.fetch);

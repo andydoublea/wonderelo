@@ -61,6 +61,7 @@ const AdminOrganizers = lazy(() => import('./components/AdminOrganizers').then(m
 const AdminParticipants = lazy(() => import('./components/AdminParticipants').then(m => ({ default: m.AdminParticipants })));
 const AdminSessions = lazy(() => import('./components/AdminSessions').then(m => ({ default: m.AdminSessions })));
 const AdminStatusesGuide = lazy(() => import('./components/AdminStatusesGuide').then(m => ({ default: m.AdminStatusesGuide })));
+const AdminSystemTests = lazy(() => import('./components/AdminSystemTests').then(m => ({ default: m.AdminSystemTests })));
 const AdminParticipantFlow = lazy(() => import('./components/AdminParticipantFlow').then(m => ({ default: m.AdminParticipantFlow })));
 const AdminPagePreview = lazy(() => import('./components/AdminPagePreview').then(m => ({ default: m.AdminPagePreview })));
 const AdminParameters = lazy(() => import('./components/AdminParameters').then(m => ({ default: m.AdminParameters })));
@@ -1112,6 +1113,31 @@ function AdminStatusesGuideRoute() {
   );
 }
 
+function AdminSystemTestsRoute() {
+  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <AuthenticatedNav
+        currentView="admin"
+        currentUser={currentUser}
+        isAdminUser={isAdminUser()}
+        onNavigateToDashboard={() => navigate('/dashboard')}
+        onNavigateToRounds={() => navigate('/rounds')}
+        onNavigateToAccountSettings={() => navigate('/account-settings')}
+        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
+        onNavigateToBilling={() => navigate('/billing')}
+        onNavigateToAdmin={() => navigate('/admin')}
+        onSignOut={handleSignOut}
+      />
+      <Suspense fallback={<RouteLoader />}>
+        <AdminSystemTests accessToken={accessToken} onBack={() => navigate('/admin')} />
+      </Suspense>
+    </>
+  );
+}
+
 function AdminParticipantFlowRoute() {
   const navigate = useNavigate();
 
@@ -2047,6 +2073,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/participants', element: h(AdminRoute, null, h(AdminParticipantsRoute)) }),
             h(Route, { path: '/admin/sessions', element: h(AdminRoute, null, h(AdminSessionsRoute)) }),
             h(Route, { path: '/admin/statuses-guide', element: h(AdminRoute, null, h(AdminStatusesGuideRoute)) }),
+            h(Route, { path: '/admin/system-tests', element: h(AdminRoute, null, h(AdminSystemTestsRoute)) }),
             h(Route, { path: '/admin/participant-flow', element: h(AdminRoute, null, h(AdminParticipantFlowRoute)) }),
             h(Route, { path: '/admin/page-preview', element: h(AdminRoute, null, h(AdminPagePreviewRoute)) }),
             h(Route, { path: '/admin/parameters', element: h(AdminRoute, null, h(AdminParametersRoute)) }),
