@@ -6,6 +6,7 @@ import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+import { WondereloHeader } from './WondereloHeader';
 
 const FEEDBACK_OPTIONS = [
   { id: 'nice-talk', label: 'Nice talk', icon: '💬' },
@@ -165,36 +166,45 @@ export function ContactSharing() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
       </div>
     );
   }
 
   if (error || !networkingData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-6">{error || 'Failed to load data'}</p>
-            <Button onClick={() => navigate(`/p/${token}?from=match`)}>
-              Back to dashboard
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-8 text-center">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold mb-2">Error</h2>
+              <p className="text-muted-foreground mb-6">{error || 'Failed to load data'}</p>
+              <Button onClick={() => navigate(`/p/${token}?from=match`)}>
+                Back to dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (isSaved) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h1 className="text-3xl font-bold mb-2">Saved!</h1>
-          <p className="text-muted-foreground">Redirecting to dashboard...</p>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <div className="text-center">
+            <div className="text-6xl mb-4">✅</div>
+            <h1 className="text-3xl font-bold mb-2">Saved!</h1>
+            <p className="text-muted-foreground">Redirecting to dashboard...</p>
+          </div>
         </div>
       </div>
     );
@@ -202,6 +212,7 @@ export function ContactSharing() {
 
   return (
     <div className="min-h-screen bg-background">
+      <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
         {/* Headline */}
         <h1 className="text-4xl font-bold mb-4">

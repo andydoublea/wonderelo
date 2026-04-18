@@ -15,6 +15,17 @@ interface AdminPagePreviewProps {
   onBack: () => void;
 }
 
+// Simple Wonderelo header for previews (static, no click handlers)
+function PreviewHeader() {
+  return (
+    <nav className="border-b border-border bg-background">
+      <div className="container mx-auto max-w-6xl px-6 py-4">
+        <span className="text-xl font-semibold text-primary wonderelo-logo">Wonderelo</span>
+      </div>
+    </nav>
+  );
+}
+
 // ============================================================
 // Mock data generators
 // ============================================================
@@ -243,6 +254,7 @@ function PreviewParticipantDashboard() {
 function PreviewMeetingPoint() {
   return (
     <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
         <div className="mb-8 text-2xl font-semibold text-primary">14:32</div>
         <h1 className="text-4xl font-bold mb-12">We have a match for you!</h1>
@@ -257,11 +269,11 @@ function PreviewMeetingPoint() {
         </fieldset>
         <button className="text-muted-foreground hover:text-foreground underline">Back to dashboard</button>
       </div>
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10">
+      <div className="sticky bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10">
         <div className="max-w-md mx-auto">
           <Button size="lg" className="w-full">
             <MapPin className="h-5 w-5 mr-2" />
-            I am here
+            I am at Lobby Bar
           </Button>
         </div>
       </div>
@@ -272,6 +284,7 @@ function PreviewMeetingPoint() {
 function PreviewNoMatch() {
   return (
     <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
         <div className="text-6xl mb-6">😳</div>
         <h1 className="text-4xl font-bold mb-4">No match found</h1>
@@ -288,21 +301,20 @@ function PreviewNoMatch() {
 function PreviewMatchPartner() {
   return (
     <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
         <h1 className="text-4xl font-bold mb-12">Now, find each other!</h1>
 
-        {/* Identification image */}
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
+        {/* Identification image with name/number BELOW (full-width on mobile) */}
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-4 py-6">
           <legend className="px-3 text-xl text-muted-foreground">
             Show this so Marcus can find you
           </legend>
-          <div className="relative inline-block">
-            <GeometricIdentification matchId="preview-match-1" className="rounded-lg shadow-lg max-w-md w-full" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              <h3 className="text-6xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">Sarah</h3>
-              <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg">
-                <span className="text-3xl font-bold text-foreground">42</span>
-              </div>
+          <GeometricIdentification matchId="preview-match-1" className="rounded-lg shadow-lg w-full block" />
+          <div className="flex flex-col items-center justify-center gap-4 mt-6">
+            <h3 className="text-5xl font-bold text-foreground">Sarah</h3>
+            <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+              <span className="text-3xl font-bold">42</span>
             </div>
           </div>
         </fieldset>
@@ -335,6 +347,7 @@ function PreviewMatchPartner() {
 function PreviewNetworking() {
   return (
     <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
         <div className="mb-8 text-2xl font-semibold text-primary">18:42</div>
 
@@ -344,7 +357,7 @@ function PreviewNetworking() {
 
         {/* Ice breakers */}
         <div className="mt-12">
-          <p className="text-lg text-muted-foreground mb-6">Take them or leave them</p>
+          <p className="text-lg text-muted-foreground mb-6">Questions to help you start:</p>
           <div className="space-y-4 text-left max-w-md mx-auto">
             {MOCK_ICE_BREAKERS.map((q, i) => (
               <div key={i} className="flex gap-3 p-4 border rounded-lg">
@@ -378,6 +391,7 @@ function PreviewContactSharing() {
   const [wondereloRating, setWondereloRating] = useState<string | null>(null);
   return (
     <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
         <h1 className="text-4xl font-bold mb-4">How was your conversation?</h1>
 

@@ -4,6 +4,7 @@ import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 import { GeometricIdentification } from './GeometricIdentification';
+import { WondereloHeader } from './WondereloHeader';
 
 interface Partner {
   id: string;
@@ -172,10 +173,13 @@ export function MatchPartner() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading match details...</p>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading match details...</p>
+          </div>
         </div>
       </div>
     );
@@ -183,17 +187,20 @@ export function MatchPartner() {
 
   if (error || !matchData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-2">Error</h2>
-          <p className="text-muted-foreground mb-6">{error || 'Failed to load match partner data'}</p>
-          <button
-            onClick={() => navigate(`/p/${token}`)}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold mb-2">Error</h2>
+            <p className="text-muted-foreground mb-6">{error || 'Failed to load match partner data'}</p>
+            <button
+              onClick={() => navigate(`/p/${token}`)}
+              className="text-muted-foreground hover:text-foreground underline transition-colors"
+            >
+              Back to dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -201,6 +208,7 @@ export function MatchPartner() {
 
   return (
     <div className="min-h-screen bg-background">
+      <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
         {/* Countdown Timer — only show during finding phase */}
         {matchData.findingDeadline && (
@@ -222,28 +230,27 @@ export function MatchPartner() {
             : 'Now wait for the others'}
         </h1>
 
-        {/* Identification image with number */}
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
+        {/* Identification image with name/number BELOW */}
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-4 py-6">
           <legend className="px-3 text-xl text-muted-foreground">
             Show this so {matchData.partners.length === 1
               ? `${matchData.partners[0].firstName} can find you`
               : 'they can find you'}
           </legend>
-          <div className="relative inline-block">
-            <GeometricIdentification
-              matchId={matchData.matchId}
-              className="rounded-lg shadow-lg max-w-md w-full"
-            />
-            {/* Name and number overlay */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              <h3 className="text-6xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                {matchData.myName}
-              </h3>
-              <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg">
-                <span className="text-3xl font-bold text-foreground">
-                  {matchData.myIdentificationNumber}
-                </span>
-              </div>
+          {/* Full-width image (mobile-first) */}
+          <GeometricIdentification
+            matchId={matchData.matchId}
+            className="rounded-lg shadow-lg w-full block"
+          />
+          {/* Name and number BELOW the image */}
+          <div className="flex flex-col items-center justify-center gap-4 mt-6">
+            <h3 className="text-5xl font-bold text-foreground">
+              {matchData.myName}
+            </h3>
+            <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+              <span className="text-3xl font-bold">
+                {matchData.myIdentificationNumber}
+              </span>
             </div>
           </div>
         </fieldset>

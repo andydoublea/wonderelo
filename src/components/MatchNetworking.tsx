@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
+import { WondereloHeader } from './WondereloHeader';
 
 interface NetworkingData {
   matchId: string;
@@ -64,10 +65,13 @@ export function MatchNetworking() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading networking session...</p>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading networking session...</p>
+          </div>
         </div>
       </div>
     );
@@ -75,17 +79,20 @@ export function MatchNetworking() {
 
   if (error || !networkingData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-2">Error</h2>
-          <p className="text-muted-foreground mb-6">{error || 'Failed to load networking data'}</p>
-          <button
-            onClick={() => navigate(`/p/${token}?from=match`)}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold mb-2">Error</h2>
+            <p className="text-muted-foreground mb-6">{error || 'Failed to load networking data'}</p>
+            <button
+              onClick={() => navigate(`/p/${token}?from=match`)}
+              className="text-muted-foreground hover:text-foreground underline transition-colors"
+            >
+              Back to dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -93,6 +100,7 @@ export function MatchNetworking() {
 
   return (
     <div className="min-h-screen bg-background">
+      <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
         {/* Countdown Timer */}
         {!isTimeUp && (
@@ -118,7 +126,7 @@ export function MatchNetworking() {
         {/* Ice Breakers */}
         {networkingData.iceBreakers && networkingData.iceBreakers.length > 0 && (
           <div className="mt-12">
-            <p className="text-lg text-muted-foreground mb-6">Take them or leave them</p>
+            <p className="text-lg text-muted-foreground mb-6">Questions to help you start:</p>
             <div className="space-y-4 text-left max-w-md mx-auto">
               {networkingData.iceBreakers.map((iceBreaker, index) => (
                 <div key={index} className="flex gap-3 p-4 border rounded-lg">
