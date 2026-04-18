@@ -7,6 +7,7 @@ import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { WondereloHeader } from './WondereloHeader';
 
 interface MatchData {
   matchId: string;
@@ -188,13 +189,16 @@ export function MatchInfo() {
   // Loading state (initial load)
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading your match...</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading your match...</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -202,19 +206,22 @@ export function MatchInfo() {
   // Waiting for match (backend matching in progress)
   if (isWaitingForMatch) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <Loader2 className="h-16 w-16 text-primary animate-spin mx-auto mb-6" />
-            <h2 className="text-2xl font-bold mb-2">Finding your match...</h2>
-            <p className="text-muted-foreground mb-2">
-              We're pairing you with someone right now.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              This usually takes just a few seconds.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-8 text-center">
+              <Loader2 className="h-16 w-16 text-primary animate-spin mx-auto mb-6" />
+              <h2 className="text-2xl font-bold mb-2">Finding your match...</h2>
+              <p className="text-muted-foreground mb-2">
+                We're pairing you with someone right now.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This usually takes just a few seconds.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -222,6 +229,7 @@ export function MatchInfo() {
   if (error === 'no-match') {
     return (
       <div className="min-h-screen bg-background">
+        <WondereloHeader />
         <div className="max-w-2xl mx-auto px-6 py-12 text-center">
           <div className="text-6xl mb-6">😳</div>
           <h1 className="text-4xl font-bold mb-4">No match found</h1>
@@ -241,23 +249,27 @@ export function MatchInfo() {
 
   if (error || !matchData) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-6">{error || 'Failed to load match data'}</p>
-            <Button onClick={() => navigate(`/p/${token}?from=match`)}>
-              Back to dashboard
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center p-4 pt-20">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-8 text-center">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h2 className="text-2xl font-bold mb-2">Error</h2>
+              <p className="text-muted-foreground mb-6">{error || 'Failed to load match data'}</p>
+              <Button onClick={() => navigate(`/p/${token}?from=match`)}>
+                Back to dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
+      <WondereloHeader />
       {/* Main Content */}
       <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
         {/* Countdown Timer */}
@@ -336,7 +348,7 @@ export function MatchInfo() {
             disabled={isSubmitting}
           >
             <MapPin className="h-5 w-5 mr-2" />
-            {isSubmitting ? 'Checking in...' : 'I am here'}
+            {isSubmitting ? 'Checking in...' : `I am at ${matchData.meetingPointName}`}
           </Button>
         </div>
       </div>

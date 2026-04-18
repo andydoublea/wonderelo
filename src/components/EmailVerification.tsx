@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
+import { WondereloHeader } from './WondereloHeader';
 
 export function EmailVerification() {
   const navigate = useNavigate();
@@ -97,8 +98,10 @@ export function EmailVerification() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <WondereloHeader />
+      <div className="flex items-center justify-center p-4 pt-20">
+        <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             {status === 'verifying' && (
@@ -160,6 +163,7 @@ export function EmailVerification() {
           </CardContent>
         )}
       </Card>
+      </div>
     </div>
   );
 }
