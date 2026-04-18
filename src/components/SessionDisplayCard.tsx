@@ -258,8 +258,11 @@ export function SessionDisplayCard({
   };
   
   const formatDateTime = (date: string, time: string) => {
-    if (!date || !time) return 'Date and time to be determined';
-    const sessionDate = new Date(`${date}T${time}`);
+    const effectiveDate = date || session.rounds?.[0]?.date || '';
+    const effectiveTime = time || session.rounds?.[0]?.startTime || '';
+    if (!effectiveDate || !effectiveTime) return 'Date and time to be determined';
+    const sessionDate = new Date(`${effectiveDate}T${effectiveTime}`);
+    if (isNaN(sessionDate.getTime())) return 'Date and time to be determined';
     return sessionDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -727,11 +730,17 @@ export function SessionDisplayCard({
               <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {session.date ? new Date(session.date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                  }) : 'Date To be set'}
+                  {(() => {
+                    const displayDate = session.date || session.rounds?.[0]?.date;
+                    if (!displayDate) return 'Date To be set';
+                    const parsed = new Date(displayDate);
+                    if (isNaN(parsed.getTime())) return 'Date To be set';
+                    return parsed.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric'
+                    });
+                  })()}
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />

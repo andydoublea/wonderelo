@@ -121,6 +121,7 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
     name: 'Registration',
     pages: [
       { id: 'session-registration', label: 'Registration', description: 'Participant registers for a round' },
+      { id: 'email-verification', label: 'Email verification', description: 'Email verification landing page' },
       { id: 'participant-profile', label: 'Profile', description: 'Participant edits their profile' },
     ],
   },
@@ -139,6 +140,7 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
       { id: 'match-partner', label: 'Find each other', description: 'Confirm meeting your match partner' },
       { id: 'match-networking', label: 'Networking', description: 'Active networking with ice breakers' },
       { id: 'contact-sharing', label: 'Contact sharing', description: 'Exchange contacts after networking' },
+      { id: 'wonderelo-feedback', label: 'Wonderelo feedback', description: 'Rate the Wonderelo experience' },
     ],
   },
   {
@@ -311,10 +313,10 @@ function PreviewMatchPartner() {
             Show this so Marcus can find you
           </legend>
           <GeometricIdentification matchId="preview-match-1" className="rounded-lg shadow-lg w-full block" />
-          <div className="flex flex-col items-center justify-center gap-4 mt-6">
-            <h3 className="text-5xl font-bold text-foreground">Sarah</h3>
-            <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
-              <span className="text-3xl font-bold">42</span>
+          <div className="flex flex-col items-center justify-center gap-5 mt-8">
+            <h3 className="text-7xl md:text-8xl font-bold text-foreground leading-none">Sarah</h3>
+            <div className="w-24 h-24 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+              <span className="text-4xl font-bold">42</span>
             </div>
           </div>
         </fieldset>
@@ -388,29 +390,20 @@ const MOCK_FEEDBACK_OPTIONS = [
 function PreviewContactSharing() {
   const [contactSharing, setContactSharing] = useState<Record<string, boolean>>({});
   const [selectedFeedback, setSelectedFeedback] = useState<Record<string, string[]>>({});
-  const [wondereloRating, setWondereloRating] = useState<string | null>(null);
   return (
     <div className="min-h-[600px] bg-background">
       <PreviewHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
-        <h1 className="text-4xl font-bold mb-4">How was your conversation?</h1>
-
-        {/* Psychological insight */}
-        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6 max-w-md mx-auto text-left">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
-            <span className="font-semibold">Did you know?</span> Research shows we consistently underestimate how much others enjoyed talking to us. If you enjoyed the conversation, let the other person know — they probably feel the same way!
-          </p>
-        </div>
+        <h1 className="text-4xl font-bold mb-2">Time is up!</h1>
+        <p className="text-xl text-muted-foreground mb-10">How was your conversation?</p>
 
         <div className="space-y-6 max-w-md mx-auto">
           {[MOCK_PARTICIPANTS[1]].map((p) => (
             <div key={p.id} className="border-2 rounded-2xl overflow-hidden">
-              {/* Partner header */}
               <div className="p-4 pb-3">
                 <p className="text-xl font-bold text-left">{p.firstName} {p.lastName}</p>
               </div>
 
-              {/* Feedback buttons */}
               <div className="px-4 pb-3">
                 <p className="text-xs text-muted-foreground mb-2 text-left">Send a quick reaction (optional)</p>
                 <div className="flex flex-wrap gap-2">
@@ -440,16 +433,10 @@ function PreviewContactSharing() {
                 </div>
               </div>
 
-              {/* Custom feedback */}
               <div className="px-4 pb-3">
-                <Textarea
-                  placeholder="Write your own feedback (optional)"
-                  className="text-sm resize-none h-16"
-                  readOnly
-                />
+                <Textarea placeholder="Write your own feedback (optional)" className="text-sm resize-none h-16" readOnly />
               </div>
 
-              {/* Contact sharing toggle */}
               <div className="px-4 pb-4 border-t border-border/50 pt-3">
                 <div className="flex items-center justify-between">
                   <div className="text-left">
@@ -466,51 +453,72 @@ function PreviewContactSharing() {
           ))}
         </div>
 
-        {/* Info box about feedback & contacts delivery */}
         <div className="bg-muted/50 border border-border rounded-xl p-4 mt-8 max-w-md mx-auto text-left">
           <p className="text-sm text-muted-foreground">
-            Feedback and contacts will be shared after 15 minutes.
+            Feedback and contacts will be shared after 15 minutes. Both must agree to exchange contacts.
           </p>
         </div>
 
-        {/* Wonderelo feedback section */}
         <div className="mt-8 max-w-md mx-auto">
-          <div className="border-t border-border pt-8">
-            <h2 className="text-lg font-semibold mb-4">How was your Wonderelo experience?</h2>
+          <Button size="lg" className="w-full">Next</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            <div className="flex justify-center gap-4 mb-4">
-              {[
-                { id: 'sad', emoji: '😞', label: 'Not great' },
-                { id: 'neutral', emoji: '😐', label: 'Okay' },
-                { id: 'happy', emoji: '😊', label: 'Great!' },
-              ].map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => setWondereloRating(wondereloRating === option.id ? null : option.id)}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all border-2 ${
-                    wondereloRating === option.id
-                      ? 'border-primary bg-primary/5 scale-110'
-                      : 'border-transparent hover:bg-muted'
-                  }`}
-                >
-                  <span className="text-3xl">{option.emoji}</span>
-                  <span className="text-xs text-muted-foreground">{option.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <Textarea
-              placeholder="Tell us more (optional)"
-              className="text-sm resize-none h-20"
-              readOnly
-            />
+function PreviewWondereloFeedback() {
+  const [wondereloRating, setWondereloRating] = useState<string | null>(null);
+  return (
+    <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
+        <h1 className="text-4xl font-bold mb-10">How was your Wonderelo experience?</h1>
+        <div className="max-w-md mx-auto">
+          <div className="flex justify-center gap-4 mb-6">
+            {[
+              { id: 'sad', emoji: '😞', label: 'Not great' },
+              { id: 'neutral', emoji: '😐', label: 'Okay' },
+              { id: 'happy', emoji: '😊', label: 'Great!' },
+            ].map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setWondereloRating(wondereloRating === option.id ? null : option.id)}
+                className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all border-2 ${
+                  wondereloRating === option.id
+                    ? 'border-primary bg-primary/5 scale-110'
+                    : 'border-transparent hover:bg-muted'
+                }`}
+              >
+                <span className="text-3xl">{option.emoji}</span>
+                <span className="text-xs text-muted-foreground">{option.label}</span>
+              </button>
+            ))}
           </div>
+          <Textarea placeholder="Tell us more (optional)" className="text-sm resize-none h-24" readOnly />
         </div>
-
-        {/* Finish button (not sticky) */}
-        <div className="mt-8 max-w-md mx-auto">
+        <div className="mt-8 max-w-md mx-auto space-y-3">
           <Button size="lg" className="w-full">Finish</Button>
+          <Button variant="ghost" className="w-full">Back</Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewEmailVerification() {
+  return (
+    <div className="min-h-[600px] bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <PreviewHeader />
+      <div className="flex items-center justify-center p-4 pt-16">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <div className="text-6xl mb-4">✉️</div>
+            <h2 className="text-2xl font-bold mb-2">Email verified!</h2>
+            <p className="text-muted-foreground mb-6">Your email address has been confirmed. Redirecting to your dashboard...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -771,6 +779,8 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
       case 'match-partner': return <PreviewMatchPartner />;
       case 'match-networking': return <PreviewNetworking />;
       case 'contact-sharing': return <PreviewContactSharing />;
+      case 'wonderelo-feedback': return <PreviewWondereloFeedback />;
+      case 'email-verification': return <PreviewEmailVerification />;
       case 'participant-profile': return <PreviewProfile />;
       case 'session-registration': return <PreviewRegistration />;
       case 'session-success': return <PreviewSessionSuccess />;
