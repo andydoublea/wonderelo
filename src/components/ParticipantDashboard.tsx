@@ -1419,13 +1419,15 @@ export function ParticipantDashboard() {
               
               return (
                 <Card key={session.id} className="transition-all hover:border-muted-foreground/20 opacity-60 max-w-md">
-                  <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
+                  <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px] text-left">
                     <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1">
+                      <div className="flex-1 text-left">
                         <h3 className="mb-2 text-left">
                           {organizerReg?.organizerName || 'Unknown organizer'}
                         </h3>
-                        <Badge variant="outline" className="mb-2">{session.name}</Badge>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{session.name}</Badge>
+                        </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />

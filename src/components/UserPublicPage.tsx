@@ -977,7 +977,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
               </div>
               <div className="flex-1">
                 <p className="font-medium mb-1">Meet someone new</p>
-                <p className="text-sm text-muted-foreground">We will pick a match for you with a meeting place. You have 3 minutes to meeting with your match – confirm it by scanning your match's QR code.</p>
+                <p className="text-sm text-muted-foreground">We will pick a match for you with a meeting place. You have 3 minutes to meeting with your match.</p>
               </div>
             </div>
 

@@ -111,6 +111,8 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
 
   const [detectedCountryCode, setDetectedCountryCode] = useState<string>('');
   const [showMeetingPoints, setShowMeetingPoints] = useState(false);
+  // sessionId to filter Meeting Points dialog to a single session; null = show all (legacy)
+  const [meetingPointsFilterSessionId, setMeetingPointsFilterSessionId] = useState<string | null>(null);
   const [showRoundRules, setShowRoundRules] = useState(false);
   const [roundRules, setRoundRules] = useState<RoundRule[]>([]);
 
@@ -280,17 +282,6 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     }
   }, [registeredRoundsPerSession, sessions, hasInitialized]);
 
-  // Show version toast on component mount
-  useEffect(() => {
-    const showVersionToast = async () => {
-      const { APP_VERSION } = await import('../utils/version');
-      toast.info(`App version: ${APP_VERSION}`, {
-        duration: 3000,
-        position: 'bottom-right'
-      });
-    };
-    showVersionToast();
-  }, []);
 
   // Calculate next upcoming registered round (for showing countdown)
   useEffect(() => {
@@ -2164,6 +2155,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
                         <button
                           type="button"
                           onClick={() => {
+                            setMeetingPointsFilterSessionId(session.id);
                             setShowMeetingPoints(true);
                           }}
                           className="flex items-center gap-1 text-foreground underline hover:text-primary"
@@ -2312,12 +2304,16 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
             open={showMeetingPoints}
             onOpenChange={(open) => {
               setShowMeetingPoints(open);
+              if (!open) {
+                setMeetingPointsFilterSessionId(null);
+              }
               if (!open && window.location.hash === '#meeting-points') {
                 window.history.replaceState(null, '', window.location.pathname);
               }
             }}
             sessionsWithMeetingPoints={sessions
               .filter(s => s.meetingPoints && s.meetingPoints.length > 0)
+              .filter(s => !meetingPointsFilterSessionId || s.id === meetingPointsFilterSessionId)
               .map(s => ({
                 sessionId: s.id,
                 sessionName: s.name,

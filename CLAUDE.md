@@ -58,7 +58,7 @@ development → staging → main
 
 ### Supabase Access Token (Wonderelo account only — NOT shared with Blanc Brain)
 ```
-sbp_c505e44608c8de2524c87194e1bc61f89de49af7
+sbp_38a380ba5f2ffd07eadb7b3e97c047bbbf556728
 ```
 
 ### Production Supabase
