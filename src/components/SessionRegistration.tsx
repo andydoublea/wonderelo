@@ -518,9 +518,11 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     }
   };
 
-  const handleRoundSelect = (session: NetworkingSession, round: any) => {
+  const handleRoundSelect = (session: NetworkingSession, roundIdOrRound: string | any) => {
     const sessionId = session.id;
-    const roundId = round.id;
+    // Accept either roundId string (preferred) or round object (legacy)
+    const roundId = typeof roundIdOrRound === 'string' ? roundIdOrRound : roundIdOrRound?.id;
+    if (!roundId) return;
     
     setSelectedRounds(prev => {
       const newMap = new Map(prev);
@@ -2241,7 +2243,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
                                   participantId={participantProfile?.id}
                                   // Pass participantStatus for registered rounds to show same display as participant dashboard
                                   participantStatus={participantStatus}
-                                  onSelect={(roundId) => handleRoundSelect(session, round)}
+                                  onSelect={(roundId) => handleRoundSelect(session, roundId)}
                                   generateRoundTimeDisplay={generateRoundTimeDisplay}
                                   selectedTeam={roundSelectionData.team}
                                   selectedTopic={roundSelectionData.topic}
