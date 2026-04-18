@@ -6,6 +6,7 @@ import { NetworkingSession, Round } from '../App';
 import { useTime } from '../contexts/TimeContext';
 import { getParticipantStatusBadge } from '../utils/statusBadge';
 import { getParametersOrDefault } from '../utils/systemParameters';
+import { computeInitialRoundPhase } from '../utils/roundPhase';
 import { useParams, useNavigate } from 'react-router';
 import { debugLog, errorLog } from '../utils/debug';
 
@@ -87,24 +88,17 @@ export function RoundItem({
   
   const { getCurrentTime } = useTime();
 
-  // Compute initial countdown phase from current time to prevent flash on first render
+  // Compute initial countdown phase — see utils/roundPhase.ts for why we never return 'confirmation-window' here
   type CountdownPhase = 'before-confirmation' | 'confirmation-window' | 'matching' | 'walking' | 'networking' | 'completed';
   const computeInitialPhase = (): CountdownPhase => {
-    if (!isRegistered || !session?.date || !round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') {
-      return 'before-confirmation';
-    }
-    if (participantStatus === 'unconfirmed') return 'before-confirmation';
-    try {
-      const now = getCurrentTime();
-      const [h, m] = round.startTime.split(':').map(Number);
-      const rs = new Date(round.date || session.date);
-      rs.setHours(h, m, 0, 0);
-      const params = getParametersOrDefault();
-      const confirmationStart = new Date(rs.getTime() - params.confirmationWindowMinutes * 60 * 1000);
-      if (now < confirmationStart) return 'before-confirmation';
-      if (now < rs) return 'confirmation-window';
-      return 'matching'; // After T-0, will be refined by effect
-    } catch { return 'before-confirmation'; }
+    return computeInitialRoundPhase({
+      isRegistered,
+      sessionDate: session?.date,
+      roundDate: round.date,
+      roundStartTime: round.startTime,
+      participantStatus,
+      now: getCurrentTime(),
+    });
   };
 
   // Countdown timer for registered participants
