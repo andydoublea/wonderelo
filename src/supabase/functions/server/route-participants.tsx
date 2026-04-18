@@ -15,6 +15,7 @@ import { errorLog, debugLog } from './debug.tsx';
 import { getParticipantDashboard } from './participant-dashboard.tsx';
 import { createMatchesForRound } from './matching.tsx';
 import { parseRoundStartTime } from './time-helpers.tsx';
+import { sendEmail, buildContactSharedEmail } from './email.tsx';
 
 export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) => Date) {
 
@@ -963,7 +964,17 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         } catch (_) { /* ignore */ }
       }
 
+      // Get contact sharing delay from system parameters (defaults to 15 min)
+      let contactSharingDelayMinutes = 15;
+      try {
+        const systemParams = await db.getAdminSetting('system_parameters');
+        if (systemParams?.contactSharingDelayMinutes != null) {
+          contactSharingDelayMinutes = systemParams.contactSharingDelayMinutes;
+        }
+      } catch { /* use default */ }
+
       const sharedContacts: any[] = [];
+      const now = new Date();
 
       for (const reg of matchedRegs) {
         // Get all contact sharing preferences for this match
@@ -981,6 +992,33 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         const round = roundMap[reg.roundId];
         const organizer = organizerMap[reg.organizerId];
 
+        // Compute "contact reveal time" = end of networking + delay
+        // Uses round.date/startTime + duration as round end, then add delay.
+        // If we can't compute, fall back to matchedAt + typical round duration + delay.
+        let revealAt: Date | null = null;
+        try {
+          if (round?.date && round?.startTime && round?.duration != null) {
+            const [y, mo, d] = (round.date as string).split('-').map(Number);
+            const [h, mi] = (round.startTime as string).split(':').map(Number);
+            // Use DST-aware CET offset (matches parseRoundStartTime in time-helpers)
+            const year = new Date(Date.UTC(y, mo - 1, d)).getUTCFullYear();
+            const mar31 = new Date(Date.UTC(year, 2, 31));
+            const dstStart = new Date(Date.UTC(year, 2, 31 - mar31.getUTCDay(), 1, 0, 0));
+            const oct31 = new Date(Date.UTC(year, 9, 31));
+            const dstEnd = new Date(Date.UTC(year, 9, 31 - oct31.getUTCDay(), 1, 0, 0));
+            const roughUtc = new Date(Date.UTC(y, mo - 1, d, h, mi, 0, 0));
+            const offset = (roughUtc >= dstStart && roughUtc < dstEnd) ? 2 : 1;
+            const roundStart = new Date(Date.UTC(y, mo - 1, d, h - offset, mi, 0, 0));
+            // End of round = roundStart + duration (networking already uses walking+finding buffer for timing,
+            // but for contact sharing we consider the round end as when networking ended).
+            const roundEnd = new Date(roundStart.getTime() + (round.duration || 10) * 60_000);
+            revealAt = new Date(roundEnd.getTime() + contactSharingDelayMinutes * 60_000);
+          } else if (reg.matchedAt) {
+            // Fallback: matchedAt + 10 min (assumed round duration) + delay
+            revealAt = new Date(new Date(reg.matchedAt).getTime() + (10 + contactSharingDelayMinutes) * 60_000);
+          }
+        } catch { /* revealAt stays null */ }
+
         for (const partner of partners) {
           const partnerPrefs = allPrefs.find(p => p.participantId === partner.participantId);
 
@@ -988,26 +1026,53 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
           const iSharedWithPartner = myPrefs?.preferences?.[partner.participantId] === true;
           const partnerSharedWithMe = partnerPrefs?.preferences?.[participant.participantId] === true;
 
-          if (iSharedWithPartner && partnerSharedWithMe) {
-            // Both agreed — share contact info
-            sharedContacts.push({
-              matchId: reg.matchId,
-              roundId: reg.roundId,
-              roundName: round?.name || 'Round',
-              sessionId: reg.sessionId,
-              sessionName: session?.name || '',
-              sessionDate: session?.date || round?.date || '',
-              organizerName: organizer?.organizerName || organizer?.displayName || '',
-              organizerSlug: organizer?.urlSlug || '',
-              allPartners: partners.map(p => ({ firstName: p.firstName, lastName: p.lastName })),
-              partner: {
-                firstName: partner.firstName,
-                lastName: partner.lastName,
-                email: partner.email,
-                phone: partner.phone,
-              },
-              sharedAt: partnerPrefs?.updatedAt || myPrefs?.updatedAt,
-            });
+          if (!iSharedWithPartner || !partnerSharedWithMe) continue;
+
+          // TIME GUARD: do not reveal contacts until revealAt has passed
+          if (revealAt && now < revealAt) continue;
+
+          // Both agreed AND delay elapsed — share contact info
+          sharedContacts.push({
+            matchId: reg.matchId,
+            roundId: reg.roundId,
+            roundName: round?.name || 'Round',
+            sessionId: reg.sessionId,
+            sessionName: session?.name || '',
+            sessionDate: session?.date || round?.date || '',
+            organizerName: organizer?.organizerName || organizer?.displayName || '',
+            organizerSlug: organizer?.urlSlug || '',
+            allPartners: partners.map(p => ({ firstName: p.firstName, lastName: p.lastName })),
+            partner: {
+              firstName: partner.firstName,
+              lastName: partner.lastName,
+              email: partner.email,
+              phone: partner.phone,
+            },
+            sharedAt: revealAt?.toISOString() || partnerPrefs?.updatedAt || myPrefs?.updatedAt,
+          });
+
+          // EMAIL: Send once per (match, participant) when contacts become available
+          if (myPrefs && !myPrefs.emailSentAt && participant.email) {
+            try {
+              const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+              const addressBookUrl = `${appUrl}/p/${participant.token}/address-book`;
+              const emailContent = buildContactSharedEmail({
+                recipientFirstName: participant.firstName || 'there',
+                partnerFirstName: partner.firstName || '',
+                partnerLastName: partner.lastName || '',
+                eventName: session?.name || 'the networking event',
+                addressBookUrl,
+              });
+              sendEmail({
+                to: participant.email,
+                subject: emailContent.subject,
+                html: emailContent.html,
+              }).catch(err => console.error('Failed to send contact shared email:', err));
+              // Mark as sent immediately (don't await the email) so we don't duplicate
+              await db.markContactSharingEmailSent(reg.matchId, participant.participantId);
+            } catch (mailErr) {
+              errorLog('Error sending contact shared email:', mailErr);
+            }
           }
         }
       }

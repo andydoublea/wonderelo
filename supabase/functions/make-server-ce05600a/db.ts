@@ -1144,13 +1144,24 @@ export async function setContactSharing(matchId: string, participantId: string, 
 export async function getAllContactSharingForMatch(matchId: string) {
   const { data, error } = await db()
     .from('contact_sharing')
-    .select('participant_id, preferences')
+    .select('participant_id, preferences, updated_at, email_sent_at')
     .eq('match_id', matchId);
   if (error) throw error;
   return (data || []).map(row => ({
     participantId: row.participant_id,
     preferences: row.preferences,
+    updatedAt: row.updated_at,
+    emailSentAt: row.email_sent_at,
   }));
+}
+
+export async function markContactSharingEmailSent(matchId: string, participantId: string) {
+  const { error } = await db()
+    .from('contact_sharing')
+    .update({ email_sent_at: new Date().toISOString() })
+    .eq('match_id', matchId)
+    .eq('participant_id', participantId);
+  if (error) throw error;
 }
 
 // ============================================================

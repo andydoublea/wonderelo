@@ -243,12 +243,12 @@ export function MatchPartner() {
             className="rounded-lg shadow-lg w-full block"
           />
           {/* Name and number BELOW the image */}
-          <div className="flex flex-col items-center justify-center gap-4 mt-6">
-            <h3 className="text-5xl font-bold text-foreground">
+          <div className="flex flex-col items-center justify-center gap-5 mt-8">
+            <h3 className="text-7xl md:text-8xl font-bold text-foreground leading-none">
               {matchData.myName}
             </h3>
-            <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
-              <span className="text-3xl font-bold">
+            <div className="w-24 h-24 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+              <span className="text-4xl font-bold">
                 {matchData.myIdentificationNumber}
               </span>
             </div>
