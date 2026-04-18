@@ -29,6 +29,7 @@ Always double-check `--project-ref` before running any Supabase CLI commands.
 - **NEVER ask the user to do Supabase or Vercel admin tasks** (generate tokens, change settings, etc.) — do it yourself via Chrome browser automation or CLI. Use `mcp__Control_Chrome__` tools to navigate Supabase Dashboard, Vercel Dashboard, etc.
 - **Wonderelo and Blanc Brain use DIFFERENT Supabase accounts.** When generating tokens or deploying, always verify you're logged into the correct Supabase account (check which projects are listed). The Wonderelo staging project (`dqoybysbooxngrsxaekd`) is NOT on the same account as Blanc Brain.
 - **ALWAYS verify correct account before any Supabase/Vercel action.** Before generating tokens, deploying, or changing settings: call the Management API (`GET https://api.supabase.com/v1/projects`) or take a screenshot of the dashboard to confirm the correct projects are visible. For Wonderelo, you must see `tpsgnnrkwgvgnsktuicr` (prod) and/or `dqoybysbooxngrsxaekd` (staging) in the project list.
+- **NEVER put secrets (tokens, API keys, passwords) into any tracked file** (`package.json`, `CLAUDE.md`, any `.ts`/`.tsx`, etc.). All secrets live in `.env` (gitignored). Deploy scripts must read from `.env`, never inline. GitHub Secret Scanning will flag and require rotation of any leaked secret — treat a leaked secret as already compromised and rotate immediately.
 
 ---
 
@@ -57,9 +58,12 @@ development → staging → main
 ## Credentials
 
 ### Supabase Access Token (Wonderelo account only — NOT shared with Blanc Brain)
-```
-sbp_38a380ba5f2ffd07eadb7b3e97c047bbbf556728
-```
+Stored in `.env` (gitignored) as `SUPABASE_ACCESS_TOKEN=sbp_...`. Deploy scripts
+(`npm run deploy:edge:dev` / `deploy:edge:prod`) load it via `scripts/deploy-edge.sh`.
+**Never commit the token into package.json, CLAUDE.md, or any tracked file** —
+GitHub Secret Scanning will flag it and the token must be rotated.
+If the token stops working: visit https://supabase.com/dashboard/account/tokens,
+generate a new one, and update `.env` only.
 
 ### Production Supabase
 - **Project ref:** `tpsgnnrkwgvgnsktuicr`
