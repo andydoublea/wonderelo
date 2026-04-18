@@ -268,13 +268,15 @@ export function Dashboard({
         {checklistVisible && (
           <div data-tour="onboarding-checklist">
             <OnboardingChecklist eventSlug={eventSlug} sessions={sessions} onVisibilityChange={setChecklistVisible} onDismiss={async () => {
+              const now = new Date().toISOString();
+              const updatedUser = { ...currentUser, onboardingCompletedAt: now };
+              setCurrentUser(updatedUser);
+              localStorage.setItem('oliwonder_current_user', JSON.stringify(updatedUser));
               try {
-                const now = new Date().toISOString();
                 await authenticatedFetch('/profile', {
                   method: 'PUT',
                   body: JSON.stringify({ onboardingCompletedAt: now }),
                 });
-                setCurrentUser({ ...currentUser, onboardingCompletedAt: now });
               } catch (e) {
                 // Silently fail
               }
@@ -324,14 +326,17 @@ export function Dashboard({
       {showTour && (
         <OnboardingTour onComplete={async () => {
           setShowTour(false);
-          // Persist to server so it doesn't show on other devices
+          const now = new Date().toISOString();
+          // Update local state + localStorage immediately so tour doesn't reappear on refresh
+          const updatedUser = { ...currentUser, onboardingCompletedAt: now };
+          setCurrentUser(updatedUser);
+          localStorage.setItem('oliwonder_current_user', JSON.stringify(updatedUser));
+          // Persist to server (non-blocking — local state already updated)
           try {
-            const now = new Date().toISOString();
             await authenticatedFetch('/profile', {
               method: 'PUT',
               body: JSON.stringify({ onboardingCompletedAt: now }),
             });
-            setCurrentUser({ ...currentUser, onboardingCompletedAt: now });
           } catch (e) {
             // Silently fail — tour won't repeat this session anyway
           }

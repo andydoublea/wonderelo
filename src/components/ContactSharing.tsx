@@ -112,7 +112,38 @@ export function ContactSharing() {
     });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Save partner feedback + contact sharing preferences NOW (before Wonderelo feedback page),
+    // so that even if participant leaves without finishing the Wonderelo rating,
+    // their contact-sharing consent still counts. Wonderelo feedback will be saved later on Finish.
+    if (!token || !networkingData) {
+      setCurrentPage('wonderelo-feedback');
+      return;
+    }
+    try {
+      const mergedFeedback: Record<string, string[]> = { ...feedback };
+      for (const [partnerId, text] of Object.entries(customFeedback)) {
+        if (text.trim()) {
+          mergedFeedback[partnerId] = [...(mergedFeedback[partnerId] || []), `custom:${text.trim()}`];
+        }
+      }
+      await fetch(`${apiBaseUrl}/participant/${token}/contact-sharing`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          matchId: networkingData.matchId,
+          preferences: contactSharing,
+          feedback: mergedFeedback,
+        }),
+      });
+      debugLog('[ContactSharing] Partner preferences saved on Next');
+    } catch (err) {
+      errorLog('[ContactSharing] Error saving preferences on Next:', err);
+      // Still navigate — we'll retry on Finish
+    }
     setCurrentPage('wonderelo-feedback');
   };
 
@@ -229,7 +260,14 @@ export function ContactSharing() {
         <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
           {/* Headlines */}
           <h1 className="text-4xl font-bold mb-2">Time is up!</h1>
-          <p className="text-xl text-muted-foreground mb-10">How was your conversation?</p>
+          <p className="text-xl text-muted-foreground mb-6">How was your conversation?</p>
+
+          {/* Psychological insight (amber box — shortened copy) */}
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-8 max-w-md mx-auto text-left">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Research shows we consistently underestimate how much others enjoyed talking to us. If you enjoyed the conversation, let the other person know.
+            </p>
+          </div>
 
           {/* Partner cards with feedback + contact sharing */}
           <div className="space-y-6 max-w-md mx-auto">
@@ -281,10 +319,11 @@ export function ContactSharing() {
 
                 {/* Contact sharing toggle */}
                 <div className="px-4 pb-4 border-t border-border/50 pt-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="text-left">
                       <p className="text-sm font-medium">Share my contact</p>
                       <p className="text-xs text-muted-foreground">Both must agree to exchange contacts</p>
+                      <p className="text-xs text-muted-foreground mt-1">Feedback and contacts will be shared after 15 minutes.</p>
                     </div>
                     <Switch
                       checked={contactSharing[partner.id] || false}
@@ -294,13 +333,6 @@ export function ContactSharing() {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Info box about feedback & contacts delivery */}
-          <div className="bg-muted/50 border border-border rounded-xl p-4 mt-8 max-w-md mx-auto text-left">
-            <p className="text-sm text-muted-foreground">
-              Feedback and contacts will be shared after 15 minutes. Both must agree to exchange contacts.
-            </p>
           </div>
 
           {/* Next button */}

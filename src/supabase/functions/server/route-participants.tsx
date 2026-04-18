@@ -324,7 +324,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
     try {
       const token = c.req.param('token');
       const body = await c.req.json();
-      const { email, phone, phoneCountry, firstName, lastName } = body;
+      const { email, phone, phoneCountry, firstName, lastName, linkedinUrl, instagramUrl, websiteUrl, otherSocial } = body;
 
       if (!token) {
         return c.json({ error: 'Token required' }, 400);
@@ -336,13 +336,18 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         return c.json({ error: 'Invalid token' }, 404);
       }
 
-      // Update participant in participants table (single update replaces profile+email+token updates)
+      // Update participant in participants table
       await db.updateParticipant(participant.participantId, {
         email: email || participant.email,
         phone: phone || participant.phone || '',
         phoneCountry: phoneCountry || participant.phoneCountry || '+421',
         firstName: firstName || participant.firstName || '',
         lastName: lastName || participant.lastName || '',
+        // Social links: accept empty string → null to allow clearing
+        linkedinUrl: linkedinUrl !== undefined ? (linkedinUrl?.trim() || null) : undefined,
+        instagramUrl: instagramUrl !== undefined ? (instagramUrl?.trim() || null) : undefined,
+        websiteUrl: websiteUrl !== undefined ? (websiteUrl?.trim() || null) : undefined,
+        otherSocial: otherSocial !== undefined ? (otherSocial?.trim() || null) : undefined,
       });
 
       // Get updated participant
@@ -350,14 +355,18 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
 
       return c.json({
         success: true,
-        profile: {
-          participantId: updatedParticipant?.participantId,
-          email: updatedParticipant?.email,
-          phone: updatedParticipant?.phone,
-          phoneCountry: updatedParticipant?.phoneCountry,
-          firstName: updatedParticipant?.firstName,
-          lastName: updatedParticipant?.lastName,
-        }
+        profile: updatedParticipant ? {
+          participantId: updatedParticipant.participantId,
+          email: updatedParticipant.email,
+          phone: updatedParticipant.phone,
+          phoneCountry: updatedParticipant.phoneCountry,
+          firstName: updatedParticipant.firstName,
+          lastName: updatedParticipant.lastName,
+          linkedinUrl: updatedParticipant.linkedinUrl,
+          instagramUrl: updatedParticipant.instagramUrl,
+          websiteUrl: updatedParticipant.websiteUrl,
+          otherSocial: updatedParticipant.otherSocial,
+        } : null
       });
 
     } catch (error) {
@@ -1046,7 +1055,11 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
               firstName: partner.firstName,
               lastName: partner.lastName,
               email: partner.email,
-              phone: partner.phone,
+              phone: partner.phone ? `${partner.phoneCountry || ''}${partner.phone}` : undefined,
+              linkedinUrl: partner.linkedinUrl || undefined,
+              instagramUrl: partner.instagramUrl || undefined,
+              websiteUrl: partner.websiteUrl || undefined,
+              otherSocial: partner.otherSocial || undefined,
             },
             sharedAt: revealAt?.toISOString() || partnerPrefs?.updatedAt || myPrefs?.updatedAt,
           });

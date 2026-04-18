@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Mail, Phone, ArrowLeft, Copy, Check } from 'lucide-react';
+import { Users, Mail, Phone, ArrowLeft, Copy, Check, Download, Linkedin, Instagram, Globe } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
+import { WondereloHeader } from './WondereloHeader';
 
 interface Contact {
   id: string;
@@ -12,6 +13,10 @@ interface Contact {
   lastName: string;
   email: string;
   phone?: string;
+  linkedinUrl?: string;
+  instagramUrl?: string;
+  websiteUrl?: string;
+  otherSocial?: string;
   acquiredAt: string;
   sessionName: string;
   sessionDate: string;
@@ -58,6 +63,10 @@ export function AddressBook() {
         lastName: sc.partner.lastName,
         email: sc.partner.email,
         phone: sc.partner.phone,
+        linkedinUrl: sc.partner.linkedinUrl,
+        instagramUrl: sc.partner.instagramUrl,
+        websiteUrl: sc.partner.websiteUrl,
+        otherSocial: sc.partner.otherSocial,
         acquiredAt: sc.sharedAt || new Date().toISOString(),
         sessionName: sc.sessionName || '',
         sessionDate: sc.sessionDate || '',
@@ -91,16 +100,50 @@ export function AddressBook() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleDownloadVCard = (c: Contact) => {
+    // Build a vCard 3.0 compatible with iOS/Android contacts
+    const lines: string[] = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${c.firstName} ${c.lastName}`.trim(),
+      `N:${c.lastName};${c.firstName};;;`,
+    ];
+    if (c.email) lines.push(`EMAIL;TYPE=INTERNET:${c.email}`);
+    if (c.phone) lines.push(`TEL;TYPE=CELL:${c.phone}`);
+    if (c.linkedinUrl) lines.push(`URL;type=LinkedIn:${c.linkedinUrl}`);
+    if (c.instagramUrl) lines.push(`URL;type=Instagram:${c.instagramUrl}`);
+    if (c.websiteUrl) lines.push(`URL:${c.websiteUrl}`);
+    if (c.sessionName || c.organizerName) {
+      lines.push(`NOTE:Met at ${[c.organizerName, c.sessionName].filter(Boolean).join(' – ')}`);
+    }
+    lines.push('END:VCARD');
+    const vcard = lines.join('\r\n');
+    const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${c.firstName}_${c.lastName}.vcf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <WondereloHeader />
+      <div className="max-w-2xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="mb-6">
         <Button variant="ghost" size="sm" onClick={() => navigate(`/p/${token}`)}>
@@ -210,16 +253,55 @@ export function AddressBook() {
                 )}
               </div>
 
+              {/* Social links (shown only if provided by partner's profile) */}
+              {(contact.linkedinUrl || contact.instagramUrl || contact.websiteUrl || contact.otherSocial) && (
+                <div className="mt-2 space-y-1.5">
+                  {contact.linkedinUrl && (
+                    <div className="flex items-center gap-2">
+                      <Linkedin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">LinkedIn</a>
+                    </div>
+                  )}
+                  {contact.instagramUrl && (
+                    <div className="flex items-center gap-2">
+                      <Instagram className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <a href={contact.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">Instagram</a>
+                    </div>
+                  )}
+                  {contact.websiteUrl && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <a href={contact.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">{contact.websiteUrl.replace(/^https?:\/\//, '')}</a>
+                    </div>
+                  )}
+                  {contact.otherSocial && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm text-muted-foreground truncate">{contact.otherSocial}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Group partners (only for groups > 2) */}
               {contact.allPartners && contact.allPartners.length > 1 && (
                 <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
                   Group: {contact.allPartners.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
                 </p>
               )}
+
+              {/* Download vCard button */}
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownloadVCard(contact)}>
+                  <Download className="h-3.5 w-3.5 mr-2" />
+                  Save to phone contacts
+                </Button>
+              </div>
             </div>
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../components/ui/command';
-import { Mail, Phone, Loader2, Check, X, ArrowLeft, User, ChevronsUpDown } from 'lucide-react';
+import { Mail, Phone, Loader2, Check, X, ArrowLeft, User, ChevronsUpDown, Linkedin, Instagram, Globe } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 import { COUNTRY_CODES } from '../utils/countryCodes';
@@ -28,6 +28,10 @@ export default function ParticipantProfile() {
           email: data.email || '',
           phone: data.phone || '',
           phoneCountry: data.phoneCountry || '+421',
+          linkedinUrl: data.linkedinUrl || '',
+          instagramUrl: data.instagramUrl || '',
+          websiteUrl: data.websiteUrl || '',
+          otherSocial: data.otherSocial || '',
           hasCache: true
         };
       }
@@ -40,6 +44,10 @@ export default function ParticipantProfile() {
       email: '',
       phone: '',
       phoneCountry: '+421',
+      linkedinUrl: '',
+      instagramUrl: '',
+      websiteUrl: '',
+      otherSocial: '',
       hasCache: false
     };
   };
@@ -58,15 +66,23 @@ export default function ParticipantProfile() {
     lastName: cachedProfile.lastName,
     email: cachedProfile.email,
     phone: cachedProfile.phone,
-    phoneCountry: cachedProfile.phoneCountry
+    phoneCountry: cachedProfile.phoneCountry,
+    linkedinUrl: cachedProfile.linkedinUrl,
+    instagramUrl: cachedProfile.instagramUrl,
+    websiteUrl: cachedProfile.websiteUrl,
+    otherSocial: cachedProfile.otherSocial,
   });
-  
+
   const [formData, setFormData] = useState({
     firstName: cachedProfile.firstName,
     lastName: cachedProfile.lastName,
     email: cachedProfile.email,
     phone: cachedProfile.phone,
-    phoneCountry: cachedProfile.phoneCountry
+    phoneCountry: cachedProfile.phoneCountry,
+    linkedinUrl: cachedProfile.linkedinUrl,
+    instagramUrl: cachedProfile.instagramUrl,
+    websiteUrl: cachedProfile.websiteUrl,
+    otherSocial: cachedProfile.otherSocial,
   });
 
   useEffect(() => {
@@ -100,22 +116,19 @@ export default function ParticipantProfile() {
       const data = await response.json();
       
       if (data.success) {
-        setProfile({
+        const loaded = {
           firstName: data.firstName || '',
           lastName: data.lastName || '',
           email: data.email || '',
           phone: data.phone || '',
-          phoneCountry: data.phoneCountry || '+421'
-        });
-        
-        setFormData({
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          phoneCountry: data.phoneCountry || '+421'
-        });
-        
+          phoneCountry: data.phoneCountry || '+421',
+          linkedinUrl: data.linkedinUrl || '',
+          instagramUrl: data.instagramUrl || '',
+          websiteUrl: data.websiteUrl || '',
+          otherSocial: data.otherSocial || '',
+        };
+        setProfile(loaded);
+        setFormData(loaded);
         // Cache the profile data in localStorage
         localStorage.setItem(`participant_profile_${token}`, JSON.stringify(data));
       }
@@ -166,7 +179,11 @@ export default function ParticipantProfile() {
             lastName: formData.lastName,
             email: formData.email,
             phone: formData.phone,
-            phoneCountry: formData.phoneCountry
+            phoneCountry: formData.phoneCountry,
+            linkedinUrl: formData.linkedinUrl,
+            instagramUrl: formData.instagramUrl,
+            websiteUrl: formData.websiteUrl,
+            otherSocial: formData.otherSocial,
           }),
         }
       );
@@ -178,22 +195,12 @@ export default function ParticipantProfile() {
       }
 
       setSuccess('Profile updated successfully!');
-      setProfile({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        phoneCountry: formData.phoneCountry
-      });
-      
+      setProfile({ ...formData });
+
       // Update cache
       const updatedCache = {
         ...JSON.parse(localStorage.getItem(`participant_profile_${token}`) || '{}'),
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        phoneCountry: formData.phoneCountry
+        ...formData,
       };
       localStorage.setItem(`participant_profile_${token}`, JSON.stringify(updatedCache));
       
@@ -207,12 +214,16 @@ export default function ParticipantProfile() {
     }
   };
 
-  const hasChanges = 
+  const hasChanges =
     formData.firstName !== profile.firstName ||
     formData.lastName !== profile.lastName ||
-    formData.email !== profile.email || 
+    formData.email !== profile.email ||
     formData.phone !== profile.phone ||
-    formData.phoneCountry !== profile.phoneCountry;
+    formData.phoneCountry !== profile.phoneCountry ||
+    formData.linkedinUrl !== profile.linkedinUrl ||
+    formData.instagramUrl !== profile.instagramUrl ||
+    formData.websiteUrl !== profile.websiteUrl ||
+    formData.otherSocial !== profile.otherSocial;
 
   if (loading) {
     return (
@@ -406,6 +417,72 @@ export default function ParticipantProfile() {
                 <div></div>
               </div>
 
+              {/* Social links (optional — shared only if filled) */}
+              <div className="pt-2">
+                <h3 className="text-sm font-semibold mb-1">Social links (optional)</h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  If you fill these in, they'll be shared along with your email and phone when you and a partner exchange contacts. We never ask for these at registration.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="linkedin">LinkedIn</Label>
+                    <div className="relative">
+                      <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="linkedin"
+                        type="url"
+                        placeholder="https://linkedin.com/in/..."
+                        value={formData.linkedinUrl}
+                        onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram">Instagram</Label>
+                    <div className="relative">
+                      <Instagram className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="instagram"
+                        type="url"
+                        placeholder="https://instagram.com/..."
+                        value={formData.instagramUrl}
+                        onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="website"
+                        type="url"
+                        placeholder="https://..."
+                        value={formData.websiteUrl}
+                        onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="otherSocial">Other (X, TikTok, etc.)</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="otherSocial"
+                        type="text"
+                        placeholder="@handle or URL"
+                        value={formData.otherSocial}
+                        onChange={(e) => setFormData({ ...formData, otherSocial: e.target.value })}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Error message */}
               {error && (
                 <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -428,13 +505,7 @@ export default function ParticipantProfile() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setFormData({
-                      firstName: profile.firstName,
-                      lastName: profile.lastName,
-                      email: profile.email,
-                      phone: profile.phone,
-                      phoneCountry: profile.phoneCountry
-                    });
+                    setFormData({ ...profile });
                     setError('');
                   }}
                   disabled={!hasChanges || saving}

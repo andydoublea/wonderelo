@@ -37,10 +37,6 @@ export function ParticipantNav({ participantToken, firstName, lastName, onLogoCl
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onHomeClick}>
-                  <Home className="h-4 w-4 mr-2" />
-                  Homepage
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={onDashboardClick}>
                   <LayoutDashboard className="h-4 w-4 mr-2" />
                   Dashboard
@@ -52,6 +48,10 @@ export function ParticipantNav({ participantToken, firstName, lastName, onLogoCl
                 <DropdownMenuItem onClick={onAddressBookClick}>
                   <BookUser className="h-4 w-4 mr-2" />
                   Address Book
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onHomeClick}>
+                  <Home className="h-4 w-4 mr-2" />
+                  Homepage
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onLogout}>
                   <LogOut className="h-4 w-4 mr-2" />

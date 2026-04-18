@@ -527,42 +527,63 @@ function PreviewEmailVerification() {
 function PreviewProfile() {
   return (
     <div className="min-h-[600px] bg-background">
-      <ParticipantNav
-        participantToken="preview-token"
-        firstName="Sarah"
-        lastName="Chen"
-        onLogoClick={() => {}}
-        onHomeClick={() => {}}
-        onDashboardClick={() => {}}
-        onProfileClick={() => {}}
-        onLogout={() => {}}
-      />
-      <div className="max-w-md mx-auto px-6 py-8">
-        <h1 className="text-2xl font-bold mb-6">Your profile</h1>
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">First name</label>
-            <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="Sarah" readOnly />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Last name</label>
-            <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="Chen" readOnly />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Email</label>
-            <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="sarah@example.com" readOnly />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Phone</label>
-            <div className="flex gap-2">
-              <select className="border rounded-lg px-2 py-2 bg-background w-24">
-                <option>+421</option>
-              </select>
-              <input className="flex-1 border rounded-lg px-3 py-2 bg-background" defaultValue="912 345 678" readOnly />
+      <PreviewHeader />
+      <div className="max-w-2xl mx-auto px-6 py-8">
+        <h1 className="text-3xl font-bold mb-2">Profile settings</h1>
+        <p className="text-muted-foreground mb-6">Update your contact information</p>
+        <Card>
+          <CardContent className="pt-6 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">First name *</label>
+                <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="Sarah" readOnly />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Last name *</label>
+                <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="Chen" readOnly />
+              </div>
             </div>
-          </div>
-          <Button className="w-full">Save changes</Button>
-        </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Email address *</label>
+              <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="sarah@example.com" readOnly />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Phone number *</label>
+              <div className="flex gap-2">
+                <select className="border rounded-lg px-2 py-2 bg-background w-24">
+                  <option>+421</option>
+                </select>
+                <input className="flex-1 border rounded-lg px-3 py-2 bg-background" defaultValue="912 345 678" readOnly />
+              </div>
+            </div>
+            <div className="pt-2">
+              <h3 className="text-sm font-semibold mb-1">Social links (optional)</h3>
+              <p className="text-xs text-muted-foreground mb-4">Shared with your email and phone if a partner agrees to exchange contacts.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">LinkedIn</label>
+                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="https://linkedin.com/in/..." readOnly />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Instagram</label>
+                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="https://instagram.com/..." readOnly />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Website</label>
+                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="https://..." readOnly />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Other (X, TikTok, etc.)</label>
+                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="@handle" readOnly />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline">Cancel</Button>
+              <Button>Save changes</Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -703,6 +724,7 @@ function PreviewAddressBook() {
 
   return (
     <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="mb-6">
           <Button variant="ghost" size="sm">
@@ -755,6 +777,13 @@ function PreviewAddressBook() {
                   Group: {contact.allPartners.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
                 </p>
               )}
+
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <Button variant="outline" size="sm" className="w-full">
+                  <ArrowLeft className="h-3.5 w-3.5 mr-2 rotate-[-90deg]" />
+                  Save to phone contacts
+                </Button>
+              </div>
             </div>
           ))}
         </div>
