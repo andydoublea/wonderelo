@@ -73,6 +73,7 @@ const AdminPricing = lazy(() => import('./components/AdminPricing').then(m => ({
 const AdminTranslations = lazy(() => import('./components/AdminTranslations').then(m => ({ default: m.AdminTranslations })));
 import { I18nLoader } from './components/i18n/I18nLoader';
 import { InlineEditToggle } from './components/i18n/InlineEditToggle';
+import { AdminVersionBadge } from './components/AdminVersionBadge';
 const UseCaseLandingPage = lazy(() => import('./components/UseCaseLandingPage').then(m => ({ default: m.UseCaseLandingPage })));
 const OurStoryPage = lazy(() => import('./components/OurStoryPage').then(m => ({ default: m.OurStoryPage })));
 
@@ -2133,6 +2134,7 @@ function AppProviderWithRouter() {
           <AnalyticsTracker />
           <I18nLoader />
           <InlineEditToggle />
+          <AdminVersionBadge visible={isAdminUser()} />
         </QueryProvider>
       </TimeProvider>
     </AppContext.Provider>
