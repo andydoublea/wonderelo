@@ -121,10 +121,37 @@ interface HomepageProps {
   isOrganizerAuthenticated?: boolean;
 }
 
+export interface HomepageViewProps {
+  onGetStarted: () => void;
+  onSignIn?: () => void;
+  onNavigate: (path: string) => void;
+  participantCode: string;
+  onParticipantCodeChange: (v: string) => void;
+  onParticipantJoin: () => void;
+  leadName: string;
+  leadEmail: string;
+  leadEventType: string;
+  leadParticipantCount: string;
+  leadSubmitting: boolean;
+  leadSubmitted: boolean;
+  onLeadNameChange: (v: string) => void;
+  onLeadEmailChange: (v: string) => void;
+  onLeadEventTypeChange: (v: string) => void;
+  onLeadParticipantCountChange: (v: string) => void;
+  onLeadSubmit: (e: React.FormEvent) => void;
+  testimonialApi: CarouselApi | undefined;
+  testimonialCurrent: number;
+  testimonialCount: number;
+  onSetTestimonialApi: (api: CarouselApi) => void;
+  blogApi: CarouselApi | undefined;
+  blogCurrent: number;
+  blogCount: number;
+  onSetBlogApi: (api: CarouselApi) => void;
+}
+
 export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerAuthenticated }: HomepageProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useTranslation();
   const [participantCode, setParticipantCode] = useState('');
 
   // Lead magnet form state
@@ -231,9 +258,73 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
   }, [navigate, location, isOrganizerAuthenticated]);
 
   return (
+    <HomepageView
+      onGetStarted={onGetStarted}
+      onSignIn={onSignIn}
+      onNavigate={(path) => navigate(path)}
+      participantCode={participantCode}
+      onParticipantCodeChange={setParticipantCode}
+      onParticipantJoin={() => {
+        if (participantCode.trim()) {
+          const cleanCode = participantCode.trim().toLowerCase();
+          navigate(`/${cleanCode}`);
+        }
+      }}
+      leadName={leadName}
+      leadEmail={leadEmail}
+      leadEventType={leadEventType}
+      leadParticipantCount={leadParticipantCount}
+      leadSubmitting={leadSubmitting}
+      leadSubmitted={leadSubmitted}
+      onLeadNameChange={setLeadName}
+      onLeadEmailChange={setLeadEmail}
+      onLeadEventTypeChange={setLeadEventType}
+      onLeadParticipantCountChange={setLeadParticipantCount}
+      onLeadSubmit={handleLeadSubmit}
+      testimonialApi={testimonialApi}
+      testimonialCurrent={testimonialCurrent}
+      testimonialCount={testimonialCount}
+      onSetTestimonialApi={setTestimonialApi}
+      blogApi={blogApi}
+      blogCurrent={blogCurrent}
+      blogCount={blogCount}
+      onSetBlogApi={setBlogApi}
+    />
+  );
+}
+
+export function HomepageView({
+  onGetStarted,
+  onSignIn: _onSignIn,
+  onNavigate,
+  participantCode,
+  onParticipantCodeChange,
+  onParticipantJoin,
+  leadName,
+  leadEmail,
+  leadEventType,
+  leadParticipantCount,
+  leadSubmitting,
+  leadSubmitted,
+  onLeadNameChange,
+  onLeadEmailChange,
+  onLeadEventTypeChange,
+  onLeadParticipantCountChange,
+  onLeadSubmit,
+  testimonialApi,
+  testimonialCurrent,
+  testimonialCount,
+  onSetTestimonialApi,
+  blogApi,
+  blogCurrent,
+  blogCount,
+  onSetBlogApi,
+}: HomepageViewProps) {
+  const { t } = useTranslation();
+  return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <Navigation onGetStarted={onGetStarted} onSignIn={onSignIn} />
+      <Navigation onGetStarted={onGetStarted} onSignIn={_onSignIn} />
 
       {/* Participant entry - close to navigation */}
       <section className="py-3 px-6 border-b border-border/40">
@@ -249,11 +340,10 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                   type="text"
                   placeholder={t('homepage.participant.placeholder', 'Enter code here')}
                   value={participantCode}
-                  onChange={(e) => setParticipantCode(e.target.value)}
+                  onChange={(e) => onParticipantCodeChange(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && participantCode.trim()) {
-                      const cleanCode = participantCode.trim().toLowerCase();
-                      navigate(`/${cleanCode}`);
+                      onParticipantJoin();
                     }
                   }}
                   className="pl-8 text-left h-8 w-40"
@@ -263,10 +353,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 size="sm"
                 disabled={!participantCode.trim()}
                 className="h-8"
-                onClick={() => {
-                  const cleanCode = participantCode.trim().toLowerCase();
-                  navigate(`/${cleanCode}`);
-                }}
+                onClick={onParticipantJoin}
               >
                 {t('homepage.participant.join', 'Join')}
               </Button>
@@ -510,7 +597,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               return (
                 <button
                   key={item.path}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => onNavigate(item.path)}
                   className="flex items-start w-full py-4 text-left gap-3"
                 >
                   <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg flex-shrink-0 mt-0.5">
@@ -532,7 +619,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               {eventTypes.slice(0, 4).map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Card key={item.path} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(item.path)}>
+                  <Card key={item.path} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => onNavigate(item.path)}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
@@ -553,7 +640,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
               {eventTypes.slice(4).map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Card key={item.path} className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => navigate(item.path)}>
+                  <Card key={item.path} className="cursor-pointer hover:border-primary/50 transition-colors card-w-quarter" onClick={() => onNavigate(item.path)}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
@@ -690,7 +777,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           {/* Mobile: carousel with peek */}
           <div className="md:hidden" style={{ marginTop: '1.5rem' }}>
             <Carousel
-              setApi={setTestimonialApi}
+              setApi={onSetTestimonialApi}
               opts={{ align: 'center', containScroll: false }}
               className="w-full carousel-peek-bleed"
             >
@@ -777,11 +864,11 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
 
           {/* Mobile: carousel */}
           <div className="md:hidden" style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-            <Carousel setApi={setBlogApi} opts={{ align: 'center', containScroll: false }} className="w-full carousel-peek-bleed">
+            <Carousel setApi={onSetBlogApi} opts={{ align: 'center', containScroll: false }} className="w-full carousel-peek-bleed">
               <CarouselContent>
                 {blogPosts.map((post) => (
                   <CarouselItem key={post.slug}>
-                    <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/blog/${post.slug}`)}>
+                    <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => onNavigate(`/blog/${post.slug}`)}>
                       <ImageWithFallback
                         src={post.image}
                         alt={post.title}
@@ -814,7 +901,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           {/* Desktop: 3-column grid */}
           <div className="hidden md:grid grid-cols-3 gap-6 mb-8">
             {blogPosts.slice(0, 3).map((post) => (
-              <Card key={post.slug} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/blog/${post.slug}`)}>
+              <Card key={post.slug} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => onNavigate(`/blog/${post.slug}`)}>
                 <ImageWithFallback
                   src={post.image}
                   alt={post.title}
@@ -832,7 +919,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
           </div>
 
           <div className="text-center">
-            <Button variant="outline" onClick={() => navigate('/blog')}>
+            <Button variant="outline" onClick={() => onNavigate('/blog')}>
               Find out more about networking <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           </div>
@@ -886,14 +973,14 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleLeadSubmit} className="space-y-4">
+                  <form onSubmit={onLeadSubmit} className="space-y-4">
                     <div>
                       <label className="text-sm font-medium mb-1 block">Name</label>
                       <Input
                         type="text"
                         placeholder="Your name"
                         value={leadName}
-                        onChange={(e) => setLeadName(e.target.value)}
+                        onChange={(e) => onLeadNameChange(e.target.value)}
                         required
                       />
                     </div>
@@ -903,7 +990,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                         type="email"
                         placeholder="you@example.com"
                         value={leadEmail}
-                        onChange={(e) => setLeadEmail(e.target.value)}
+                        onChange={(e) => onLeadEmailChange(e.target.value)}
                         required
                       />
                     </div>
@@ -911,7 +998,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                       <label className="text-sm font-medium mb-1 block">What type of events do you organize?</label>
                       <select
                         value={leadEventType}
-                        onChange={(e) => setLeadEventType(e.target.value)}
+                        onChange={(e) => onLeadEventTypeChange(e.target.value)}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       >
                         <option value="">Select (optional)</option>
@@ -927,7 +1014,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                       <label className="text-sm font-medium mb-1 block">Expected participants</label>
                       <select
                         value={leadParticipantCount}
-                        onChange={(e) => setLeadParticipantCount(e.target.value)}
+                        onChange={(e) => onLeadParticipantCountChange(e.target.value)}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       >
                         <option value="">Select (optional)</option>
@@ -974,7 +1061,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
             <div className="col-span-2 md:col-span-1">
               <h2
                 className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity mb-4"
-                onClick={() => navigate('/')}
+                onClick={() => onNavigate('/')}
               >
                 Wonderelo
               </h2>
@@ -1006,7 +1093,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 <li>
                   <a
                     href="/pricing"
-                    onClick={(e) => { e.preventDefault(); navigate('/pricing'); }}
+                    onClick={(e) => { e.preventDefault(); onNavigate('/pricing'); }}
                     className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                   >
                     Pricing
@@ -1022,7 +1109,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 <li>
                   <a
                     href="/our-story"
-                    onClick={(e) => { e.preventDefault(); navigate('/our-story'); }}
+                    onClick={(e) => { e.preventDefault(); onNavigate('/our-story'); }}
                     className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                   >
                     Our story
@@ -1031,7 +1118,7 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
                 <li>
                   <a
                     href="/blog"
-                    onClick={(e) => { e.preventDefault(); navigate('/blog'); }}
+                    onClick={(e) => { e.preventDefault(); onNavigate('/blog'); }}
                     className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
                   >
                     Newsroom

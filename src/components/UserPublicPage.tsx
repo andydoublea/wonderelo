@@ -31,7 +31,7 @@ interface UserPublicPageProps {
   isPreview?: boolean;
 }
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
   email: string;
   urlSlug: string;
@@ -41,6 +41,236 @@ interface UserProfile {
   organizerName?: string;
   eventName?: string;
   profileImageUrl?: string;
+}
+
+export interface UserPublicPageViewProps {
+  userSlug: string;
+  userProfile: UserProfile;
+  availableSessions: NetworkingSession[];
+  participantToken: string | null;
+  participantProfile: any;
+  registeredRoundIds: string[];
+  registeredRoundsMap: Map<string, string>;
+  registeredRoundsPerSession: Map<string, Set<string>>;
+  participantStatusMap: Map<string, string>;
+  registrationStep: 'select-rounds' | 'auth-choice' | 'meeting-points' | 'email-verification-waiting' | 'confirmation';
+  magicLinkDialogOpen: boolean;
+  magicLinkEmail: string;
+  isSendingMagicLink: boolean;
+  howItWorksDialogOpen: boolean;
+  onNavigate: (path: string) => void;
+  onLogout: () => void;
+  onMagicLinkDialogOpenChange: (open: boolean) => void;
+  onMagicLinkEmailChange: (email: string) => void;
+  onSendMagicLink: () => void;
+  onHowItWorksDialogOpenChange: (open: boolean) => void;
+  onRegistrationStepChange: (step: 'select-rounds' | 'auth-choice' | 'meeting-points' | 'email-verification-waiting' | 'confirmation') => void;
+}
+
+export function UserPublicPageView({
+  userSlug,
+  userProfile,
+  availableSessions,
+  participantToken,
+  participantProfile,
+  registeredRoundIds,
+  registeredRoundsMap,
+  registeredRoundsPerSession,
+  participantStatusMap,
+  registrationStep,
+  magicLinkDialogOpen,
+  magicLinkEmail,
+  isSendingMagicLink,
+  howItWorksDialogOpen,
+  onNavigate,
+  onLogout,
+  onMagicLinkDialogOpenChange,
+  onMagicLinkEmailChange,
+  onSendMagicLink,
+  onHowItWorksDialogOpenChange,
+  onRegistrationStepChange,
+}: UserPublicPageViewProps) {
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {participantToken ? (
+        <ParticipantNav
+          participantToken={participantToken}
+          firstName={participantProfile?.firstName}
+          lastName={participantProfile?.lastName}
+          onLogoClick={() => onNavigate('/')}
+          onHomeClick={() => onNavigate('/')}
+          onDashboardClick={() => onNavigate(`/p/${participantToken}`)}
+          onProfileClick={() => onNavigate(`/p/${participantToken}/profile`)}
+          onLogout={onLogout}
+        />
+      ) : (
+        <nav className="border-b border-border">
+          <div className="container mx-auto max-w-4xl px-4 py-4">
+            <div className="flex items-center justify-between">
+              <h2
+                className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => onNavigate('/')}
+              >
+                Wonderelo
+              </h2>
+              <div className="flex items-center space-x-4">
+                <Button
+                  onClick={() => onMagicLinkDialogOpenChange(true)}
+                  variant="outline"
+                  size="sm"
+                  className="btn-hover-white"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Manage my rounds
+                </Button>
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
+
+      <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
+        <div className="max-w-md mx-auto w-full space-y-4">
+          <OrganizerHeader
+            profileImageUrl={userProfile?.profileImageUrl}
+            eventName={userProfile?.eventName}
+            organizerName={userProfile?.organizerName}
+            variant="boxed"
+          />
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => onHowItWorksDialogOpenChange(true)}
+              className="flex items-center gap-1 text-sm text-foreground underline hover:text-primary mx-auto"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              How it works
+            </button>
+          </div>
+
+          {registrationStep === 'select-rounds' && (
+            <div className="text-center pt-4">
+              <h1 className="text-2xl font-bold">When can we mix you in?</h1>
+            </div>
+          )}
+
+          <SessionRegistration
+            sessions={availableSessions}
+            userSlug={userSlug}
+            eventName={userProfile?.eventName || userProfile?.organizerName || ''}
+            registeredRoundIds={registeredRoundIds}
+            registeredRoundsMap={registeredRoundsMap}
+            registeredRoundsPerSession={registeredRoundsPerSession}
+            participantProfile={participantProfile}
+            participantToken={participantToken}
+            participantStatusMap={participantStatusMap}
+            onStepChange={onRegistrationStepChange}
+            noWrapper
+          />
+        </div>
+      </div>
+
+      <Dialog open={magicLinkDialogOpen} onOpenChange={onMagicLinkDialogOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Access your registrations</DialogTitle>
+            <DialogDescription>
+              Enter your email to receive a magic link to manage your registered rounds.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="magic-link-email-view">Email</Label>
+              <Input
+                id="magic-link-email-view"
+                type="email"
+                placeholder="your.email@example.com"
+                value={magicLinkEmail}
+                onChange={(e) => onMagicLinkEmailChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onSendMagicLink();
+                }}
+                disabled={isSendingMagicLink}
+              />
+              <p className="text-xs text-muted-foreground">
+                We'll send you a secure link to access your registrations.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                onMagicLinkDialogOpenChange(false);
+                onMagicLinkEmailChange('');
+              }}
+              disabled={isSendingMagicLink}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={onSendMagicLink}
+              disabled={isSendingMagicLink || !magicLinkEmail}
+            >
+              {isSendingMagicLink ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Send magic link'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={howItWorksDialogOpen} onOpenChange={onHowItWorksDialogOpenChange}>
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" />
+              How it works
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">1</div>
+              <div className="flex-1">
+                <p className="font-medium mb-1">Register to rounds</p>
+                <p className="text-sm text-muted-foreground">Choose times when you are available to meet and give us your contacts</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">2</div>
+              <div className="flex-1">
+                <p className="font-medium mb-1">Confirm attendance</p>
+                <p className="text-sm text-muted-foreground">You will get a reminder 5 minutes before the round to confirm you are in. Stay close to meeting points.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">3</div>
+              <div className="flex-1">
+                <p className="font-medium mb-1">Meet someone new</p>
+                <p className="text-sm text-muted-foreground">We will pick a match for you with a meeting place. You have 3 minutes to meeting with your match.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">4</div>
+              <div className="flex-1">
+                <p className="font-medium mb-1">Exchange contacts... or not</p>
+                <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().defaultRoundDuration || 10} minutes after the meeting.</p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
 
 export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPublicPageProps) {
@@ -795,205 +1025,34 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
 
   debugLog('🟢 RENDERING REGISTRATION FORM - Default view with SessionRegistration');
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {participantToken ? (
-        <ParticipantNav
-          participantToken={participantToken}
-          firstName={participantProfile?.firstName}
-          lastName={participantProfile?.lastName}
-          onLogoClick={() => navigate('/')}
-          onHomeClick={() => navigate('/')}
-          onDashboardClick={() => navigate(`/p/${participantToken}`)}
-          onProfileClick={() => navigate(`/p/${participantToken}/profile`)}
-          onLogout={() => {
-            localStorage.removeItem('participant_token');
-            setParticipantToken(null);
-            setParticipantProfile(null);
-            toast.success('Logged out successfully');
-            navigate('/');
-          }}
-        />
-      ) : (
-        <nav className="border-b border-border">
-          <div className="container mx-auto max-w-4xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h2
-                className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => navigate('/')}
-              >
-                Wonderelo
-              </h2>
-              <div className="flex items-center space-x-4">
-                <Button
-                  onClick={() => setMagicLinkDialogOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className="btn-hover-white"
-                >
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Manage my rounds
-                </Button>
-              </div>
-            </div>
-          </div>
-        </nav>
-      )}
-
-      <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-        <div className="max-w-md mx-auto w-full space-y-4">
-          <OrganizerHeader 
-            profileImageUrl={userProfile?.profileImageUrl}
-            eventName={userProfile?.eventName}
-            organizerName={userProfile?.organizerName}
-            variant="boxed"
-          />
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setHowItWorksDialogOpen(true)}
-              className="flex items-center gap-1 text-sm text-foreground underline hover:text-primary mx-auto"
-            >
-              <HelpCircle className="h-3.5 w-3.5" />
-              How it works
-            </button>
-          </div>
-
-          {registrationStep === 'select-rounds' && (
-            <div className="text-center pt-4">
-              <h1 className="text-2xl font-bold">When can we mix you in?</h1>
-            </div>
-          )}
-
-          <SessionRegistration
-            sessions={availableForRegistration}
-            userSlug={userSlug}
-            eventName={userProfile?.eventName || userProfile?.organizerName || ''}
-            registeredRoundIds={registeredRoundIds}
-            registeredRoundsMap={registeredRoundsMap}
-            registeredRoundsPerSession={registeredRoundsPerSession}
-            participantProfile={participantProfile}
-            participantToken={participantToken}
-            participantStatusMap={participantStatusMap}
-            onStepChange={setRegistrationStep}
-            noWrapper
-          />
-        </div>
-
-      </div>
-
-      <Dialog open={magicLinkDialogOpen} onOpenChange={setMagicLinkDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Access your registrations</DialogTitle>
-            <DialogDescription>
-              Enter your email to receive a magic link to manage your registered rounds.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="magic-link-email-main">Email</Label>
-              <Input
-                id="magic-link-email-main"
-                type="email"
-                placeholder="your.email@example.com"
-                value={magicLinkEmail}
-                onChange={(e) => setMagicLinkEmail(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSendMagicLink();
-                  }
-                }}
-                disabled={isSendingMagicLink}
-              />
-              <p className="text-xs text-muted-foreground">
-                We'll send you a secure link to access your registrations.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setMagicLinkDialogOpen(false);
-                setMagicLinkEmail('');
-              }}
-              disabled={isSendingMagicLink}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendMagicLink}
-              disabled={isSendingMagicLink || !magicLinkEmail}
-            >
-              {isSendingMagicLink ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                'Send magic link'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={howItWorksDialogOpen} onOpenChange={setHowItWorksDialogOpen}>
-        <DialogContent className="max-w-md" aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5" />
-              How it works
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="mt-4 space-y-4">
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
-                1
-              </div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Register to rounds</p>
-                <p className="text-sm text-muted-foreground">Choose times when you are available to meet and give us your contacts</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
-                2
-              </div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Confirm attendance</p>
-                <p className="text-sm text-muted-foreground">You will get a reminder 5 minutes before the round to confirm you are in. Stay close to meeting points.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
-                3
-              </div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Meet someone new</p>
-                <p className="text-sm text-muted-foreground">We will pick a match for you with a meeting place. You have 3 minutes to meeting with your match.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
-                4
-              </div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Exchange contacts... or not</p>
-                <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().defaultRoundDuration || 10} minutes after the meeting.</p>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-    </div>
+    <UserPublicPageView
+      userSlug={userSlug}
+      userProfile={userProfile}
+      availableSessions={availableForRegistration}
+      participantToken={participantToken}
+      participantProfile={participantProfile}
+      registeredRoundIds={registeredRoundIds}
+      registeredRoundsMap={registeredRoundsMap}
+      registeredRoundsPerSession={registeredRoundsPerSession}
+      participantStatusMap={participantStatusMap}
+      registrationStep={registrationStep}
+      magicLinkDialogOpen={magicLinkDialogOpen}
+      magicLinkEmail={magicLinkEmail}
+      isSendingMagicLink={isSendingMagicLink}
+      howItWorksDialogOpen={howItWorksDialogOpen}
+      onNavigate={(path) => navigate(path)}
+      onLogout={() => {
+        localStorage.removeItem('participant_token');
+        setParticipantToken(null);
+        setParticipantProfile(null);
+        toast.success('Logged out successfully');
+        navigate('/');
+      }}
+      onMagicLinkDialogOpenChange={setMagicLinkDialogOpen}
+      onMagicLinkEmailChange={setMagicLinkEmail}
+      onSendMagicLink={handleSendMagicLink}
+      onHowItWorksDialogOpenChange={setHowItWorksDialogOpen}
+      onRegistrationStepChange={setRegistrationStep}
+    />
   );
 }
