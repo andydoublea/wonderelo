@@ -50,12 +50,11 @@ export function MatchInfoMatchedView({
       <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
         {countdown && <div className="mb-8">{countdown}</div>}
 
-        <h1 className="text-4xl font-bold mb-12">We have a match for you!</h1>
+        <h1 className="text-4xl font-bold mb-12">
+          We have a match for you! {matchData.meetingPointType === 'virtual' ? 'Join the call:' : 'Now go to:'}
+        </h1>
 
         <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
-          <legend className="px-3 text-xl text-muted-foreground">
-            {matchData.meetingPointType === 'virtual' ? 'Join the call' : 'Now go to'}
-          </legend>
           <h2 className="text-4xl font-bold mb-6">{matchData.meetingPointName}</h2>
 
           {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
