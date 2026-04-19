@@ -515,6 +515,14 @@ function PreviewMatchPartner() {
         identificationNumber: '17',
         identificationOptions: [17, 42, 63],
       },
+      {
+        id: 'p3',
+        firstName: 'Emma',
+        lastName: 'Johansson',
+        isCheckedIn: true,
+        identificationNumber: '89',
+        identificationOptions: [12, 89, 55],
+      },
     ],
   };
   const getOptions = (p: MatchPartnerPartner) => p.identificationOptions;

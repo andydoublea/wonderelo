@@ -65,7 +65,7 @@ export function MatchPartnerView({
           number={matchData.myIdentificationNumber}
           className="rounded-lg shadow-lg w-full block"
         />
-        <div className="flex flex-col items-center justify-center mt-8">
+        <div className="flex flex-col items-center justify-center mt-2">
           <h3
             className="font-bold text-foreground leading-tight break-words w-full text-center"
             style={{ fontSize: 'clamp(4rem, 14vw, 9rem)' }}
@@ -75,7 +75,7 @@ export function MatchPartnerView({
         </div>
 
         {/* Divider */}
-        <hr className="my-12 border-t border-border" />
+        <hr className="mt-12 mb-20 border-t border-border" />
 
         {/* Find-your-match headline */}
         <h2 className="text-3xl sm:text-4xl font-bold mb-8">
@@ -93,12 +93,8 @@ export function MatchPartnerView({
                 isWrongGuess ? 'border-red-400 bg-red-50' : 'border-border'
               }`}
             >
-              {/* Partner header: small matching image + name */}
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <GeometricIdentification
-                  matchId={matchData.matchId}
-                  className="rounded-lg shadow w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0"
-                />
+              {/* Partner header: name */}
+              <div className="flex items-center justify-center mb-4">
                 <h3
                   className="font-bold leading-tight break-words"
                   style={{ fontSize: 'clamp(2.5rem, 9vw, 5rem)' }}
@@ -112,12 +108,14 @@ export function MatchPartnerView({
                   partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
                 }`}
               >
-                {partner.isCheckedIn ? 'Already at the meeting point ✓' : 'On the way...'}
+                {partner.isCheckedIn
+                  ? `is already at the meeting point ✓`
+                  : `is on the way...`}
               </p>
 
               {/* Prompt */}
               <p className="text-xl font-semibold mb-2">
-                Select {partner.firstName}'s number to confirm
+                To confirm meeting {partner.firstName}, select his number
               </p>
               {isWrongGuess ? (
                 <p className="text-red-600 font-medium mb-6">
