@@ -54,11 +54,11 @@ export function MatchInfoMatchedView({
           We have a match for you! {matchData.meetingPointType === 'virtual' ? 'Join the call:' : 'Now go to:'}
         </h1>
 
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-8 flex flex-col items-center justify-center min-h-[220px]">
-          <h2 className="text-4xl font-bold mb-6">{matchData.meetingPointName}</h2>
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-8 min-h-[220px] grid place-items-center gap-6">
+          <h2 className="text-4xl font-bold">{matchData.meetingPointName}</h2>
 
           {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
-            <div className="mt-4">
+            <div>
               <a
                 href={matchData.meetingPointVideoCallUrl}
                 target="_blank"
@@ -73,7 +73,7 @@ export function MatchInfoMatchedView({
             </div>
           ) : (
             matchData.meetingPointImageUrl && (
-              <div className="mt-4">
+              <div>
                 <img
                   src={matchData.meetingPointImageUrl}
                   alt={matchData.meetingPointName}
