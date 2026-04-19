@@ -74,13 +74,8 @@ export function MatchPartnerView({
           </h3>
         </div>
 
-        {/* Divider */}
-        <hr className="mt-4 mb-24 border-t border-border" />
-
-        {/* Find-your-match headline */}
-        <h2 className="text-3xl sm:text-4xl font-bold mb-8">
-          {matchData.partners.length === 1 ? 'Find your match!' : 'Find your matches!'}
-        </h2>
+        {/* Spacer between own image/name and partner boxes */}
+        <div className="mt-16" />
 
         {/* One combined box per partner: thumbnail + name + status + number picker */}
         {matchData.partners.map((partner) => {
@@ -94,17 +89,15 @@ export function MatchPartnerView({
               }`}
             >
               {/* Partner header: name */}
-              <div className="flex items-center justify-center mb-1">
-                <h3
-                  className="font-bold leading-tight break-words"
-                  style={{ fontSize: 'clamp(2.5rem, 9vw, 5rem)' }}
-                >
-                  {partner.firstName}
-                </h3>
-              </div>
+              <h3
+                className="font-bold leading-none break-words text-center"
+                style={{ fontSize: 'clamp(2.5rem, 9vw, 5rem)' }}
+              >
+                {partner.firstName}
+              </h3>
 
               <p
-                className={`text-base mb-10 ${
+                className={`text-base mt-2 mb-10 ${
                   partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
                 }`}
               >
@@ -115,7 +108,7 @@ export function MatchPartnerView({
 
               {/* Prompt */}
               <p className="text-xl font-semibold mb-2">
-                To confirm meeting {partner.firstName}, select his number
+                What's the number?
               </p>
               {isWrongGuess ? (
                 <p className="text-red-600 font-medium mb-6">
