@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense, ComponentType } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -11,36 +11,52 @@ import { RoundItem } from './RoundItem';
 import { GeometricIdentification } from './GeometricIdentification';
 import { Calendar, Clock, Users, MapPin, CheckCircle } from 'lucide-react';
 
-// Shared live-view components — when the real page changes, the preview updates automatically.
-import { MatchInfoMatchedView, MatchInfoNoMatchView, MatchData } from './MatchInfo';
-import { MatchPartnerView, MatchPartnerData, Partner as MatchPartnerPartner } from './MatchPartner';
-import { MatchNetworkingView, NetworkingData } from './MatchNetworking';
-import {
-  ContactSharingPartnerFeedbackView,
-  ContactSharingWondereloFeedbackView,
-} from './ContactSharing';
-import { DashboardView } from './Dashboard';
-import { AccountSettingsView } from './AccountSettings';
-import { EventPageSettingsView } from './EventPageSettings';
-import { EventPromoPageView } from './EventPromoPage';
-import { RoundFormPageView } from './RoundFormPage';
-import { SignInFlowView } from './SignInFlow';
-import { SignUpFlowView } from './SignUpFlow';
-import { ResetPasswordFlowView } from './ResetPasswordFlow';
-import { EmailVerificationView } from './EmailVerification';
-import { EmailVerificationWaitingView } from './EmailVerificationWaiting';
-import { MissedRoundView } from './MissedRound';
-import { RegistrationSuccessView } from './RegistrationSuccess';
-import { SessionSuccessView } from './SessionSuccessPage';
-import { ParticipantRoundDetailView, RoundDetail } from './ParticipantRoundDetail';
-import { AddressBookView, Contact } from './AddressBook';
-import { ParticipantProfileView, ParticipantProfileFormData } from '../pages/ParticipantProfile';
-import { ParticipantDashboardView, Registration, SessionWithRounds } from './ParticipantDashboard';
-import { HomepageView } from './Homepage';
-import { UserPublicPageView } from './UserPublicPage';
-import { BillingSettingsView, Subscription, Invoice, CreditTransaction, BillingDetails } from './BillingSettings';
-import { SessionRegistrationSelectRoundsView } from './SessionRegistration';
-import { RoundRule } from './RoundRulesDialog';
+// Types only — stripped at compile time, don't trigger runtime module loads.
+import type { MatchData } from './MatchInfo';
+import type { MatchPartnerData, Partner as MatchPartnerPartner } from './MatchPartner';
+import type { NetworkingData } from './MatchNetworking';
+import type { RoundDetail } from './ParticipantRoundDetail';
+import type { Contact } from './AddressBook';
+import type { ParticipantProfileFormData } from '../pages/ParticipantProfile';
+import type { Registration, SessionWithRounds } from './ParticipantDashboard';
+import type { Subscription, Invoice, CreditTransaction, BillingDetails } from './BillingSettings';
+import type { RoundRule } from './RoundRulesDialog';
+
+// Lazy-loaded views — each page's view (+ its deps) is only fetched when you actually
+// click on that preview tab. Keeps Page Preview fast to open and refresh.
+function lazyNamed<Name extends string>(
+  loader: () => Promise<Record<Name, ComponentType<any>>>,
+  name: Name,
+): ComponentType<any> {
+  return lazy(() => loader().then((m) => ({ default: m[name] })));
+}
+const MatchInfoMatchedView = lazyNamed(() => import('./MatchInfo'), 'MatchInfoMatchedView');
+const MatchInfoNoMatchView = lazyNamed(() => import('./MatchInfo'), 'MatchInfoNoMatchView');
+const MatchPartnerView = lazyNamed(() => import('./MatchPartner'), 'MatchPartnerView');
+const MatchNetworkingView = lazyNamed(() => import('./MatchNetworking'), 'MatchNetworkingView');
+const ContactSharingPartnerFeedbackView = lazyNamed(() => import('./ContactSharing'), 'ContactSharingPartnerFeedbackView');
+const ContactSharingWondereloFeedbackView = lazyNamed(() => import('./ContactSharing'), 'ContactSharingWondereloFeedbackView');
+const DashboardView = lazyNamed(() => import('./Dashboard'), 'DashboardView');
+const AccountSettingsView = lazyNamed(() => import('./AccountSettings'), 'AccountSettingsView');
+const EventPageSettingsView = lazyNamed(() => import('./EventPageSettings'), 'EventPageSettingsView');
+const EventPromoPageView = lazyNamed(() => import('./EventPromoPage'), 'EventPromoPageView');
+const RoundFormPageView = lazyNamed(() => import('./RoundFormPage'), 'RoundFormPageView');
+const SignInFlowView = lazyNamed(() => import('./SignInFlow'), 'SignInFlowView');
+const SignUpFlowView = lazyNamed(() => import('./SignUpFlow'), 'SignUpFlowView');
+const ResetPasswordFlowView = lazyNamed(() => import('./ResetPasswordFlow'), 'ResetPasswordFlowView');
+const EmailVerificationView = lazyNamed(() => import('./EmailVerification'), 'EmailVerificationView');
+const EmailVerificationWaitingView = lazyNamed(() => import('./EmailVerificationWaiting'), 'EmailVerificationWaitingView');
+const MissedRoundView = lazyNamed(() => import('./MissedRound'), 'MissedRoundView');
+const RegistrationSuccessView = lazyNamed(() => import('./RegistrationSuccess'), 'RegistrationSuccessView');
+const SessionSuccessView = lazyNamed(() => import('./SessionSuccessPage'), 'SessionSuccessView');
+const ParticipantRoundDetailView = lazyNamed(() => import('./ParticipantRoundDetail'), 'ParticipantRoundDetailView');
+const AddressBookView = lazyNamed(() => import('./AddressBook'), 'AddressBookView');
+const ParticipantProfileView = lazyNamed(() => import('../pages/ParticipantProfile'), 'ParticipantProfileView');
+const ParticipantDashboardView = lazyNamed(() => import('./ParticipantDashboard'), 'ParticipantDashboardView');
+const HomepageView = lazyNamed(() => import('./Homepage'), 'HomepageView');
+const UserPublicPageView = lazyNamed(() => import('./UserPublicPage'), 'UserPublicPageView');
+const BillingSettingsView = lazyNamed(() => import('./BillingSettings'), 'BillingSettingsView');
+const SessionRegistrationSelectRoundsView = lazyNamed(() => import('./SessionRegistration'), 'SessionRegistrationSelectRoundsView');
 
 interface AdminPagePreviewProps {
   onBack: () => void;
@@ -1451,7 +1467,16 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
 
       {/* Preview content */}
       <div>
-        {renderPreview()}
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center p-16 text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-3" />
+              Loading preview…
+            </div>
+          }
+        >
+          {renderPreview()}
+        </Suspense>
       </div>
     </div>
   );
