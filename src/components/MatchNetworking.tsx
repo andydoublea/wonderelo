@@ -157,7 +157,7 @@ export function MatchNetworking() {
         !isTimeUp ? (
           <CountdownTimer
             targetDate={networkingData.networkingEndTime}
-            variant="large"
+            size="large"
             onComplete={() => {
               debugLog('[MatchNetworking] Time is up!');
               setIsTimeUp(true);

@@ -538,7 +538,7 @@ function PreviewMatchPartner() {
   return (
     <MatchPartnerView
       matchData={mockData}
-      countdown={<div className="text-2xl font-semibold text-primary">04:23</div>}
+      inlineCountdown={<span className="font-semibold text-primary">04:23</span>}
       isSubmitting={false}
       wrongGuessPartnerId={null}
       getOptionsForPartner={getOptions}

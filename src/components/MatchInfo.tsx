@@ -387,7 +387,7 @@ export function MatchInfo() {
         matchData.walkingDeadline ? (
           <CountdownTimer
             targetDate={matchData.walkingDeadline}
-            variant="large"
+            size="large"
             onComplete={() => {
               debugLog('[MatchInfo] Walking deadline reached');
             }}

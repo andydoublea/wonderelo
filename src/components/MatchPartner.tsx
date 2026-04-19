@@ -34,31 +34,33 @@ export interface MatchPartnerData {
 
 export interface MatchPartnerViewProps {
   matchData: MatchPartnerData;
-  countdown?: ReactNode;
   isSubmitting: boolean;
   wrongGuessPartnerId: string | null;
   getOptionsForPartner: (partner: Partner) => number[];
   onNumberSelect: (partnerId: string, num: number) => void;
   onBackToDashboard: () => void;
+  /**
+   * Rendered inline next to each "is on the way..." partner status.
+   * Container passes a live countdown component; preview passes a static span.
+   */
+  inlineCountdown?: ReactNode;
 }
 
 export function MatchPartnerView({
   matchData,
-  countdown,
   isSubmitting,
   wrongGuessPartnerId,
   getOptionsForPartner,
   onNumberSelect,
   onBackToDashboard,
+  inlineCountdown,
 }: MatchPartnerViewProps) {
   return (
     <div className="min-h-screen bg-background">
       <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        {countdown && <div className="mb-8">{countdown}</div>}
-
         <h1 className="text-3xl sm:text-4xl font-bold mb-6">
-          {matchData.findingDeadline ? 'Show this image to your match!' : 'Now wait for the others'}
+          {matchData.findingDeadline ? 'Show this to your match!' : 'Now wait for the others'}
         </h1>
 
         {/* Own identification image (full-width, no box) */}
@@ -77,7 +79,7 @@ export function MatchPartnerView({
         </div>
 
         {/* Spacer between own image/name and partner boxes */}
-        <div className="mt-16" />
+        <div className="mt-28" />
 
         {/* One combined box per partner: thumbnail + name + status + number picker */}
         {matchData.partners.map((partner) => {
@@ -99,13 +101,22 @@ export function MatchPartnerView({
               </h3>
 
               <p
-                className={`text-base mt-2 mb-10 ${
+                className={`text-base mt-0 mb-16 ${
                   partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
                 }`}
               >
-                {partner.isCheckedIn
-                  ? `is already at the meeting point ✓`
-                  : `is on the way...`}
+                {partner.isCheckedIn ? (
+                  `is already at the meeting point ✓`
+                ) : (
+                  <>
+                    is on the way...
+                    {inlineCountdown && (
+                      <span className="ml-2 text-muted-foreground">
+                        ({inlineCountdown} left)
+                      </span>
+                    )}
+                  </>
+                )}
               </p>
 
               {partner.isNumberConfirmed ? (
@@ -353,11 +364,11 @@ export function MatchPartner() {
   return (
     <MatchPartnerView
       matchData={matchData}
-      countdown={
+      inlineCountdown={
         matchData.findingDeadline ? (
           <CountdownTimer
             targetDate={matchData.findingDeadline}
-            variant="large"
+            size="small"
             onComplete={() => {
               debugLog('[MatchPartner] Finding time expired');
             }}

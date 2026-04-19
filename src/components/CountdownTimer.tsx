@@ -48,8 +48,8 @@ export function CountdownTimer({ targetDate, onComplete, size = 'medium' }: Coun
   };
 
   return (
-    <div className={`font-semibold text-primary ${sizeClasses[size]}`}>
+    <span className={`font-semibold text-primary ${sizeClasses[size]}`}>
       {timeLeft}
-    </div>
+    </span>
   );
 }
