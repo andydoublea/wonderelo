@@ -5,7 +5,7 @@
 
 declare const __APP_BUILD_TIME__: string;
 
-export const APP_VERSION = '1.6.1';
+export const APP_VERSION = '1.6.2';
 
 // BUILD_TIME falls back to empty string in dev/test environments that don't define it
 export const BUILD_TIME: string =

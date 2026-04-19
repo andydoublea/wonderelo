@@ -66,7 +66,10 @@ export function MatchPartnerView({
             className="rounded-lg shadow-lg w-full block"
           />
           <div className="flex flex-col items-center justify-center mt-10">
-            <h3 className="text-7xl sm:text-8xl md:text-9xl font-bold text-foreground leading-tight break-words w-full">
+            <h3
+              className="font-bold text-foreground leading-tight break-words w-full"
+              style={{ fontSize: 'clamp(4rem, 14vw, 9rem)' }}
+            >
               {matchData.myName}
             </h3>
           </div>
@@ -77,7 +80,10 @@ export function MatchPartnerView({
           <div className="space-y-6">
             {matchData.partners.map((partner) => (
               <div key={partner.id} className="text-center">
-                <h2 className="text-6xl sm:text-7xl font-bold leading-none">{partner.firstName}</h2>
+                <h2
+                  className="font-bold leading-tight"
+                  style={{ fontSize: 'clamp(3rem, 10vw, 6rem)' }}
+                >{partner.firstName}</h2>
                 <p
                   className={`text-lg mt-3 ${
                     partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
