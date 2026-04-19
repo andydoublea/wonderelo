@@ -24,6 +24,221 @@ interface DashboardProps {
   onDeleteSession: (id: string) => void;
 }
 
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
+
+export interface DashboardViewProps {
+  eventSlug: string;
+  publicUrl: string;
+  sessions: NetworkingSession[];
+  filteredSessions: NetworkingSession[];
+  draftSessions: NetworkingSession[];
+  scheduledSessions: NetworkingSession[];
+  publishedSessions: NetworkingSession[];
+  completedSessions: NetworkingSession[];
+  isLoadingSessions: boolean;
+  copied: boolean;
+  downloadingQR: boolean;
+  checklistVisible: boolean;
+  showTour: boolean;
+  currentUser: any;
+  onCopyUrl: () => void;
+  onDownloadQR: () => void;
+  onNavigate: (path: string) => void;
+  onEditSession: (session: NetworkingSession) => void;
+  onDeleteSession: (id: string) => void;
+  onDuplicateSession: (session: NetworkingSession) => void;
+  onUpdateSession: (id: string, updates: Partial<NetworkingSession>) => void;
+  onManageSession: (session: NetworkingSession) => void;
+  onChecklistVisibilityChange: (visible: boolean) => void;
+  onChecklistDismiss: () => void;
+  onTourComplete: () => void;
+}
+
+export function DashboardView({
+  eventSlug,
+  publicUrl,
+  sessions,
+  filteredSessions,
+  draftSessions,
+  scheduledSessions,
+  publishedSessions,
+  completedSessions,
+  isLoadingSessions,
+  copied,
+  downloadingQR,
+  checklistVisible,
+  showTour,
+  onCopyUrl,
+  onDownloadQR,
+  onNavigate,
+  onEditSession,
+  onDeleteSession,
+  onDuplicateSession,
+  onUpdateSession,
+  onManageSession,
+  onChecklistVisibilityChange,
+  onChecklistDismiss,
+  onTourComplete,
+}: DashboardViewProps) {
+  return (
+    <div className="space-y-6 pb-8">
+      {/* Event Page URL Section */}
+      <Card data-tour="event-page-url" className="overflow-hidden">
+        <CardContent className="py-4 space-y-3">
+          <h3 className="text-base">Your event page</h3>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block min-w-0 px-3 py-2 bg-muted rounded-md text-sm flex items-center hover:bg-muted/80 transition-colors group"
+            title={publicUrl}
+          >
+            <span className="truncate flex-1">{`wonderelo.com/${eventSlug}`}</span>
+            <ExternalLink className="h-3.5 w-3.5 ml-2 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onCopyUrl} title="Copy URL">
+              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+              Copy
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDownloadQR}
+              disabled={downloadingQR}
+              title="Download QR code"
+            >
+              {downloadingQR ? (
+                <Download className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <QrCode className="h-4 w-4 mr-1" />
+              )}
+              QR code
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onNavigate('/event-page-settings')}
+              title="Edit event page"
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onNavigate('/event-promo')}
+              title="Promo slide"
+            >
+              <Presentation className="h-4 w-4 mr-1" />
+              Slide
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Statistics — only shown on desktop and when user has more than the sample round */}
+      {sessions.length > 1 && (
+        <div className="hidden md:grid grid-cols-4 gap-4">
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('/rounds?status=draft')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Draft</span>
+                <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{draftSessions.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('/rounds?status=scheduled')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Scheduled</span>
+                <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{scheduledSessions.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('/rounds?status=published')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Published</span>
+                <Play className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{publishedSessions.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => onNavigate('/rounds?status=completed')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">Completed</span>
+                <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="text-2xl font-semibold">{completedSessions.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Onboarding Checklist (left) + Published on Event Page (right) */}
+      <div className={`grid grid-cols-1 gap-6 ${checklistVisible ? 'md:grid-cols-2' : ''}`}>
+        {checklistVisible && (
+          <div data-tour="onboarding-checklist">
+            <OnboardingChecklist
+              eventSlug={eventSlug}
+              sessions={sessions}
+              onVisibilityChange={onChecklistVisibilityChange}
+              onDismiss={onChecklistDismiss}
+            />
+          </div>
+        )}
+
+        <Card data-tour="session-card">
+          <CardHeader>
+            <div className="flex flex-col gap-3">
+              <CardTitle>Published on event page</CardTitle>
+              <div className="flex flex-wrap items-center gap-2" data-tour="manage-rounds">
+                <Button data-checklist="create-round-btn" onClick={() => onNavigate('/rounds/new')} variant="outline" size="sm">
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                  Create new round
+                </Button>
+                <Button data-checklist="show-all-rounds-btn" onClick={() => onNavigate('/rounds')} variant="outline" size="sm">
+                  Show all rounds
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {publishedSessions.length === 0 && !isLoadingSessions ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No published rounds yet
+              </div>
+            ) : (
+              <SessionList
+                sessions={publishedSessions}
+                isLoading={isLoadingSessions}
+                onEditSession={onEditSession}
+                onDeleteSession={onDeleteSession}
+                onDuplicateSession={onDuplicateSession}
+                onUpdateSession={onUpdateSession}
+                onManageSession={onManageSession}
+                groupBy="date"
+                hideEmptySections={false}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {showTour && <OnboardingTour onComplete={onTourComplete} />}
+    </div>
+  );
+}
+
 export function Dashboard({
   eventSlug,
   sessions,
@@ -155,194 +370,65 @@ export function Dashboard({
     navigate(`/rounds/${session.id}/manage`);
   };
 
+  const handleChecklistDismiss = async () => {
+    const now = new Date().toISOString();
+    const updatedUser = { ...currentUser, onboardingCompletedAt: now };
+    setCurrentUser(updatedUser);
+    localStorage.setItem('oliwonder_current_user', JSON.stringify(updatedUser));
+    try {
+      await authenticatedFetch('/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ onboardingCompletedAt: now }),
+      });
+    } catch (e) {
+      // Silently fail
+    }
+  };
+
+  const handleTourComplete = async () => {
+    setShowTour(false);
+    const now = new Date().toISOString();
+    const updatedUser = { ...currentUser, onboardingCompletedAt: now };
+    setCurrentUser(updatedUser);
+    localStorage.setItem('oliwonder_current_user', JSON.stringify(updatedUser));
+    try {
+      await authenticatedFetch('/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ onboardingCompletedAt: now }),
+      });
+    } catch (e) {
+      // Silently fail
+    }
+  };
+
   return (
-    <div className="space-y-6 pb-8">
-      {/* Event Page URL Section */}
-      <Card data-tour="event-page-url" className="overflow-hidden">
-        <CardContent className="py-4 space-y-3">
-          <h3 className="text-base">Your event page</h3>
-          <a
-            href={publicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block min-w-0 px-3 py-2 bg-muted rounded-md text-sm flex items-center hover:bg-muted/80 transition-colors group"
-            title={publicUrl}
-          >
-            <span className="truncate flex-1">{`wonderelo.com/${eventSlug}`}</span>
-            <ExternalLink className="h-3.5 w-3.5 ml-2 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-          </a>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyToClipboard}
-              title="Copy URL"
-            >
-              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-              Copy
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadQRCode}
-              disabled={downloadingQR}
-              title="Download QR code"
-            >
-              {downloadingQR ? (
-                <Download className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <QrCode className="h-4 w-4 mr-1" />
-              )}
-              QR code
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/event-page-settings')}
-              title="Edit event page"
-            >
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/event-promo')}
-              title="Promo slide"
-            >
-              <Presentation className="h-4 w-4 mr-1" />
-              Slide
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Statistics — only shown on desktop and when user has more than the sample round */}
-      {sessions.length > 1 && (
-        <div className="hidden md:grid grid-cols-4 gap-4">
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=draft')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-muted-foreground">Draft</span>
-                <Edit className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-semibold">{draftSessions.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=scheduled')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-muted-foreground">Scheduled</span>
-                <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-semibold">{scheduledSessions.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=published')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-muted-foreground">Published</span>
-                <Play className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-semibold">{publishedSessions.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/rounds?status=completed')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-muted-foreground">Completed</span>
-                <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-semibold">{completedSessions.length}</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Onboarding Checklist (left) + Published on Event Page (right) */}
-      <div className={`grid grid-cols-1 gap-6 ${checklistVisible ? 'md:grid-cols-2' : ''}`}>
-        {/* Onboarding Checklist - shown for new organizers */}
-        {checklistVisible && (
-          <div data-tour="onboarding-checklist">
-            <OnboardingChecklist eventSlug={eventSlug} sessions={sessions} onVisibilityChange={setChecklistVisible} onDismiss={async () => {
-              const now = new Date().toISOString();
-              const updatedUser = { ...currentUser, onboardingCompletedAt: now };
-              setCurrentUser(updatedUser);
-              localStorage.setItem('oliwonder_current_user', JSON.stringify(updatedUser));
-              try {
-                await authenticatedFetch('/profile', {
-                  method: 'PUT',
-                  body: JSON.stringify({ onboardingCompletedAt: now }),
-                });
-              } catch (e) {
-                // Silently fail
-              }
-            }} />
-          </div>
-        )}
-
-        {/* Published on Event Page Section */}
-        <Card data-tour="session-card">
-          <CardHeader>
-            <div className="flex flex-col gap-3">
-              <CardTitle>Published on event page</CardTitle>
-              <div className="flex flex-wrap items-center gap-2" data-tour="manage-rounds">
-                <Button data-checklist="create-round-btn" onClick={() => navigate('/rounds/new')} variant="outline" size="sm">
-                  <PlusCircle className="h-4 w-4 mr-1" />
-                  Create new round
-                </Button>
-                <Button data-checklist="show-all-rounds-btn" onClick={() => navigate('/rounds')} variant="outline" size="sm">
-                  Show all rounds
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {publishedSessions.length === 0 && !isLoadingSessions ? (
-              <div className="text-center py-12 text-muted-foreground">
-                No published rounds yet
-              </div>
-            ) : (
-              <SessionList
-                sessions={publishedSessions}
-                isLoading={isLoadingSessions}
-                onEditSession={handleEditSession}
-                onDeleteSession={onDeleteSession}
-                onDuplicateSession={handleDuplicateSession}
-                onUpdateSession={onUpdateSession}
-                onManageSession={handleManageSession}
-                groupBy="date"
-                hideEmptySections={false}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Onboarding Tour */}
-      {showTour && (
-        <OnboardingTour onComplete={async () => {
-          setShowTour(false);
-          const now = new Date().toISOString();
-          // Update local state + localStorage immediately so tour doesn't reappear on refresh
-          const updatedUser = { ...currentUser, onboardingCompletedAt: now };
-          setCurrentUser(updatedUser);
-          localStorage.setItem('oliwonder_current_user', JSON.stringify(updatedUser));
-          // Persist to server (non-blocking — local state already updated)
-          try {
-            await authenticatedFetch('/profile', {
-              method: 'PUT',
-              body: JSON.stringify({ onboardingCompletedAt: now }),
-            });
-          } catch (e) {
-            // Silently fail — tour won't repeat this session anyway
-          }
-        }} />
-      )}
-
-    </div>
+    <DashboardView
+      eventSlug={eventSlug}
+      publicUrl={publicUrl}
+      sessions={sessions}
+      filteredSessions={filteredSessions}
+      draftSessions={draftSessions}
+      scheduledSessions={scheduledSessions}
+      publishedSessions={publishedSessions}
+      completedSessions={completedSessions}
+      isLoadingSessions={isLoadingSessions}
+      copied={copied}
+      downloadingQR={downloadingQR}
+      checklistVisible={checklistVisible}
+      showTour={showTour}
+      currentUser={currentUser}
+      onCopyUrl={copyToClipboard}
+      onDownloadQR={downloadQRCode}
+      onNavigate={navigate}
+      onEditSession={handleEditSession}
+      onDeleteSession={onDeleteSession}
+      onDuplicateSession={handleDuplicateSession}
+      onUpdateSession={onUpdateSession}
+      onManageSession={handleManageSession}
+      onChecklistVisibilityChange={setChecklistVisible}
+      onChecklistDismiss={handleChecklistDismiss}
+      onTourComplete={handleTourComplete}
+    />
   );
 }
+

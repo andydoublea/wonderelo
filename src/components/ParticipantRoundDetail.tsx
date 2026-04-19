@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ParticipantLayout } from './ParticipantLayout';
 import { Card } from './ui/card';
@@ -8,7 +8,7 @@ import { Loader2, Calendar, Clock, MapPin, ArrowLeft, Bell, Info } from 'lucide-
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
 
-interface RoundDetail {
+export interface RoundDetail {
   registration: any;
   session: {
     id: string;
@@ -24,6 +24,7 @@ interface RoundDetail {
     duration: number;
     groupSize: number;
     iceBreakers?: string[];
+    date?: string;
   };
   organizer: {
     name: string;
@@ -31,187 +32,48 @@ interface RoundDetail {
   };
 }
 
-export function ParticipantRoundDetail() {
-  const { token, roundId } = useParams<{ token: string; roundId: string }>();
-  const navigate = useNavigate();
-  
-  // Initialize from cached data for instant display
-  const getCachedRoundDetail = () => {
-    try {
-      const cached = localStorage.getItem(`participant_round_${token}_${roundId}`);
-      if (cached) {
-        const data = JSON.parse(cached);
-        return {
-          roundDetail: data,
-          hasCache: true
-        };
-      }
-    } catch (err) {
-      // Ignore parsing errors
-    }
-    return {
-      roundDetail: null,
-      hasCache: false
-    };
-  };
-  
-  const cachedData = getCachedRoundDetail();
-  
-  const [roundDetail, setRoundDetail] = useState<RoundDetail | null>(cachedData.roundDetail);
-  const [isLoading, setIsLoading] = useState(!cachedData.hasCache);
-  const [timeUntilStart, setTimeUntilStart] = useState<number>(0);
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
 
-  // Version identifier for debugging
-  useEffect(() => {
-    debugLog('🎯 ParticipantRoundDetail v2.0 (with ParticipantLayout) loaded - Build time: 2024-11-03 14:30');
-  }, []);
+export interface ParticipantRoundDetailViewProps {
+  roundDetail: RoundDetail;
+  isUpcoming: boolean;
+  isInProgress: boolean;
+  isCompleted: boolean;
+  countdown?: ReactNode;
+  formattedDateTime: string;
+  notificationsEnabled: boolean;
+  onBack: () => void;
+  onEnableNotifications: () => void;
+}
 
-  useEffect(() => {
-    if (token && roundId) {
-      fetchRoundDetail();
-    }
-  }, [token, roundId]);
-
-  // Countdown timer
-  useEffect(() => {
-    if (!roundDetail) return;
-
-    const interval = setInterval(() => {
-      const now = new Date();
-      const roundDate = roundDetail.round.date || roundDetail.session.date; // Use round.date, fallback to session.date for backwards compatibility
-      const roundStart = new Date(`${roundDate}T${roundDetail.round.startTime}:00`);
-      const diff = roundStart.getTime() - now.getTime();
-      
-      setTimeUntilStart(Math.max(0, diff));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [roundDetail]);
-
-  const fetchRoundDetail = async () => {
-    try {
-      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
-      
-      debugLog('[ParticipantRoundDetail] Fetching round detail for token:', token, 'roundId:', roundId);
-      
-      const response = await fetch(
-        `${apiBaseUrl}/p/${token}/r/${roundId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      debugLog('[ParticipantRoundDetail] Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        errorLog('[ParticipantRoundDetail] Error response:', errorText);
-        throw new Error(`Failed to fetch round detail: ${response.status}`);
-      }
-
-      const data = await response.json();
-      debugLog('[ParticipantRoundDetail] Round detail data:', data);
-      setRoundDetail(data);
-      
-      // Cache the data
-      localStorage.setItem(`participant_round_${token}_${roundId}`, JSON.stringify(data));
-      
-    } catch (error) {
-      errorLog('[ParticipantRoundDetail] Error fetching round detail:', error);
-      toast.error(`Failed to load round details: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatCountdown = (ms: number) => {
-    if (ms <= 0) return 'Starting now!';
-
-    const totalSeconds = Math.floor(ms / 1000);
-    const days = Math.floor(totalSeconds / (24 * 60 * 60));
-    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
-    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    } else {
-      return `${seconds}s`;
-    }
-  };
-
-  const formatDateTime = (date: string, time: string) => {
-    try {
-      const dt = new Date(`${date}T${time}:00`);
-      return dt.toLocaleDateString('en-US', { 
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return `${date} at ${time}`;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!roundDetail) {
-    return (
-      <ParticipantLayout
-        title="Round not found"
-      >
-        <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">Round not found</p>
-          <Button onClick={() => navigate(`/p/${token}`)}>
-            Go to dashboard
-          </Button>
-        </div>
-      </ParticipantLayout>
-    );
-  }
-
-  const { registration, session, round, organizer } = roundDetail;
-  const roundDate = round.date || session.date; // Use round.date, fallback to session.date for backwards compatibility
-  const roundStart = new Date(`${roundDate}T${round.startTime}:00`);
-  const roundEnd = new Date(roundStart.getTime() + round.duration * 60000);
-  const now = new Date();
-  
-  const isUpcoming = now < roundStart;
-  const isInProgress = now >= roundStart && now < roundEnd;
-  const isCompleted = now >= roundEnd;
+export function ParticipantRoundDetailView({
+  roundDetail,
+  isUpcoming,
+  isInProgress,
+  isCompleted,
+  countdown,
+  formattedDateTime,
+  notificationsEnabled,
+  onBack,
+  onEnableNotifications,
+}: ParticipantRoundDetailViewProps) {
+  const { session, round, organizer } = roundDetail;
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="container mx-auto max-w-2xl">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate(`/p/${token}`)}
+        <Button
+          variant="ghost"
+          onClick={onBack}
           className="mb-6 gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to dashboard
         </Button>
 
-        {/* Main Card using ParticipantLayout styling */}
         <Card>
-          {/* Header with icon and badges */}
           <div className="text-center pt-6 px-6">
             <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
               <Info className="h-6 w-6 text-primary" />
@@ -224,13 +86,12 @@ export function ParticipantRoundDetail() {
             <h1 className="text-2xl mb-2">{round.name}</h1>
             <p className="text-sm text-muted-foreground mb-6">{session.name}</p>
           </div>
-          
+
           <div className="px-6 pb-6 space-y-6">
-            {/* Countdown */}
-            {isUpcoming && (
+            {isUpcoming && countdown && (
               <div className="text-center p-6 bg-primary/5 rounded-lg">
                 <p className="text-sm text-muted-foreground mb-2">Starts in</p>
-                <p className="text-3xl font-mono">{formatCountdown(timeUntilStart)}</p>
+                <p className="text-3xl font-mono">{countdown}</p>
               </div>
             )}
 
@@ -243,13 +104,12 @@ export function ParticipantRoundDetail() {
               </div>
             )}
 
-            {/* Details */}
             <div className="space-y-4">
               <div>
                 <h3 className="mb-2 text-sm font-medium">Date and time</h3>
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{formatDateTime(session.date, round.startTime)}</span>
+                  <span>{formattedDateTime}</span>
                 </div>
               </div>
 
@@ -306,8 +166,7 @@ export function ParticipantRoundDetail() {
               </div>
             </div>
 
-            {/* Notification Reminder */}
-            {isUpcoming && !registration.notificationsEnabled && (
+            {isUpcoming && !notificationsEnabled && (
               <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Bell className="h-5 w-5 text-amber-600 mt-0.5" />
@@ -316,49 +175,7 @@ export function ParticipantRoundDetail() {
                     <p className="text-sm text-muted-foreground mb-3">
                       Enable browser notifications to get reminded when it's time to confirm your attendance.
                     </p>
-                    <Button 
-                      size="sm"
-                      onClick={async () => {
-                        if (!('Notification' in window)) {
-                          toast.error('Your browser does not support notifications');
-                          return;
-                        }
-
-                        try {
-                          const permission = await Notification.requestPermission();
-                          
-                          if (permission === 'granted') {
-                            // Update preference on backend
-                            const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
-                            
-                            await fetch(
-                              `${apiBaseUrl}/p/${token}/notification-preference`,
-                              {
-                                method: 'POST',
-                                headers: {
-                                  'Authorization': `Bearer ${publicAnonKey}`,
-                                  'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                  enabled: true,
-                                  roundId
-                                })
-                              }
-                            );
-                            
-                            toast.success('Notifications enabled!');
-                            
-                            // Refresh data
-                            fetchRoundDetail();
-                          } else {
-                            toast.error('Notification permission denied');
-                          }
-                        } catch (error) {
-                          errorLog('Error enabling notifications:', error);
-                          toast.error('Failed to enable notifications');
-                        }
-                      }}
-                    >
+                    <Button size="sm" onClick={onEnableNotifications}>
                       Enable notifications
                     </Button>
                   </div>
@@ -369,5 +186,224 @@ export function ParticipantRoundDetail() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Container
+// ============================================================
+
+export function ParticipantRoundDetail() {
+  const { token, roundId } = useParams<{ token: string; roundId: string }>();
+  const navigate = useNavigate();
+
+  const getCachedRoundDetail = () => {
+    try {
+      const cached = localStorage.getItem(`participant_round_${token}_${roundId}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        return {
+          roundDetail: data,
+          hasCache: true
+        };
+      }
+    } catch (err) {
+      // Ignore parsing errors
+    }
+    return {
+      roundDetail: null,
+      hasCache: false
+    };
+  };
+
+  const cachedData = getCachedRoundDetail();
+
+  const [roundDetail, setRoundDetail] = useState<RoundDetail | null>(cachedData.roundDetail);
+  const [isLoading, setIsLoading] = useState(!cachedData.hasCache);
+  const [timeUntilStart, setTimeUntilStart] = useState<number>(0);
+
+  useEffect(() => {
+    debugLog('🎯 ParticipantRoundDetail v2.0 (with ParticipantLayout) loaded - Build time: 2024-11-03 14:30');
+  }, []);
+
+  useEffect(() => {
+    if (token && roundId) {
+      fetchRoundDetail();
+    }
+  }, [token, roundId]);
+
+  useEffect(() => {
+    if (!roundDetail) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const roundDate = roundDetail.round.date || roundDetail.session.date;
+      const roundStart = new Date(`${roundDate}T${roundDetail.round.startTime}:00`);
+      const diff = roundStart.getTime() - now.getTime();
+
+      setTimeUntilStart(Math.max(0, diff));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [roundDetail]);
+
+  const fetchRoundDetail = async () => {
+    try {
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
+
+      debugLog('[ParticipantRoundDetail] Fetching round detail for token:', token, 'roundId:', roundId);
+
+      const response = await fetch(
+        `${apiBaseUrl}/p/${token}/r/${roundId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      debugLog('[ParticipantRoundDetail] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        errorLog('[ParticipantRoundDetail] Error response:', errorText);
+        throw new Error(`Failed to fetch round detail: ${response.status}`);
+      }
+
+      const data = await response.json();
+      debugLog('[ParticipantRoundDetail] Round detail data:', data);
+      setRoundDetail(data);
+
+      localStorage.setItem(`participant_round_${token}_${roundId}`, JSON.stringify(data));
+
+    } catch (error) {
+      errorLog('[ParticipantRoundDetail] Error fetching round detail:', error);
+      toast.error(`Failed to load round details: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatCountdown = (ms: number) => {
+    if (ms <= 0) return 'Starting now!';
+
+    const totalSeconds = Math.floor(ms / 1000);
+    const days = Math.floor(totalSeconds / (24 * 60 * 60));
+    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  const formatDateTime = (date: string, time: string) => {
+    try {
+      const dt = new Date(`${date}T${time}:00`);
+      return dt.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return `${date} at ${time}`;
+    }
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!('Notification' in window)) {
+      toast.error('Your browser does not support notifications');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+
+      if (permission === 'granted') {
+        const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
+
+        await fetch(
+          `${apiBaseUrl}/p/${token}/notification-preference`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${publicAnonKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              enabled: true,
+              roundId
+            })
+          }
+        );
+
+        toast.success('Notifications enabled!');
+
+        fetchRoundDetail();
+      } else {
+        toast.error('Notification permission denied');
+      }
+    } catch (error) {
+      errorLog('Error enabling notifications:', error);
+      toast.error('Failed to enable notifications');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!roundDetail) {
+    return (
+      <ParticipantLayout
+        title="Round not found"
+      >
+        <div className="text-center py-8">
+          <p className="text-muted-foreground mb-4">Round not found</p>
+          <Button onClick={() => navigate(`/p/${token}`)}>
+            Go to dashboard
+          </Button>
+        </div>
+      </ParticipantLayout>
+    );
+  }
+
+  const { registration, session, round } = roundDetail;
+  const roundDate = round.date || session.date;
+  const roundStart = new Date(`${roundDate}T${round.startTime}:00`);
+  const roundEnd = new Date(roundStart.getTime() + round.duration * 60000);
+  const now = new Date();
+
+  const isUpcoming = now < roundStart;
+  const isInProgress = now >= roundStart && now < roundEnd;
+  const isCompleted = now >= roundEnd;
+
+  return (
+    <ParticipantRoundDetailView
+      roundDetail={roundDetail}
+      isUpcoming={isUpcoming}
+      isInProgress={isInProgress}
+      isCompleted={isCompleted}
+      countdown={isUpcoming ? formatCountdown(timeUntilStart) : undefined}
+      formattedDateTime={formatDateTime(session.date, round.startTime)}
+      notificationsEnabled={!!registration?.notificationsEnabled}
+      onBack={() => navigate(`/p/${token}`)}
+      onEnableNotifications={handleEnableNotifications}
+    />
   );
 }

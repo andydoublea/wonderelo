@@ -5,6 +5,58 @@ import { debugLog } from '../utils/debug';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { NetworkingSession } from '../App';
 
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
+
+export interface RoundFormPageViewProps {
+  isEditing: boolean;
+  isDuplicating: boolean;
+  initialData: NetworkingSession | Omit<NetworkingSession, 'id'> | null;
+  userEmail?: string;
+  organizerName?: string;
+  profileImageUrl?: string;
+  userSlug?: string;
+  onSave: (sessionData: Omit<NetworkingSession, 'id'>) => Promise<void> | void;
+  onCancel: () => void;
+}
+
+export function RoundFormPageView({
+  isEditing,
+  isDuplicating,
+  initialData,
+  userEmail,
+  organizerName,
+  profileImageUrl,
+  userSlug,
+  onSave,
+  onCancel,
+}: RoundFormPageViewProps) {
+  return (
+    <div className="container mx-auto p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {isEditing ? 'Edit networking round' : isDuplicating ? 'Duplicate networking round' : 'Create new networking round'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SessionForm
+            initialData={initialData}
+            onSubmit={onSave}
+            onCancel={onCancel}
+            userEmail={userEmail}
+            organizerName={organizerName}
+            profileImageUrl={profileImageUrl}
+            userSlug={userSlug}
+            isDuplicate={isDuplicating}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 interface RoundFormPageProps {
   sessions: NetworkingSession[];
   isLoadingSessions?: boolean;
@@ -107,32 +159,20 @@ export function RoundFormPage({
     );
   }
 
-  const isEditing = id && id !== 'new' && action !== 'duplicate';
+  const isEditing = !!(id && id !== 'new' && action !== 'duplicate');
   const isDuplicating = action === 'duplicate';
 
   return (
-    <div className="container mx-auto p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {isEditing ? 'Edit networking round' : isDuplicating ? 'Duplicate networking round' : 'Create new networking round'}
-          </CardTitle>
-
-        </CardHeader>
-        <CardContent>
-          <SessionForm
-            initialData={initialData}
-            onSubmit={handleSave}
-            onCancel={handleCancel}
-            userEmail={userEmail}
-            organizerName={organizerName}
-            profileImageUrl={profileImageUrl}
-            userSlug={userSlug}
-            isDuplicate={action === 'duplicate'}
-          />
-        </CardContent>
-      </Card>
-
-    </div>
+    <RoundFormPageView
+      isEditing={isEditing}
+      isDuplicating={isDuplicating}
+      initialData={initialData}
+      userEmail={userEmail}
+      organizerName={organizerName}
+      profileImageUrl={profileImageUrl}
+      userSlug={userSlug}
+      onSave={handleSave}
+      onCancel={handleCancel}
+    />
   );
 }

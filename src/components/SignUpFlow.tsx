@@ -73,6 +73,251 @@ const discoveryOptions = [
   { value: 'other', label: 'Other' }
 ];
 
+// ============================================================
+// Pure view component (shared with AdminPagePreview)
+// ============================================================
+
+export interface SignUpFlowViewProps {
+  currentStep: number;
+  totalSteps: number;
+  email: string;
+  password: string;
+  organizerName: string;
+  showPassword: boolean;
+  emailCheckStatus: 'idle' | 'checking' | 'available' | 'taken';
+  discoverySource: string;
+  eventType: string;
+  eventTypeOther: string;
+  companySize: string;
+  userRole: string;
+  error: string;
+  isLoading: boolean;
+  isStepValid: boolean;
+  stepTitle: string;
+  stepDescription: string;
+  onEmailChange: (v: string) => void;
+  onPasswordChange: (v: string) => void;
+  onOrganizerNameChange: (v: string) => void;
+  onToggleShowPassword: () => void;
+  onDiscoverySourceChange: (v: string) => void;
+  onEventTypeChange: (v: string) => void;
+  onEventTypeOtherChange: (v: string) => void;
+  onCompanySizeChange: (v: string) => void;
+  onUserRoleChange: (v: string) => void;
+  onNext: () => void;
+  onPrev: () => void;
+  onSubmit: () => void;
+  onBack: () => void;
+  onSwitchToSignIn?: () => void;
+}
+
+export function SignUpFlowView({
+  currentStep,
+  totalSteps,
+  email,
+  password,
+  organizerName,
+  showPassword,
+  emailCheckStatus,
+  discoverySource,
+  eventType,
+  eventTypeOther,
+  companySize,
+  userRole,
+  error,
+  isLoading,
+  isStepValid,
+  stepTitle,
+  stepDescription,
+  onEmailChange,
+  onPasswordChange,
+  onOrganizerNameChange,
+  onToggleShowPassword,
+  onDiscoverySourceChange,
+  onEventTypeChange,
+  onEventTypeOtherChange,
+  onCompanySizeChange,
+  onUserRoleChange,
+  onNext,
+  onPrev,
+  onSubmit,
+  onBack,
+  onSwitchToSignIn,
+}: SignUpFlowViewProps) {
+  return (
+    <div className="min-h-screen bg-background">
+      <nav className="border-b border-border">
+        <div className="container mx-auto max-w-6xl px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-8">
+              <h2 className="text-primary cursor-pointer" onClick={onBack}>Wonderelo</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" onClick={onBack}>Back to home</Button>
+              {onSwitchToSignIn && (
+                <Button variant="outline" onClick={onSwitchToSignIn}>Sign in</Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <h1 className="mb-2">Sign up</h1>
+            <div className="flex justify-center space-x-2 mb-4">
+              {Array.from({ length: totalSteps }, (_, i) => (
+                <div
+                  key={i}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    i + 1 <= currentStep ? 'bg-primary' : 'bg-muted'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-muted-foreground">Step {currentStep} of {totalSteps}</p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{stepTitle}</CardTitle>
+              <CardDescription>{stepDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {error && (
+                <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <X className="h-4 w-4 text-destructive" />
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email address</Label>
+                    <Input id="email" type="email" placeholder="your@email.com" value={email} onChange={(e) => onEmailChange(e.target.value)} />
+                    {email && (
+                      <div className="text-sm">
+                        {emailCheckStatus === 'checking' && (
+                          <p className="text-muted-foreground flex items-center">
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Checking availability...
+                          </p>
+                        )}
+                        {emailCheckStatus === 'available' && (
+                          <p className="text-green-600 flex items-center"><Check className="h-3 w-3 mr-1" /> Email is available</p>
+                        )}
+                        {emailCheckStatus === 'taken' && (
+                          <p className="text-destructive flex items-center"><X className="h-3 w-3 mr-1" /> Email is already registered</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Minimum 6 characters" value={password} onChange={(e) => onPasswordChange(e.target.value)} />
+                      <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3" onClick={onToggleShowPassword}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {password && password.length < 6 && (
+                      <p className="text-sm text-muted-foreground">Password must be at least 6 characters</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="organizerName">Your name</Label>
+                    <Input id="organizerName" type="text" placeholder="John Doe" value={organizerName} onChange={(e) => onOrganizerNameChange(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <RadioGroup value={discoverySource} onValueChange={onDiscoverySourceChange} className="space-y-2">
+                    {discoveryOptions.map((option) => (
+                      <div key={option.value} className="flex items-center space-x-3 rounded-lg border p-2 hover:bg-accent/50 transition-colors">
+                        <RadioGroupItem value={option.value} id={option.value} />
+                        <Label htmlFor={option.value} className="cursor-pointer flex-1">{option.label}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="eventType">What best describes what you organise?</Label>
+                    <Select value={eventType} onValueChange={onEventTypeChange}>
+                      <SelectTrigger><SelectValue placeholder="Select event type" /></SelectTrigger>
+                      <SelectContent>
+                        {eventTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {eventType === 'other' && (
+                      <Input placeholder="Please describe your event type" value={eventTypeOther} onChange={(e) => onEventTypeOtherChange(e.target.value)} />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="companySize">Company size</Label>
+                    <Select value={companySize} onValueChange={onCompanySizeChange}>
+                      <SelectTrigger><SelectValue placeholder="Select company size" /></SelectTrigger>
+                      <SelectContent>
+                        {companySizeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="userRole">Your role</Label>
+                    <Select value={userRole} onValueChange={onUserRoleChange}>
+                      <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              <div className="h-20" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
+        <div className="max-w-md mx-auto flex justify-between gap-3">
+          {currentStep > 1 ? (
+            <Button variant="outline" onClick={onPrev}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>
+          ) : (
+            <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-2" />Home</Button>
+          )}
+          {currentStep < totalSteps ? (
+            <Button onClick={onNext} disabled={!isStepValid} className="flex-1">
+              Next <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          ) : (
+            <Button onClick={onSubmit} disabled={!isStepValid || isLoading} className="flex-1">
+              {isLoading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating account...</>
+              ) : (
+                <>Create account<Check className="h-4 w-4 ml-2" /></>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);

@@ -12,6 +12,179 @@ interface ResetPasswordFlowProps {
   onBack: () => void;
 }
 
+// ============================================================
+// Pure view components (shared with AdminPagePreview)
+// ============================================================
+
+export interface ResetPasswordFlowViewProps {
+  password: string;
+  confirmPassword: string;
+  showPassword: boolean;
+  showConfirmPassword: boolean;
+  isLoading: boolean;
+  error: string;
+  success: boolean;
+  passwordError: string;
+  isFormValid: boolean;
+  onPasswordChange: (value: string) => void;
+  onConfirmPasswordChange: (value: string) => void;
+  onToggleShowPassword: () => void;
+  onToggleShowConfirmPassword: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onBack: () => void;
+  onComplete: () => void;
+}
+
+export function ResetPasswordFlowView({
+  password,
+  confirmPassword,
+  showPassword,
+  showConfirmPassword,
+  isLoading,
+  error,
+  success,
+  passwordError,
+  isFormValid,
+  onPasswordChange,
+  onConfirmPasswordChange,
+  onToggleShowPassword,
+  onToggleShowConfirmPassword,
+  onSubmit,
+  onBack,
+  onComplete,
+}: ResetPasswordFlowViewProps) {
+  if (success) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <h1 className="mb-2 cursor-pointer hover:text-primary/80 transition-colors" onClick={onBack}>
+              Wonderelo
+            </h1>
+            <p className="text-muted-foreground">Password updated successfully</p>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Password updated!</CardTitle>
+              <CardDescription>Your password has been successfully updated</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="flex items-center justify-center p-6 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                  <div className="text-center">
+                    <Check className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
+                    <h3 className="mb-2">Success!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      You can now sign in with your new password
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-center pt-4">
+                  <Button onClick={onComplete} className="w-full">Continue to sign in</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <h1 className="mb-2 cursor-pointer hover:text-primary/80 transition-colors" onClick={onBack}>
+            Wonderelo
+          </h1>
+          <p className="text-muted-foreground">Create your new password</p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Reset your password</CardTitle>
+            <CardDescription>Enter your new password below</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-6">
+              {error && (
+                <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <X className="h-4 w-4 text-destructive" />
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="password">New password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Minimum 6 characters"
+                      value={password}
+                      onChange={(e) => onPasswordChange(e.target.value)}
+                      disabled={isLoading}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={onToggleShowPassword}
+                      disabled={isLoading}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm new password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="Confirm your password"
+                      value={confirmPassword}
+                      onChange={(e) => onConfirmPasswordChange(e.target.value)}
+                      disabled={isLoading}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={onToggleShowConfirmPassword}
+                      disabled={isLoading}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={onBack} disabled={isLoading}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <Button type="submit" disabled={!isFormValid || isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Updating password...
+                    </>
+                  ) : (
+                    'Update password'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export function ResetPasswordFlow({ onComplete, onBack }: ResetPasswordFlowProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -113,161 +286,24 @@ export function ResetPasswordFlow({ onComplete, onBack }: ResetPasswordFlowProps
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <h1 className="mb-2 cursor-pointer hover:text-primary/80 transition-colors" onClick={onBack}>
-              Wonderelo
-            </h1>
-            <p className="text-muted-foreground">
-              Password updated successfully
-            </p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Password updated!</CardTitle>
-              <CardDescription>
-                Your password has been successfully updated
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="flex items-center justify-center p-6 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                  <div className="text-center">
-                    <Check className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
-                    <h3 className="mb-2">Success!</h3>
-                    <p className="text-sm text-muted-foreground">
-                      You can now sign in with your new password
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex justify-center pt-4">
-                  <Button onClick={onComplete} className="w-full">
-                    Continue to sign in
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 cursor-pointer hover:text-primary/80 transition-colors" onClick={onBack}>
-            Wonderelo
-          </h1>
-          <p className="text-muted-foreground">
-            Create your new password
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Reset your password</CardTitle>
-            <CardDescription>
-              Enter your new password below
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <X className="h-4 w-4 text-destructive" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password">New password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Minimum 6 characters"
-                      value={formData.password}
-                      onChange={(e) => updateFormData('password', e.target.value)}
-                      disabled={isLoading}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  {getPasswordError() && (
-                    <p className="text-sm text-destructive">{getPasswordError()}</p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm new password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Confirm your password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => updateFormData('confirmPassword', e.target.value)}
-                      disabled={isLoading}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      disabled={isLoading}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={onBack} disabled={isLoading}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-
-                <Button type="submit" disabled={!isFormValid() || isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Updating password...
-                    </>
-                  ) : (
-                    'Update password'
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <ResetPasswordFlowView
+      password={formData.password}
+      confirmPassword={formData.confirmPassword}
+      showPassword={showPassword}
+      showConfirmPassword={showConfirmPassword}
+      isLoading={isLoading}
+      error={error}
+      success={success}
+      passwordError={getPasswordError()}
+      isFormValid={!!isFormValid()}
+      onPasswordChange={(v) => updateFormData('password', v)}
+      onConfirmPasswordChange={(v) => updateFormData('confirmPassword', v)}
+      onToggleShowPassword={() => setShowPassword(!showPassword)}
+      onToggleShowConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+      onSubmit={handleSubmit}
+      onBack={onBack}
+      onComplete={onComplete}
+    />
   );
 }
