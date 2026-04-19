@@ -55,76 +55,93 @@ export function MatchPartnerView({
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
         {countdown && <div className="mb-8">{countdown}</div>}
 
-        <h1 className="text-4xl font-bold mb-12">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">
           {matchData.findingDeadline ? 'Show this image to your match!' : 'Now wait for the others'}
         </h1>
 
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-4 py-6">
-          <GeometricIdentification
-            matchId={matchData.matchId}
-            number={matchData.myIdentificationNumber}
-            className="rounded-lg shadow-lg w-full block"
-          />
-          <div className="flex flex-col items-center justify-center mt-10">
-            <h3
-              className="font-bold text-foreground leading-tight break-words w-full"
-              style={{ fontSize: 'clamp(4rem, 14vw, 9rem)' }}
-            >
-              {matchData.myName}
-            </h3>
-          </div>
-        </fieldset>
+        {/* Own identification image (full-width, no box) */}
+        <GeometricIdentification
+          matchId={matchData.matchId}
+          number={matchData.myIdentificationNumber}
+          className="rounded-lg shadow-lg w-full block"
+        />
+        <div className="flex flex-col items-center justify-center mt-8">
+          <h3
+            className="font-bold text-foreground leading-tight break-words w-full text-center"
+            style={{ fontSize: 'clamp(4rem, 14vw, 9rem)' }}
+          >
+            {matchData.myName}
+          </h3>
+        </div>
 
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
-          <legend className="px-3 text-xl text-muted-foreground">Look for</legend>
-          <div className="space-y-6">
-            {matchData.partners.map((partner) => (
-              <div key={partner.id} className="text-center">
-                <h2
-                  className="font-bold leading-tight"
-                  style={{ fontSize: 'clamp(3rem, 10vw, 6rem)' }}
-                >{partner.firstName}</h2>
-                <p
-                  className={`text-lg mt-3 ${
-                    partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
-                  }`}
-                >
-                  {partner.isCheckedIn ? 'Already at the meeting point ✓' : 'On the way...'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </fieldset>
+        {/* Divider */}
+        <hr className="my-12 border-t border-border" />
 
+        {/* Find-your-match headline */}
+        <h2 className="text-3xl sm:text-4xl font-bold mb-8">
+          {matchData.partners.length === 1 ? 'Find your match!' : 'Find your matches!'}
+        </h2>
+
+        {/* One combined box per partner: thumbnail + name + status + number picker */}
         {matchData.partners.map((partner) => {
           const options = getOptionsForPartner(partner);
           const isWrongGuess = wrongGuessPartnerId === partner.id;
           return (
             <fieldset
               key={partner.id}
-              className={`mb-12 border-2 rounded-2xl px-8 py-10 transition-colors ${
+              className={`mb-8 border-2 rounded-2xl px-4 sm:px-8 py-8 transition-colors ${
                 isWrongGuess ? 'border-red-400 bg-red-50' : 'border-border'
               }`}
             >
-              <legend className="px-3 text-xl text-muted-foreground">
-                To confirm meeting select
-              </legend>
-              <h2 className="text-3xl font-bold mb-2">{partner.firstName}'s number</h2>
-              {isWrongGuess && (
+              {/* Partner header: small matching image + name */}
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <GeometricIdentification
+                  matchId={matchData.matchId}
+                  className="rounded-lg shadow w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0"
+                />
+                <h3
+                  className="font-bold leading-tight break-words"
+                  style={{ fontSize: 'clamp(2.5rem, 9vw, 5rem)' }}
+                >
+                  {partner.firstName}
+                </h3>
+              </div>
+
+              <p
+                className={`text-base mb-8 ${
+                  partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
+                }`}
+              >
+                {partner.isCheckedIn ? 'Already at the meeting point ✓' : 'On the way...'}
+              </p>
+
+              {/* Prompt */}
+              <p className="text-xl font-semibold mb-2">
+                Select {partner.firstName}'s number to confirm
+              </p>
+              {isWrongGuess ? (
                 <p className="text-red-600 font-medium mb-6">
                   Wrong number! Your partner got a new number — look again!
                 </p>
+              ) : (
+                <div className="mb-6" />
               )}
-              {!isWrongGuess && <div className="mb-8" />}
-              <div className="flex items-center justify-center gap-6">
+
+              {/* Candidate numbers — rendered as the same match image shape */}
+              <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
                 {options.map((num) => (
                   <button
                     key={num}
                     onClick={() => onNumberSelect(partner.id, num)}
                     disabled={isSubmitting}
-                    className="w-24 h-24 rounded-full border-2 border-border bg-background hover:bg-accent hover:border-foreground transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label={`Select ${num}`}
                   >
-                    <span className="text-4xl font-bold">{num}</span>
+                    <GeometricIdentification
+                      matchId={matchData.matchId}
+                      number={num}
+                      className="block w-24 h-24 sm:w-28 sm:h-28"
+                    />
                   </button>
                 ))}
               </div>

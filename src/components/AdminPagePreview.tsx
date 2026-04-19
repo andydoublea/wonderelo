@@ -1381,8 +1381,22 @@ function PreviewRoundForm() {
 // Main component
 // ============================================================
 
+const ACTIVE_PAGE_STORAGE_KEY = 'admin_page_preview_active';
+
 export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
-  const [activePage, setActivePage] = useState<PreviewPage>('participant-dashboard');
+  // Remember the last-viewed preview across refreshes. Default to the lightest
+  // possible page ('meeting-point') so a first-ever visit loads fast.
+  const [activePage, setActivePageState] = useState<PreviewPage>(() => {
+    try {
+      const saved = localStorage.getItem(ACTIVE_PAGE_STORAGE_KEY);
+      if (saved && PREVIEW_PAGES.some(p => p.id === saved)) return saved as PreviewPage;
+    } catch { /* ignore */ }
+    return 'meeting-point';
+  });
+  const setActivePage = (page: PreviewPage) => {
+    setActivePageState(page);
+    try { localStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, page); } catch { /* ignore */ }
+  };
 
   const renderPreview = () => {
     switch (activePage) {
