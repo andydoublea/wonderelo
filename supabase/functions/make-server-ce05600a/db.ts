@@ -523,6 +523,10 @@ function mapParticipantFromDb(data: any) {
     lastName: data.last_name,
     phone: data.phone,
     phoneCountry: data.phone_country,
+    linkedinUrl: data.linkedin_url || null,
+    instagramUrl: data.instagram_url || null,
+    websiteUrl: data.website_url || null,
+    otherSocial: data.other_social || null,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -588,6 +592,10 @@ export async function updateParticipant(id: string, updates: Partial<{
   lastName: string;
   phone: string;
   phoneCountry: string;
+  linkedinUrl: string | null;
+  instagramUrl: string | null;
+  websiteUrl: string | null;
+  otherSocial: string | null;
 }>) {
   const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
   if (updates.email !== undefined) dbUpdates.email = updates.email.toLowerCase().trim();
@@ -596,6 +604,10 @@ export async function updateParticipant(id: string, updates: Partial<{
   if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
   if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
   if (updates.phoneCountry !== undefined) dbUpdates.phone_country = updates.phoneCountry;
+  if (updates.linkedinUrl !== undefined) dbUpdates.linkedin_url = updates.linkedinUrl;
+  if (updates.instagramUrl !== undefined) dbUpdates.instagram_url = updates.instagramUrl;
+  if (updates.websiteUrl !== undefined) dbUpdates.website_url = updates.websiteUrl;
+  if (updates.otherSocial !== undefined) dbUpdates.other_social = updates.otherSocial;
 
   const { error } = await db()
     .from('participants')
@@ -925,6 +937,12 @@ export async function getMatchParticipants(matchId: string) {
     firstName: r.participants?.first_name,
     lastName: r.participants?.last_name,
     email: r.participants?.email,
+    phone: r.participants?.phone,
+    phoneCountry: r.participants?.phone_country,
+    linkedinUrl: r.participants?.linkedin_url,
+    instagramUrl: r.participants?.instagram_url,
+    websiteUrl: r.participants?.website_url,
+    otherSocial: r.participants?.other_social,
     team: r.team,
     topics: r.topics,
     identificationNumber: r.identification_number,
@@ -1144,13 +1162,24 @@ export async function setContactSharing(matchId: string, participantId: string, 
 export async function getAllContactSharingForMatch(matchId: string) {
   const { data, error } = await db()
     .from('contact_sharing')
-    .select('participant_id, preferences')
+    .select('participant_id, preferences, updated_at, email_sent_at')
     .eq('match_id', matchId);
   if (error) throw error;
   return (data || []).map(row => ({
     participantId: row.participant_id,
     preferences: row.preferences,
+    updatedAt: row.updated_at,
+    emailSentAt: row.email_sent_at,
   }));
+}
+
+export async function markContactSharingEmailSent(matchId: string, participantId: string) {
+  const { error } = await db()
+    .from('contact_sharing')
+    .update({ email_sent_at: new Date().toISOString() })
+    .eq('match_id', matchId)
+    .eq('participant_id', participantId);
+  if (error) throw error;
 }
 
 // ============================================================

@@ -35,8 +35,12 @@ export function SessionDetailCard({
   })();
 
   const formatDateTime = (date: string, time: string) => {
-    if (!date || !time) return 'Date and time to be determined';
-    const sessionDate = new Date(`${date}T${time}`);
+    // Fallback to first round's date/startTime if session top-level values are missing
+    const effectiveDate = date || session.rounds?.[0]?.date || '';
+    const effectiveTime = time || session.rounds?.[0]?.startTime || '';
+    if (!effectiveDate || !effectiveTime) return 'Date and time to be determined';
+    const sessionDate = new Date(`${effectiveDate}T${effectiveTime}`);
+    if (isNaN(sessionDate.getTime())) return 'Date and time to be determined';
     return sessionDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -99,10 +103,14 @@ export function SessionDetailCard({
 
   const formatRegistrationStart = (registrationStart?: string, status?: NetworkingSession['status']) => {
     // If draft, no registration start configured yet
-    if (status === 'draft' || !registrationStart) {
+    if (status === 'draft') {
       return 'Not configured';
     }
-    
+    // Published/scheduled sessions: if no registrationStart, registration is already open
+    if (!registrationStart) {
+      return 'Open now';
+    }
+
     const regDate = new Date(registrationStart);
     
     // Helper to format date with relative days (yesterday, today, tomorrow)

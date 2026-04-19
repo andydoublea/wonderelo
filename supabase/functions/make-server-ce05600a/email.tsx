@@ -136,6 +136,52 @@ export function buildRegistrationEmail(params: {
 /**
  * Generate magic link email HTML
  */
+/**
+ * Email sent after contacts are mutually exchanged between two participants.
+ */
+export function buildContactSharedEmail(params: {
+  recipientFirstName: string;
+  partnerFirstName: string;
+  partnerLastName: string;
+  eventName: string;
+  addressBookUrl: string;
+}): { subject: string; html: string } {
+  const { recipientFirstName, partnerFirstName, partnerLastName, eventName, addressBookUrl } = params;
+
+  const subject = `You and ${partnerFirstName} exchanged contacts on Wonderelo`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;">
+  <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h1 style="font-size: 24px; margin: 0 0 8px 0;">You have a new contact! 🎉</h1>
+    <p style="color: #666; margin: 0 0 24px 0;">Hi ${recipientFirstName},</p>
+
+    <p style="margin: 0 0 16px 0;">You and <strong>${partnerFirstName} ${partnerLastName}</strong> both agreed to share contacts after your conversation at <strong>${eventName || 'the networking event'}</strong>.</p>
+
+    <p style="margin: 0 0 24px 0;">Their contact details are now in your Wonderelo address book.</p>
+
+    <a href="${addressBookUrl}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Open address book</a>
+
+    <p style="margin: 24px 0 0 0; color: #888; font-size: 13px;">
+      Have a great connection!
+    </p>
+  </div>
+
+  <p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">
+    Sent by Wonderelo · Networking made simple
+  </p>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
 export function buildMagicLinkEmail(params: {
   firstName?: string;
   magicLink: string;

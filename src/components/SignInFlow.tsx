@@ -30,6 +30,255 @@ interface SignInFlowProps {
   onSwitchToSignUp: () => void;
 }
 
+// ============================================================
+// Pure view component (shared with AdminPagePreview)
+// Main success-path view: Participant + Organizer tabs.
+// Forgot-password, email-sent, and quick-test sub-views
+// remain inside the container (not previewed).
+// ============================================================
+
+export interface SignInFlowViewProps {
+  activeTab: 'participant' | 'organizer';
+  onTabChange: (tab: 'participant' | 'organizer') => void;
+  // organizer form
+  email: string;
+  password: string;
+  showPassword: boolean;
+  isLoading: boolean;
+  error: string;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onToggleShowPassword: () => void;
+  onSubmit: (e?: React.FormEvent) => void;
+  onForgotPassword: () => void;
+  // participant form
+  participantEmail: string;
+  participantLoading: boolean;
+  participantError: string;
+  onParticipantEmailChange: (value: string) => void;
+  onParticipantSubmit: (e: React.FormEvent) => void;
+  // nav
+  onBack: () => void;
+  onSwitchToSignUp: () => void;
+  isFormValid: boolean;
+}
+
+export function SignInFlowView({
+  activeTab,
+  onTabChange,
+  email,
+  password,
+  showPassword,
+  isLoading,
+  error,
+  onEmailChange,
+  onPasswordChange,
+  onToggleShowPassword,
+  onSubmit,
+  onForgotPassword,
+  participantEmail,
+  participantLoading,
+  participantError,
+  onParticipantEmailChange,
+  onParticipantSubmit,
+  onBack,
+  onSwitchToSignUp,
+  isFormValid,
+}: SignInFlowViewProps) {
+  return (
+    <div className="min-h-screen bg-background">
+      <nav className="border-b border-border">
+        <div className="container mx-auto max-w-6xl px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-8">
+              <h2 className="text-primary wonderelo-logo cursor-pointer" onClick={onBack}>Wonderelo</h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" onClick={onBack}>Back to home</Button>
+              <Button onClick={onSwitchToSignUp}>Sign up</Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <h1 className="mb-2">Sign in</h1>
+            <p className="text-muted-foreground">Access your networking rounds</p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sign in as</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeTab} className="w-full" onValueChange={(value) => onTabChange(value as 'participant' | 'organizer')}>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="participant" className="gap-2">
+                    <UserCircle className="h-4 w-4" />
+                    Participant
+                  </TabsTrigger>
+                  <TabsTrigger value="organizer" className="gap-2">
+                    <Mic className="h-4 w-4" />
+                    Organizer
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="participant" className="space-y-6">
+                  <form onSubmit={onParticipantSubmit} className="space-y-6">
+                    {participantError && (
+                      <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <X className="h-4 w-4 text-destructive" />
+                        <p className="text-sm text-destructive">{participantError}</p>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor="participantEmail">Email address</Label>
+                      <Input
+                        id="participantEmail"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={participantEmail}
+                        onChange={(e) => onParticipantEmailChange(e.target.value)}
+                        disabled={participantLoading}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        We'll send you a magic link to access your rounds
+                      </p>
+                    </div>
+                    <div className="flex justify-between pt-4">
+                      <Button type="button" variant="outline" onClick={onBack} disabled={participantLoading}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back
+                      </Button>
+                      <Button type="submit" disabled={!participantEmail || participantLoading}>
+                        {participantLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Sending link...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send magic link
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="organizer" className="space-y-6">
+                  <form onSubmit={onSubmit} className="space-y-6">
+                    {error && (
+                      <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <X className="h-4 w-4 text-destructive" />
+                        <p className="text-sm text-destructive">{error}</p>
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="your@email.com"
+                          value={email}
+                          onChange={(e) => onEmailChange(e.target.value)}
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="password">Password</Label>
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto text-sm font-normal text-primary"
+                            onClick={onForgotPassword}
+                            disabled={isLoading}
+                            type="button"
+                          >
+                            Forgot password?
+                          </Button>
+                        </div>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Enter your password"
+                            value={password}
+                            onChange={(e) => onPasswordChange(e.target.value)}
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={onToggleShowPassword}
+                            disabled={isLoading}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between pt-4">
+                      <Button type="button" variant="outline" onClick={onBack} disabled={isLoading}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back
+                      </Button>
+                      <Button type="submit" disabled={!isFormValid || isLoading}>
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Signing in...
+                          </>
+                        ) : (
+                          'Sign in'
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          <div className="text-center mt-6">
+            {activeTab === 'participant' ? (
+              <p className="text-sm text-muted-foreground">
+                Are you an organizer?{' '}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto font-normal text-primary"
+                  onClick={() => onTabChange('organizer')}
+                  disabled={isLoading || participantLoading}
+                >
+                  Sign in here
+                </Button>
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Need to create an organizer account?{' '}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto font-normal text-primary"
+                  onClick={onSwitchToSignUp}
+                  disabled={isLoading || participantLoading}
+                >
+                  Sign up for free
+                </Button>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowProps) {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);

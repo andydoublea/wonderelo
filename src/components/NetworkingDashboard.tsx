@@ -59,15 +59,21 @@ export function NetworkingDashboard({
   // This avoids timing issues with sessions loading
   const [showSuccessPage, setShowSuccessPage] = useState(() => {
     const stored = sessionStorage.getItem('wonderelo_success_session');
+    console.log('🎉 [NetworkingDashboard] useState init — sessionStorage:', stored ? `YES (${stored.substring(0, 50)}...)` : 'EMPTY');
     return !!stored;
   });
   const [lastCreatedSession, setLastCreatedSession] = useState<NetworkingSession | null>(() => {
     const stored = sessionStorage.getItem('wonderelo_success_session');
     if (stored) {
       try {
+        const parsed = JSON.parse(stored) as NetworkingSession;
         sessionStorage.removeItem('wonderelo_success_session');
-        return JSON.parse(stored) as NetworkingSession;
-      } catch { return null; }
+        console.log('🎉 [NetworkingDashboard] Parsed success session:', parsed?.name, 'id:', parsed?.id);
+        return parsed;
+      } catch (e) {
+        console.error('🎉 [NetworkingDashboard] Failed to parse sessionStorage:', e);
+        return null;
+      }
     }
     return null;
   });
@@ -75,6 +81,7 @@ export function NetworkingDashboard({
   const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc'>('date-desc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -389,8 +396,6 @@ export function NetworkingDashboard({
   }
 
   // Main list view
-  const [showFilters, setShowFilters] = useState(false);
-
   return (
     <div>
       <div className="mb-6">

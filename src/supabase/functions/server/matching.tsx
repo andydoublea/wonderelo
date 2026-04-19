@@ -358,7 +358,10 @@ export async function createMatchesForRound(sessionId: string, roundId: string) 
       }
     }
 
-    return { success: false, error: 'Matching failed', details: error instanceof Error ? error.message : String(error) };
+    const errorDetails = error instanceof Error
+      ? error.message
+      : (typeof error === 'object' ? JSON.stringify(error) : String(error));
+    return { success: false, error: 'Matching failed', details: errorDetails };
   }
 }
 

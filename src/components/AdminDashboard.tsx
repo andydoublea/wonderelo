@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact, Languages } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact, Languages, Zap } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -160,6 +160,14 @@ const adminTools = [
     description: 'Preview public-facing pages',
     icon: Eye,
     route: '/admin/page-preview',
+    category: 'settings',
+  },
+  {
+    id: 'system-tests',
+    title: 'System Tests',
+    description: 'Run E2E tests for matching flow',
+    icon: Zap,
+    route: '/admin/system-tests',
     category: 'settings',
   },
   {

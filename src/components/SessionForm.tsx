@@ -49,6 +49,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
   const [availableIceBreakers, setAvailableIceBreakers] = useState<string[]>([]);
   const [systemParams, setSystemParams] = useState<SystemParameters | null>(null);
   const [useCustomTimes, setUseCustomTimes] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCreditDialog, setShowCreditDialog] = useState(false);
   const [creditCheckLoading, setCreditCheckLoading] = useState(false);
   const [creditInfo, setCreditInfo] = useState<{
@@ -371,7 +372,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     return true;
   };
 
-  const handleSaveDraft = (e: React.FormEvent) => {
+  const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -394,7 +395,12 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       registrationStart: undefined
     };
 
-    onSubmit(sessionData);
+    setIsSubmitting(true);
+    try {
+      await Promise.resolve(onSubmit(sessionData));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleMakeLive = async (e: React.FormEvent) => {
@@ -555,7 +561,12 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     const isFreeEvent = maxParticipants <= 5;
 
     if (isAlreadyLive || isFreeEvent) {
-      onSubmit(sessionData);
+      setIsSubmitting(true);
+      try {
+        await Promise.resolve(onSubmit(sessionData));
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -1824,10 +1835,11 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           </Button>
         )}
         <div className="flex gap-3">
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             variant="outline"
             onClick={handleSaveDraft}
+            disabled={isSubmitting}
           >
             Save as draft
           </Button>
@@ -1836,9 +1848,16 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
               type="button"
               onClick={handleMakeLive}
               className="rounded-r-none btn-group-left"
-              disabled={!!roundDurationError}
+              disabled={!!roundDurationError || isSubmitting}
             >
-              {formData.status === 'published' ? 'Update on event page' : 'Publish to event page'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                formData.status === 'published' ? 'Update on event page' : 'Publish to event page'
+              )}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

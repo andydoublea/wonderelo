@@ -26,6 +26,11 @@ Always double-check `--project-ref` before running any Supabase CLI commands.
 - Before committing, ALWAYS ask the user which branch to commit to. Never assume the branch — wait for explicit confirmation (e.g. "commit to development", "commit to staging").
 - When pushing to `main`, ALWAYS also deploy edge functions to production (`npm run deploy:edge:prod`) — they don't auto-deploy. Frontend auto-deploys via Vercel, but edge functions require manual deployment.
 - When the user uploads files (images, assets, etc.), ALWAYS copy them into the project directory (e.g. `public/`) before referencing them. Never link directly to the upload location (e.g. `~/Downloads/`) — those files may be deleted at any time.
+- **NEVER ask the user to do Supabase or Vercel admin tasks** (generate tokens, change settings, etc.) — do it yourself via Chrome browser automation or CLI. Use `mcp__Control_Chrome__` tools to navigate Supabase Dashboard, Vercel Dashboard, etc.
+- **Wonderelo and Blanc Brain use DIFFERENT Supabase accounts.** When generating tokens or deploying, always verify you're logged into the correct Supabase account (check which projects are listed). The Wonderelo staging project (`dqoybysbooxngrsxaekd`) is NOT on the same account as Blanc Brain.
+- **ALWAYS verify correct account before any Supabase/Vercel action.** Before generating tokens, deploying, or changing settings: call the Management API (`GET https://api.supabase.com/v1/projects`) or take a screenshot of the dashboard to confirm the correct projects are visible. For Wonderelo, you must see `tpsgnnrkwgvgnsktuicr` (prod) and/or `dqoybysbooxngrsxaekd` (staging) in the project list.
+- **NEVER put secrets (tokens, API keys, passwords) into any tracked file** (`package.json`, `CLAUDE.md`, any `.ts`/`.tsx`, etc.). All secrets live in `.env` (gitignored). Deploy scripts must read from `.env`, never inline. GitHub Secret Scanning will flag and require rotation of any leaked secret — treat a leaked secret as already compromised and rotate immediately.
+- **Version bumping + reporting.** Before committing user-facing frontend changes: bump `APP_VERSION` in `src/utils/version.tsx` (semver — patch for fixes, minor for features). After every deploy, report the full version (e.g. `v1.2.0 · 260420-1930`) back to the user in chat so they can verify which version is live. Admin users see this version as a fixed badge in the bottom-right corner on every page — if the badge doesn't match the reported version, the deploy hasn't propagated or the user needs a hard refresh.
 
 ---
 
@@ -53,10 +58,13 @@ development → staging → main
 
 ## Credentials
 
-### Supabase Access Token (shared across projects)
-```
-sbp_51f34546525c1b8af7b92f86f7c42bd557dbea4a
-```
+### Supabase Access Token (Wonderelo account only — NOT shared with Blanc Brain)
+Stored in `.env` (gitignored) as `SUPABASE_ACCESS_TOKEN=sbp_...`. Deploy scripts
+(`npm run deploy:edge:dev` / `deploy:edge:prod`) load it via `scripts/deploy-edge.sh`.
+**Never commit the token into package.json, CLAUDE.md, or any tracked file** —
+GitHub Secret Scanning will flag it and the token must be rotated.
+If the token stops working: visit https://supabase.com/dashboard/account/tokens,
+generate a new one, and update `.env` only.
 
 ### Production Supabase
 - **Project ref:** `tpsgnnrkwgvgnsktuicr`

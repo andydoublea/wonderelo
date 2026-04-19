@@ -26,7 +26,7 @@ import {
 import { debugLog, errorLog } from '../utils/debug';
 import { useTime } from '../contexts/TimeContext';
 
-interface Registration {
+export interface Registration {
   roundId: string;
   sessionId: string;
   sessionName: string;
@@ -53,10 +53,435 @@ interface Registration {
   identificationImageUrl?: string;
 }
 
-interface SessionWithRounds {
+export interface SessionWithRounds {
   session: NetworkingSession;
   registeredRoundIds: Set<string>;
   registrationStatusMap?: Map<string, string>; // roundId -> status
+}
+
+// ============================================================
+// Pure view component (shared with AdminPagePreview)
+// ============================================================
+
+export interface ParticipantDashboardViewProps {
+  firstName: string;
+  lastName: string;
+  upcomingSessions: SessionWithRounds[];
+  pastSessions: SessionWithRounds[];
+  registrations: Registration[];
+  sharedContactsByRound: Map<string, { firstName: string; lastName: string }[]>;
+  roundSelections: Map<string, { team?: string; topic?: string; topics?: string[] }>;
+  participantId: string;
+  globalNextUpcomingRoundId: string | null;
+  hasFreshData: boolean;
+  lastConfirmTimestamp: number;
+  token?: string;
+  // Dialog state
+  showMeetingPoints: boolean;
+  selectedSessionForDialog: NetworkingSession | null;
+  showRoundRules: boolean;
+  roundRules: RoundRule[];
+  showUnregisterDialog: boolean;
+  pendingUnregister: { session: NetworkingSession; round: Round; status?: string } | null;
+  // Debug
+  showDebug: boolean;
+  debugLogs: string[];
+  // Handlers
+  onAddMoreRoundsNavigate: (slug: string) => void;
+  onAddressBookNavigate: () => void;
+  onSetShowMeetingPoints: (open: boolean) => void;
+  onSetShowRoundRules: (open: boolean) => void;
+  onSetShowUnregisterDialog: (open: boolean) => void;
+  onCancelUnregister: () => void;
+  onConfirmUnregister: () => void;
+  onRoundToggle: (session: NetworkingSession, round: Round, isCurrentlyRegistered: boolean, status?: string) => void;
+  onConfirmAttendance: (roundId: string) => void;
+  onConfirmationWindowExpired: () => void;
+  onClearDebugLogs: () => void;
+  generateRoundTimeDisplay: (startTime: string, duration: number) => string;
+  isRoundCompleted: (session: NetworkingSession, round: Round, roundStatus?: string) => boolean;
+}
+
+export function ParticipantDashboardView({
+  firstName,
+  lastName,
+  upcomingSessions,
+  pastSessions,
+  registrations,
+  sharedContactsByRound,
+  roundSelections,
+  participantId,
+  globalNextUpcomingRoundId,
+  hasFreshData,
+  lastConfirmTimestamp,
+  showMeetingPoints,
+  selectedSessionForDialog,
+  showRoundRules,
+  roundRules,
+  showUnregisterDialog,
+  pendingUnregister,
+  showDebug,
+  debugLogs,
+  onAddMoreRoundsNavigate,
+  onAddressBookNavigate,
+  onSetShowMeetingPoints,
+  onSetShowRoundRules,
+  onSetShowUnregisterDialog,
+  onCancelUnregister,
+  onConfirmUnregister,
+  onRoundToggle,
+  onConfirmAttendance,
+  onConfirmationWindowExpired,
+  onClearDebugLogs,
+  generateRoundTimeDisplay,
+  isRoundCompleted: _isRoundCompleted,
+}: ParticipantDashboardViewProps) {
+  return (
+    <ParticipantLayout
+      firstName={firstName}
+      lastName={lastName}
+    >
+      <div className="space-y-8 max-w-md mx-auto text-center">
+        {/* Upcoming section */}
+        <div>
+          <h2 className="mb-4">Upcoming rounds</h2>
+          <div className="space-y-4">
+            {upcomingSessions.map(({ session, registeredRoundIds, registrationStatusMap }) => {
+              const organizerReg = registrations.find(r => r.sessionId === session.id);
+
+              return (
+                <Card key={session.id} className="transition-all hover:border-muted-foreground/20 max-w-md">
+                  <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex-1">
+                        <h3 className="mb-2 text-left">
+                          {organizerReg?.organizerName || 'Unknown organizer'}
+                        </h3>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{session.name}</Badge>
+                          {organizerReg?.organizerUrlSlug && (
+                            <span className="text-xs text-muted-foreground">#{organizerReg.organizerUrlSlug}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {session.date ? new Date(session.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            }) : 'Date to be set'}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {session.roundDuration} min rounds
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                      <Users className="h-4 w-4" />
+                      {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
+                    </div>
+
+                    {session.rounds && session.rounds.length > 0 && (() => {
+                      const registeredRounds = session.rounds.filter(round => {
+                        const isCompleted = _isRoundCompleted(session, round);
+                        const isRegistered = registeredRoundIds.has(round.id);
+                        return !isCompleted && isRegistered;
+                      });
+
+                      if (registeredRounds.length === 0) return null;
+
+                      return (
+                        <div className="mt-3">
+                          <div className="space-y-2">
+                            {registeredRounds.map((round) => {
+                              const roundSelectionData = roundSelections.get(round.id) || {};
+                              const roundKey = `${session.id}:${round.id}`;
+                              const currentStatus = registrationStatusMap?.get(round.id);
+
+                              const roundRegistration = registrations.find(r => r.roundId === round.id && r.sessionId === session.id);
+
+                              const shouldShowUnregisterButton = ['registered', 'confirmed'].includes(currentStatus || '');
+
+                              return (
+                                <RoundItem
+                                  key={round.id}
+                                  round={round}
+                                  session={session}
+                                  isRegistered={true}
+                                  participantStatus={currentStatus}
+                                  participantId={participantId}
+                                  showUnregisterButton={shouldShowUnregisterButton}
+                                  onUnregister={() => onRoundToggle(session, round, true, currentStatus)}
+                                  generateRoundTimeDisplay={generateRoundTimeDisplay}
+                                  selectedTeam={roundSelectionData.team}
+                                  selectedTopic={roundSelectionData.topic}
+                                  selectedTopics={roundSelectionData.topics}
+                                  isNextUpcoming={roundKey === globalNextUpcomingRoundId}
+                                  onConfirmAttendance={onConfirmAttendance}
+                                  lastConfirmTimestamp={lastConfirmTimestamp}
+                                  onConfirmationWindowExpired={onConfirmationWindowExpired}
+                                  matchDetails={roundRegistration?.matchId ? {
+                                    matchId: roundRegistration.matchId,
+                                    matchPartnerNames: roundRegistration.matchPartnerNames || [],
+                                    meetingPointId: roundRegistration.meetingPointId,
+                                    identificationImageUrl: roundRegistration.identificationImageUrl
+                                  } : undefined}
+                                  registeredCount={round.registeredCount}
+                                  showDuration={true}
+                                  hasFreshData={hasFreshData}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {organizerReg?.organizerUrlSlug && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 w-full"
+                        onClick={() => onAddMoreRoundsNavigate(organizerReg.organizerUrlSlug)}
+                      >
+                        + Add more rounds
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {upcomingSessions.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                {registrations.length === 0 ? (
+                  <>
+                    <p className="mb-2">You don't have any registrations yet.</p>
+                    <p className="text-sm">Register for rounds via an event page to see them here.</p>
+                  </>
+                ) : (
+                  <p>No upcoming rounds</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Completed section */}
+        <div>
+          <h2 className="mb-4">Completed rounds</h2>
+          <div className="space-y-4">
+            {[...pastSessions].sort((a, b) => {
+              const getLatestRoundTime = (s: typeof a) => {
+                let latest = 0;
+                for (const round of s.session.rounds || []) {
+                  if (!s.registeredRoundIds.has(round.id)) continue;
+                  try {
+                    const [h, m] = (round.startTime || '').split(':').map(Number);
+                    const d = new Date(round.date || s.session.date || '');
+                    d.setHours(h, m, 0, 0);
+                    if (d.getTime() > latest) latest = d.getTime();
+                  } catch { /* skip */ }
+                }
+                return latest;
+              };
+              return getLatestRoundTime(b) - getLatestRoundTime(a);
+            }).map(({ session, registeredRoundIds, registrationStatusMap }) => {
+              const organizerReg = registrations.find(r => r.sessionId === session.id);
+
+              return (
+                <Card key={session.id} className="transition-all hover:border-muted-foreground/20 opacity-60 max-w-md">
+                  <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px] text-left">
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex-1 text-left">
+                        <h3 className="mb-2 text-left">
+                          {organizerReg?.organizerName || 'Unknown organizer'}
+                        </h3>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{session.name}</Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {session.date ? new Date(session.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            }) : 'Date to be set'}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {session.roundDuration} min rounds
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                      <Users className="h-4 w-4" />
+                      {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
+                    </div>
+
+                    {session.rounds && session.rounds.length > 0 && (() => {
+                      const registeredRounds = session.rounds.filter(round => {
+                        const roundStatus = registrationStatusMap?.get(round.id);
+                        return _isRoundCompleted(session, round, roundStatus) && registeredRoundIds.has(round.id);
+                      });
+
+                      if (registeredRounds.length === 0) return null;
+
+                      return (
+                        <div className="mt-3">
+                          <div className="space-y-2">
+                            {[...registeredRounds].reverse().map((round) => {
+                              const status = registrationStatusMap?.get(round.id);
+                              const roundContacts = sharedContactsByRound.get(round.id);
+
+                              return (
+                                <div
+                                  key={round.id}
+                                  className="border rounded border-muted p-2"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium">{round.name}</span>
+                                      {status && (
+                                        <ParticipantStatusBadge status={status} />
+                                      )}
+                                    </div>
+                                    {roundContacts && roundContacts.length > 0 && (
+                                      <div className="flex items-center gap-2">
+                                        {roundContacts.map((contact, i) => (
+                                          <button
+                                            key={i}
+                                            onClick={onAddressBookNavigate}
+                                            className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                                          >
+                                            <BookUser className="h-3 w-3" />
+                                            {contact.firstName} {contact.lastName}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {organizerReg?.organizerUrlSlug && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 w-full"
+                        onClick={() => onAddMoreRoundsNavigate(organizerReg.organizerUrlSlug)}
+                      >
+                        + Add more rounds
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {pastSessions.length === 0 && (
+              <Card className="transition-all max-w-md">
+                <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No completed rounds</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <MeetingPointsDialog
+        open={showMeetingPoints}
+        onOpenChange={onSetShowMeetingPoints}
+        meetingPoints={selectedSessionForDialog?.meetingPoints}
+      />
+
+      <RoundRulesDialog
+        open={showRoundRules}
+        onOpenChange={onSetShowRoundRules}
+        rules={roundRules}
+      />
+
+      <AlertDialog open={showUnregisterDialog} onOpenChange={onSetShowUnregisterDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm unregistration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unregister from{' '}
+              <span className="font-medium">{pendingUnregister?.round.name}</span>
+              {pendingUnregister?.session.name && (
+                <>
+                  {' '}in <span className="font-medium">{pendingUnregister.session.name}</span>
+                </>
+              )}
+              {pendingUnregister?.session.date && (
+                <>
+                  {' '}on{' '}
+                  <span className="font-medium">
+                    {new Date(pendingUnregister.session.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </span>
+                </>
+              )}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={onCancelUnregister}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={onConfirmUnregister}>
+              Unregister
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {showDebug && (
+        <div className="fixed bottom-0 right-0 w-1/3 h-1/2 bg-black text-green-400 font-mono text-xs overflow-auto p-4 border-l border-t border-green-400 z-50">
+          <div className="flex justify-between items-center mb-2 sticky top-0 bg-black pb-2">
+            <div className="font-bold">🐛 DEBUG LOGS</div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onClearDebugLogs}
+              className="h-6 px-2 text-green-400 hover:text-green-300"
+            >
+              Clear
+            </Button>
+          </div>
+          <div className="space-y-1">
+            {debugLogs.map((log, i) => (
+              <div key={i} className={log.includes('[ERROR]') ? 'text-red-400' : ''}>
+                {log}
+              </div>
+            ))}
+            {debugLogs.length === 0 && (
+              <div className="text-muted-foreground">No logs yet. Perform actions to see debug output.</div>
+            )}
+          </div>
+        </div>
+      )}
+    </ParticipantLayout>
+  );
 }
 
 export function ParticipantDashboard() {
@@ -1227,391 +1652,43 @@ export function ParticipantDashboard() {
   }) || registrations[0];
 
   return (
-    <ParticipantLayout
+    <ParticipantDashboardView
       firstName={firstName}
       lastName={lastName}
-    >
-      <div className="space-y-8 max-w-md mx-auto text-center">
-        {/* Upcoming section */}
-        <div>
-          <h2 className="mb-4">Upcoming rounds</h2>
-          <div className="space-y-4">
-            {(() => {
-              debugLog('[RENDER_UPCOMING] upcomingSessions.length:', upcomingSessions.length);
-              debugLog('[RENDER_UPCOMING] sessions.length:', sessions.length);
-              debugLog('[RENDER_UPCOMING] registrations.length:', registrations.length);
-              
-              if (upcomingSessions.length === 0) {
-                debugLog('[RENDER_UPCOMING] ❌ NO UPCOMING SESSIONS');
-                debugLog('[RENDER_UPCOMING] All sessions:', sessions.map(s => ({
-                  id: s.session.id,
-                  name: s.session.name,
-                  registeredRounds: Array.from(s.registeredRoundIds)
-                })));
-              }
-              
-              return upcomingSessions.map(({ session, registeredRoundIds, registrationStatusMap }) => {
-                // Get organizer info from first registration
-                const organizerReg = registrations.find(r => r.sessionId === session.id);
-                
-                return (
-                  <Card key={session.id} className="transition-all hover:border-muted-foreground/20 max-w-md">
-                    <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="flex-1">
-                          <h3 className="mb-2 text-left">
-                            {organizerReg?.organizerName || 'Unknown organizer'}
-                          </h3>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline">{session.name}</Badge>
-                            {organizerReg?.organizerUrlSlug && (
-                              <span className="text-xs text-muted-foreground">#{organizerReg.organizerUrlSlug}</span>
-                            )}
-                          </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {session.date ? new Date(session.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric'
-                            }) : 'Date to be set'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {session.roundDuration} min rounds
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                      <Users className="h-4 w-4" />
-                      {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
-                    </div>
-
-                    {/* Rounds Selection - Only show registered upcoming rounds */}
-                    {session.rounds && session.rounds.length > 0 && (() => {
-                      debugLog(`[UPCOMING ROUNDS FILTERING] Session: \"${session.name}\"`);
-                      debugLog(`  - All round IDs in session:`, session.rounds.map((r: any) => r.id));
-                      debugLog(`  - Registered round IDs:`, Array.from(registeredRoundIds));
-                      
-                      const registeredRounds = session.rounds
-                        .filter(round => {
-                          const isCompleted = isRoundCompleted(session, round);
-                          const isRegistered = registeredRoundIds.has(round.id);
-                          debugLog(`  - Round \"${round.name}\" (${round.id}): completed=${isCompleted}, registered=${isRegistered}, willShow=${!isCompleted && isRegistered}`);
-                          return !isCompleted && isRegistered;
-                        });
-                      
-                      debugLog(`  → Showing ${registeredRounds.length} upcoming rounds for session \"${session.name}\"`);
-                      
-                      if (registeredRounds.length === 0) return null;
-
-                      return (
-                        <div className="mt-3">
-                          <div className="space-y-2">
-                            {registeredRounds.map((round) => {
-                              const roundSelectionData = roundSelections.get(round.id) || {};
-                              const roundKey = `${session.id}:${round.id}`; // Define roundKey for isNextUpcoming comparison
-                              const currentStatus = registrationStatusMap?.get(round.id);
-                              
-                              // Get registration to extract match details
-                              const roundRegistration = registrations.find(r => r.roundId === round.id && r.sessionId === session.id);
-                              
-                              // Allow unregister button for all statuses EXCEPT when matching/matched or already met
-                              // This allows participants to unregister even after confirming attendance (before matching starts)
-                              // Allow unregister only from 'registered' or 'confirmed' (before matching)
-                              const shouldShowUnregisterButton = ['registered', 'confirmed'].includes(currentStatus || '');
-                              debugLog(`🔍 [UNREGISTER BUTTON] Round \"${round.name}\": status=\"${currentStatus}\", showButton=${shouldShowUnregisterButton}`);
-                              
-                              return (
-                                <RoundItem
-                                  key={round.id}
-                                  round={round}
-                                  session={session}
-                                  isRegistered={true}
-                                  participantStatus={currentStatus}
-                                  participantId={participantId}
-                                  showUnregisterButton={shouldShowUnregisterButton}
-                                  onUnregister={() => handleRoundToggle(session, round, true, currentStatus)}
-                                  generateRoundTimeDisplay={generateRoundTimeDisplay}
-                                  selectedTeam={roundSelectionData.team}
-                                  selectedTopic={roundSelectionData.topic}
-                                  selectedTopics={roundSelectionData.topics}
-                                  isNextUpcoming={roundKey === globalNextUpcomingRoundId}
-                                  onConfirmAttendance={handleConfirmAttendance}
-                                  lastConfirmTimestamp={lastOptimisticUpdateRef.current}
-                                  onConfirmationWindowExpired={handleConfirmationWindowExpired}
-                                  matchDetails={roundRegistration?.matchId ? {
-                                    matchId: roundRegistration.matchId,
-                                    matchPartnerNames: roundRegistration.matchPartnerNames || [],
-                                    meetingPointId: roundRegistration.meetingPointId,
-                                    identificationImageUrl: roundRegistration.identificationImageUrl
-                                  } : undefined}
-                                  registeredCount={round.registeredCount}
-                                  showDuration={true}
-                                  hasFreshData={hasFreshData}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Link to organizer page to see/add more rounds */}
-                    {organizerReg?.organizerUrlSlug && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 w-full"
-                        onClick={() => navigate(`/${organizerReg.organizerUrlSlug}`)}
-                      >
-                        + Add more rounds
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-                );
-              });
-            })()}
-            
-            {upcomingSessions.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                {registrations.length === 0 ? (
-                  <>
-                    <p className="mb-2">You don't have any registrations yet.</p>
-                    <p className="text-sm">Register for rounds via an event page to see them here.</p>
-                  </>
-                ) : (
-                  <p>No upcoming rounds</p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Completed section */}
-        <div>
-          <h2 className="mb-4">Completed rounds</h2>
-          <div className="space-y-4">
-            {[...pastSessions].sort((a, b) => {
-              // Sort by most recent round start time (freshest first)
-              const getLatestRoundTime = (s: typeof a) => {
-                let latest = 0;
-                for (const round of s.session.rounds || []) {
-                  if (!s.registeredRoundIds.has(round.id)) continue;
-                  try {
-                    const [h, m] = (round.startTime || '').split(':').map(Number);
-                    const d = new Date(round.date || s.session.date || '');
-                    d.setHours(h, m, 0, 0);
-                    if (d.getTime() > latest) latest = d.getTime();
-                  } catch { /* skip */ }
-                }
-                return latest;
-              };
-              return getLatestRoundTime(b) - getLatestRoundTime(a);
-            }).map(({ session, registeredRoundIds, registrationStatusMap }) => {
-              // Get organizer info from first registration
-              const organizerReg = registrations.find(r => r.sessionId === session.id);
-              
-              return (
-                <Card key={session.id} className="transition-all hover:border-muted-foreground/20 opacity-60 max-w-md">
-                  <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1">
-                        <h3 className="mb-2 text-left">
-                          {organizerReg?.organizerName || 'Unknown organizer'}
-                        </h3>
-                        <Badge variant="outline" className="mb-2">{session.name}</Badge>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {session.date ? new Date(session.date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric'
-                          }) : 'Date to be set'}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {session.roundDuration} min rounds
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                    <Users className="h-4 w-4" />
-                    {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
-                  </div>
-
-                  {/* Rounds - Only show registered completed rounds */}
-                  {session.rounds && session.rounds.length > 0 && (() => {
-                    const registeredRounds = session.rounds
-                      .filter(round => {
-                        const roundStatus = registrationStatusMap?.get(round.id);
-                        return isRoundCompleted(session, round, roundStatus) && registeredRoundIds.has(round.id);
-                      });
-                    
-                    if (registeredRounds.length === 0) return null;
-
-                    return (
-                      <div className="mt-3">
-                        <div className="space-y-2">
-                          {[...registeredRounds].reverse().map((round) => {
-                            const status = registrationStatusMap?.get(round.id);
-
-                            const roundContacts = sharedContactsByRound.get(round.id);
-
-                            return (
-                              <div
-                                key={round.id}
-                                className="border rounded border-muted p-2"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium">{round.name}</span>
-                                    {status && (
-                                      <ParticipantStatusBadge status={status} />
-                                    )}
-                                  </div>
-                                  {roundContacts && roundContacts.length > 0 && (
-                                    <div className="flex items-center gap-2">
-                                      {roundContacts.map((contact, i) => (
-                                        <button
-                                          key={i}
-                                          onClick={() => navigate(`/p/${token}/address-book`)}
-                                          className="flex items-center gap-1.5 text-xs text-primary hover:underline"
-                                        >
-                                          <BookUser className="h-3 w-3" />
-                                          {contact.firstName} {contact.lastName}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Link to organizer page to see/add more rounds */}
-                  {organizerReg?.organizerUrlSlug && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3 w-full"
-                      onClick={() => navigate(`/${organizerReg.organizerUrlSlug}`)}
-                    >
-                      + Add more rounds
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-              );
-            })}
-
-            {pastSessions.length === 0 && (
-              <Card className="transition-all max-w-md">
-                <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No completed rounds</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Meeting Points Dialog */}
-      <MeetingPointsDialog
-        open={showMeetingPoints}
-        onOpenChange={setShowMeetingPoints}
-        meetingPoints={selectedSessionForDialog?.meetingPoints}
-      />
-
-      {/* Round Rules Dialog */}
-      <RoundRulesDialog
-        open={showRoundRules}
-        onOpenChange={setShowRoundRules}
-        rules={roundRules}
-      />
-
-      {/* Unregister Confirmation Dialog */}
-      <AlertDialog open={showUnregisterDialog} onOpenChange={setShowUnregisterDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm unregistration</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to unregister from{' '}
-              <span className="font-medium">{pendingUnregister?.round.name}</span>
-              {pendingUnregister?.session.name && (
-                <>
-                  {' '}in <span className="font-medium">{pendingUnregister.session.name}</span>
-                </>
-              )}
-              {pendingUnregister?.session.date && (
-                <>
-                  {' '}on{' '}
-                  <span className="font-medium">
-                    {new Date(pendingUnregister.session.date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </>
-              )}?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowUnregisterDialog(false);
-              setPendingUnregister(null);
-            }}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmUnregister}>
-              Unregister
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Debug Panel - shown when ?debug=true is in URL */}
-      {showDebug && (
-        <div className="fixed bottom-0 right-0 w-1/3 h-1/2 bg-black text-green-400 font-mono text-xs overflow-auto p-4 border-l border-t border-green-400 z-50">
-          <div className="flex justify-between items-center mb-2 sticky top-0 bg-black pb-2">
-            <div className="font-bold">🐛 DEBUG LOGS</div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setDebugLogs([])}
-              className="h-6 px-2 text-green-400 hover:text-green-300"
-            >
-              Clear
-            </Button>
-          </div>
-          <div className="space-y-1">
-            {debugLogs.map((log, i) => (
-              <div key={i} className={log.includes('[ERROR]') ? 'text-red-400' : ''}>
-                {log}
-              </div>
-            ))}
-            {debugLogs.length === 0 && (
-              <div className="text-muted-foreground">No logs yet. Perform actions to see debug output.</div>
-            )}
-          </div>
-        </div>
-      )}
-    </ParticipantLayout>
+      upcomingSessions={upcomingSessions}
+      pastSessions={pastSessions}
+      registrations={registrations}
+      sharedContactsByRound={sharedContactsByRound}
+      roundSelections={roundSelections}
+      participantId={participantId}
+      globalNextUpcomingRoundId={globalNextUpcomingRoundId}
+      hasFreshData={hasFreshData}
+      lastConfirmTimestamp={lastOptimisticUpdateRef.current}
+      token={token}
+      showMeetingPoints={showMeetingPoints}
+      selectedSessionForDialog={selectedSessionForDialog}
+      showRoundRules={showRoundRules}
+      roundRules={roundRules}
+      showUnregisterDialog={showUnregisterDialog}
+      pendingUnregister={pendingUnregister}
+      showDebug={showDebug}
+      debugLogs={debugLogs}
+      onAddMoreRoundsNavigate={(slug) => navigate(`/${slug}`)}
+      onAddressBookNavigate={() => navigate(`/p/${token}/address-book`)}
+      onSetShowMeetingPoints={setShowMeetingPoints}
+      onSetShowRoundRules={setShowRoundRules}
+      onSetShowUnregisterDialog={setShowUnregisterDialog}
+      onCancelUnregister={() => {
+        setShowUnregisterDialog(false);
+        setPendingUnregister(null);
+      }}
+      onConfirmUnregister={confirmUnregister}
+      onRoundToggle={handleRoundToggle}
+      onConfirmAttendance={handleConfirmAttendance}
+      onConfirmationWindowExpired={handleConfirmationWindowExpired}
+      onClearDebugLogs={() => setDebugLogs([])}
+      generateRoundTimeDisplay={generateRoundTimeDisplay}
+      isRoundCompleted={isRoundCompleted}
+    />
   );
 }

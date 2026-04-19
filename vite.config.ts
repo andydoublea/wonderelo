@@ -3,7 +3,14 @@
   import react from '@vitejs/plugin-react-swc';
   import path from 'path';
 
+  // Build timestamp injected at build time so every deploy has a unique, sortable ID
+  const BUILD_TIME = new Date().toISOString();
+
   export default defineConfig({
+    define: {
+      // Exposes __APP_BUILD_TIME__ as a global string in the compiled bundle
+      __APP_BUILD_TIME__: JSON.stringify(BUILD_TIME),
+    },
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
