@@ -54,7 +54,7 @@ export function MatchInfoMatchedView({
           We have a match for you! {matchData.meetingPointType === 'virtual' ? 'Join the call:' : 'Now go to:'}
         </h1>
 
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 pt-12 pb-8">
           <h2 className="text-4xl font-bold mb-6">{matchData.meetingPointName}</h2>
 
           {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
