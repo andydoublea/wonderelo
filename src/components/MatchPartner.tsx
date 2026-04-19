@@ -13,6 +13,8 @@ export interface Partner {
   isCheckedIn: boolean;
   identificationNumber: string;
   identificationOptions: number[];
+  /** True when the current user has already confirmed this partner's number. */
+  isNumberConfirmed?: boolean;
 }
 
 export interface MatchPartnerData {
@@ -106,36 +108,51 @@ export function MatchPartnerView({
                   : `is on the way...`}
               </p>
 
-              {/* Prompt */}
-              <p className="text-xl font-semibold mb-2">
-                What's the number?
-              </p>
-              {isWrongGuess ? (
-                <p className="text-red-600 font-medium mb-6">
-                  Wrong number! Your partner got a new number — look again!
-                </p>
+              {partner.isNumberConfirmed ? (
+                // Already confirmed — show locked state instead of number picker
+                <div className="flex items-center justify-center gap-4 py-6 bg-green-50 border border-green-200 rounded-xl">
+                  <GeometricIdentification
+                    matchId={matchData.matchId}
+                    number={partner.identificationNumber}
+                    className="rounded-lg shadow w-20 h-20 flex-shrink-0"
+                  />
+                  <div className="text-left">
+                    <p className="text-green-700 font-semibold text-lg">Number confirmed ✓</p>
+                    <p className="text-sm text-green-600">You're good to go</p>
+                  </div>
+                </div>
               ) : (
-                <div className="mb-6" />
-              )}
+                <>
+                  {/* Prompt */}
+                  <p className="text-xl font-semibold mb-2">What's the number?</p>
+                  {isWrongGuess ? (
+                    <p className="text-red-600 font-medium mb-6">
+                      Wrong number! Your partner got a new number — look again!
+                    </p>
+                  ) : (
+                    <div className="mb-6" />
+                  )}
 
-              {/* Candidate numbers — always in one row of 3 */}
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-sm mx-auto">
-                {options.map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => onNumberSelect(partner.id, num)}
-                    disabled={isSubmitting}
-                    className="rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed aspect-square"
-                    aria-label={`Select ${num}`}
-                  >
-                    <GeometricIdentification
-                      matchId={matchData.matchId}
-                      number={num}
-                      className="block w-full h-full"
-                    />
-                  </button>
-                ))}
-              </div>
+                  {/* Candidate numbers — always in one row of 3 */}
+                  <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-sm mx-auto">
+                    {options.map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => onNumberSelect(partner.id, num)}
+                        disabled={isSubmitting}
+                        className="rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed aspect-square"
+                        aria-label={`Select ${num}`}
+                      >
+                        <GeometricIdentification
+                          matchId={matchData.matchId}
+                          number={num}
+                          className="block w-full h-full"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </fieldset>
           );
         })}
