@@ -79,6 +79,365 @@ const XIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+// ============================================================
+// Pure view for the "select-rounds" branch.
+// No state, effects, navigation, fetch, toast, or localStorage inside.
+// All data + callbacks come via props. Safe to render from
+// AdminPagePreview with mock data.
+// ============================================================
+
+export interface SessionRegistrationSelectRoundsViewProps {
+  // Data
+  availableSessions: NetworkingSession[];
+  sessions: NetworkingSession[]; // full list (used to build meeting-points dialog data)
+  selectedSessions: SelectedSession[];
+  selectedRounds: Map<string, Set<string>>;
+  roundSelections: Map<string, { team?: string; topic?: string; topics?: string[] }>;
+  registeredRoundsPerSession: Map<string, Set<string>>;
+  participantStatusMap: Map<string, string>;
+  globalNextUpcomingRoundId: string | null;
+  participantProfile?: any;
+  participantToken?: string | null;
+
+  // Dialog state
+  showMeetingPoints: boolean;
+  meetingPointsFilterSessionId: string | null;
+  showRoundRules: boolean;
+  roundRules: RoundRule[];
+
+  // Flags
+  noWrapper?: boolean;
+
+  // Helpers (pure)
+  isRoundRegisterable: (session: NetworkingSession, round: any) => boolean;
+  generateRoundTimeDisplay: (startTime: string, duration: number) => string;
+
+  // Handlers
+  onShowMeetingPoints: (sessionId: string) => void;
+  onCloseMeetingPoints: (open: boolean) => void;
+  onShowRoundRules: (open: boolean) => void;
+  onRoundSelect: (session: NetworkingSession, roundId: string) => void;
+  onTeamSelect: (roundId: string, team: string) => void;
+  onTopicSelect: (roundId: string, topic: string) => void;
+  onMultipleTopicsSelect: (roundId: string, topic: string) => void;
+  onUnregister: (roundId: string, roundName: string) => void;
+  onConfirmAttendance: (roundId: string) => void;
+  onContinue: () => void;
+}
+
+export function SessionRegistrationSelectRoundsView({
+  availableSessions,
+  sessions,
+  selectedSessions,
+  selectedRounds,
+  roundSelections,
+  registeredRoundsPerSession,
+  participantStatusMap,
+  globalNextUpcomingRoundId,
+  participantProfile,
+  participantToken,
+  showMeetingPoints,
+  meetingPointsFilterSessionId,
+  showRoundRules,
+  roundRules,
+  noWrapper = false,
+  isRoundRegisterable,
+  generateRoundTimeDisplay,
+  onShowMeetingPoints,
+  onCloseMeetingPoints,
+  onShowRoundRules,
+  onRoundSelect,
+  onTeamSelect,
+  onTopicSelect,
+  onMultipleTopicsSelect,
+  onUnregister,
+  onConfirmAttendance,
+  onContinue,
+}: SessionRegistrationSelectRoundsViewProps) {
+  // Derive validation flags locally (pure — no state)
+  let missingTeams = false;
+  let missingTopics = false;
+
+  const canContinue = selectedSessions.every(selectedSession => {
+    return selectedSession.rounds.every(selectedRound => {
+      const actualSession = availableSessions.find(s => s.id === selectedSession.sessionId);
+      if (!actualSession) return true;
+
+      const roundSelectionData = roundSelections.get(selectedRound.roundId) || {};
+
+      if (actualSession.enableTeams && actualSession.teams && actualSession.teams.length > 0) {
+        if (!roundSelectionData.team) {
+          missingTeams = true;
+          return false;
+        }
+      }
+
+      if (actualSession.enableTopics && actualSession.topics && actualSession.topics.length > 0) {
+        if (actualSession.allowMultipleTopics) {
+          if (!roundSelectionData.topics || roundSelectionData.topics.length === 0) {
+            missingTopics = true;
+            return false;
+          }
+        } else {
+          if (!roundSelectionData.topic) {
+            missingTopics = true;
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  });
+
+  let errorMessage = '';
+  if (missingTeams && missingTopics) {
+    errorMessage = 'Please select group and topic for each round';
+  } else if (missingTeams) {
+    errorMessage = 'Please select a group for each round';
+  } else if (missingTopics) {
+    errorMessage = 'Please select a topic for each round';
+  }
+
+  const content = (
+    <>
+      {/* Sessions Selection */}
+      <div>
+        <div className="space-y-4">
+          {availableSessions.map((session) => {
+            const sessionRounds = selectedRounds.get(session.id) || new Set();
+
+            return (
+              <Card
+                key={session.id}
+                className="transition-all hover:border-muted-foreground/20"
+              >
+                <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
+                  <div className="flex items-start justify-between mb-1">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        {session.name}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(session.date).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {session.roundDuration} min rounds
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                    <Users className="h-4 w-4" />
+                    {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
+                  </div>
+
+                  {/* Meeting Points and Round Rules Links */}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-1">
+                    <button
+                      type="button"
+                      onClick={() => onShowMeetingPoints(session.id)}
+                      className="flex items-center gap-1 text-foreground underline hover:text-primary"
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                      Meeting points
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onShowRoundRules(true)}
+                      className="flex items-center gap-1 text-foreground underline hover:text-primary"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Round rules
+                    </button>
+                  </div>
+
+                  {/* Rounds Selection */}
+                  {session.rounds && session.rounds.length > 0 && (
+                    <div className="mt-3">
+                      <div className="space-y-2">
+                        {session.rounds.map((round, roundIndex) => {
+                          const isRoundSelected = sessionRounds.has(round.id);
+                          const roundSelectionData = roundSelections.get(round.id) || {};
+                          const isRegisteredRound = registeredRoundsPerSession.get(session.id)?.has(round.id) || false;
+
+                          const participantStatus = isRegisteredRound ? participantStatusMap.get(round.id) : undefined;
+                          if (participantStatus === 'no-match') {
+                            return null;
+                          }
+
+                          const roundKey = `${session.id}:${round.id}`;
+                          const isNextUpcoming = roundKey === globalNextUpcomingRoundId;
+
+                          const canRegister = isRoundRegisterable(session, round);
+
+                          const isFirstRegisterable = canRegister &&
+                            !isRegisteredRound &&
+                            session.rounds.slice(0, roundIndex).every((r) =>
+                              !isRoundRegisterable(session, r) || registeredRoundsPerSession.get(session.id)?.has(r.id)
+                            );
+
+                          if (!canRegister && !isRegisteredRound) {
+                            const lastNonRegisterableIndex = session.rounds
+                              .map((r, i) => ({ round: r, index: i }))
+                              .filter(({ round: r }) => !isRoundRegisterable(session, r) && !registeredRoundsPerSession.get(session.id)?.has(r.id))
+                              .pop()?.index;
+
+                            if (roundIndex !== lastNonRegisterableIndex) {
+                              return null;
+                            }
+                          }
+
+                          return (
+                            <RoundItem
+                              key={round.id}
+                              round={round}
+                              session={session}
+                              isSelected={isRoundSelected}
+                              isRegistered={isRegisteredRound}
+                              isRegisterable={canRegister}
+                              isNextUpcoming={isNextUpcoming}
+                              participantId={participantProfile?.id}
+                              participantStatus={participantStatus}
+                              onSelect={(roundId) => onRoundSelect(session, roundId)}
+                              generateRoundTimeDisplay={generateRoundTimeDisplay}
+                              selectedTeam={roundSelectionData.team}
+                              selectedTopic={roundSelectionData.topic}
+                              selectedTopics={roundSelectionData.topics}
+                              onTeamSelect={onTeamSelect}
+                              onTopicSelect={onTopicSelect}
+                              onMultipleTopicsSelect={onMultipleTopicsSelect}
+                              showRegistrationClosesCountdown={isFirstRegisterable}
+                              showUnregisterButton={isRegisteredRound && !!participantToken}
+                              onUnregister={() => onUnregister(round.id, round.name)}
+                              onConfirmAttendance={onConfirmAttendance}
+                              registeredCount={(round as any).registeredCount as number | undefined}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {availableSessions.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No rounds available for registration at this time.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Add padding to prevent content from being hidden under sticky button */}
+        <div className="h-32" />
+
+        {/* Continue button and text */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10" style={{ minHeight: '100px' }}>
+          <div className="container mx-auto max-w-md space-y-3">
+            <Button
+              onClick={onContinue}
+              className="w-full"
+              disabled={selectedSessions.length === 0 || !canContinue}
+            >
+              Continue
+            </Button>
+
+            {selectedSessions.length === 0 && (
+              <p className="text-sm text-center text-muted-foreground">
+                Select at least one round
+              </p>
+            )}
+
+            {errorMessage && selectedSessions.length > 0 && (
+              <p className="text-sm text-center text-muted-foreground">
+                {errorMessage}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Meeting Points Dialog */}
+        <MeetingPointsDialog
+          open={showMeetingPoints}
+          onOpenChange={onCloseMeetingPoints}
+          sessionsWithMeetingPoints={sessions
+            .filter(s => s.meetingPoints && s.meetingPoints.length > 0)
+            .filter(s => !meetingPointsFilterSessionId || s.id === meetingPointsFilterSessionId)
+            .map(s => ({
+              sessionId: s.id,
+              sessionName: s.name,
+              meetingPoints: s.meetingPoints || [],
+              date: s.date,
+              rounds: s.rounds
+            }))
+            .sort((a, b) => {
+              const getEarliestRoundTime = (sessionData: any): number => {
+                if (!sessionData.date || !sessionData.rounds || sessionData.rounds.length === 0) return Infinity;
+
+                let earliestTime = Infinity;
+
+                for (const round of sessionData.rounds) {
+                  if (!round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') continue;
+
+                  try {
+                    const [hours, minutes] = round.startTime.split(':').map(Number);
+                    const roundStart = new Date(sessionData.date);
+                    roundStart.setHours(hours, minutes, 0, 0);
+                    const timestamp = roundStart.getTime();
+
+                    if (timestamp < earliestTime) {
+                      earliestTime = timestamp;
+                    }
+                  } catch (error) {
+                    continue;
+                  }
+                }
+
+                return earliestTime;
+              };
+
+              const aTime = getEarliestRoundTime(a);
+              const bTime = getEarliestRoundTime(b);
+
+              return aTime - bTime;
+            })
+          }
+        />
+
+        {/* Round Rules Dialog */}
+        <RoundRulesDialog
+          open={showRoundRules}
+          onOpenChange={onShowRoundRules}
+          rules={roundRules}
+        />
+      </div>
+    </>
+  );
+
+  if (noWrapper) {
+    return content;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-6 max-w-md">
+        {content}
+      </div>
+    </div>
+  );
+}
+
 export function SessionRegistration({ sessions, userSlug, eventName, registeredRoundIds = [], registeredRoundsMap = new Map(), registeredRoundsPerSession = new Map(), participantProfile, participantToken, participantStatusMap = new Map(), noWrapper = false, onStepChange }: SessionRegistrationProps) {
   const navigate = useNavigate();
   const { getCurrentTime } = useTime();
@@ -2056,331 +2415,52 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
 
   // Step 1: Select Rounds
   if (currentStep === 'select-rounds') {
-    // Check if all selected rounds have required team/topic selections
-    let missingTeams = false;
-    let missingTopics = false;
-    
-    const canContinue = selectedSessions.every(selectedSession => {
-      return selectedSession.rounds.every(selectedRound => {
-        // Find the actual session to check requirements
-        const actualSession = availableSessions.find(s => s.id === selectedSession.sessionId);
-        if (!actualSession) return true;
-        
-        const roundSelectionData = roundSelections.get(selectedRound.roundId) || {};
-        
-        // Check if team is required and selected
-        if (actualSession.enableTeams && actualSession.teams && actualSession.teams.length > 0) {
-          if (!roundSelectionData.team) {
-            missingTeams = true;
-            return false;
-          }
-        }
-        
-        // Check if topic is required and selected
-        if (actualSession.enableTopics && actualSession.topics && actualSession.topics.length > 0) {
-          if (actualSession.allowMultipleTopics) {
-            // For multiple topics, at least one should be selected
-            if (!roundSelectionData.topics || roundSelectionData.topics.length === 0) {
-              missingTopics = true;
-              return false;
-            }
-          } else {
-            // For single topic, one must be selected
-            if (!roundSelectionData.topic) {
-              missingTopics = true;
-              return false;
-            }
-          }
-        }
-        
-        return true;
-      });
-    });
-    
-    // Generate specific error message
-    let errorMessage = '';
-    if (missingTeams && missingTopics) {
-      errorMessage = 'Please select group and topic for each round';
-    } else if (missingTeams) {
-      errorMessage = 'Please select a group for each round';
-    } else if (missingTopics) {
-      errorMessage = 'Please select a topic for each round';
-    }
-    
-    const content = (
-      <>
-        {/* Sessions Selection */}
-        <div>
-          <div className="space-y-4">
-            {availableSessions.map((session) => {
-                const sessionRounds = selectedRounds.get(session.id) || new Set();
-                const hasSelectedRounds = sessionRounds.size > 0;
-                
-                return (
-                  <Card 
-                    key={session.id} 
-                    className="transition-all hover:border-muted-foreground/20"
-                  >
-                    <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold flex items-center gap-2">
-                            {session.name}
-                          </h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {new Date(session.date).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {session.roundDuration} min rounds
-                            </div>
-                          </div>
-                        </div>
-
-                      </div>
-                      
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                        <Users className="h-4 w-4" />
-                        {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
-                      </div>
-
-                      {/* Meeting Points and Round Rules Links */}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMeetingPointsFilterSessionId(session.id);
-                            setShowMeetingPoints(true);
-                          }}
-                          className="flex items-center gap-1 text-foreground underline hover:text-primary"
-                        >
-                          <MapPin className="h-3.5 w-3.5" />
-                          Meeting points
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowRoundRules(true)}
-                          className="flex items-center gap-1 text-foreground underline hover:text-primary"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          Round rules
-                        </button>
-                      </div>
-
-                      {/* Rounds Selection */}
-                      {session.rounds && session.rounds.length > 0 && (
-                        <div className="mt-3">
-
-                          <div className="space-y-2">
-                            {session.rounds.map((round, roundIndex) => {
-                              const isRoundSelected = sessionRounds.has(round.id);
-                              
-                              const roundSelectionData = roundSelections.get(round.id) || {};
-
-                              const isRegisteredRound = registeredRoundsPerSession.get(session.id)?.has(round.id) || false;
-
-                              // Don't show rounds where participant has 'no-match' status
-                              const participantStatus = isRegisteredRound ? participantStatusMap.get(round.id) : undefined;
-                              if (participantStatus === 'no-match') {
-                                return null;
-                              }
-
-                              // Check if this is the globally next upcoming registered round
-                              const roundKey = `${session.id}:${round.id}`;
-                              const isNextUpcoming = roundKey === globalNextUpcomingRoundId;
-
-                              // Check if round is still registerable
-                              const canRegister = isRoundRegisterable(session, round);
-
-                              // Check if this is the first registerable round in the session
-                              // (show "Registration closes in" countdown for this round)
-                              const isFirstRegisterable = canRegister &&
-                                !isRegisteredRound &&
-                                session.rounds.slice(0, roundIndex).every((r) =>
-                                  !isRoundRegisterable(session, r) || registeredRoundsPerSession.get(session.id)?.has(r.id)
-                                );
-                              
-                              // Filter logic: Don't show non-registerable rounds unless they are:
-                              // 1. Already registered for this round OR
-                              // 2. The last non-registerable round in the session (to show "Registration closed")
-                              if (!canRegister && !isRegisteredRound) {
-                                // Find if this is the last non-registerable round
-                                const lastNonRegisterableIndex = session.rounds
-                                  .map((r, i) => ({ round: r, index: i }))
-                                  .filter(({ round: r }) => !isRoundRegisterable(session, r) && !registeredRoundsPerSession.get(session.id)?.has(r.id))
-                                  .pop()?.index;
-                                
-                                // Only show if this is the last non-registerable round
-                                if (roundIndex !== lastNonRegisterableIndex) {
-                                  return null;
-                                }
-                              }
-                              
-                              return (
-                                <RoundItem
-                                  key={round.id}
-                                  round={round}
-                                  session={session}
-                                  isSelected={isRoundSelected}
-                                  isRegistered={isRegisteredRound}
-                                  isRegisterable={canRegister}
-                                  // Show countdown for next upcoming registered round
-                                  isNextUpcoming={isNextUpcoming}
-                                  participantId={participantProfile?.id}
-                                  // Pass participantStatus for registered rounds to show same display as participant dashboard
-                                  participantStatus={participantStatus}
-                                  onSelect={(roundId) => handleRoundSelect(session, roundId)}
-                                  generateRoundTimeDisplay={generateRoundTimeDisplay}
-                                  selectedTeam={roundSelectionData.team}
-                                  selectedTopic={roundSelectionData.topic}
-                                  selectedTopics={roundSelectionData.topics}
-                                  onTeamSelect={handleTeamSelect}
-                                  onTopicSelect={handleTopicSelect}
-                                  onMultipleTopicsSelect={handleMultipleTopicsSelect}
-                                  showRegistrationClosesCountdown={isFirstRegisterable}
-                                  // Show unregister button and confirm attendance for registered rounds
-                                  showUnregisterButton={isRegisteredRound && !!participantToken}
-                                  onUnregister={() => handleUnregister(round.id, round.name)}
-                                  onConfirmAttendance={handleConfirmAttendance}
-                                  registeredCount={round.registeredCount}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                    </CardContent>
-                  </Card>
-                );
-              })}
-
-            {availableSessions.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No rounds available for registration at this time.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Add padding to prevent content from being hidden under sticky button */}
-          <div className="h-32" />
-
-          {/* Continue button and text */}
-          {(
-            <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10" style={{ minHeight: '100px' }}>
-              <div className="container mx-auto max-w-md space-y-3">
-                <Button
-                  onClick={handleContinue}
-                  className="w-full"
-                  disabled={selectedSessions.length === 0 || !canContinue}
-                >
-                  Continue
-                </Button>
-                
-                {selectedSessions.length === 0 && (
-                  <p className="text-sm text-center text-muted-foreground">
-                    Select at least one round
-                  </p>
-                )}
-                
-                {errorMessage && selectedSessions.length > 0 && (
-                  <p className="text-sm text-center text-muted-foreground">
-                    {errorMessage}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Meeting Points Dialog */}
-          <MeetingPointsDialog
-            open={showMeetingPoints}
-            onOpenChange={(open) => {
-              setShowMeetingPoints(open);
-              if (!open) {
-                setMeetingPointsFilterSessionId(null);
-              }
-              if (!open && window.location.hash === '#meeting-points') {
-                window.history.replaceState(null, '', window.location.pathname);
-              }
-            }}
-            sessionsWithMeetingPoints={sessions
-              .filter(s => s.meetingPoints && s.meetingPoints.length > 0)
-              .filter(s => !meetingPointsFilterSessionId || s.id === meetingPointsFilterSessionId)
-              .map(s => ({
-                sessionId: s.id,
-                sessionName: s.name,
-                meetingPoints: s.meetingPoints || [],
-                date: s.date,
-                rounds: s.rounds
-              }))
-              .sort((a, b) => {
-                // Sort sessions chronologically by earliest round
-                const getEarliestRoundTime = (sessionData: any): number => {
-                  if (!sessionData.date || !sessionData.rounds || sessionData.rounds.length === 0) return Infinity;
-                  
-                  let earliestTime = Infinity;
-                  
-                  for (const round of sessionData.rounds) {
-                    if (!round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') continue;
-                    
-                    try {
-                      const [hours, minutes] = round.startTime.split(':').map(Number);
-                      const roundStart = new Date(sessionData.date);
-                      roundStart.setHours(hours, minutes, 0, 0);
-                      const timestamp = roundStart.getTime();
-                      
-                      if (timestamp < earliestTime) {
-                        earliestTime = timestamp;
-                      }
-                    } catch (error) {
-                      continue;
-                    }
-                  }
-                  
-                  return earliestTime;
-                };
-                
-                const aTime = getEarliestRoundTime(a);
-                const bTime = getEarliestRoundTime(b);
-                
-                return aTime - bTime;
-              })
-            }
-          />
-
-          {/* Round Rules Dialog */}
-          <RoundRulesDialog
-            open={showRoundRules}
-            onOpenChange={(open) => {
-              setShowRoundRules(open);
-              if (!open && window.location.hash === '#round-rules') {
-                window.history.replaceState(null, '', window.location.pathname);
-              }
-            }}
-            rules={roundRules}
-          />
-        </div>
-      </>
-    );
-    
-    if (noWrapper) {
-      return content;
-    }
-    
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto p-6 max-w-md">
-          {content}
-        </div>
-      </div>
+      <SessionRegistrationSelectRoundsView
+        availableSessions={availableSessions}
+        sessions={sessions}
+        selectedSessions={selectedSessions}
+        selectedRounds={selectedRounds}
+        roundSelections={roundSelections}
+        registeredRoundsPerSession={registeredRoundsPerSession}
+        participantStatusMap={participantStatusMap}
+        globalNextUpcomingRoundId={globalNextUpcomingRoundId}
+        participantProfile={participantProfile}
+        participantToken={participantToken}
+        showMeetingPoints={showMeetingPoints}
+        meetingPointsFilterSessionId={meetingPointsFilterSessionId}
+        showRoundRules={showRoundRules}
+        roundRules={roundRules}
+        noWrapper={noWrapper}
+        isRoundRegisterable={isRoundRegisterable}
+        generateRoundTimeDisplay={generateRoundTimeDisplay}
+        onShowMeetingPoints={(sessionId) => {
+          setMeetingPointsFilterSessionId(sessionId);
+          setShowMeetingPoints(true);
+        }}
+        onCloseMeetingPoints={(open) => {
+          setShowMeetingPoints(open);
+          if (!open) {
+            setMeetingPointsFilterSessionId(null);
+          }
+          if (!open && window.location.hash === '#meeting-points') {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }}
+        onShowRoundRules={(open) => {
+          setShowRoundRules(open);
+          if (!open && window.location.hash === '#round-rules') {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }}
+        onRoundSelect={handleRoundSelect}
+        onTeamSelect={handleTeamSelect}
+        onTopicSelect={handleTopicSelect}
+        onMultipleTopicsSelect={handleMultipleTopicsSelect}
+        onUnregister={handleUnregister}
+        onConfirmAttendance={handleConfirmAttendance}
+        onContinue={handleContinue}
+      />
     );
   }
 

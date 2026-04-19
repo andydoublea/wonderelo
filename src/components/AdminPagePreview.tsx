@@ -39,6 +39,8 @@ import { ParticipantDashboardView, Registration, SessionWithRounds } from './Par
 import { HomepageView } from './Homepage';
 import { UserPublicPageView } from './UserPublicPage';
 import { BillingSettingsView, Subscription, Invoice, CreditTransaction, BillingDetails } from './BillingSettings';
+import { SessionRegistrationSelectRoundsView } from './SessionRegistration';
+import { RoundRule } from './RoundRulesDialog';
 
 interface AdminPagePreviewProps {
   onBack: () => void;
@@ -712,41 +714,136 @@ function PreviewProfile() {
 }
 
 function PreviewRegistration() {
+  // Build a mock session with 2 rounds for a realistic preview
+  const previewRound1: Round = {
+    ...mockRound,
+    id: 'preview-round-1',
+    name: 'Round 1',
+  };
+  const previewRound2: Round = {
+    ...mockRound,
+    id: 'preview-round-2',
+    name: 'Round 2',
+    startTime: `${String(in30min.getHours()).padStart(2, '0')}:${String(in30min.getMinutes()).padStart(2, '0')}`,
+  };
+  const previewSession: NetworkingSession = {
+    ...mockSession,
+    id: 'preview-session-reg',
+    rounds: [previewRound1, previewRound2],
+  };
+
+  const [selectedRounds, setSelectedRounds] = useState<Map<string, Set<string>>>(new Map());
+  const [roundSelections] = useState<Map<string, { team?: string; topic?: string; topics?: string[] }>>(new Map());
+  const [selectedSessions, setSelectedSessions] = useState<Array<{
+    sessionId: string;
+    sessionName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    rounds: Array<{ roundId: string; roundName: string; startTime: string; duration: number }>;
+  }>>([]);
+  const [showMeetingPoints, setShowMeetingPoints] = useState(false);
+  const [meetingPointsFilterSessionId, setMeetingPointsFilterSessionId] = useState<string | null>(null);
+  const [showRoundRules, setShowRoundRules] = useState(false);
+
+  const roundRules: RoundRule[] = [
+    { headline: 'Be on time', text: 'Arrive a few minutes before your round starts.' },
+    { headline: 'Meet new people', text: 'You will be matched with a different partner each round.' },
+  ];
+
+  const handleRoundSelect = (session: NetworkingSession, roundId: string) => {
+    const next = new Map(selectedRounds);
+    const set = new Set(next.get(session.id) || []);
+    if (set.has(roundId)) {
+      set.delete(roundId);
+    } else {
+      set.add(roundId);
+    }
+    next.set(session.id, set);
+    setSelectedRounds(next);
+
+    const round = session.rounds.find(r => r.id === roundId);
+    if (!round) return;
+    const nextSessions = [...selectedSessions];
+    let entry = nextSessions.find(s => s.sessionId === session.id);
+    if (!entry) {
+      entry = {
+        sessionId: session.id,
+        sessionName: session.name,
+        date: session.date,
+        startTime: round.startTime,
+        endTime: round.startTime,
+        rounds: [],
+      };
+      nextSessions.push(entry);
+    }
+    const existing = entry.rounds.findIndex(r => r.roundId === roundId);
+    if (existing >= 0) {
+      entry.rounds.splice(existing, 1);
+    } else {
+      entry.rounds.push({ roundId, roundName: round.name, startTime: round.startTime, duration: round.duration });
+    }
+    setSelectedSessions(nextSessions.filter(s => s.rounds.length > 0));
+  };
+
+  const generateRoundTimeDisplay = (startTime: string, duration: number): string => {
+    if (!startTime || startTime === 'To be set' || startTime === 'TBD') return 'To be set';
+    const [h, m] = startTime.split(':').map(Number);
+    const endTotal = h * 60 + m + duration;
+    const eh = Math.floor(endTotal / 60);
+    const em = endTotal % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${pad(h)}:${pad(m)} - ${pad(eh)}:${pad(em)}`;
+  };
+
   return (
     <div className="min-h-[600px] bg-background">
       <nav className="border-b border-border">
         <div className="container mx-auto max-w-6xl px-6 py-4">
-          <button className="text-xl font-semibold text-primary wonderelo-logo">Wonderelo</button>
+          <span className="text-xl font-semibold text-primary wonderelo-logo">Wonderelo</span>
         </div>
       </nav>
-      <div className="max-w-lg mx-auto px-6 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Tech Meetup Prague</h1>
-          <p className="text-muted-foreground">Andyho konfera</p>
+      <div className="max-w-md mx-auto px-6 py-8">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold mb-1">Andyho konfera</h1>
+          <p className="text-muted-foreground">Tech Meetup Prague</p>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <h2 className="text-lg font-semibold mb-4">Choose your rounds</h2>
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
-                <input type="checkbox" className="w-4 h-4" defaultChecked />
-                <div className="flex-1">
-                  <div className="font-medium">Round 1</div>
-                  <div className="text-sm text-muted-foreground">{mockRound.startTime} • {mockRound.duration} min</div>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
-                <input type="checkbox" className="w-4 h-4" />
-                <div className="flex-1">
-                  <div className="font-medium">Round 2</div>
-                  <div className="text-sm text-muted-foreground">16:00 • 20 min</div>
-                </div>
-              </label>
-            </div>
-            <Button className="w-full mt-6">Register</Button>
-          </CardContent>
-        </Card>
+        <SessionRegistrationSelectRoundsView
+          availableSessions={[previewSession]}
+          sessions={[previewSession]}
+          selectedSessions={selectedSessions}
+          selectedRounds={selectedRounds}
+          roundSelections={roundSelections}
+          registeredRoundsPerSession={new Map()}
+          participantStatusMap={new Map()}
+          globalNextUpcomingRoundId={null}
+          participantProfile={undefined}
+          participantToken={null}
+          showMeetingPoints={showMeetingPoints}
+          meetingPointsFilterSessionId={meetingPointsFilterSessionId}
+          showRoundRules={showRoundRules}
+          roundRules={roundRules}
+          noWrapper={true}
+          isRoundRegisterable={() => true}
+          generateRoundTimeDisplay={generateRoundTimeDisplay}
+          onShowMeetingPoints={(sessionId) => {
+            setMeetingPointsFilterSessionId(sessionId);
+            setShowMeetingPoints(true);
+          }}
+          onCloseMeetingPoints={(open) => {
+            setShowMeetingPoints(open);
+            if (!open) setMeetingPointsFilterSessionId(null);
+          }}
+          onShowRoundRules={setShowRoundRules}
+          onRoundSelect={handleRoundSelect}
+          onTeamSelect={() => {}}
+          onTopicSelect={() => {}}
+          onMultipleTopicsSelect={() => {}}
+          onUnregister={() => {}}
+          onConfirmAttendance={() => {}}
+          onContinue={() => {}}
+        />
       </div>
     </div>
   );
