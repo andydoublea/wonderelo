@@ -36,6 +36,9 @@ import { ParticipantRoundDetailView, RoundDetail } from './ParticipantRoundDetai
 import { AddressBookView, Contact } from './AddressBook';
 import { ParticipantProfileView, ParticipantProfileFormData } from '../pages/ParticipantProfile';
 import { ParticipantDashboardView, Registration, SessionWithRounds } from './ParticipantDashboard';
+import { HomepageView } from './Homepage';
+import { UserPublicPageView } from './UserPublicPage';
+import { BillingSettingsView, Subscription, Invoice, CreditTransaction, BillingDetails } from './BillingSettings';
 
 interface AdminPagePreviewProps {
   onBack: () => void;
@@ -145,7 +148,8 @@ type PreviewPage =
   | 'account-settings'
   | 'event-page-settings'
   | 'event-promo'
-  | 'round-form';
+  | 'round-form'
+  | 'billing';
 
 interface PreviewPageDef {
   id: PreviewPage;
@@ -198,6 +202,7 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
       { id: 'event-promo', label: 'Promo slide', description: 'Full-screen promo slide with QR code' },
       { id: 'round-form', label: 'Round form', description: 'Organizer creates or edits a networking round' },
       { id: 'session-success', label: 'Round created', description: 'Organizer sees success after creating a round' },
+      { id: 'billing', label: 'Billing', description: 'Organizer manages subscription, credits, and invoices' },
     ],
   },
   {
@@ -928,39 +933,181 @@ function PreviewResetPassword() {
 }
 
 function PreviewHomepage() {
+  const noop = () => {};
+  const [participantCode, setParticipantCode] = useState('');
+  const [leadName, setLeadName] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadEventType, setLeadEventType] = useState('');
+  const [leadParticipantCount, setLeadParticipantCount] = useState('');
   return (
-    <div className="min-h-[600px] bg-background">
-      <PreviewHeader />
-      <div className="max-w-4xl mx-auto px-6 py-16 text-center">
-        <h1 className="text-5xl font-bold mb-6">Speed networking that actually works</h1>
-        <p className="text-xl text-muted-foreground mb-8">
-          Give everyone at your event the chance to make real connections — in minutes, not hours.
-        </p>
-        <div className="flex items-center justify-center gap-3">
-          <Button size="lg">Get started free</Button>
-          <Button variant="outline" size="lg">Sign in</Button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-16">
-          (Preview is a simplified placeholder — the live Homepage has hero, testimonials carousel, blog posts and more.)
-        </p>
-      </div>
-    </div>
+    <HomepageView
+      onGetStarted={noop}
+      onSignIn={noop}
+      onNavigate={noop}
+      participantCode={participantCode}
+      onParticipantCodeChange={setParticipantCode}
+      onParticipantJoin={noop}
+      leadName={leadName}
+      leadEmail={leadEmail}
+      leadEventType={leadEventType}
+      leadParticipantCount={leadParticipantCount}
+      leadSubmitting={false}
+      leadSubmitted={false}
+      onLeadNameChange={setLeadName}
+      onLeadEmailChange={setLeadEmail}
+      onLeadEventTypeChange={setLeadEventType}
+      onLeadParticipantCountChange={setLeadParticipantCount}
+      onLeadSubmit={(e) => e.preventDefault()}
+      testimonialApi={undefined}
+      testimonialCurrent={0}
+      testimonialCount={0}
+      onSetTestimonialApi={noop}
+      blogApi={undefined}
+      blogCurrent={0}
+      blogCount={0}
+      onSetBlogApi={noop}
+    />
   );
 }
 
 function PreviewPublicEventPage() {
+  const noop = () => {};
+  const mockProfile = {
+    id: 'preview-user',
+    email: 'andy@example.com',
+    urlSlug: 'andyconf',
+    serviceType: 'event',
+    organizerName: 'Andyho konfera',
+    eventName: 'Andyho konfera',
+    profileImageUrl: '',
+  };
+  const [magicLinkDialogOpen, setMagicLinkDialogOpen] = useState(false);
+  const [magicLinkEmail, setMagicLinkEmail] = useState('');
+  const [howItWorksDialogOpen, setHowItWorksDialogOpen] = useState(false);
+  return (
+    <UserPublicPageView
+      userSlug="andyconf"
+      userProfile={mockProfile}
+      availableSessions={[mockPublishedSession]}
+      participantToken={null}
+      participantProfile={null}
+      registeredRoundIds={[]}
+      registeredRoundsMap={new Map()}
+      registeredRoundsPerSession={new Map()}
+      participantStatusMap={new Map()}
+      registrationStep="select-rounds"
+      magicLinkDialogOpen={magicLinkDialogOpen}
+      magicLinkEmail={magicLinkEmail}
+      isSendingMagicLink={false}
+      howItWorksDialogOpen={howItWorksDialogOpen}
+      onNavigate={noop}
+      onLogout={noop}
+      onMagicLinkDialogOpenChange={setMagicLinkDialogOpen}
+      onMagicLinkEmailChange={setMagicLinkEmail}
+      onSendMagicLink={noop}
+      onHowItWorksDialogOpenChange={setHowItWorksDialogOpen}
+      onRegistrationStepChange={noop}
+    />
+  );
+}
+
+function PreviewBilling() {
+  const noop = () => {};
+  const [invoicesTab, setInvoicesTab] = useState<'invoices' | 'credits'>('invoices');
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [invoiceEmail, setInvoiceEmail] = useState('billing@andyhoconfera.com');
+  const [invoiceEmailEditing, setInvoiceEmailEditing] = useState(false);
+
+  const mockSubscription: Subscription = {
+    plan: 'premium',
+    capacityTier: '50' as any,
+    status: 'active',
+    currentPeriodEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
+    stripeCustomerId: 'cus_preview',
+    stripeSubscriptionId: 'sub_preview',
+    cancelAtPeriodEnd: false,
+  };
+
+  const mockInvoices: Invoice[] = [
+    {
+      id: 'inv_1',
+      type: 'subscription',
+      amount: 2900,
+      currency: 'eur',
+      status: 'paid',
+      date: new Date(Date.now() - 30 * 86400000).toISOString(),
+      description: 'Monthly subscription',
+      pdfUrl: '#',
+      hostedUrl: null,
+      number: 'INV-0001',
+    },
+    {
+      id: 'inv_2',
+      type: 'subscription',
+      amount: 2900,
+      currency: 'eur',
+      status: 'paid',
+      date: new Date(Date.now() - 60 * 86400000).toISOString(),
+      description: 'Monthly subscription',
+      pdfUrl: '#',
+      hostedUrl: null,
+      number: 'INV-0002',
+    },
+  ];
+
+  const mockCreditTransactions: CreditTransaction[] = [
+    {
+      id: 1,
+      amount: 10,
+      type: 'purchase',
+      capacityTier: 'tier_50',
+      description: 'Credit pack',
+      createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    },
+  ];
+
+  const mockBillingDetails: BillingDetails = {
+    name: 'Andy Double',
+    email: 'billing@andyhoconfera.com',
+    address: {
+      line1: 'Main Street 1',
+      line2: null,
+      city: 'Bratislava',
+      state: null,
+      postalCode: '811 01',
+      country: 'Slovakia',
+    },
+    taxIds: [{ type: 'eu_vat', value: 'SK1234567890' }],
+  };
+
   return (
     <div className="min-h-[600px] bg-background">
       <PreviewHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <div className="text-center mb-6">
-          <div className="w-20 h-20 rounded-full bg-muted mx-auto mb-4" />
-          <h1 className="text-3xl font-bold mb-1">Andyho konfera</h1>
-          <p className="text-muted-foreground">wonderelo.com/andyconf</p>
-        </div>
-        <h2 className="text-2xl font-bold text-center mb-6">When can we mix you in?</h2>
-        <PreviewRegistration />
-      </div>
+      <BillingSettingsView
+        loading={false}
+        subscription={mockSubscription}
+        credits={[{ balance: 100, capacityTier: '50' }]}
+        creditTransactions={mockCreditTransactions}
+        invoices={mockInvoices}
+        invoicesLoading={false}
+        billingDetails={mockBillingDetails}
+        billingDetailsLoading={false}
+        invoicesTab={invoicesTab}
+        actionLoading={false}
+        portalLoading={false}
+        showCancelDialog={showCancelDialog}
+        invoiceEmail={invoiceEmail}
+        invoiceEmailEditing={invoiceEmailEditing}
+        invoiceEmailSaving={false}
+        accessToken="preview-token"
+        onInvoicesTabChange={setInvoicesTab}
+        onShowCancelDialog={setShowCancelDialog}
+        onCancelSubscription={noop}
+        onOpenBillingPortal={noop}
+        onInvoiceEmailChange={setInvoiceEmail}
+        onInvoiceEmailEditingChange={setInvoiceEmailEditing}
+        onSaveInvoiceEmail={noop}
+      />
     </div>
   );
 }
@@ -1152,6 +1299,7 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
       case 'event-page-settings': return <PreviewEventPageSettings />;
       case 'event-promo': return <PreviewEventPromo />;
       case 'round-form': return <PreviewRoundForm />;
+      case 'billing': return <PreviewBilling />;
     }
   };
 
