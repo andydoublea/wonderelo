@@ -75,7 +75,7 @@ export function MatchPartnerView({
         </div>
 
         {/* Divider */}
-        <hr className="mt-12 mb-20 border-t border-border" />
+        <hr className="mt-4 mb-24 border-t border-border" />
 
         {/* Find-your-match headline */}
         <h2 className="text-3xl sm:text-4xl font-bold mb-8">
@@ -94,7 +94,7 @@ export function MatchPartnerView({
               }`}
             >
               {/* Partner header: name */}
-              <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center justify-center mb-1">
                 <h3
                   className="font-bold leading-tight break-words"
                   style={{ fontSize: 'clamp(2.5rem, 9vw, 5rem)' }}
@@ -104,7 +104,7 @@ export function MatchPartnerView({
               </div>
 
               <p
-                className={`text-base mb-8 ${
+                className={`text-base mb-10 ${
                   partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
                 }`}
               >
@@ -125,20 +125,20 @@ export function MatchPartnerView({
                 <div className="mb-6" />
               )}
 
-              {/* Candidate numbers — rendered as the same match image shape */}
-              <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
+              {/* Candidate numbers — always in one row of 3 */}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-sm mx-auto">
                 {options.map((num) => (
                   <button
                     key={num}
                     onClick={() => onNumberSelect(partner.id, num)}
                     disabled={isSubmitting}
-                    className="rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed aspect-square"
                     aria-label={`Select ${num}`}
                   >
                     <GeometricIdentification
                       matchId={matchData.matchId}
                       number={num}
-                      className="block w-24 h-24 sm:w-28 sm:h-28"
+                      className="block w-full h-full"
                     />
                   </button>
                 ))}
