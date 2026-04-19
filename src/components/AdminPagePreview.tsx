@@ -1401,21 +1401,37 @@ function PreviewRoundForm() {
 const ACTIVE_PAGE_STORAGE_KEY = 'admin_page_preview_active';
 
 export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
-  // Remember the last-viewed preview across refreshes. Default to the lightest
-  // possible page ('meeting-point') so a first-ever visit loads fast.
-  const [activePage, setActivePageState] = useState<PreviewPage>(() => {
-    try {
-      const saved = localStorage.getItem(ACTIVE_PAGE_STORAGE_KEY);
-      if (saved && PREVIEW_PAGES.some(p => p.id === saved)) return saved as PreviewPage;
-    } catch { /* ignore */ }
-    return 'meeting-point';
-  });
+  // On first render, NOTHING is loaded. Page Preview shows the toolbar +
+  // a lightweight placeholder. Only when the user clicks a tab does the
+  // chosen view + its transitive deps get dynamically imported. This keeps
+  // the first render of /admin/page-preview blazing fast even on slow dev
+  // connections — no page's module tree is traversed by Vite upfront.
+  const [activePage, setActivePageState] = useState<PreviewPage | null>(null);
   const setActivePage = (page: PreviewPage) => {
     setActivePageState(page);
     try { localStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, page); } catch { /* ignore */ }
   };
 
   const renderPreview = () => {
+    if (!activePage) {
+      // Try to restore the last viewed page (user opt-in for fast start)
+      let lastViewed: PreviewPage | null = null;
+      try {
+        const saved = localStorage.getItem(ACTIVE_PAGE_STORAGE_KEY);
+        if (saved && PREVIEW_PAGES.some(p => p.id === saved)) lastViewed = saved as PreviewPage;
+      } catch { /* ignore */ }
+      return (
+        <div className="flex flex-col items-center justify-center p-16 text-center gap-4">
+          <Eye className="h-12 w-12 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground">Pick a page from the toolbar above to preview it</p>
+          {lastViewed && (
+            <Button variant="outline" onClick={() => setActivePage(lastViewed!)}>
+              Restore last view: {PREVIEW_PAGES.find(p => p.id === lastViewed)?.label}
+            </Button>
+          )}
+        </div>
+      );
+    }
     switch (activePage) {
       case 'participant-dashboard': return <PreviewParticipantDashboard />;
       case 'address-book': return <PreviewAddressBook />;
@@ -1447,7 +1463,7 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
     }
   };
 
-  const currentPage = PREVIEW_PAGES.find(p => p.id === activePage)!;
+  const currentPage = activePage ? PREVIEW_PAGES.find(p => p.id === activePage) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -1488,13 +1504,15 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
       </div>
 
       {/* Page description bar */}
-      <div className="bg-muted/30 border-b px-4 py-2">
-        <div className="container mx-auto text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{currentPage.label}</span>
-          <span className="mx-2">—</span>
-          {currentPage.description}
+      {currentPage && (
+        <div className="bg-muted/30 border-b px-4 py-2">
+          <div className="container mx-auto text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{currentPage.label}</span>
+            <span className="mx-2">—</span>
+            {currentPage.description}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Preview content */}
       <div>
