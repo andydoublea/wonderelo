@@ -66,7 +66,7 @@ export function MatchPartnerView({
             className="rounded-lg shadow-lg w-full block"
           />
           <div className="flex flex-col items-center justify-center mt-10">
-            <h3 className="text-[6rem] sm:text-[8rem] md:text-[10rem] font-bold text-foreground leading-none break-words w-full">
+            <h3 className="text-7xl sm:text-8xl md:text-9xl font-bold text-foreground leading-tight break-words w-full">
               {matchData.myName}
             </h3>
           </div>

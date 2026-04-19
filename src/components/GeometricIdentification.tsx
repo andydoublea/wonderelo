@@ -143,12 +143,9 @@ export function GeometricIdentification({ matchId, className = '', number }: Geo
           y="200"
           textAnchor="middle"
           dominantBaseline="central"
-          fontSize="180"
+          fontSize="130"
           fontWeight="900"
-          fill="#ffffff"
-          stroke="#000000"
-          strokeWidth="6"
-          paintOrder="stroke fill"
+          fill="#000000"
           style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
         >
           {number}
