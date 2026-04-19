@@ -759,12 +759,25 @@ async function registerWithAttrs(
 }
 
 async function getMatchesForRound(supabase: any, sessionId: string, roundId: string) {
-  const { data } = await supabase
+  // match_id is stored directly on registrations; no separate match_participants table.
+  const { data: matches } = await supabase
     .from('matches')
-    .select('id, meeting_point, match_participants:match_participants(participant_id)')
+    .select('id, meeting_point')
     .eq('session_id', sessionId)
     .eq('round_id', roundId);
-  return data || [];
+  const out: Array<{ id: string; meeting_point: string; participantIds: string[] }> = [];
+  for (const m of matches || []) {
+    const { data: regs } = await supabase
+      .from('registrations')
+      .select('participant_id')
+      .eq('match_id', m.id);
+    out.push({
+      id: m.id,
+      meeting_point: m.meeting_point,
+      participantIds: (regs || []).map((x: any) => x.participant_id),
+    });
+  }
+  return out;
 }
 
 defineScenario({
@@ -792,17 +805,18 @@ defineScenario({
     await step('verify', async () => {
       const matches = await getMatchesForRound(supabase, sessionId, roundId);
       assert(matches.length === 2, `Expected 2 matches, got ${matches.length}`);
-      // Load team info for each participant in each match
       let acrossCount = 0;
+      const debug: any[] = [];
       for (const m of matches) {
-        const pIds = m.match_participants.map((mp: any) => mp.participant_id);
+        const pIds = m.participantIds;
         const regs = await supabase.from('registrations')
-          .select('participant_id, team').in('participant_id', pIds).eq('session_id', sessionId);
+          .select('participant_id, team').in('participant_id', pIds).eq('session_id', sessionId).eq('round_id', roundId);
         const teams = (regs.data || []).map((r: any) => r.team);
-        if (teams[0] !== teams[1]) acrossCount++;
+        debug.push({ matchId: m.id, pIds, teams });
+        if (teams.length === 2 && teams[0] !== teams[1]) acrossCount++;
       }
-      assert(acrossCount === 2, `Expected both matches across teams, got ${acrossCount}/2`);
-      return { matches: matches.length, acrossTeam: acrossCount };
+      assert(acrossCount === 2, `Expected both matches across teams, got ${acrossCount}/2. Debug: ${JSON.stringify(debug)}`);
+      return { matches: matches.length, acrossTeam: acrossCount, debug };
     });
     await step('cleanup', () => cleanup(supabase, sessionId, ids));
   }
@@ -834,7 +848,7 @@ defineScenario({
       assert(matches.length === 2, `Expected 2 matches, got ${matches.length}`);
       let withinCount = 0;
       for (const m of matches) {
-        const pIds = m.match_participants.map((mp: any) => mp.participant_id);
+        const pIds = m.participantIds;
         const regs = await supabase.from('registrations')
           .select('participant_id, team').in('participant_id', pIds).eq('session_id', sessionId);
         const teams = (regs.data || []).map((r: any) => r.team);
@@ -873,16 +887,20 @@ defineScenario({
       const matches = await getMatchesForRound(supabase, sessionId, roundId);
       assert(matches.length === 2, `Expected 2 matches, got ${matches.length}`);
       let sharedTopicCount = 0;
+      const debug: any[] = [];
       for (const m of matches) {
-        const pIds = m.match_participants.map((mp: any) => mp.participant_id);
+        const pIds = m.participantIds;
         const regs = await supabase.from('registrations')
-          .select('participant_id, topics').in('participant_id', pIds).eq('session_id', sessionId);
-        const [t1, t2] = (regs.data || []).map((r: any) => r.topics || []);
+          .select('participant_id, topics').in('participant_id', pIds).eq('session_id', sessionId).eq('round_id', roundId);
+        const topicArrays = (regs.data || []).map((r: any) => Array.isArray(r.topics) ? r.topics : []);
+        const t1 = topicArrays[0] || [];
+        const t2 = topicArrays[1] || [];
         const overlap = t1.filter((t: string) => t2.includes(t));
+        debug.push({ matchId: m.id, pIds, topics: topicArrays, overlap });
         if (overlap.length > 0) sharedTopicCount++;
       }
-      assert(sharedTopicCount === 2, `Expected both matches to share a topic, got ${sharedTopicCount}/2`);
-      return { matches: matches.length, withSharedTopic: sharedTopicCount };
+      assert(sharedTopicCount === 2, `Expected both matches to share a topic, got ${sharedTopicCount}/2. Debug: ${JSON.stringify(debug)}`);
+      return { matches: matches.length, withSharedTopic: sharedTopicCount, debug };
     });
     await step('cleanup', () => cleanup(supabase, sessionId, ids));
   }
