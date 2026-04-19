@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from 'react-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, ReactNode } from 'react';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 import { GeometricIdentification } from './GeometricIdentification';
 import { WondereloHeader } from './WondereloHeader';
 
-interface Partner {
+export interface Partner {
   id: string;
   firstName: string;
   lastName: string;
@@ -15,7 +15,7 @@ interface Partner {
   identificationOptions: number[];
 }
 
-interface MatchPartnerData {
+export interface MatchPartnerData {
   matchId: string;
   myIdentificationNumber: string;
   myName: string;
@@ -24,6 +24,126 @@ interface MatchPartnerData {
   walkingDeadline?: string;
   findingDeadline?: string;
   shouldStartNetworking?: boolean;
+}
+
+// ============================================================
+// Pure view component (shared with AdminPagePreview)
+// ============================================================
+
+export interface MatchPartnerViewProps {
+  matchData: MatchPartnerData;
+  countdown?: ReactNode;
+  isSubmitting: boolean;
+  wrongGuessPartnerId: string | null;
+  getOptionsForPartner: (partner: Partner) => number[];
+  onNumberSelect: (partnerId: string, num: number) => void;
+  onBackToDashboard: () => void;
+}
+
+export function MatchPartnerView({
+  matchData,
+  countdown,
+  isSubmitting,
+  wrongGuessPartnerId,
+  getOptionsForPartner,
+  onNumberSelect,
+  onBackToDashboard,
+}: MatchPartnerViewProps) {
+  return (
+    <div className="min-h-screen bg-background">
+      <WondereloHeader />
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        {countdown && <div className="mb-8">{countdown}</div>}
+
+        <h1 className="text-4xl font-bold mb-12">
+          {matchData.findingDeadline ? 'Now, find each other!' : 'Now wait for the others'}
+        </h1>
+
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-4 py-6">
+          <legend className="px-3 text-xl text-muted-foreground">
+            Show this so {matchData.partners.length === 1
+              ? `${matchData.partners[0].firstName} can find you`
+              : 'they can find you'}
+          </legend>
+          <GeometricIdentification
+            matchId={matchData.matchId}
+            className="rounded-lg shadow-lg w-full block"
+          />
+          <div className="flex flex-col items-center justify-center gap-6 mt-10">
+            <h3 className="text-[5rem] sm:text-[6rem] md:text-[7rem] font-bold text-foreground leading-none break-words w-full">
+              {matchData.myName}
+            </h3>
+            <div className="w-28 h-28 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+              <span className="text-5xl font-bold">{matchData.myIdentificationNumber}</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
+          <legend className="px-3 text-xl text-muted-foreground">Look for</legend>
+          <div className="space-y-4">
+            {matchData.partners.map((partner) => (
+              <div key={partner.id} className="text-center">
+                <h2 className="text-4xl font-bold">{partner.firstName}</h2>
+                <p
+                  className={`text-lg mt-1 ${
+                    partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
+                  }`}
+                >
+                  {partner.isCheckedIn ? 'Already at the meeting point ✓' : 'On the way...'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </fieldset>
+
+        {matchData.partners.map((partner) => {
+          const options = getOptionsForPartner(partner);
+          const isWrongGuess = wrongGuessPartnerId === partner.id;
+          return (
+            <fieldset
+              key={partner.id}
+              className={`mb-12 border-2 rounded-2xl px-8 py-10 transition-colors ${
+                isWrongGuess ? 'border-red-400 bg-red-50' : 'border-border'
+              }`}
+            >
+              <legend className="px-3 text-xl text-muted-foreground">
+                To confirm meeting select
+              </legend>
+              <h2 className="text-3xl font-bold mb-2">{partner.firstName}'s number</h2>
+              {isWrongGuess && (
+                <p className="text-red-600 font-medium mb-6">
+                  Wrong number! Your partner got a new number — look again!
+                </p>
+              )}
+              {!isWrongGuess && <div className="mb-8" />}
+              <div className="flex items-center justify-center gap-6">
+                {options.map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => onNumberSelect(partner.id, num)}
+                    disabled={isSubmitting}
+                    className="w-24 h-24 rounded-full border-2 border-border bg-background hover:bg-accent hover:border-foreground transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="text-4xl font-bold">{num}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          );
+        })}
+
+        <div>
+          <button
+            onClick={onBackToDashboard}
+            className="text-muted-foreground hover:text-foreground underline transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function MatchPartner() {
@@ -207,116 +327,24 @@ export function MatchPartner() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        {/* Countdown Timer — only show during finding phase */}
-        {matchData.findingDeadline && (
-          <div className="mb-8">
-            <CountdownTimer
-              targetDate={matchData.findingDeadline}
-              variant="large"
-              onComplete={() => {
-                debugLog('[MatchPartner] Finding time expired');
-              }}
-            />
-          </div>
-        )}
-
-        {/* Headline — changes based on phase */}
-        <h1 className="text-4xl font-bold mb-12">
-          {matchData.findingDeadline
-            ? 'Now, find each other!'
-            : 'Now wait for the others'}
-        </h1>
-
-        {/* Identification image with name/number BELOW */}
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-4 py-6">
-          <legend className="px-3 text-xl text-muted-foreground">
-            Show this so {matchData.partners.length === 1
-              ? `${matchData.partners[0].firstName} can find you`
-              : 'they can find you'}
-          </legend>
-          {/* Full-width image (mobile-first) */}
-          <GeometricIdentification
-            matchId={matchData.matchId}
-            className="rounded-lg shadow-lg w-full block"
+    <MatchPartnerView
+      matchData={matchData}
+      countdown={
+        matchData.findingDeadline ? (
+          <CountdownTimer
+            targetDate={matchData.findingDeadline}
+            variant="large"
+            onComplete={() => {
+              debugLog('[MatchPartner] Finding time expired');
+            }}
           />
-          {/* Name and number BELOW the image */}
-          <div className="flex flex-col items-center justify-center gap-6 mt-10">
-            <h3 className="text-[5rem] sm:text-[6rem] md:text-[7rem] font-bold text-foreground leading-none break-words w-full">
-              {matchData.myName}
-            </h3>
-            <div className="w-28 h-28 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
-              <span className="text-5xl font-bold">
-                {matchData.myIdentificationNumber}
-              </span>
-            </div>
-          </div>
-        </fieldset>
-
-        {/* Partner names */}
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
-          <legend className="px-3 text-xl text-muted-foreground">
-            Look for
-          </legend>
-          <div className="space-y-4">
-            {matchData.partners.map((partner) => (
-              <div key={partner.id} className="text-center">
-                <h2 className="text-4xl font-bold">{partner.firstName}</h2>
-                <p className={`text-lg mt-1 ${partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
-                  {partner.isCheckedIn ? 'Already at the meeting point ✓' : 'On the way...'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </fieldset>
-
-        {/* Number confirmation sections — one for each partner */}
-        {matchData.partners.map((partner) => {
-          const options = getOptionsForPartner(partner);
-          const isWrongGuess = wrongGuessPartnerId === partner.id;
-
-          return (
-            <fieldset key={partner.id} className={`mb-12 border-2 rounded-2xl px-8 py-10 transition-colors ${isWrongGuess ? 'border-red-400 bg-red-50' : 'border-border'}`}>
-              <legend className="px-3 text-xl text-muted-foreground">
-                To confirm meeting select
-              </legend>
-              <h2 className="text-3xl font-bold mb-2">
-                {partner.firstName}'s number
-              </h2>
-              {isWrongGuess && (
-                <p className="text-red-600 font-medium mb-6">
-                  Wrong number! Your partner got a new number — look again!
-                </p>
-              )}
-              {!isWrongGuess && <div className="mb-8" />}
-              <div className="flex items-center justify-center gap-6">
-                {options.map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => handleNumberSelection(partner.id, num)}
-                    disabled={isSubmitting}
-                    className="w-24 h-24 rounded-full border-2 border-border bg-background hover:bg-accent hover:border-foreground transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="text-4xl font-bold">{num}</span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          );
-        })}
-
-        {/* Back to dashboard link */}
-        <div>
-          <button
-            onClick={() => navigate(`/p/${token}`)}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
-        </div>
-      </div>
-    </div>
+        ) : undefined
+      }
+      isSubmitting={isSubmitting}
+      wrongGuessPartnerId={wrongGuessPartnerId}
+      getOptionsForPartner={getOptionsForPartner}
+      onNumberSelect={handleNumberSelection}
+      onBackToDashboard={() => navigate(`/p/${token}`)}
+    />
   );
 }

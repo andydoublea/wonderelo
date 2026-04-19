@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { debugLog, errorLog } from '../utils/debug';
@@ -9,7 +9,7 @@ import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { WondereloHeader } from './WondereloHeader';
 
-interface MatchData {
+export interface MatchData {
   matchId: string;
   meetingPointName: string;
   meetingPointImageUrl?: string;
@@ -23,6 +23,112 @@ interface MatchData {
   roundStartTime?: string;
   walkingDeadline?: string;
   networkingEndTime?: string;
+}
+
+// ============================================================
+// Pure view components (shared with AdminPagePreview)
+// ============================================================
+
+export interface MatchInfoMatchedViewProps {
+  matchData: MatchData;
+  countdown?: ReactNode;
+  isSubmitting: boolean;
+  onImHere: () => void;
+  onBackToDashboard: () => void;
+}
+
+export function MatchInfoMatchedView({
+  matchData,
+  countdown,
+  isSubmitting,
+  onImHere,
+  onBackToDashboard,
+}: MatchInfoMatchedViewProps) {
+  return (
+    <div className="min-h-screen bg-background">
+      <WondereloHeader />
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
+        {countdown && <div className="mb-8">{countdown}</div>}
+
+        <h1 className="text-4xl font-bold mb-12">We have a match for you!</h1>
+
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
+          <legend className="px-3 text-xl text-muted-foreground">
+            {matchData.meetingPointType === 'virtual' ? 'Join the call' : 'Now go to'}
+          </legend>
+          <h2 className="text-4xl font-bold mb-6">{matchData.meetingPointName}</h2>
+
+          {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
+            <div className="mt-4">
+              <a
+                href={matchData.meetingPointVideoCallUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-xl text-lg font-semibold hover:bg-primary/90 transition-colors shadow-lg"
+              >
+                <Video className="h-6 w-6" />
+                Join video call
+                <ExternalLink className="h-5 w-5" />
+              </a>
+              <p className="text-sm text-muted-foreground mt-3">Opens in a new tab</p>
+            </div>
+          ) : (
+            matchData.meetingPointImageUrl && (
+              <div className="mt-4">
+                <img
+                  src={matchData.meetingPointImageUrl}
+                  alt={matchData.meetingPointName}
+                  className="mx-auto rounded-lg shadow-lg max-w-md w-full object-cover"
+                  style={{ maxHeight: '400px' }}
+                />
+              </div>
+            )
+          )}
+        </fieldset>
+
+        <div>
+          <button
+            onClick={onBackToDashboard}
+            className="text-muted-foreground hover:text-foreground underline transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10">
+        <div className="max-w-md mx-auto">
+          <Button size="lg" className="w-full" onClick={onImHere} disabled={isSubmitting}>
+            <MapPin className="h-5 w-5 mr-2" />
+            {isSubmitting ? 'Checking in...' : `I am at ${matchData.meetingPointName}`}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export interface MatchInfoNoMatchViewProps {
+  onBackToDashboard: () => void;
+}
+
+export function MatchInfoNoMatchView({ onBackToDashboard }: MatchInfoNoMatchViewProps) {
+  return (
+    <div className="min-h-screen bg-background">
+      <WondereloHeader />
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        <div className="text-6xl mb-6">😳</div>
+        <h1 className="text-4xl font-bold mb-4">No match found</h1>
+        <p className="text-lg text-muted-foreground mb-12">
+          No one else registered for this round.
+        </p>
+        <h2 className="text-2xl font-bold mb-6">Try another round!</h2>
+        <Button size="lg" onClick={onBackToDashboard}>
+          Back to dashboard
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function MatchInfo() {
@@ -227,24 +333,7 @@ export function MatchInfo() {
   }
 
   if (error === 'no-match') {
-    return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-          <div className="text-6xl mb-6">😳</div>
-          <h1 className="text-4xl font-bold mb-4">No match found</h1>
-          <p className="text-lg text-muted-foreground mb-12">
-            No one else registered for this round.
-          </p>
-
-          <h2 className="text-2xl font-bold mb-6">Try another round!</h2>
-
-          <Button size="lg" onClick={() => navigate(`/p/${token}?from=match`)}>
-            Back to dashboard
-          </Button>
-        </div>
-      </div>
-    );
+    return <MatchInfoNoMatchView onBackToDashboard={() => navigate(`/p/${token}?from=match`)} />;
   }
 
   if (error || !matchData) {
@@ -268,90 +357,22 @@ export function MatchInfo() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      {/* Main Content */}
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
-        {/* Countdown Timer */}
-        {matchData.walkingDeadline && (
-          <div className="mb-8">
-            <CountdownTimer
-              targetDate={matchData.walkingDeadline}
-              variant="large"
-              onComplete={() => {
-                debugLog('[MatchInfo] Walking deadline reached');
-              }}
-            />
-          </div>
-        )}
-
-        {/* Match Announcement */}
-        <h1 className="text-4xl font-bold mb-12">
-          We have a match for you!
-        </h1>
-
-        {/* Meeting Point */}
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
-          <legend className="px-3 text-xl text-muted-foreground">
-            {matchData.meetingPointType === 'virtual' ? 'Join the call' : 'Now go to'}
-          </legend>
-          <h2 className="text-4xl font-bold mb-6">{matchData.meetingPointName}</h2>
-
-          {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
-            <div className="mt-4">
-              <a
-                href={matchData.meetingPointVideoCallUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-xl text-lg font-semibold hover:bg-primary/90 transition-colors shadow-lg"
-              >
-                <Video className="h-6 w-6" />
-                Join video call
-                <ExternalLink className="h-5 w-5" />
-              </a>
-              <p className="text-sm text-muted-foreground mt-3">
-                Opens in a new tab
-              </p>
-            </div>
-          ) : (
-            matchData.meetingPointImageUrl && (
-              <div className="mt-4">
-                <img
-                  src={matchData.meetingPointImageUrl}
-                  alt={matchData.meetingPointName}
-                  className="mx-auto rounded-lg shadow-lg max-w-md w-full object-cover"
-                  style={{ maxHeight: '400px' }}
-                />
-              </div>
-            )
-          )}
-        </fieldset>
-
-        {/* Back to dashboard link */}
-        <div>
-          <button
-            onClick={() => navigate(`/p/${token}?from=match`)}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
-        </div>
-      </div>
-
-      {/* Sticky "I am here" button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10">
-        <div className="max-w-md mx-auto">
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={handleImHere}
-            disabled={isSubmitting}
-          >
-            <MapPin className="h-5 w-5 mr-2" />
-            {isSubmitting ? 'Checking in...' : `I am at ${matchData.meetingPointName}`}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <MatchInfoMatchedView
+      matchData={matchData}
+      countdown={
+        matchData.walkingDeadline ? (
+          <CountdownTimer
+            targetDate={matchData.walkingDeadline}
+            variant="large"
+            onComplete={() => {
+              debugLog('[MatchInfo] Walking deadline reached');
+            }}
+          />
+        ) : undefined
+      }
+      isSubmitting={isSubmitting}
+      onImHere={handleImHere}
+      onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
+    />
   );
 }
