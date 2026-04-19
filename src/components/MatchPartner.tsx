@@ -56,37 +56,30 @@ export function MatchPartnerView({
         {countdown && <div className="mb-8">{countdown}</div>}
 
         <h1 className="text-4xl font-bold mb-12">
-          {matchData.findingDeadline ? 'Now, find each other!' : 'Now wait for the others'}
+          {matchData.findingDeadline ? 'Show this image to your match!' : 'Now wait for the others'}
         </h1>
 
         <fieldset className="mb-12 border-2 border-border rounded-2xl px-4 py-6">
-          <legend className="px-3 text-xl text-muted-foreground">
-            Show this so {matchData.partners.length === 1
-              ? `${matchData.partners[0].firstName} can find you`
-              : 'they can find you'}
-          </legend>
           <GeometricIdentification
             matchId={matchData.matchId}
+            number={matchData.myIdentificationNumber}
             className="rounded-lg shadow-lg w-full block"
           />
-          <div className="flex flex-col items-center justify-center gap-6 mt-10">
-            <h3 className="text-[5rem] sm:text-[6rem] md:text-[7rem] font-bold text-foreground leading-none break-words w-full">
+          <div className="flex flex-col items-center justify-center mt-10">
+            <h3 className="text-[6rem] sm:text-[8rem] md:text-[10rem] font-bold text-foreground leading-none break-words w-full">
               {matchData.myName}
             </h3>
-            <div className="w-28 h-28 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
-              <span className="text-5xl font-bold">{matchData.myIdentificationNumber}</span>
-            </div>
           </div>
         </fieldset>
 
         <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
           <legend className="px-3 text-xl text-muted-foreground">Look for</legend>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {matchData.partners.map((partner) => (
               <div key={partner.id} className="text-center">
-                <h2 className="text-4xl font-bold">{partner.firstName}</h2>
+                <h2 className="text-6xl sm:text-7xl font-bold leading-none">{partner.firstName}</h2>
                 <p
-                  className={`text-lg mt-1 ${
+                  className={`text-lg mt-3 ${
                     partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
                   }`}
                 >

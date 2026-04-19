@@ -4,6 +4,8 @@
 interface GeometricIdentificationProps {
   matchId: string;
   className?: string;
+  /** When provided, overlays the identification number large in the center of the shape. */
+  number?: string | number;
 }
 
 // Available shapes
@@ -67,7 +69,7 @@ function getDeterministicValues(matchId: string) {
   };
 }
 
-export function GeometricIdentification({ matchId, className = '' }: GeometricIdentificationProps) {
+export function GeometricIdentification({ matchId, className = '', number }: GeometricIdentificationProps) {
   const { shape, backgroundColor, shapeColor } = getDeterministicValues(matchId);
   
   const renderShape = () => {
@@ -129,12 +131,29 @@ export function GeometricIdentification({ matchId, className = '' }: GeometricId
   };
   
   return (
-    <svg 
-      viewBox="0 0 400 400" 
+    <svg
+      viewBox="0 0 400 400"
       className={className}
       style={{ backgroundColor }}
     >
       {renderShape()}
+      {number !== undefined && number !== '' && (
+        <text
+          x="200"
+          y="200"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="180"
+          fontWeight="900"
+          fill="#ffffff"
+          stroke="#000000"
+          strokeWidth="6"
+          paintOrder="stroke fill"
+          style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
+        >
+          {number}
+        </text>
+      )}
     </svg>
   );
 }

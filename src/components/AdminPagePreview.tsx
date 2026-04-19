@@ -481,7 +481,7 @@ function PreviewMeetingPoint() {
 }
 
 function PreviewNoMatch() {
-  return <MatchInfoNoMatchView onBackToDashboard={() => {}} />;
+  return <MatchInfoNoMatchView onBackToDashboard={() => {}} onBackToEventPage={() => {}} />;
 }
 
 function PreviewMatchPartner() {

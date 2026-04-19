@@ -109,9 +109,10 @@ export function MatchInfoMatchedView({
 
 export interface MatchInfoNoMatchViewProps {
   onBackToDashboard: () => void;
+  onBackToEventPage: () => void;
 }
 
-export function MatchInfoNoMatchView({ onBackToDashboard }: MatchInfoNoMatchViewProps) {
+export function MatchInfoNoMatchView({ onBackToDashboard, onBackToEventPage }: MatchInfoNoMatchViewProps) {
   return (
     <div className="min-h-screen bg-background">
       <WondereloHeader />
@@ -122,9 +123,17 @@ export function MatchInfoNoMatchView({ onBackToDashboard }: MatchInfoNoMatchView
           No one else registered for this round.
         </p>
         <h2 className="text-2xl font-bold mb-6">Try another round!</h2>
-        <Button size="lg" onClick={onBackToDashboard}>
-          Back to dashboard
+        <Button size="lg" onClick={onBackToEventPage}>
+          Back to event page
         </Button>
+        <div className="mt-6">
+          <button
+            onClick={onBackToDashboard}
+            className="text-muted-foreground hover:text-foreground underline transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -332,7 +341,23 @@ export function MatchInfo() {
   }
 
   if (error === 'no-match') {
-    return <MatchInfoNoMatchView onBackToDashboard={() => navigate(`/p/${token}?from=match`)} />;
+    return (
+      <MatchInfoNoMatchView
+        onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
+        onBackToEventPage={() => {
+          // Pull organizer slug from cached dashboard data
+          let slug = '';
+          try {
+            const cache = localStorage.getItem(`participant_dashboard_${token}`);
+            if (cache) {
+              const d = JSON.parse(cache);
+              slug = d?.registrations?.[0]?.organizerUrlSlug || d?.organizerSlug || '';
+            }
+          } catch { /* ignore */ }
+          navigate(slug ? `/${slug}` : `/p/${token}?from=match`);
+        }}
+      />
+    );
   }
 
   if (error || !matchData) {
