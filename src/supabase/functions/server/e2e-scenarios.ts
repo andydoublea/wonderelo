@@ -698,7 +698,263 @@ defineScenario({
   }
 });
 
-// --- CATEGORY 6: API CONTRACT (frontend-facing endpoints) ---
+// --- CATEGORY 6: TEAMS / TOPICS / MEETING POINTS ---
+
+/**
+ * Create a session with custom configuration (teams, topics, meeting points).
+ */
+async function createCustomSession(
+  supabase: any,
+  organizerId: string,
+  overrides: Record<string, any>
+) {
+  const sessionId = makeId('session');
+  const roundId = makeId('round');
+  const today = new Date().toISOString().split('T')[0];
+  await db.createSession({
+    id: sessionId,
+    userId: organizerId,
+    name: 'E2E Teams/Topics Test',
+    date: today,
+    status: 'published',
+    groupSize: 2,
+    maxParticipants: 100,
+    meetingPoints: ['Lobby', 'Table 1'],
+    iceBreakers: ['Test?'],
+    rounds: [{ id: roundId, startTime: '00:00', duration: 10, name: 'Test Round' }],
+    registrationStart: new Date(Date.now() - 3600000).toISOString(),
+    ...overrides,
+  });
+  return { sessionId, roundId };
+}
+
+/**
+ * Register participants with team / topics attributes.
+ */
+async function registerWithAttrs(
+  entries: Array<{ firstName: string; team?: string; topics?: string[] }>,
+  sessionId: string,
+  roundId: string,
+  organizerId: string
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const e of entries) {
+    const pid = makeId('p');
+    const token = makeId('tok');
+    const email = `${makeId('e')}@test.com`;
+    await db.createParticipant({
+      participantId: pid, email, token,
+      firstName: e.firstName, lastName: 'Test',
+      phone: '', phoneCountry: '+421',
+    });
+    await db.createRegistration({
+      participantId: pid, sessionId, roundId, organizerId,
+      status: 'registered',
+      team: e.team,
+      topics: e.topics,
+    });
+    ids.push(pid);
+  }
+  return ids;
+}
+
+async function getMatchesForRound(supabase: any, sessionId: string, roundId: string) {
+  const { data } = await supabase
+    .from('matches')
+    .select('id, meeting_point, match_participants:match_participants(participant_id)')
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  return data || [];
+}
+
+defineScenario({
+  id: 'teams-across', name: 'Across-teams: different teams pair up', category: 'Teams & Topics',
+  description: 'With matchingType=across-teams, participants from different teams are preferred over same-team pairs',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () =>
+      createCustomSession(supabase, organizerId, {
+        enableTeams: true,
+        matchingType: 'across-teams',
+        teams: ['Red', 'Blue'],
+      })
+    );
+    // 4 participants: 2 Red, 2 Blue — ideal pairings are Red↔Blue
+    const ids = await step('register', () => registerWithAttrs([
+      { firstName: 'R1', team: 'Red' },
+      { firstName: 'R2', team: 'Red' },
+      { firstName: 'B1', team: 'Blue' },
+      { firstName: 'B2', team: 'Blue' },
+    ], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('run_matching', () => createMatchesForRound(sessionId, roundId));
+    await step('verify', async () => {
+      const matches = await getMatchesForRound(supabase, sessionId, roundId);
+      assert(matches.length === 2, `Expected 2 matches, got ${matches.length}`);
+      // Load team info for each participant in each match
+      let acrossCount = 0;
+      for (const m of matches) {
+        const pIds = m.match_participants.map((mp: any) => mp.participant_id);
+        const regs = await supabase.from('registrations')
+          .select('participant_id, team').in('participant_id', pIds).eq('session_id', sessionId);
+        const teams = (regs.data || []).map((r: any) => r.team);
+        if (teams[0] !== teams[1]) acrossCount++;
+      }
+      assert(acrossCount === 2, `Expected both matches across teams, got ${acrossCount}/2`);
+      return { matches: matches.length, acrossTeam: acrossCount };
+    });
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'teams-within', name: 'Within-teams: same teams pair up', category: 'Teams & Topics',
+  description: 'With matchingType=within-teams, participants from the same team are preferred',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () =>
+      createCustomSession(supabase, organizerId, {
+        enableTeams: true,
+        matchingType: 'within-teams',
+        teams: ['Red', 'Blue'],
+      })
+    );
+    const ids = await step('register', () => registerWithAttrs([
+      { firstName: 'R1', team: 'Red' },
+      { firstName: 'R2', team: 'Red' },
+      { firstName: 'B1', team: 'Blue' },
+      { firstName: 'B2', team: 'Blue' },
+    ], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('run_matching', () => createMatchesForRound(sessionId, roundId));
+    await step('verify', async () => {
+      const matches = await getMatchesForRound(supabase, sessionId, roundId);
+      assert(matches.length === 2, `Expected 2 matches, got ${matches.length}`);
+      let withinCount = 0;
+      for (const m of matches) {
+        const pIds = m.match_participants.map((mp: any) => mp.participant_id);
+        const regs = await supabase.from('registrations')
+          .select('participant_id, team').in('participant_id', pIds).eq('session_id', sessionId);
+        const teams = (regs.data || []).map((r: any) => r.team);
+        if (teams[0] === teams[1]) withinCount++;
+      }
+      assert(withinCount === 2, `Expected both matches within same team, got ${withinCount}/2`);
+      return { matches: matches.length, withinTeam: withinCount };
+    });
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'topics-shared', name: 'Shared topics boost pair score', category: 'Teams & Topics',
+  description: 'Participants with shared topics are preferred over participants with no topic overlap',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () =>
+      createCustomSession(supabase, organizerId, {
+        enableTopics: true,
+        topics: ['AI', 'Design', 'Startups'],
+      })
+    );
+    // 4 participants: A+C share "AI", B+D share "Design". Any matching that respects topics
+    // should pair shared-topic participants. Ideal: (A,C) + (B,D).
+    const ids = await step('register', () => registerWithAttrs([
+      { firstName: 'A', topics: ['AI'] },
+      { firstName: 'B', topics: ['Design'] },
+      { firstName: 'C', topics: ['AI'] },
+      { firstName: 'D', topics: ['Design'] },
+    ], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('run_matching', () => createMatchesForRound(sessionId, roundId));
+    await step('verify', async () => {
+      const matches = await getMatchesForRound(supabase, sessionId, roundId);
+      assert(matches.length === 2, `Expected 2 matches, got ${matches.length}`);
+      let sharedTopicCount = 0;
+      for (const m of matches) {
+        const pIds = m.match_participants.map((mp: any) => mp.participant_id);
+        const regs = await supabase.from('registrations')
+          .select('participant_id, topics').in('participant_id', pIds).eq('session_id', sessionId);
+        const [t1, t2] = (regs.data || []).map((r: any) => r.topics || []);
+        const overlap = t1.filter((t: string) => t2.includes(t));
+        if (overlap.length > 0) sharedTopicCount++;
+      }
+      assert(sharedTopicCount === 2, `Expected both matches to share a topic, got ${sharedTopicCount}/2`);
+      return { matches: matches.length, withSharedTopic: sharedTopicCount };
+    });
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'mp-distribution', name: 'Meeting points distributed round-robin', category: 'Teams & Topics',
+  description: 'With 3 meeting points and 6 matches, each meeting point is assigned exactly 2 matches',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () =>
+      createCustomSession(supabase, organizerId, {
+        meetingPoints: [
+          { id: 'mp1', name: 'Lobby' },
+          { id: 'mp2', name: 'Cafeteria' },
+          { id: 'mp3', name: 'Garden' },
+        ],
+      })
+    );
+    // 12 participants → 6 matches (groupSize 2)
+    const names = Array.from({ length: 12 }, (_, i) => ({ firstName: `P${i + 1}` }));
+    const ids = await step('register', () => registerWithAttrs(names, sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('run_matching', () => createMatchesForRound(sessionId, roundId));
+    await step('verify', async () => {
+      const matches = await getMatchesForRound(supabase, sessionId, roundId);
+      assert(matches.length === 6, `Expected 6 matches, got ${matches.length}`);
+      // Count how many matches landed on each MP
+      const counts: Record<string, number> = {};
+      for (const m of matches) {
+        counts[m.meeting_point] = (counts[m.meeting_point] || 0) + 1;
+      }
+      const uniqueMPs = Object.keys(counts);
+      assert(uniqueMPs.length === 3, `Expected 3 distinct meeting points used, got ${uniqueMPs.length}: ${uniqueMPs.join(', ')}`);
+      for (const mp of uniqueMPs) {
+        assert(counts[mp] === 2, `Expected 2 matches at ${mp}, got ${counts[mp]}`);
+      }
+      return { matches: matches.length, counts };
+    });
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'mp-single-all-matches', name: 'Single meeting point: all matches assigned to it', category: 'Teams & Topics',
+  description: 'With 1 meeting point and 3 matches, all 3 matches land on that meeting point',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () =>
+      createCustomSession(supabase, organizerId, {
+        meetingPoints: [{ id: 'mp1', name: 'Only Place' }],
+      })
+    );
+    const names = Array.from({ length: 6 }, (_, i) => ({ firstName: `P${i + 1}` }));
+    const ids = await step('register', () => registerWithAttrs(names, sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('run_matching', () => createMatchesForRound(sessionId, roundId));
+    await step('verify', async () => {
+      const matches = await getMatchesForRound(supabase, sessionId, roundId);
+      assert(matches.length === 3, `Expected 3 matches, got ${matches.length}`);
+      for (const m of matches) {
+        assert(m.meeting_point === 'Only Place', `Expected 'Only Place', got '${m.meeting_point}'`);
+      }
+      return { matches: matches.length, meeting_point: 'Only Place' };
+    });
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+// --- CATEGORY 7: API CONTRACT (frontend-facing endpoints) ---
 
 async function apiFetch(ctx: TestContext, path: string, options?: any) {
   const url = `${ctx.apiBaseUrl}${path}`;
