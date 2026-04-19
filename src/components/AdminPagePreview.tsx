@@ -19,6 +19,23 @@ import {
   ContactSharingPartnerFeedbackView,
   ContactSharingWondereloFeedbackView,
 } from './ContactSharing';
+import { DashboardView } from './Dashboard';
+import { AccountSettingsView } from './AccountSettings';
+import { EventPageSettingsView } from './EventPageSettings';
+import { EventPromoPageView } from './EventPromoPage';
+import { RoundFormPageView } from './RoundFormPage';
+import { SignInFlowView } from './SignInFlow';
+import { SignUpFlowView } from './SignUpFlow';
+import { ResetPasswordFlowView } from './ResetPasswordFlow';
+import { EmailVerificationView } from './EmailVerification';
+import { EmailVerificationWaitingView } from './EmailVerificationWaiting';
+import { MissedRoundView } from './MissedRound';
+import { RegistrationSuccessView } from './RegistrationSuccess';
+import { SessionSuccessView } from './SessionSuccessPage';
+import { ParticipantRoundDetailView, RoundDetail } from './ParticipantRoundDetail';
+import { AddressBookView, Contact } from './AddressBook';
+import { ParticipantProfileView, ParticipantProfileFormData } from '../pages/ParticipantProfile';
+import { ParticipantDashboardView, Registration, SessionWithRounds } from './ParticipantDashboard';
 
 interface AdminPagePreviewProps {
   onBack: () => void;
@@ -110,9 +127,25 @@ type PreviewPage =
   | 'match-partner'
   | 'match-networking'
   | 'contact-sharing'
+  | 'wonderelo-feedback'
+  | 'email-verification'
   | 'participant-profile'
   | 'session-registration'
-  | 'session-success';
+  | 'session-success'
+  | 'homepage'
+  | 'public-event-page'
+  | 'signin'
+  | 'signup'
+  | 'reset-password'
+  | 'email-waiting'
+  | 'registration-success'
+  | 'missed-round'
+  | 'round-detail'
+  | 'organizer-dashboard'
+  | 'account-settings'
+  | 'event-page-settings'
+  | 'event-promo'
+  | 'round-form';
 
 interface PreviewPageDef {
   id: PreviewPage;
@@ -130,7 +163,9 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
     name: 'Registration',
     pages: [
       { id: 'session-registration', label: 'Registration', description: 'Participant registers for a round' },
+      { id: 'email-waiting', label: 'Email waiting', description: 'Waiting for email verification link click' },
       { id: 'email-verification', label: 'Email verification', description: 'Email verification landing page' },
+      { id: 'registration-success', label: 'Registration success', description: 'Organizer finished signup' },
       { id: 'participant-profile', label: 'Profile', description: 'Participant edits their profile' },
     ],
   },
@@ -138,6 +173,7 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
     name: 'Dashboard',
     pages: [
       { id: 'participant-dashboard', label: 'Dashboard', description: 'Participant\'s main dashboard with upcoming rounds' },
+      { id: 'round-detail', label: 'Round detail', description: 'Detail page for a single registered round' },
       { id: 'address-book', label: 'Address Book', description: 'Contacts shared after networking rounds' },
     ],
   },
@@ -150,12 +186,33 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
       { id: 'match-networking', label: 'Networking', description: 'Active networking with ice breakers' },
       { id: 'contact-sharing', label: 'Contact sharing', description: 'Exchange contacts after networking' },
       { id: 'wonderelo-feedback', label: 'Wonderelo feedback', description: 'Rate the Wonderelo experience' },
+      { id: 'missed-round', label: 'Missed round', description: 'Participant missed their round' },
     ],
   },
   {
     name: 'Organizer',
     pages: [
+      { id: 'organizer-dashboard', label: 'Dashboard (organizer)', description: 'Organizer\'s main dashboard with sessions and rounds' },
+      { id: 'account-settings', label: 'Account settings', description: 'Organizer edits their name, email, and password' },
+      { id: 'event-page-settings', label: 'Event page settings', description: 'Organizer edits event page URL, name, and profile image' },
+      { id: 'event-promo', label: 'Promo slide', description: 'Full-screen promo slide with QR code' },
+      { id: 'round-form', label: 'Round form', description: 'Organizer creates or edits a networking round' },
       { id: 'session-success', label: 'Round created', description: 'Organizer sees success after creating a round' },
+    ],
+  },
+  {
+    name: 'Public',
+    pages: [
+      { id: 'homepage', label: 'Homepage', description: 'Marketing homepage at /' },
+      { id: 'public-event-page', label: 'Public event page', description: 'Organizer\'s public event page at /:slug' },
+    ],
+  },
+  {
+    name: 'Auth',
+    pages: [
+      { id: 'signin', label: 'Sign in', description: 'Sign in flow (participant + organizer tabs)' },
+      { id: 'signup', label: 'Sign up', description: 'Organizer sign up (multi-step)' },
+      { id: 'reset-password', label: 'Reset password', description: 'Set a new password via reset link' },
     ],
   },
 ];
@@ -168,6 +225,134 @@ const PREVIEW_PAGES = PREVIEW_CATEGORIES.flatMap(c => c.pages);
 // ============================================================
 
 function PreviewParticipantDashboard() {
+  const noop = () => {};
+  // Build a past session (completed round) with mock data
+  const pastRoundDate = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+  const pastSession: NetworkingSession = {
+    ...mockSession,
+    id: 'preview-past-session',
+    name: 'Startup Mixer',
+    date: pastRoundDate,
+    rounds: [
+      {
+        id: 'past-round-1',
+        name: 'Round 1',
+        date: pastRoundDate,
+        startTime: '18:00',
+        duration: 20,
+        tZeroMinutes: 15,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        maxGroupSize: 2,
+        allowOverflowMatching: true,
+      } as Round,
+    ],
+  };
+
+  const upcomingSessions: SessionWithRounds[] = [
+    {
+      session: mockPublishedSession,
+      registeredRoundIds: new Set([mockRound.id]),
+      registrationStatusMap: new Map([[mockRound.id, 'registered']]),
+    },
+  ];
+
+  const pastSessions: SessionWithRounds[] = [
+    {
+      session: pastSession,
+      registeredRoundIds: new Set(['past-round-1']),
+      registrationStatusMap: new Map([['past-round-1', 'met']]),
+    },
+  ];
+
+  const registrations: Registration[] = [
+    {
+      roundId: mockRound.id,
+      sessionId: mockPublishedSession.id,
+      sessionName: mockPublishedSession.name,
+      roundName: mockRound.name,
+      organizerName: 'Andyho konfera',
+      organizerUrlSlug: 'andyconf',
+      status: 'registered',
+      currentStatus: 'registered',
+      startTime: mockRound.startTime,
+      duration: mockRound.duration,
+      date: mockPublishedSession.date,
+      registeredAt: new Date().toISOString(),
+      notificationsEnabled: false,
+    },
+    {
+      roundId: 'past-round-1',
+      sessionId: pastSession.id,
+      sessionName: pastSession.name,
+      roundName: 'Round 1',
+      organizerName: 'Andyho konfera',
+      organizerUrlSlug: 'andyconf',
+      status: 'met',
+      currentStatus: 'met',
+      startTime: '18:00',
+      duration: 20,
+      date: pastRoundDate,
+      registeredAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+      notificationsEnabled: false,
+    },
+  ];
+
+  const sharedContactsByRound = new Map<string, { firstName: string; lastName: string }[]>([
+    ['past-round-1', [{ firstName: 'Marcus', lastName: 'Rivera' }]],
+  ]);
+
+  return (
+    <div className="min-h-[600px] bg-background">
+      <ParticipantDashboardView
+        firstName="Sarah"
+        lastName="Chen"
+        upcomingSessions={upcomingSessions}
+        pastSessions={pastSessions}
+        registrations={registrations}
+        sharedContactsByRound={sharedContactsByRound}
+        roundSelections={new Map()}
+        participantId="preview-participant"
+        globalNextUpcomingRoundId={null}
+        hasFreshData={true}
+        lastConfirmTimestamp={0}
+        token="preview-token"
+        showMeetingPoints={false}
+        selectedSessionForDialog={null}
+        showRoundRules={false}
+        roundRules={[]}
+        showUnregisterDialog={false}
+        pendingUnregister={null}
+        showDebug={false}
+        debugLogs={[]}
+        onAddMoreRoundsNavigate={noop}
+        onAddressBookNavigate={noop}
+        onSetShowMeetingPoints={noop}
+        onSetShowRoundRules={noop}
+        onSetShowUnregisterDialog={noop}
+        onCancelUnregister={noop}
+        onConfirmUnregister={noop}
+        onRoundToggle={noop}
+        onConfirmAttendance={noop}
+        onConfirmationWindowExpired={noop}
+        onClearDebugLogs={noop}
+        generateRoundTimeDisplay={(startTime, duration) => {
+          if (!startTime) return 'To be set';
+          const [h, m] = startTime.split(':').map(Number);
+          const endM = (h * 60 + m + duration) % (24 * 60);
+          const eh = Math.floor(endM / 60);
+          const em = endM % 60;
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          return `${pad(h)}:${pad(m)} - ${pad(eh)}:${pad(em)}`;
+        }}
+        isRoundCompleted={(_s, round) => round.status === 'completed'}
+      />
+    </div>
+  );
+}
+
+// Legacy static mock — no longer used but kept for reference.
+function _PreviewParticipantDashboardLegacy() {
   return (
     <div className="min-h-[600px] bg-background">
       <ParticipantNav
@@ -391,82 +576,131 @@ function PreviewWondereloFeedback() {
 
 function PreviewEmailVerification() {
   return (
-    <div className="min-h-[600px] bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      <PreviewHeader />
-      <div className="flex items-center justify-center p-4 pt-16">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">✉️</div>
-            <h2 className="text-2xl font-bold mb-2">Email verified!</h2>
-            <p className="text-muted-foreground mb-6">Your email address has been confirmed. Redirecting to your dashboard...</p>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <EmailVerificationView
+      status="success"
+      message="Email verified successfully! Your registration is now complete."
+      onGoToRounds={() => {}}
+      onReturnHome={() => {}}
+    />
+  );
+}
+
+function PreviewEmailWaiting() {
+  return (
+    <EmailVerificationWaitingView
+      email="sarah@gmail.com"
+      emailProvider={{ name: 'Open Gmail', url: 'https://mail.google.com' }}
+      onOpenProvider={() => {}}
+    />
+  );
+}
+
+function PreviewRegistrationSuccess() {
+  return (
+    <RegistrationSuccessView
+      registrationData={{
+        email: 'sarah@example.com',
+        customUrl: 'sarahs-events',
+        howDidYouHear: 'Friend',
+        role: 'Community manager',
+        companySize: '10-50',
+      }}
+      serviceType="event"
+      onContinue={() => {}}
+    />
+  );
+}
+
+function PreviewMissedRound() {
+  const [feedback, setFeedback] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  return (
+    <MissedRoundView
+      roundName="Round 1 - Tech Meetup Prague"
+      feedback={feedback}
+      isSubmitting={false}
+      isSubmitted={isSubmitted}
+      onFeedbackChange={setFeedback}
+      onSubmitFeedback={() => setIsSubmitted(true)}
+      onBackToDashboard={() => {}}
+    />
+  );
+}
+
+function PreviewRoundDetail() {
+  const mockRoundDetail: RoundDetail = {
+    registration: { notificationsEnabled: false },
+    session: {
+      id: 's1',
+      name: 'Tech Meetup Prague',
+      date: mockSession.date,
+      location: 'Impact Hub Bratislava',
+      meetingPoints: [
+        { name: 'Lobby Bar' },
+        { name: 'Rooftop Terrace' },
+      ],
+    },
+    round: {
+      id: 'r1',
+      name: 'Round 1',
+      startTime: mockRound.startTime,
+      duration: 20,
+      groupSize: 2,
+      iceBreakers: MOCK_ICE_BREAKERS,
+      date: mockSession.date,
+    },
+    organizer: {
+      name: 'Andyho konfera',
+      urlSlug: 'andyconf',
+    },
+  };
+  return (
+    <ParticipantRoundDetailView
+      roundDetail={mockRoundDetail}
+      isUpcoming={true}
+      isInProgress={false}
+      isCompleted={false}
+      countdown="2h 14m 32s"
+      formattedDateTime={new Date(`${mockSession.date}T${mockRound.startTime}:00`).toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+      })}
+      notificationsEnabled={false}
+      onBack={() => {}}
+      onEnableNotifications={() => {}}
+    />
   );
 }
 
 function PreviewProfile() {
+  const [formData, setFormData] = useState<ParticipantProfileFormData>({
+    firstName: 'Sarah',
+    lastName: 'Chen',
+    email: 'sarah@example.com',
+    phone: '912 345 678',
+    phoneCountry: '+421',
+    linkedinUrl: '',
+    instagramUrl: '',
+    websiteUrl: '',
+    otherSocial: '',
+  });
+  const [phoneCountryOpen, setPhoneCountryOpen] = useState(false);
   return (
     <div className="min-h-[600px] bg-background">
       <PreviewHeader />
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold mb-2">Profile settings</h1>
-        <p className="text-muted-foreground mb-6">Update your contact information</p>
-        <Card>
-          <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">First name *</label>
-                <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="Sarah" readOnly />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Last name *</label>
-                <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="Chen" readOnly />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Email address *</label>
-              <input className="w-full border rounded-lg px-3 py-2 bg-background" defaultValue="sarah@example.com" readOnly />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Phone number *</label>
-              <div className="flex gap-2">
-                <select className="border rounded-lg px-2 py-2 bg-background w-24">
-                  <option>+421</option>
-                </select>
-                <input className="flex-1 border rounded-lg px-3 py-2 bg-background" defaultValue="912 345 678" readOnly />
-              </div>
-            </div>
-            <div className="pt-2">
-              <h3 className="text-sm font-semibold mb-1">Social links (optional)</h3>
-              <p className="text-xs text-muted-foreground mb-4">Shared with your email and phone if a partner agrees to exchange contacts.</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">LinkedIn</label>
-                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="https://linkedin.com/in/..." readOnly />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Instagram</label>
-                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="https://instagram.com/..." readOnly />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Website</label>
-                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="https://..." readOnly />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Other (X, TikTok, etc.)</label>
-                  <input className="w-full border rounded-lg px-3 py-2 bg-background" placeholder="@handle" readOnly />
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline">Cancel</Button>
-              <Button>Save changes</Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="px-6 py-8">
+        <ParticipantProfileView
+          formData={formData}
+          error=""
+          success=""
+          saving={false}
+          hasChanges={false}
+          phoneCountryOpen={phoneCountryOpen}
+          onPhoneCountryOpenChange={setPhoneCountryOpen}
+          onFieldChange={(field, value) => setFormData(prev => ({ ...prev, [field]: value }))}
+          onSave={(e) => e.preventDefault()}
+          onCancel={() => {}}
+          onBack={() => {}}
+        />
       </div>
     </div>
   );
@@ -516,61 +750,23 @@ function PreviewRegistration() {
 function PreviewSessionSuccess() {
   return (
     <div className="min-h-[600px] bg-background">
-      <div className="pt-8 text-center space-y-8 px-6">
-        <div className="flex flex-col items-center gap-3">
-          <CheckCircle className="h-16 w-16 text-green-500" />
-          <h2 className="text-2xl font-bold">Round created successfully!</h2>
-        </div>
-
-        <div className="flex justify-center">
-          <Card className="w-full max-w-md">
-            <CardContent className="pt-4 pb-4 px-4">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold">{mockSession.name}</h3>
-                <Badge className="bg-green-100 text-green-800 border-green-200">Published</Badge>
-              </div>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(mockSession.date).toLocaleDateString()}</div>
-                <div className="flex items-center gap-1"><Users className="h-4 w-4" /> Groups of {mockSession.groupSize}</div>
-                <div className="flex items-center gap-1"><Clock className="h-4 w-4" /> {mockSession.roundDuration} min</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex justify-center">
-          <Card className="w-full max-w-md">
-            <CardContent className="pt-6 space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Share your event with participants</h3>
-                <p className="text-sm text-muted-foreground">Your round is live! Promote it to get participants registered.</p>
-              </div>
-              <div className="space-y-3">
-                <label className="text-sm font-medium">Your event page URL</label>
-                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                  <code className="flex-1 text-sm break-all">https://wonderelo.com/andyconf</code>
-                </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Button variant="outline" className="w-full">Copy URL</Button>
-                <Button variant="outline" className="w-full">Download QR code</Button>
-                <Button variant="outline" className="w-full">Open Promo Slide</Button>
-              </div>
-              <div className="text-center">
-                <a href="#" className="text-sm text-muted-foreground hover:text-foreground underline">How to promote your event →</a>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Button variant="outline">← Back to rounds</Button>
-      </div>
+      <SessionSuccessView
+        session={mockSession}
+        eventUrl="https://wonderelo.com/andyconf"
+        presenterSlideUrl="https://wonderelo.com/promo/andyconf"
+        blogPostUrl="https://wonderelo.com/blog/how-to-promote-event"
+        copied={false}
+        onCopyUrl={() => {}}
+        onDownloadQR={() => {}}
+        onOpenPresenterSlide={() => {}}
+        onBack={() => {}}
+      />
     </div>
   );
 }
 
 function PreviewAddressBook() {
-  const mockContacts = [
+  const mockContacts: Contact[] = [
     {
       id: 'c1',
       firstName: 'Marcus',
@@ -578,9 +774,11 @@ function PreviewAddressBook() {
       email: 'marcus@example.com',
       phone: '+421 903 456 789',
       organizerName: 'Andyho konfera',
+      organizerSlug: 'andyconf',
       sessionName: 'Tech Meetup Prague',
       roundName: 'Round 1',
       sessionDate: new Date().toISOString(),
+      acquiredAt: new Date().toISOString(),
       allPartners: [],
     },
     {
@@ -589,9 +787,11 @@ function PreviewAddressBook() {
       lastName: 'Johansson',
       email: 'emma@example.com',
       organizerName: 'Andyho konfera',
+      organizerSlug: 'andyconf',
       sessionName: 'Tech Meetup Prague',
       roundName: 'Round 2',
       sessionDate: new Date(Date.now() - 7 * 86400000).toISOString(),
+      acquiredAt: new Date(Date.now() - 7 * 86400000).toISOString(),
       allPartners: [
         { firstName: 'Emma', lastName: 'Johansson' },
         { firstName: 'Tomáš', lastName: 'Novák' },
@@ -599,78 +799,320 @@ function PreviewAddressBook() {
     },
   ];
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch { return dateStr; }
-  };
+  return (
+    <AddressBookView
+      contacts={mockContacts}
+      isLoading={false}
+      error={null}
+      copiedId={null}
+      onBack={() => {}}
+      onDownloadVCard={() => {}}
+      onCopyEmail={() => {}}
+      onCopyPhone={() => {}}
+    />
+  );
+}
 
+function PreviewSignIn() {
+  const [activeTab, setActiveTab] = useState<'participant' | 'organizer'>('participant');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [participantEmail, setParticipantEmail] = useState('');
+  return (
+    <SignInFlowView
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      email={email}
+      password={password}
+      showPassword={showPassword}
+      isLoading={false}
+      error=""
+      onEmailChange={setEmail}
+      onPasswordChange={setPassword}
+      onToggleShowPassword={() => setShowPassword(v => !v)}
+      onSubmit={(e) => e?.preventDefault()}
+      onForgotPassword={() => {}}
+      participantEmail={participantEmail}
+      participantLoading={false}
+      participantError=""
+      onParticipantEmailChange={setParticipantEmail}
+      onParticipantSubmit={(e) => e.preventDefault()}
+      onBack={() => {}}
+      onSwitchToSignUp={() => {}}
+      isFormValid={!!email && !!password}
+    />
+  );
+}
+
+function PreviewSignUp() {
+  const [step, setStep] = useState(1);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [organizerName, setOrganizerName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [discoverySource, setDiscoverySource] = useState('');
+  const [eventType, setEventType] = useState('');
+  const [eventTypeOther, setEventTypeOther] = useState('');
+  const [companySize, setCompanySize] = useState('');
+  const [userRole, setUserRole] = useState('');
+
+  const stepTitles = ['Create your account', 'How did you hear about us?', 'About your organization'];
+  const stepDescriptions = [
+    'Get started with your Wonderelo account',
+    'Help us understand how you discovered Wonderelo',
+    'Tell us about your organization and role',
+  ];
+
+  return (
+    <SignUpFlowView
+      currentStep={step}
+      totalSteps={3}
+      email={email}
+      password={password}
+      organizerName={organizerName}
+      showPassword={showPassword}
+      emailCheckStatus={email ? 'available' : 'idle'}
+      discoverySource={discoverySource}
+      eventType={eventType}
+      eventTypeOther={eventTypeOther}
+      companySize={companySize}
+      userRole={userRole}
+      error=""
+      isLoading={false}
+      isStepValid={true}
+      stepTitle={stepTitles[step - 1]}
+      stepDescription={stepDescriptions[step - 1]}
+      onEmailChange={setEmail}
+      onPasswordChange={setPassword}
+      onOrganizerNameChange={setOrganizerName}
+      onToggleShowPassword={() => setShowPassword(v => !v)}
+      onDiscoverySourceChange={setDiscoverySource}
+      onEventTypeChange={setEventType}
+      onEventTypeOtherChange={setEventTypeOther}
+      onCompanySizeChange={setCompanySize}
+      onUserRoleChange={setUserRole}
+      onNext={() => setStep(s => Math.min(3, s + 1))}
+      onPrev={() => setStep(s => Math.max(1, s - 1))}
+      onSubmit={() => {}}
+      onBack={() => {}}
+    />
+  );
+}
+
+function PreviewResetPassword() {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  return (
+    <ResetPasswordFlowView
+      password={password}
+      confirmPassword={confirmPassword}
+      showPassword={showPassword}
+      showConfirmPassword={showConfirmPassword}
+      isLoading={false}
+      error=""
+      success={false}
+      passwordError=""
+      isFormValid={password.length >= 6 && password === confirmPassword}
+      onPasswordChange={setPassword}
+      onConfirmPasswordChange={setConfirmPassword}
+      onToggleShowPassword={() => setShowPassword(v => !v)}
+      onToggleShowConfirmPassword={() => setShowConfirmPassword(v => !v)}
+      onSubmit={(e) => e.preventDefault()}
+      onBack={() => {}}
+      onComplete={() => {}}
+    />
+  );
+}
+
+function PreviewHomepage() {
   return (
     <div className="min-h-[600px] bg-background">
       <PreviewHeader />
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <div className="mb-6">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to dashboard
-          </Button>
-          <h1 className="text-3xl font-bold mt-4 mb-1">Address Book</h1>
-          <p className="text-sm text-muted-foreground">
-            {mockContacts.length} contacts from your networking rounds
-          </p>
+      <div className="max-w-4xl mx-auto px-6 py-16 text-center">
+        <h1 className="text-5xl font-bold mb-6">Speed networking that actually works</h1>
+        <p className="text-xl text-muted-foreground mb-8">
+          Give everyone at your event the chance to make real connections — in minutes, not hours.
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Button size="lg">Get started free</Button>
+          <Button variant="outline" size="lg">Sign in</Button>
         </div>
-
-        <div className="space-y-3">
-          {mockContacts.map((contact) => (
-            <div
-              key={contact.id}
-              className="border rounded-xl p-4 bg-card hover:border-muted-foreground/30 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <h3 className="text-base font-semibold leading-tight">
-                    {contact.firstName} {contact.lastName}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {[contact.organizerName, contact.sessionName, contact.roundName].filter(Boolean).join(' · ')}
-                  </p>
-                </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {formatDate(contact.sessionDate)}
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-primary truncate flex-1">{contact.email}</span>
-                  <Copy className="h-3 w-3 text-muted-foreground" />
-                </div>
-                {contact.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm text-primary flex-1">{contact.phone}</span>
-                    <Copy className="h-3 w-3 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-
-              {contact.allPartners && contact.allPartners.length > 1 && (
-                <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
-                  Group: {contact.allPartners.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
-                </p>
-              )}
-
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <Button variant="outline" size="sm" className="w-full">
-                  <ArrowLeft className="h-3.5 w-3.5 mr-2 rotate-[-90deg]" />
-                  Save to phone contacts
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="text-xs text-muted-foreground mt-16">
+          (Preview is a simplified placeholder — the live Homepage has hero, testimonials carousel, blog posts and more.)
+        </p>
       </div>
+    </div>
+  );
+}
+
+function PreviewPublicEventPage() {
+  return (
+    <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
+      <div className="max-w-2xl mx-auto px-6 py-12">
+        <div className="text-center mb-6">
+          <div className="w-20 h-20 rounded-full bg-muted mx-auto mb-4" />
+          <h1 className="text-3xl font-bold mb-1">Andyho konfera</h1>
+          <p className="text-muted-foreground">wonderelo.com/andyconf</p>
+        </div>
+        <h2 className="text-2xl font-bold text-center mb-6">When can we mix you in?</h2>
+        <PreviewRegistration />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Organizer previews (render real views with mock data)
+// ============================================================
+
+const mockPublishedSession: NetworkingSession = {
+  ...mockSession,
+  status: 'published',
+};
+
+function PreviewOrganizerDashboard() {
+  const noop = () => {};
+  const [checklistVisible, setChecklistVisible] = useState(false);
+  return (
+    <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <DashboardView
+          eventSlug="andyconf"
+          publicUrl="https://wonderelo.com/andyconf"
+          sessions={[mockPublishedSession, mockPublishedSession]}
+          filteredSessions={[mockPublishedSession]}
+          draftSessions={[]}
+          scheduledSessions={[]}
+          publishedSessions={[mockPublishedSession]}
+          completedSessions={[]}
+          isLoadingSessions={false}
+          copied={false}
+          downloadingQR={false}
+          checklistVisible={checklistVisible}
+          showTour={false}
+          currentUser={{ organizerName: 'Andy', onboardingCompletedAt: new Date().toISOString() }}
+          onCopyUrl={noop}
+          onDownloadQR={noop}
+          onNavigate={noop}
+          onEditSession={noop}
+          onDeleteSession={noop}
+          onDuplicateSession={noop}
+          onUpdateSession={noop}
+          onManageSession={noop}
+          onChecklistVisibilityChange={setChecklistVisible}
+          onChecklistDismiss={noop}
+          onTourComplete={noop}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PreviewAccountSettings() {
+  const [organizerName, setOrganizerName] = useState('Andy');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailChangePassword, setEmailChangePassword] = useState('');
+  const [showEmailChangeForm, setShowEmailChangeForm] = useState(false);
+  const noop = () => {};
+  return (
+    <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
+      <AccountSettingsView
+        userEmail="andy@example.com"
+        organizerName={organizerName}
+        isLoading={false}
+        isSaving={false}
+        isChangingPassword={false}
+        isChangingEmail={false}
+        showEmailChangeForm={showEmailChangeForm}
+        currentPassword={currentPassword}
+        newPassword={newPassword}
+        confirmPassword={confirmPassword}
+        newEmail={newEmail}
+        emailChangePassword={emailChangePassword}
+        onOrganizerNameChange={setOrganizerName}
+        onCurrentPasswordChange={setCurrentPassword}
+        onNewPasswordChange={setNewPassword}
+        onConfirmPasswordChange={setConfirmPassword}
+        onNewEmailChange={setNewEmail}
+        onEmailChangePasswordChange={setEmailChangePassword}
+        onToggleEmailChangeForm={() => setShowEmailChangeForm(v => !v)}
+        onCancelEmailChange={() => { setShowEmailChangeForm(false); setNewEmail(''); setEmailChangePassword(''); }}
+        onSave={noop}
+        onPasswordChange={noop}
+        onEmailChange={noop}
+      />
+    </div>
+  );
+}
+
+function PreviewEventPageSettings() {
+  const [eventName, setEventName] = useState('Andyho konfera');
+  const [urlSlug, setUrlSlug] = useState('andyconf');
+  const noop = () => {};
+  return (
+    <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
+      <EventPageSettingsView
+        eventName={eventName}
+        urlSlug={urlSlug}
+        originalUrlSlug="andyconf"
+        profileImageUrl=""
+        previewImageUrl={null}
+        isLoading={false}
+        isSaving={false}
+        isCheckingSlug={false}
+        slugAvailable={true}
+        slugError=""
+        isUploadingImage={false}
+        onEventNameChange={setEventName}
+        onSlugChange={setUrlSlug}
+        onImageUpload={noop}
+        onOpenFilePicker={noop}
+        onSave={noop}
+      />
+    </div>
+  );
+}
+
+function PreviewEventPromo() {
+  return (
+    <EventPromoPageView
+      eventSlug="andyconf"
+      qrCodeUrl=""
+      displayName="Andyho konfera"
+      publishedSessions={[mockPublishedSession]}
+      organizerName="Andy"
+      eventName="Andyho konfera"
+      profileImageUrl=""
+      onBack={() => {}}
+    />
+  );
+}
+
+function PreviewRoundForm() {
+  return (
+    <div className="min-h-[600px] bg-background">
+      <PreviewHeader />
+      <RoundFormPageView
+        isEditing={false}
+        isDuplicating={false}
+        initialData={null}
+        userEmail="andy@example.com"
+        organizerName="Andy"
+        profileImageUrl=""
+        userSlug="andyconf"
+        onSave={async () => {}}
+        onCancel={() => {}}
+      />
     </div>
   );
 }
@@ -693,9 +1135,23 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
       case 'contact-sharing': return <PreviewContactSharing />;
       case 'wonderelo-feedback': return <PreviewWondereloFeedback />;
       case 'email-verification': return <PreviewEmailVerification />;
+      case 'email-waiting': return <PreviewEmailWaiting />;
+      case 'registration-success': return <PreviewRegistrationSuccess />;
+      case 'missed-round': return <PreviewMissedRound />;
+      case 'round-detail': return <PreviewRoundDetail />;
       case 'participant-profile': return <PreviewProfile />;
       case 'session-registration': return <PreviewRegistration />;
       case 'session-success': return <PreviewSessionSuccess />;
+      case 'homepage': return <PreviewHomepage />;
+      case 'public-event-page': return <PreviewPublicEventPage />;
+      case 'signin': return <PreviewSignIn />;
+      case 'signup': return <PreviewSignUp />;
+      case 'reset-password': return <PreviewResetPassword />;
+      case 'organizer-dashboard': return <PreviewOrganizerDashboard />;
+      case 'account-settings': return <PreviewAccountSettings />;
+      case 'event-page-settings': return <PreviewEventPageSettings />;
+      case 'event-promo': return <PreviewEventPromo />;
+      case 'round-form': return <PreviewRoundForm />;
     }
   };
 

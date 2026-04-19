@@ -15,6 +15,230 @@ interface AccountSettingsProps {
   onProfileUpdate?: (updates: { organizerName?: string }) => void;
 }
 
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
+
+export interface AccountSettingsViewProps {
+  userEmail: string;
+  organizerName: string;
+  isLoading: boolean;
+  isSaving: boolean;
+  isChangingPassword: boolean;
+  isChangingEmail: boolean;
+  showEmailChangeForm: boolean;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+  newEmail: string;
+  emailChangePassword: string;
+  onOrganizerNameChange: (value: string) => void;
+  onCurrentPasswordChange: (value: string) => void;
+  onNewPasswordChange: (value: string) => void;
+  onConfirmPasswordChange: (value: string) => void;
+  onNewEmailChange: (value: string) => void;
+  onEmailChangePasswordChange: (value: string) => void;
+  onToggleEmailChangeForm: () => void;
+  onCancelEmailChange: () => void;
+  onSave: () => void;
+  onPasswordChange: () => void;
+  onEmailChange: () => void;
+}
+
+export function AccountSettingsView({
+  userEmail,
+  organizerName,
+  isLoading,
+  isSaving,
+  isChangingPassword,
+  isChangingEmail,
+  showEmailChangeForm,
+  currentPassword,
+  newPassword,
+  confirmPassword,
+  newEmail,
+  emailChangePassword,
+  onOrganizerNameChange,
+  onCurrentPasswordChange,
+  onNewPasswordChange,
+  onConfirmPasswordChange,
+  onNewEmailChange,
+  onEmailChangePasswordChange,
+  onToggleEmailChangeForm,
+  onCancelEmailChange,
+  onSave,
+  onPasswordChange,
+  onEmailChange,
+}: AccountSettingsViewProps) {
+  return (
+    <div className="flex-1">
+      <div className="container mx-auto p-6 max-w-3xl">
+        <div className="mb-8">
+          <h1 className="mb-2">Account settings</h1>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-6">
+            <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div></CardContent></Card>
+            <Card><CardHeader><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-10 w-full" /></CardContent></Card>
+          </div>
+        ) : (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="organizerName">Your name</Label>
+                <div className="max-w-sm">
+                  <Input
+                    id="organizerName"
+                    value={organizerName}
+                    onChange={(e) => onOrganizerNameChange(e.target.value)}
+                    placeholder="John Doe"
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Email</Label>
+                <div className="max-w-sm">
+                  <Input value={userEmail} disabled className="mt-2 bg-muted" />
+                </div>
+                <button
+                  type="button"
+                  onClick={onToggleEmailChangeForm}
+                  className="text-xs text-primary hover:underline mt-1 block"
+                >
+                  {showEmailChangeForm ? 'Cancel' : 'Change email'}
+                </button>
+
+                {showEmailChangeForm && (
+                  <div className="mt-4 p-4 border rounded-lg bg-muted/30 space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      For security, we'll send a verification email to your new address and notify your current email
+                    </p>
+                    <div>
+                      <Label htmlFor="newEmail">New email</Label>
+                      <Input
+                        id="newEmail"
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => onNewEmailChange(e.target.value)}
+                        placeholder="Enter new email"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="emailChangePassword">Current password</Label>
+                      <Input
+                        id="emailChangePassword"
+                        type="password"
+                        value={emailChangePassword}
+                        onChange={(e) => onEmailChangePasswordChange(e.target.value)}
+                        placeholder="Enter current password"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button onClick={onEmailChange} disabled={isChangingEmail} variant="outline" size="sm">
+                        {isChangingEmail ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing...</>
+                        ) : (
+                          'Change email'
+                        )}
+                      </Button>
+                      <Button onClick={onCancelEmailChange} variant="ghost" size="sm">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Change password</CardTitle>
+              <CardDescription>Update your password to keep your account secure</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="currentPassword">Current password</Label>
+                <div className="max-w-sm">
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => onCurrentPasswordChange(e.target.value)}
+                    placeholder="Enter current password"
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="newPassword">New password</Label>
+                <div className="max-w-sm">
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => onNewPasswordChange(e.target.value)}
+                    placeholder="Enter new password"
+                    className="mt-2"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">At least 6 characters</p>
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPassword">Confirm new password</Label>
+                <div className="max-w-sm">
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => onConfirmPasswordChange(e.target.value)}
+                    placeholder="Confirm new password"
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={onPasswordChange} disabled={isChangingPassword} variant="outline" className="w-full sm:w-auto">
+                  {isChangingPassword ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing password...</>
+                  ) : (
+                    'Change password'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button onClick={onSave} disabled={isSaving} className="w-full sm:w-auto">
+              {isSaving ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+              ) : (
+                <><Save className="h-4 w-4 mr-2" />Save changes</>
+              )}
+            </Button>
+          </div>
+        </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdate }: AccountSettingsProps) {
   const [organizerName, setOrganizerName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -226,217 +450,35 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
   };
 
   return (
-    <div className="flex-1">
-      <div className="container mx-auto p-6 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="mb-2">Account settings</h1>
-        </div>
-
-        {isLoading ? (
-          <div className="space-y-6">
-            <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div></CardContent></Card>
-            <Card><CardHeader><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-10 w-full" /></CardContent></Card>
-          </div>
-        ) : (
-        <div className="space-y-6">
-          {/* Account Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Account information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="organizerName">Your name</Label>
-                <div className="max-w-sm">
-                  <Input 
-                    id="organizerName"
-                    value={organizerName}
-                    onChange={(e) => setOrganizerName(e.target.value)}
-                    placeholder="John Doe"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label>Email</Label>
-                <div className="max-w-sm">
-                  <Input 
-                    value={userEmail} 
-                    disabled 
-                    className="mt-2 bg-muted"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowEmailChangeForm(!showEmailChangeForm)}
-                  className="text-xs text-primary hover:underline mt-1 block"
-                >
-                  {showEmailChangeForm ? 'Cancel' : 'Change email'}
-                </button>
-                
-                {/* Inline Email Change Form */}
-                {showEmailChangeForm && (
-                  <div className="mt-4 p-4 border rounded-lg bg-muted/30 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      For security, we'll send a verification email to your new address and notify your current email
-                    </p>
-                    <div>
-                      <Label htmlFor="newEmail">New email</Label>
-                      <Input 
-                        id="newEmail"
-                        type="email"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder="Enter new email"
-                        className="mt-2"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="emailChangePassword">Current password</Label>
-                      <Input 
-                        id="emailChangePassword"
-                        type="password"
-                        value={emailChangePassword}
-                        onChange={(e) => setEmailChangePassword(e.target.value)}
-                        placeholder="Enter current password"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleEmailChange} 
-                        disabled={isChangingEmail}
-                        variant="outline"
-                        size="sm"
-                      >
-                        {isChangingEmail ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Changing...
-                          </>
-                        ) : (
-                          'Change email'
-                        )}
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          setShowEmailChangeForm(false);
-                          setNewEmail('');
-                          setEmailChangePassword('');
-                        }} 
-                        variant="ghost"
-                        size="sm"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Change Password */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Change password</CardTitle>
-              <CardDescription>
-                Update your password to keep your account secure
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="currentPassword">Current password</Label>
-                <div className="max-w-sm">
-                  <Input 
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="newPassword">New password</Label>
-                <div className="max-w-sm">
-                  <Input 
-                    id="newPassword"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="mt-2"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  At least 6 characters
-                </p>
-              </div>
-              
-              <div>
-                <Label htmlFor="confirmPassword">Confirm new password</Label>
-                <div className="max-w-sm">
-                  <Input 
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Button 
-                  onClick={handlePasswordChange} 
-                  disabled={isChangingPassword}
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                >
-                  {isChangingPassword ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Changing password...
-                    </>
-                  ) : (
-                    'Change password'
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving}
-              className="w-full sm:w-auto"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save changes
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-        )}
-      </div>
-
-    </div>
+    <AccountSettingsView
+      userEmail={userEmail}
+      organizerName={organizerName}
+      isLoading={isLoading}
+      isSaving={isSaving}
+      isChangingPassword={isChangingPassword}
+      isChangingEmail={isChangingEmail}
+      showEmailChangeForm={showEmailChangeForm}
+      currentPassword={currentPassword}
+      newPassword={newPassword}
+      confirmPassword={confirmPassword}
+      newEmail={newEmail}
+      emailChangePassword={emailChangePassword}
+      onOrganizerNameChange={setOrganizerName}
+      onCurrentPasswordChange={setCurrentPassword}
+      onNewPasswordChange={setNewPassword}
+      onConfirmPasswordChange={setConfirmPassword}
+      onNewEmailChange={setNewEmail}
+      onEmailChangePasswordChange={setEmailChangePassword}
+      onToggleEmailChangeForm={() => setShowEmailChangeForm(!showEmailChangeForm)}
+      onCancelEmailChange={() => {
+        setShowEmailChangeForm(false);
+        setNewEmail('');
+        setEmailChangePassword('');
+      }}
+      onSave={handleSave}
+      onPasswordChange={handlePasswordChange}
+      onEmailChange={handleEmailChange}
+    />
   );
 }
+

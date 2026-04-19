@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, RefObject } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -13,6 +13,188 @@ interface EventPageSettingsProps {
   accessToken: string;
   onBack: () => void;
   onProfileUpdate?: (updates: { urlSlug?: string; eventName?: string; profileImageUrl?: string }) => void;
+}
+
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
+
+export interface EventPageSettingsViewProps {
+  eventName: string;
+  urlSlug: string;
+  originalUrlSlug: string;
+  profileImageUrl: string;
+  previewImageUrl: string | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  isCheckingSlug: boolean;
+  slugAvailable: boolean | null;
+  slugError: string;
+  isUploadingImage: boolean;
+  urlSlugFieldRef?: RefObject<HTMLDivElement>;
+  fileInputRef?: RefObject<HTMLInputElement>;
+  onEventNameChange: (value: string) => void;
+  onSlugChange: (value: string) => void;
+  onImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onOpenFilePicker: () => void;
+  onSave: () => void;
+}
+
+export function EventPageSettingsView({
+  eventName,
+  urlSlug,
+  originalUrlSlug,
+  profileImageUrl,
+  previewImageUrl,
+  isLoading,
+  isSaving,
+  isCheckingSlug,
+  slugAvailable,
+  slugError,
+  isUploadingImage,
+  urlSlugFieldRef,
+  fileInputRef,
+  onEventNameChange,
+  onSlugChange,
+  onImageUpload,
+  onOpenFilePicker,
+  onSave,
+}: EventPageSettingsViewProps) {
+  return (
+    <div className="flex-1">
+      <div className="container mx-auto p-6 max-w-3xl">
+        <div className="mb-8">
+          <h1 className="mb-2">Event page settings</h1>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-6">
+            <Card><CardHeader><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-24 w-24 rounded-full" /></div></CardContent></Card>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Event page</CardTitle>
+                <CardDescription>This information is visible on your event page</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <Label htmlFor="eventName">Event organizer name</Label>
+                  <div className="max-w-sm">
+                    <Input
+                      id="eventName"
+                      value={eventName}
+                      onChange={(e) => onEventNameChange(e.target.value)}
+                      placeholder="My networking event"
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+
+                <div ref={urlSlugFieldRef}>
+                  <Label htmlFor="urlSlug">Event page URL</Label>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-2 max-w-sm">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">wonderelo.com/</span>
+                      <div className="relative flex-1">
+                        <Input
+                          id="urlSlug"
+                          value={urlSlug}
+                          onChange={(e) => onSlugChange(e.target.value)}
+                          placeholder="my-event"
+                          className="pr-10"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {isCheckingSlug && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                          {!isCheckingSlug && slugAvailable === true && urlSlug !== '' && (
+                            <Check className="h-4 w-4 text-green-600" />
+                          )}
+                          {!isCheckingSlug && slugAvailable === false && <X className="h-4 w-4 text-destructive" />}
+                        </div>
+                      </div>
+                    </div>
+                    {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+                    {!slugError && slugAvailable === true && urlSlug !== originalUrlSlug && (
+                      <p className="text-xs text-green-600">This URL is available</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="profileImage">Profile image</Label>
+                  <div className="flex items-start gap-4 mt-3">
+                    <div className="shrink-0 relative">
+                      {(previewImageUrl || profileImageUrl) ? (
+                        <>
+                          <img
+                            src={previewImageUrl || profileImageUrl}
+                            alt="Profile"
+                            className="h-20 w-20 rounded-full object-cover border-2 border-border"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                          {isUploadingImage && (
+                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                              <Loader2 className="h-6 w-6 text-white animate-spin" />
+                            </div>
+                          )}
+                        </>
+                      ) : null}
+                      <div
+                        className={`h-20 w-20 rounded-full bg-muted flex items-center justify-center ${(previewImageUrl || profileImageUrl) ? 'hidden' : ''}`}
+                      >
+                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-2 max-w-sm">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
+                        className="hidden"
+                        onChange={onImageUpload}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onOpenFilePicker}
+                        disabled={isUploadingImage}
+                        className="w-full"
+                      >
+                        {isUploadingImage ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading...</>
+                        ) : (
+                          <><Upload className="h-4 w-4 mr-2" />Upload image</>
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        {isUploadingImage ? 'Optimizing image...' : 'JPG, PNG, WEBP, GIF, HEIC • Up to 5MB • 200x200px or larger'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button onClick={onSave} disabled={isSaving} className="w-full sm:w-auto">
+                {isSaving ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                ) : (
+                  <><Save className="h-4 w-4 mr-2" />Save changes</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: EventPageSettingsProps) {
@@ -373,179 +555,26 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
   };
 
   return (
-    <div className="flex-1">
-      <div className="container mx-auto p-6 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="mb-2">Event page settings</h1>
-        </div>
-
-        {isLoading ? (
-          <div className="space-y-6">
-            <Card><CardHeader><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-24 w-24 rounded-full" /></div></CardContent></Card>
-          </div>
-        ) : (
-        <>
-
-        <div className="space-y-6">
-          {/* Public Profile Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Event page</CardTitle>
-              <CardDescription>
-                This information is visible on your event page
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Event Name Field */}
-              <div>
-                <Label htmlFor="eventName">Event organizer name</Label>
-                <div className="max-w-sm">
-                  <Input 
-                    id="eventName"
-                    value={eventName}
-                    onChange={(e) => setEventName(e.target.value)}
-                    placeholder="My networking event"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-
-              {/* URL Slug Field */}
-              <div ref={urlSlugFieldRef}>
-                <Label htmlFor="urlSlug">Event page URL</Label>
-                <div className="mt-2 space-y-2">
-                  <div className="flex items-center gap-2 max-w-sm">
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">
-                      wonderelo.com/
-                    </span>
-                    <div className="relative flex-1">
-                      <Input 
-                        id="urlSlug"
-                        value={urlSlug}
-                        onChange={(e) => handleSlugChange(e.target.value)}
-                        placeholder="my-event"
-                        className="pr-10"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        {isCheckingSlug && (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        )}
-                        {!isCheckingSlug && slugAvailable === true && urlSlug !== '' && (
-                          <Check className="h-4 w-4 text-green-600" />
-                        )}
-                        {!isCheckingSlug && slugAvailable === false && (
-                          <X className="h-4 w-4 text-destructive" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {slugError && (
-                    <p className="text-xs text-destructive">{slugError}</p>
-                  )}
-                  {!slugError && slugAvailable === true && urlSlug !== originalUrlSlug && (
-                    <p className="text-xs text-green-600">This URL is available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Profile Image Upload */}
-              <div>
-                <Label htmlFor="profileImage">Profile image</Label>
-                
-                <div className="flex items-start gap-4 mt-3">
-                  {/* Image Preview */}
-                  <div className="shrink-0 relative">
-                    {(previewImageUrl || profileImageUrl) ? (
-                      <>
-                        <img 
-                          src={previewImageUrl || profileImageUrl} 
-                          alt="Profile" 
-                          className="h-20 w-20 rounded-full object-cover border-2 border-border"
-                          onError={(e) => {
-                            // Fallback to placeholder if image fails to load
-                            e.currentTarget.style.display = 'none';
-                            const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                            if (fallback) fallback.style.display = 'flex';
-                          }}
-                        />
-                        {isUploadingImage && (
-                          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                            <Loader2 className="h-6 w-6 text-white animate-spin" />
-                          </div>
-                        )}
-                      </>
-                    ) : null}
-                    <div 
-                      className={`h-20 w-20 rounded-full bg-muted flex items-center justify-center ${(previewImageUrl || profileImageUrl) ? 'hidden' : ''}`}
-                    >
-                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  </div>
-                  
-                  {/* Upload Controls */}
-                  <div className="flex-1 space-y-2 max-w-sm">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingImage}
-                      className="w-full"
-                    >
-                      {isUploadingImage ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload image
-                        </>
-                      )}
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      {isUploadingImage 
-                        ? 'Optimizing image...' 
-                        : 'JPG, PNG, WEBP, GIF, HEIC • Up to 5MB • 200x200px or larger'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving}
-              className="w-full sm:w-auto"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save changes
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-        </>
-        )}
-      </div>
-
-    </div>
+    <EventPageSettingsView
+      eventName={eventName}
+      urlSlug={urlSlug}
+      originalUrlSlug={originalUrlSlug}
+      profileImageUrl={profileImageUrl}
+      previewImageUrl={previewImageUrl}
+      isLoading={isLoading}
+      isSaving={isSaving}
+      isCheckingSlug={isCheckingSlug}
+      slugAvailable={slugAvailable}
+      slugError={slugError}
+      isUploadingImage={isUploadingImage}
+      urlSlugFieldRef={urlSlugFieldRef}
+      fileInputRef={fileInputRef}
+      onEventNameChange={setEventName}
+      onSlugChange={handleSlugChange}
+      onImageUpload={handleImageUpload}
+      onOpenFilePicker={() => fileInputRef.current?.click()}
+      onSave={handleSave}
+    />
   );
 }
+

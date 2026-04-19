@@ -7,7 +7,7 @@ interface EmailVerificationWaitingProps {
 }
 
 // Detect email provider and return a link to open it
-function getEmailProviderLink(email?: string): { name: string; url: string } | null {
+export function getEmailProviderLink(email?: string): { name: string; url: string } | null {
   if (!email) return null;
   const domain = email.split('@')[1]?.toLowerCase();
   if (!domain) return null;
@@ -30,13 +30,24 @@ function getEmailProviderLink(email?: string): { name: string; url: string } | n
   return null;
 }
 
-export function EmailVerificationWaiting({ email }: EmailVerificationWaitingProps) {
-  const emailProvider = getEmailProviderLink(email);
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
 
+export interface EmailVerificationWaitingViewProps {
+  email?: string;
+  emailProvider: { name: string; url: string } | null;
+  onOpenProvider: () => void;
+}
+
+export function EmailVerificationWaitingView({
+  email,
+  emailProvider,
+  onOpenProvider,
+}: EmailVerificationWaitingViewProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 max-w-md">
-        {/* Header */}
         <div className="mb-8">
           <div className="mb-6">
             <h1 className="text-center mb-2">Check your email</h1>
@@ -46,7 +57,6 @@ export function EmailVerificationWaiting({ email }: EmailVerificationWaitingProp
           </div>
         </div>
 
-        {/* Content */}
         <div>
           <Card>
             <CardContent className="pt-6 pb-6">
@@ -65,7 +75,7 @@ export function EmailVerificationWaiting({ email }: EmailVerificationWaitingProp
                   <Button
                     variant="default"
                     className="mt-2"
-                    onClick={() => window.open(emailProvider.url, '_blank')}
+                    onClick={onOpenProvider}
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     {emailProvider.name}
@@ -81,5 +91,23 @@ export function EmailVerificationWaiting({ email }: EmailVerificationWaitingProp
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Container
+// ============================================================
+
+export function EmailVerificationWaiting({ email }: EmailVerificationWaitingProps) {
+  const emailProvider = getEmailProviderLink(email);
+
+  return (
+    <EmailVerificationWaitingView
+      email={email}
+      emailProvider={emailProvider}
+      onOpenProvider={() => {
+        if (emailProvider) window.open(emailProvider.url, '_blank');
+      }}
+    />
   );
 }

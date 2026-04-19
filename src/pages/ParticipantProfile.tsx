@@ -4,7 +4,7 @@ import { ParticipantLayout } from '../components/ParticipantLayout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../components/ui/command';
 import { Mail, Phone, Loader2, Check, X, ArrowLeft, User, ChevronsUpDown, Linkedin, Instagram, Globe } from 'lucide-react';
@@ -12,11 +12,321 @@ import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 import { COUNTRY_CODES } from '../utils/countryCodes';
 
+export interface ParticipantProfileFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  phoneCountry: string;
+  linkedinUrl: string;
+  instagramUrl: string;
+  websiteUrl: string;
+  otherSocial: string;
+}
+
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
+
+export interface ParticipantProfileViewProps {
+  formData: ParticipantProfileFormData;
+  error: string;
+  success: string;
+  saving: boolean;
+  hasChanges: boolean;
+  phoneCountryOpen: boolean;
+  onPhoneCountryOpenChange: (open: boolean) => void;
+  onFieldChange: (field: keyof ParticipantProfileFormData, value: string) => void;
+  onSave: (e: React.FormEvent) => void;
+  onCancel: () => void;
+  onBack: () => void;
+}
+
+export function ParticipantProfileView({
+  formData,
+  error,
+  success,
+  saving,
+  hasChanges,
+  phoneCountryOpen,
+  onPhoneCountryOpenChange,
+  onFieldChange,
+  onSave,
+  onCancel,
+  onBack,
+}: ParticipantProfileViewProps) {
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to dashboard
+        </Button>
+
+        <h1 className="text-3xl font-bold mb-2">Profile settings</h1>
+        <p className="text-muted-foreground">
+          Update your contact information
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Personal information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={onSave} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First name *</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="John"
+                    value={formData.firstName}
+                    onChange={(e) => onFieldChange('firstName', e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Your name is shown when we match you with other participants. Please use your real name.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last name *</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={(e) => onFieldChange('lastName', e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address *</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={formData.email}
+                    onChange={(e) => onFieldChange('email', e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You can share this contact with your match if you choose to.
+                </p>
+              </div>
+              <div></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone number *</Label>
+                <div className="flex gap-2">
+                  <Popover open={phoneCountryOpen} onOpenChange={onPhoneCountryOpenChange}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={phoneCountryOpen}
+                        className="w-[120px] justify-between"
+                        disabled={saving}
+                        type="button"
+                      >
+                        {formData.phoneCountry}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search country..." />
+                        <CommandList>
+                          <CommandEmpty>No country found.</CommandEmpty>
+                          <CommandGroup>
+                            {COUNTRY_CODES.map((country) => (
+                              <CommandItem
+                                key={country.code}
+                                value={`${country.name} ${country.prefix}`}
+                                onSelect={() => {
+                                  onFieldChange('phoneCountry', country.prefix);
+                                  onPhoneCountryOpenChange(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    formData.phoneCountry === country.prefix
+                                      ? 'opacity-100'
+                                      : 'opacity-0'
+                                  }`}
+                                />
+                                <div className="flex items-center justify-between w-full">
+                                  <span>{country.name}</span>
+                                  <span className="text-muted-foreground ml-2">{country.prefix}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <div className="flex-1 relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder={COUNTRY_CODES.find(c => c.prefix === formData.phoneCountry)?.placeholder || '123 456 789'}
+                      value={formData.phone}
+                      onChange={(e) => onFieldChange('phone', e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  We send a reminder 5 minutes before the round. You can share this contact with your match if you choose to.
+                </p>
+              </div>
+              <div></div>
+            </div>
+
+            <div className="pt-2">
+              <h3 className="text-sm font-semibold mb-1">Social links (optional)</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                If you fill these in, they'll be shared along with your email and phone when you and a partner exchange contacts. We never ask for these at registration.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">LinkedIn</Label>
+                  <div className="relative">
+                    <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="linkedin"
+                      type="url"
+                      placeholder="https://linkedin.com/in/..."
+                      value={formData.linkedinUrl}
+                      onChange={(e) => onFieldChange('linkedinUrl', e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instagram">Instagram</Label>
+                  <div className="relative">
+                    <Instagram className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="instagram"
+                      type="url"
+                      placeholder="https://instagram.com/..."
+                      value={formData.instagramUrl}
+                      onChange={(e) => onFieldChange('instagramUrl', e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website</Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="website"
+                      type="url"
+                      placeholder="https://..."
+                      value={formData.websiteUrl}
+                      onChange={(e) => onFieldChange('websiteUrl', e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="otherSocial">Other (X, TikTok, etc.)</Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="otherSocial"
+                      type="text"
+                      placeholder="@handle or URL"
+                      value={formData.otherSocial}
+                      onChange={(e) => onFieldChange('otherSocial', e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <X className="h-4 w-4 text-destructive flex-shrink-0" />
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
+            {success && (
+              <div className="flex items-center space-x-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={!hasChanges || saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!hasChanges || saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save changes'
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================
+// Container
+// ============================================================
+
 export default function ParticipantProfile() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  
-  // Initialize from cached data in localStorage for instant display
+
   const getCachedProfile = () => {
     try {
       const cached = localStorage.getItem(`participant_profile_${token}`);
@@ -51,17 +361,16 @@ export default function ParticipantProfile() {
       hasCache: false
     };
   };
-  
+
   const cachedProfile = getCachedProfile();
-  
-  // Only show loading if we don't have cached data
+
   const [loading, setLoading] = useState(!cachedProfile.hasCache);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [phoneCountryOpen, setPhoneCountryOpen] = useState(false);
-  
-  const [profile, setProfile] = useState({
+
+  const [profile, setProfile] = useState<ParticipantProfileFormData>({
     firstName: cachedProfile.firstName,
     lastName: cachedProfile.lastName,
     email: cachedProfile.email,
@@ -73,7 +382,7 @@ export default function ParticipantProfile() {
     otherSocial: cachedProfile.otherSocial,
   });
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ParticipantProfileFormData>({
     firstName: cachedProfile.firstName,
     lastName: cachedProfile.lastName,
     email: cachedProfile.email,
@@ -93,13 +402,11 @@ export default function ParticipantProfile() {
 
   const loadProfile = async () => {
     try {
-      // Don't show loading spinner if we have cached data - just refresh in background
       if (!cachedProfile.hasCache) {
         setLoading(true);
       }
       setError('');
 
-      // OPTIMIZATION: Use dashboard endpoint for faster loading
       const response = await fetch(
         `${apiBaseUrl}/p/${token}/dashboard`,
         {
@@ -114,7 +421,7 @@ export default function ParticipantProfile() {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         const loaded = {
           firstName: data.firstName || '',
@@ -129,12 +436,10 @@ export default function ParticipantProfile() {
         };
         setProfile(loaded);
         setFormData(loaded);
-        // Cache the profile data in localStorage
         localStorage.setItem(`participant_profile_${token}`, JSON.stringify(data));
       }
     } catch (err) {
       errorLog('Error loading profile:', err);
-      // Only show error if we don't have cached data to fall back on
       if (!cachedProfile.hasCache) {
         setError('Failed to load profile. Please try again.');
       }
@@ -145,17 +450,17 @@ export default function ParticipantProfile() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.email) {
       setError('Email is required');
       return;
     }
-    
+
     if (!formData.firstName || !formData.lastName) {
       setError('First name and last name are required');
       return;
     }
-    
+
     if (!formData.phone) {
       setError('Phone number is required');
       return;
@@ -197,14 +502,12 @@ export default function ParticipantProfile() {
       setSuccess('Profile updated successfully!');
       setProfile({ ...formData });
 
-      // Update cache
       const updatedCache = {
         ...JSON.parse(localStorage.getItem(`participant_profile_${token}`) || '{}'),
         ...formData,
       };
       localStorage.setItem(`participant_profile_${token}`, JSON.stringify(updatedCache));
-      
-      // Clear success message after 3 seconds
+
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       errorLog('Error updating profile:', err);
@@ -224,6 +527,11 @@ export default function ParticipantProfile() {
     formData.instagramUrl !== profile.instagramUrl ||
     formData.websiteUrl !== profile.websiteUrl ||
     formData.otherSocial !== profile.otherSocial;
+
+  const handleFieldChange = (field: keyof ParticipantProfileFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (error) setError('');
+  };
 
   if (loading) {
     return (
@@ -245,291 +553,22 @@ export default function ParticipantProfile() {
       firstName={profile.firstName}
       lastName={profile.lastName}
     >
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/p/${token}`)}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to dashboard
-          </Button>
-          
-          <h1 className="text-3xl font-bold mb-2">Profile settings</h1>
-          <p className="text-muted-foreground">
-            Update your contact information
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSave} className="space-y-6">
-              {/* First Name and Last Name - Side by Side */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First name *</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="firstName"
-                      type="text"
-                      placeholder="John"
-                      value={formData.firstName}
-                      onChange={(e) => {
-                        setFormData({ ...formData, firstName: e.target.value });
-                        if (error) setError('');
-                      }}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Your name is shown when we match you with other participants. Please use your real name.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last name *</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="lastName"
-                      type="text"
-                      placeholder="Doe"
-                      value={formData.lastName}
-                      onChange={(e) => {
-                        setFormData({ ...formData, lastName: e.target.value });
-                        if (error) setError('');
-                      }}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email address *</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={formData.email}
-                      onChange={(e) => {
-                        setFormData({ ...formData, email: e.target.value });
-                        if (error) setError('');
-                      }}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    You can share this contact with your match if you choose to.
-                  </p>
-                </div>
-                <div></div>
-              </div>
-
-              {/* Phone */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone number *</Label>
-                  <div className="flex gap-2">
-                    <Popover open={phoneCountryOpen} onOpenChange={setPhoneCountryOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={phoneCountryOpen}
-                          className="w-[120px] justify-between"
-                          disabled={saving}
-                          type="button"
-                        >
-                          {formData.phoneCountry}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[300px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search country..." />
-                          <CommandList>
-                            <CommandEmpty>No country found.</CommandEmpty>
-                            <CommandGroup>
-                              {COUNTRY_CODES.map((country) => (
-                                <CommandItem
-                                  key={country.code}
-                                  value={`${country.name} ${country.prefix}`}
-                                  onSelect={() => {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      phoneCountry: country.prefix
-                                    }));
-                                    setPhoneCountryOpen(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={`mr-2 h-4 w-4 ${
-                                      formData.phoneCountry === country.prefix
-                                        ? 'opacity-100'
-                                        : 'opacity-0'
-                                    }`}
-                                  />
-                                  <div className="flex items-center justify-between w-full">
-                                    <span>{country.name}</span>
-                                    <span className="text-muted-foreground ml-2">{country.prefix}</span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <div className="flex-1 relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder={COUNTRY_CODES.find(c => c.prefix === formData.phoneCountry)?.placeholder || '123 456 789'}
-                        value={formData.phone}
-                        onChange={(e) => {
-                          setFormData({ ...formData, phone: e.target.value });
-                          if (error) setError('');
-                        }}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    We send a reminder 5 minutes before the round. You can share this contact with your match if you choose to.
-                  </p>
-                </div>
-                <div></div>
-              </div>
-
-              {/* Social links (optional — shared only if filled) */}
-              <div className="pt-2">
-                <h3 className="text-sm font-semibold mb-1">Social links (optional)</h3>
-                <p className="text-xs text-muted-foreground mb-4">
-                  If you fill these in, they'll be shared along with your email and phone when you and a partner exchange contacts. We never ask for these at registration.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="linkedin">LinkedIn</Label>
-                    <div className="relative">
-                      <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="linkedin"
-                        type="url"
-                        placeholder="https://linkedin.com/in/..."
-                        value={formData.linkedinUrl}
-                        onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="instagram">Instagram</Label>
-                    <div className="relative">
-                      <Instagram className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="instagram"
-                        type="url"
-                        placeholder="https://instagram.com/..."
-                        value={formData.instagramUrl}
-                        onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="website"
-                        type="url"
-                        placeholder="https://..."
-                        value={formData.websiteUrl}
-                        onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="otherSocial">Other (X, TikTok, etc.)</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="otherSocial"
-                        type="text"
-                        placeholder="@handle or URL"
-                        value={formData.otherSocial}
-                        onChange={(e) => setFormData({ ...formData, otherSocial: e.target.value })}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Error message */}
-              {error && (
-                <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <X className="h-4 w-4 text-destructive flex-shrink-0" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              {/* Success message */}
-              {success && (
-                <div className="flex items-center space-x-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                  <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setFormData({ ...profile });
-                    setError('');
-                  }}
-                  disabled={!hasChanges || saving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!hasChanges || saving}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save changes'
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+      <ParticipantProfileView
+        formData={formData}
+        error={error}
+        success={success}
+        saving={saving}
+        hasChanges={hasChanges}
+        phoneCountryOpen={phoneCountryOpen}
+        onPhoneCountryOpenChange={setPhoneCountryOpen}
+        onFieldChange={handleFieldChange}
+        onSave={handleSave}
+        onCancel={() => {
+          setFormData({ ...profile });
+          setError('');
+        }}
+        onBack={() => navigate(`/p/${token}`)}
+      />
     </ParticipantLayout>
   );
 }

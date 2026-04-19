@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { CheckCircle, ArrowRight, Mail, Link2, PartyPopper } from 'lucide-react';
+import { ArrowRight, Mail, Link2, PartyPopper } from 'lucide-react';
 import { ServiceType } from '../App';
 import confetti from 'canvas-confetti';
 
-interface RegistrationData {
+export interface RegistrationData {
   email: string;
   customUrl: string;
   howDidYouHear: string;
@@ -20,22 +20,21 @@ interface RegistrationSuccessProps {
   onContinue: () => void;
 }
 
-export function RegistrationSuccess({ registrationData, serviceType, onContinue }: RegistrationSuccessProps) {
-  // Fire confetti on mount
-  const confettiFired = useRef(false);
-  useEffect(() => {
-    if (confettiFired.current) return;
-    confettiFired.current = true;
-    const duration = 2500;
-    const end = Date.now() + duration;
-    const frame = () => {
-      confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
-      confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    };
-    frame();
-  }, []);
+// ============================================================
+// Pure view (shared with AdminPagePreview)
+// ============================================================
 
+export interface RegistrationSuccessViewProps {
+  registrationData: RegistrationData;
+  serviceType: ServiceType;
+  onContinue: () => void;
+}
+
+export function RegistrationSuccessView({
+  registrationData,
+  serviceType,
+  onContinue,
+}: RegistrationSuccessViewProps) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
@@ -49,7 +48,7 @@ export function RegistrationSuccess({ registrationData, serviceType, onContinue 
               Your account has been created successfully
             </p>
           </CardHeader>
-          
+
           <CardContent className="space-y-6">
             <div className="bg-muted/50 p-4 rounded-lg space-y-3">
               <div className="flex items-center gap-3">
@@ -59,7 +58,7 @@ export function RegistrationSuccess({ registrationData, serviceType, onContinue 
                   <p>{registrationData.email}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <Link2 className="h-5 w-5 text-muted-foreground" />
                 <div>
@@ -91,9 +90,9 @@ export function RegistrationSuccess({ registrationData, serviceType, onContinue 
               <Badge variant="secondary" className="mb-4">
                 {serviceType === 'event' ? 'Event organizer' : 'Venue owner'} • {registrationData.role}
               </Badge>
-              
-              <Button 
-                className="w-full" 
+
+              <Button
+                className="w-full"
                 onClick={onContinue}
               >
                 Continue to dashboard
@@ -108,5 +107,33 @@ export function RegistrationSuccess({ registrationData, serviceType, onContinue 
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Container
+// ============================================================
+
+export function RegistrationSuccess({ registrationData, serviceType, onContinue }: RegistrationSuccessProps) {
+  const confettiFired = useRef(false);
+  useEffect(() => {
+    if (confettiFired.current) return;
+    confettiFired.current = true;
+    const duration = 2500;
+    const end = Date.now() + duration;
+    const frame = () => {
+      confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+      confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff6b00', '#ff9500', '#ffb700'] });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+  }, []);
+
+  return (
+    <RegistrationSuccessView
+      registrationData={registrationData}
+      serviceType={serviceType}
+      onContinue={onContinue}
+    />
   );
 }
