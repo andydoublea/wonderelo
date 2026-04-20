@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense, ComponentType } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -11,36 +11,52 @@ import { RoundItem } from './RoundItem';
 import { GeometricIdentification } from './GeometricIdentification';
 import { Calendar, Clock, Users, MapPin, CheckCircle } from 'lucide-react';
 
-// Shared live-view components — when the real page changes, the preview updates automatically.
-import { MatchInfoMatchedView, MatchInfoNoMatchView, MatchData } from './MatchInfo';
-import { MatchPartnerView, MatchPartnerData, Partner as MatchPartnerPartner } from './MatchPartner';
-import { MatchNetworkingView, NetworkingData } from './MatchNetworking';
-import {
-  ContactSharingPartnerFeedbackView,
-  ContactSharingWondereloFeedbackView,
-} from './ContactSharing';
-import { DashboardView } from './Dashboard';
-import { AccountSettingsView } from './AccountSettings';
-import { EventPageSettingsView } from './EventPageSettings';
-import { EventPromoPageView } from './EventPromoPage';
-import { RoundFormPageView } from './RoundFormPage';
-import { SignInFlowView } from './SignInFlow';
-import { SignUpFlowView } from './SignUpFlow';
-import { ResetPasswordFlowView } from './ResetPasswordFlow';
-import { EmailVerificationView } from './EmailVerification';
-import { EmailVerificationWaitingView } from './EmailVerificationWaiting';
-import { MissedRoundView } from './MissedRound';
-import { RegistrationSuccessView } from './RegistrationSuccess';
-import { SessionSuccessView } from './SessionSuccessPage';
-import { ParticipantRoundDetailView, RoundDetail } from './ParticipantRoundDetail';
-import { AddressBookView, Contact } from './AddressBook';
-import { ParticipantProfileView, ParticipantProfileFormData } from '../pages/ParticipantProfile';
-import { ParticipantDashboardView, Registration, SessionWithRounds } from './ParticipantDashboard';
-import { HomepageView } from './Homepage';
-import { UserPublicPageView } from './UserPublicPage';
-import { BillingSettingsView, Subscription, Invoice, CreditTransaction, BillingDetails } from './BillingSettings';
-import { SessionRegistrationSelectRoundsView } from './SessionRegistration';
-import { RoundRule } from './RoundRulesDialog';
+// Types only — stripped at compile time, don't trigger runtime module loads.
+import type { MatchData } from './MatchInfo';
+import type { MatchPartnerData, Partner as MatchPartnerPartner } from './MatchPartner';
+import type { NetworkingData } from './MatchNetworking';
+import type { RoundDetail } from './ParticipantRoundDetail';
+import type { Contact } from './AddressBook';
+import type { ParticipantProfileFormData } from '../pages/ParticipantProfile';
+import type { Registration, SessionWithRounds } from './ParticipantDashboard';
+import type { Subscription, Invoice, CreditTransaction, BillingDetails } from './BillingSettings';
+import type { RoundRule } from './RoundRulesDialog';
+
+// Lazy-loaded views — each page's view (+ its deps) is only fetched when you actually
+// click on that preview tab. Keeps Page Preview fast to open and refresh.
+function lazyNamed<Name extends string>(
+  loader: () => Promise<Record<Name, ComponentType<any>>>,
+  name: Name,
+): ComponentType<any> {
+  return lazy(() => loader().then((m) => ({ default: m[name] })));
+}
+const MatchInfoMatchedView = lazyNamed(() => import('./MatchInfo'), 'MatchInfoMatchedView');
+const MatchInfoNoMatchView = lazyNamed(() => import('./MatchInfo'), 'MatchInfoNoMatchView');
+const MatchPartnerView = lazyNamed(() => import('./MatchPartner'), 'MatchPartnerView');
+const MatchNetworkingView = lazyNamed(() => import('./MatchNetworking'), 'MatchNetworkingView');
+const ContactSharingPartnerFeedbackView = lazyNamed(() => import('./ContactSharing'), 'ContactSharingPartnerFeedbackView');
+const ContactSharingWondereloFeedbackView = lazyNamed(() => import('./ContactSharing'), 'ContactSharingWondereloFeedbackView');
+const DashboardView = lazyNamed(() => import('./Dashboard'), 'DashboardView');
+const AccountSettingsView = lazyNamed(() => import('./AccountSettings'), 'AccountSettingsView');
+const EventPageSettingsView = lazyNamed(() => import('./EventPageSettings'), 'EventPageSettingsView');
+const EventPromoPageView = lazyNamed(() => import('./EventPromoPage'), 'EventPromoPageView');
+const RoundFormPageView = lazyNamed(() => import('./RoundFormPage'), 'RoundFormPageView');
+const SignInFlowView = lazyNamed(() => import('./SignInFlow'), 'SignInFlowView');
+const SignUpFlowView = lazyNamed(() => import('./SignUpFlow'), 'SignUpFlowView');
+const ResetPasswordFlowView = lazyNamed(() => import('./ResetPasswordFlow'), 'ResetPasswordFlowView');
+const EmailVerificationView = lazyNamed(() => import('./EmailVerification'), 'EmailVerificationView');
+const EmailVerificationWaitingView = lazyNamed(() => import('./EmailVerificationWaiting'), 'EmailVerificationWaitingView');
+const MissedRoundView = lazyNamed(() => import('./MissedRound'), 'MissedRoundView');
+const RegistrationSuccessView = lazyNamed(() => import('./RegistrationSuccess'), 'RegistrationSuccessView');
+const SessionSuccessView = lazyNamed(() => import('./SessionSuccessPage'), 'SessionSuccessView');
+const ParticipantRoundDetailView = lazyNamed(() => import('./ParticipantRoundDetail'), 'ParticipantRoundDetailView');
+const AddressBookView = lazyNamed(() => import('./AddressBook'), 'AddressBookView');
+const ParticipantProfileView = lazyNamed(() => import('../pages/ParticipantProfile'), 'ParticipantProfileView');
+const ParticipantDashboardView = lazyNamed(() => import('./ParticipantDashboard'), 'ParticipantDashboardView');
+const HomepageView = lazyNamed(() => import('./Homepage'), 'HomepageView');
+const UserPublicPageView = lazyNamed(() => import('./UserPublicPage'), 'UserPublicPageView');
+const BillingSettingsView = lazyNamed(() => import('./BillingSettings'), 'BillingSettingsView');
+const SessionRegistrationSelectRoundsView = lazyNamed(() => import('./SessionRegistration'), 'SessionRegistrationSelectRoundsView');
 
 interface AdminPagePreviewProps {
   onBack: () => void;
@@ -481,7 +497,7 @@ function PreviewMeetingPoint() {
 }
 
 function PreviewNoMatch() {
-  return <MatchInfoNoMatchView onBackToDashboard={() => {}} />;
+  return <MatchInfoNoMatchView onBackToDashboard={() => {}} onBackToEventPage={() => {}} />;
 }
 
 function PreviewMatchPartner() {
@@ -499,13 +515,30 @@ function PreviewMatchPartner() {
         identificationNumber: '17',
         identificationOptions: [17, 42, 63],
       },
+      {
+        id: 'p3',
+        firstName: 'Emma',
+        lastName: 'Johansson',
+        isCheckedIn: true,
+        identificationNumber: '89',
+        identificationOptions: [12, 89, 55],
+      },
+      {
+        id: 'p4',
+        firstName: 'Tomáš',
+        lastName: 'Novák',
+        isCheckedIn: true,
+        identificationNumber: '37',
+        identificationOptions: [37, 14, 71],
+        isNumberConfirmed: true,
+      },
     ],
   };
   const getOptions = (p: MatchPartnerPartner) => p.identificationOptions;
   return (
     <MatchPartnerView
       matchData={mockData}
-      countdown={<div className="text-2xl font-semibold text-primary">04:23</div>}
+      inlineCountdown={<span className="font-semibold text-primary">04:23</span>}
       isSubmitting={false}
       wrongGuessPartnerId={null}
       getOptionsForPartner={getOptions}
@@ -1365,10 +1398,40 @@ function PreviewRoundForm() {
 // Main component
 // ============================================================
 
+const ACTIVE_PAGE_STORAGE_KEY = 'admin_page_preview_active';
+
 export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
-  const [activePage, setActivePage] = useState<PreviewPage>('participant-dashboard');
+  // On first render, NOTHING is loaded. Page Preview shows the toolbar +
+  // a lightweight placeholder. Only when the user clicks a tab does the
+  // chosen view + its transitive deps get dynamically imported. This keeps
+  // the first render of /admin/page-preview blazing fast even on slow dev
+  // connections — no page's module tree is traversed by Vite upfront.
+  const [activePage, setActivePageState] = useState<PreviewPage | null>(null);
+  const setActivePage = (page: PreviewPage) => {
+    setActivePageState(page);
+    try { localStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, page); } catch { /* ignore */ }
+  };
 
   const renderPreview = () => {
+    if (!activePage) {
+      // Try to restore the last viewed page (user opt-in for fast start)
+      let lastViewed: PreviewPage | null = null;
+      try {
+        const saved = localStorage.getItem(ACTIVE_PAGE_STORAGE_KEY);
+        if (saved && PREVIEW_PAGES.some(p => p.id === saved)) lastViewed = saved as PreviewPage;
+      } catch { /* ignore */ }
+      return (
+        <div className="flex flex-col items-center justify-center p-16 text-center gap-4">
+          <Eye className="h-12 w-12 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground">Pick a page from the toolbar above to preview it</p>
+          {lastViewed && (
+            <Button variant="outline" onClick={() => setActivePage(lastViewed!)}>
+              Restore last view: {PREVIEW_PAGES.find(p => p.id === lastViewed)?.label}
+            </Button>
+          )}
+        </div>
+      );
+    }
     switch (activePage) {
       case 'participant-dashboard': return <PreviewParticipantDashboard />;
       case 'address-book': return <PreviewAddressBook />;
@@ -1400,7 +1463,7 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
     }
   };
 
-  const currentPage = PREVIEW_PAGES.find(p => p.id === activePage)!;
+  const currentPage = activePage ? PREVIEW_PAGES.find(p => p.id === activePage) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -1441,17 +1504,28 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
       </div>
 
       {/* Page description bar */}
-      <div className="bg-muted/30 border-b px-4 py-2">
-        <div className="container mx-auto text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{currentPage.label}</span>
-          <span className="mx-2">—</span>
-          {currentPage.description}
+      {currentPage && (
+        <div className="bg-muted/30 border-b px-4 py-2">
+          <div className="container mx-auto text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{currentPage.label}</span>
+            <span className="mx-2">—</span>
+            {currentPage.description}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Preview content */}
       <div>
-        {renderPreview()}
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center p-16 text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-3" />
+              Loading preview…
+            </div>
+          }
+        >
+          {renderPreview()}
+        </Suspense>
       </div>
     </div>
   );

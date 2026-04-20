@@ -50,16 +50,15 @@ export function MatchInfoMatchedView({
       <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
         {countdown && <div className="mb-8">{countdown}</div>}
 
-        <h1 className="text-4xl font-bold mb-12">We have a match for you!</h1>
+        <h1 className="text-4xl font-bold mb-12">
+          We have a match for you! {matchData.meetingPointType === 'virtual' ? 'Join the call:' : 'Now go to:'}
+        </h1>
 
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-6">
-          <legend className="px-3 text-xl text-muted-foreground">
-            {matchData.meetingPointType === 'virtual' ? 'Join the call' : 'Now go to'}
-          </legend>
-          <h2 className="text-4xl font-bold mb-6">{matchData.meetingPointName}</h2>
+        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-8 min-h-[220px] grid place-items-center gap-6">
+          <h2 className="text-4xl font-bold">{matchData.meetingPointName}</h2>
 
           {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
-            <div className="mt-4">
+            <div>
               <a
                 href={matchData.meetingPointVideoCallUrl}
                 target="_blank"
@@ -74,7 +73,7 @@ export function MatchInfoMatchedView({
             </div>
           ) : (
             matchData.meetingPointImageUrl && (
-              <div className="mt-4">
+              <div>
                 <img
                   src={matchData.meetingPointImageUrl}
                   alt={matchData.meetingPointName}
@@ -110,9 +109,10 @@ export function MatchInfoMatchedView({
 
 export interface MatchInfoNoMatchViewProps {
   onBackToDashboard: () => void;
+  onBackToEventPage: () => void;
 }
 
-export function MatchInfoNoMatchView({ onBackToDashboard }: MatchInfoNoMatchViewProps) {
+export function MatchInfoNoMatchView({ onBackToDashboard, onBackToEventPage }: MatchInfoNoMatchViewProps) {
   return (
     <div className="min-h-screen bg-background">
       <WondereloHeader />
@@ -123,9 +123,17 @@ export function MatchInfoNoMatchView({ onBackToDashboard }: MatchInfoNoMatchView
           No one else registered for this round.
         </p>
         <h2 className="text-2xl font-bold mb-6">Try another round!</h2>
-        <Button size="lg" onClick={onBackToDashboard}>
-          Back to dashboard
+        <Button size="lg" onClick={onBackToEventPage}>
+          Back to event page
         </Button>
+        <div className="mt-6">
+          <button
+            onClick={onBackToDashboard}
+            className="text-muted-foreground hover:text-foreground underline transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -333,7 +341,23 @@ export function MatchInfo() {
   }
 
   if (error === 'no-match') {
-    return <MatchInfoNoMatchView onBackToDashboard={() => navigate(`/p/${token}?from=match`)} />;
+    return (
+      <MatchInfoNoMatchView
+        onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
+        onBackToEventPage={() => {
+          // Pull organizer slug from cached dashboard data
+          let slug = '';
+          try {
+            const cache = localStorage.getItem(`participant_dashboard_${token}`);
+            if (cache) {
+              const d = JSON.parse(cache);
+              slug = d?.registrations?.[0]?.organizerUrlSlug || d?.organizerSlug || '';
+            }
+          } catch { /* ignore */ }
+          navigate(slug ? `/${slug}` : `/p/${token}?from=match`);
+        }}
+      />
+    );
   }
 
   if (error || !matchData) {
@@ -363,7 +387,7 @@ export function MatchInfo() {
         matchData.walkingDeadline ? (
           <CountdownTimer
             targetDate={matchData.walkingDeadline}
-            variant="large"
+            size="large"
             onComplete={() => {
               debugLog('[MatchInfo] Walking deadline reached');
             }}

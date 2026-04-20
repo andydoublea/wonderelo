@@ -13,6 +13,8 @@ export interface Partner {
   isCheckedIn: boolean;
   identificationNumber: string;
   identificationOptions: number[];
+  /** True when the current user has already confirmed this partner's number. */
+  isNumberConfirmed?: boolean;
 }
 
 export interface MatchPartnerData {
@@ -32,103 +34,136 @@ export interface MatchPartnerData {
 
 export interface MatchPartnerViewProps {
   matchData: MatchPartnerData;
-  countdown?: ReactNode;
   isSubmitting: boolean;
   wrongGuessPartnerId: string | null;
   getOptionsForPartner: (partner: Partner) => number[];
   onNumberSelect: (partnerId: string, num: number) => void;
   onBackToDashboard: () => void;
+  /**
+   * Rendered inline next to each "is on the way..." partner status.
+   * Container passes a live countdown component; preview passes a static span.
+   */
+  inlineCountdown?: ReactNode;
 }
 
 export function MatchPartnerView({
   matchData,
-  countdown,
   isSubmitting,
   wrongGuessPartnerId,
   getOptionsForPartner,
   onNumberSelect,
   onBackToDashboard,
+  inlineCountdown,
 }: MatchPartnerViewProps) {
   return (
     <div className="min-h-screen bg-background">
       <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        {countdown && <div className="mb-8">{countdown}</div>}
-
-        <h1 className="text-4xl font-bold mb-12">
-          {matchData.findingDeadline ? 'Now, find each other!' : 'Now wait for the others'}
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">
+          {matchData.findingDeadline ? 'Show this to your match!' : 'Now wait for the others'}
         </h1>
 
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-4 py-6">
-          <legend className="px-3 text-xl text-muted-foreground">
-            Show this so {matchData.partners.length === 1
-              ? `${matchData.partners[0].firstName} can find you`
-              : 'they can find you'}
-          </legend>
-          <GeometricIdentification
-            matchId={matchData.matchId}
-            className="rounded-lg shadow-lg w-full block"
-          />
-          <div className="flex flex-col items-center justify-center gap-6 mt-10">
-            <h3 className="text-[5rem] sm:text-[6rem] md:text-[7rem] font-bold text-foreground leading-none break-words w-full">
-              {matchData.myName}
-            </h3>
-            <div className="w-28 h-28 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
-              <span className="text-5xl font-bold">{matchData.myIdentificationNumber}</span>
-            </div>
-          </div>
-        </fieldset>
+        {/* Own identification image (full-width, no box) */}
+        <GeometricIdentification
+          matchId={matchData.matchId}
+          number={matchData.myIdentificationNumber}
+          className="rounded-lg shadow-lg w-full block"
+        />
+        <div className="flex flex-col items-center justify-center mt-2">
+          <h3
+            className="font-bold text-foreground leading-tight break-words w-full text-center"
+            style={{ fontSize: 'clamp(4rem, 14vw, 9rem)' }}
+          >
+            {matchData.myName}
+          </h3>
+        </div>
 
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-10">
-          <legend className="px-3 text-xl text-muted-foreground">Look for</legend>
-          <div className="space-y-4">
-            {matchData.partners.map((partner) => (
-              <div key={partner.id} className="text-center">
-                <h2 className="text-4xl font-bold">{partner.firstName}</h2>
-                <p
-                  className={`text-lg mt-1 ${
-                    partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
-                  }`}
-                >
-                  {partner.isCheckedIn ? 'Already at the meeting point ✓' : 'On the way...'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </fieldset>
+        {/* Spacer between own image/name and partner boxes */}
+        <div className="mt-28" />
 
+        {/* One combined box per partner: thumbnail + name + status + number picker */}
         {matchData.partners.map((partner) => {
           const options = getOptionsForPartner(partner);
           const isWrongGuess = wrongGuessPartnerId === partner.id;
           return (
             <fieldset
               key={partner.id}
-              className={`mb-12 border-2 rounded-2xl px-8 py-10 transition-colors ${
+              className={`mb-8 border-2 rounded-2xl px-4 sm:px-8 py-8 transition-colors ${
                 isWrongGuess ? 'border-red-400 bg-red-50' : 'border-border'
               }`}
             >
-              <legend className="px-3 text-xl text-muted-foreground">
-                To confirm meeting select
-              </legend>
-              <h2 className="text-3xl font-bold mb-2">{partner.firstName}'s number</h2>
-              {isWrongGuess && (
-                <p className="text-red-600 font-medium mb-6">
-                  Wrong number! Your partner got a new number — look again!
-                </p>
+              {/* Partner header: name */}
+              <h3
+                className="font-bold leading-none break-words text-center"
+                style={{ fontSize: 'clamp(2.5rem, 9vw, 5rem)' }}
+              >
+                {partner.firstName}
+              </h3>
+
+              <p
+                className={`text-base mt-0 mb-16 ${
+                  partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
+                }`}
+              >
+                {partner.isCheckedIn ? (
+                  `is already at the meeting point ✓`
+                ) : (
+                  <>
+                    is on the way...
+                    {inlineCountdown && (
+                      <span className="ml-2 text-muted-foreground">
+                        ({inlineCountdown} left)
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+
+              {partner.isNumberConfirmed ? (
+                // Already confirmed — show locked state instead of number picker
+                <div className="flex items-center justify-center gap-4 py-6 bg-green-50 border border-green-200 rounded-xl">
+                  <GeometricIdentification
+                    matchId={matchData.matchId}
+                    number={partner.identificationNumber}
+                    className="rounded-lg shadow w-20 h-20 flex-shrink-0"
+                  />
+                  <div className="text-left">
+                    <p className="text-green-700 font-semibold text-lg">Number confirmed ✓</p>
+                    <p className="text-sm text-green-600">You're good to go</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Prompt */}
+                  <p className="text-xl font-semibold mb-2">What's the number?</p>
+                  {isWrongGuess ? (
+                    <p className="text-red-600 font-medium mb-6">
+                      Wrong number! Your partner got a new number — look again!
+                    </p>
+                  ) : (
+                    <div className="mb-6" />
+                  )}
+
+                  {/* Candidate numbers — always in one row of 3 */}
+                  <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-sm mx-auto">
+                    {options.map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => onNumberSelect(partner.id, num)}
+                        disabled={isSubmitting}
+                        className="rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed aspect-square"
+                        aria-label={`Select ${num}`}
+                      >
+                        <GeometricIdentification
+                          matchId={matchData.matchId}
+                          number={num}
+                          className="block w-full h-full"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
-              {!isWrongGuess && <div className="mb-8" />}
-              <div className="flex items-center justify-center gap-6">
-                {options.map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => onNumberSelect(partner.id, num)}
-                    disabled={isSubmitting}
-                    className="w-24 h-24 rounded-full border-2 border-border bg-background hover:bg-accent hover:border-foreground transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="text-4xl font-bold">{num}</span>
-                  </button>
-                ))}
-              </div>
             </fieldset>
           );
         })}
@@ -329,11 +364,11 @@ export function MatchPartner() {
   return (
     <MatchPartnerView
       matchData={matchData}
-      countdown={
+      inlineCountdown={
         matchData.findingDeadline ? (
           <CountdownTimer
             targetDate={matchData.findingDeadline}
-            variant="large"
+            size="small"
             onComplete={() => {
               debugLog('[MatchPartner] Finding time expired');
             }}
