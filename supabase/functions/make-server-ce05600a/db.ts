@@ -689,6 +689,7 @@ export async function getRegistrationsForRound(sessionId: string, roundId: strin
         firstName: r.participants.first_name,
         lastName: r.participants.last_name,
         phone: r.participants.phone,
+        token: r.participants.token,
       };
     }
     return reg;

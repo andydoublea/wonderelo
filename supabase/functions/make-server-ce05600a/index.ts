@@ -19,7 +19,6 @@ import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
-import { registerDemoRoutes } from './route-demo.ts';
 import { getScenarioList, runScenario } from './e2e-scenarios.ts';
 
 const app = new Hono();
@@ -2662,7 +2661,10 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
         ? (meetingPoints[0]?.name || meetingPoints[0] || '')
         : '';
 
+      const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+
       for (const reg of eligibleRegs) {
+        const link = reg.token ? `${appUrl}/p/${reg.token}?from=sms-reminder` : appUrl;
         const smsBody = renderSmsTemplate(template, {
           sessionName: round.sessionName || round.name || '',
           minutes: String(minutesUntilStart),
@@ -2671,6 +2673,7 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
           name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
           time: round.startTime || '',
           date: round.date || '',
+          link,
         });
 
         const result = await sendSms({ to: reg.phone, body: smsBody });
@@ -3179,5 +3182,4 @@ registerCrmRoutes(app);
 // Register i18n routes
 registerI18nRoutes(app);
 
-registerDemoRoutes(app);
 Deno.serve(app.fetch);
