@@ -2661,7 +2661,10 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
         ? (meetingPoints[0]?.name || meetingPoints[0] || '')
         : '';
 
+      const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+
       for (const reg of eligibleRegs) {
+        const link = reg.token ? `${appUrl}/p/${reg.token}?from=sms-reminder` : appUrl;
         const smsBody = renderSmsTemplate(template, {
           sessionName: round.sessionName || round.name || '',
           minutes: String(minutesUntilStart),
@@ -2670,6 +2673,7 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
           name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
           time: round.startTime || '',
           date: round.date || '',
+          link,
         });
 
         const result = await sendSms({ to: reg.phone, body: smsBody });
