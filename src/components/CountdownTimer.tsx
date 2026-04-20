@@ -4,9 +4,14 @@ interface CountdownTimerProps {
   targetDate: string; // ISO datetime string
   onComplete?: () => void;
   size?: 'small' | 'medium' | 'large';
+  /**
+   * When provided, replaces the default `font-semibold text-primary <sizeClass>`.
+   * Use `className=""` to render unstyled inline text that inherits parent styles.
+   */
+  className?: string;
 }
 
-export function CountdownTimer({ targetDate, onComplete, size = 'medium' }: CountdownTimerProps) {
+export function CountdownTimer({ targetDate, onComplete, size = 'medium', className }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<string>('');
 
   useEffect(() => {
@@ -47,8 +52,11 @@ export function CountdownTimer({ targetDate, onComplete, size = 'medium' }: Coun
     large: 'text-3xl'
   };
 
+  // When caller passes className (even empty), use that verbatim — lets the
+  // countdown inherit parent styles. Otherwise apply the default bold primary.
+  const finalClass = className !== undefined ? className : `font-semibold text-primary ${sizeClasses[size]}`;
   return (
-    <span className={`font-semibold text-primary ${sizeClasses[size]}`}>
+    <span className={finalClass}>
       {timeLeft}
     </span>
   );

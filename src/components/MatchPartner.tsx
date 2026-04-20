@@ -59,7 +59,7 @@ export function MatchPartnerView({
     <div className="min-h-screen bg-background">
       <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-6">
+        <h1 className="text-4xl font-bold mb-12">
           {matchData.findingDeadline ? 'Show this to your match!' : 'Now wait for the others'}
         </h1>
 
@@ -72,14 +72,14 @@ export function MatchPartnerView({
         <div className="flex flex-col items-center justify-center mt-2">
           <h3
             className="font-bold text-foreground leading-tight break-words w-full text-center"
-            style={{ fontSize: 'clamp(4rem, 14vw, 9rem)' }}
+            style={{ fontSize: 'clamp(3rem, 13vw, 7rem)' }}
           >
             {matchData.myName}
           </h3>
         </div>
 
         {/* Spacer between own image/name and partner boxes */}
-        <div className="mt-28" />
+        <div style={{ height: '3rem' }} />
 
         {/* One combined box per partner: thumbnail + name + status + number picker */}
         {matchData.partners.map((partner) => {
@@ -92,32 +92,35 @@ export function MatchPartnerView({
                 isWrongGuess ? 'border-red-400 bg-red-50' : 'border-border'
               }`}
             >
-              {/* Partner header: name */}
+              {/* Partner header: name — scaled so it 'sticks out' on any viewport */}
               <h3
                 className="font-bold leading-none break-words text-center"
-                style={{ fontSize: 'clamp(2.5rem, 9vw, 5rem)' }}
+                style={{ fontSize: 'clamp(3.5rem, 16vw, 8rem)' }}
               >
                 {partner.firstName}
               </h3>
 
               <p
-                className={`text-base mt-0 mb-16 ${
+                className={`mt-0 ${
                   partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
                 }`}
+                style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.125rem)' }}
               >
                 {partner.isCheckedIn ? (
                   `is already at the meeting point ✓`
                 ) : (
                   <>
                     is on the way...
-                    {inlineCountdown && (
-                      <span className="ml-2 text-muted-foreground">
-                        ({inlineCountdown} left)
-                      </span>
-                    )}
+                    {inlineCountdown && <> ({inlineCountdown} left)</>}
                   </>
                 )}
               </p>
+
+              {/* Small horizontal divider between status and number prompt */}
+              <hr
+                className="border-t border-border mx-auto"
+                style={{ width: '3rem', marginTop: '1rem', marginBottom: '1rem' }}
+              />
 
               {partner.isNumberConfirmed ? (
                 // Already confirmed — show locked state instead of number picker
@@ -134,8 +137,13 @@ export function MatchPartnerView({
                 </div>
               ) : (
                 <>
-                  {/* Prompt */}
-                  <p className="text-xl font-semibold mb-2">What's the number?</p>
+                  {/* Prompt — match the 'is on the way...' size/weight */}
+                  <p
+                    className="text-muted-foreground mb-2"
+                    style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.125rem)' }}
+                  >
+                    What's the number?
+                  </p>
                   {isWrongGuess ? (
                     <p className="text-red-600 font-medium mb-6">
                       Wrong number! Your partner got a new number — look again!
@@ -368,7 +376,7 @@ export function MatchPartner() {
         matchData.findingDeadline ? (
           <CountdownTimer
             targetDate={matchData.findingDeadline}
-            size="small"
+            className=""
             onComplete={() => {
               debugLog('[MatchPartner] Finding time expired');
             }}
