@@ -538,7 +538,7 @@ function PreviewMatchPartner() {
   return (
     <MatchPartnerView
       matchData={mockData}
-      inlineCountdown={<span className="font-semibold text-primary">04:23</span>}
+      inlineCountdown={<>04:23</>}
       isSubmitting={false}
       wrongGuessPartnerId={null}
       getOptionsForPartner={getOptions}
@@ -561,7 +561,7 @@ function PreviewNetworking() {
   return (
     <MatchNetworkingView
       networkingData={mockData}
-      countdown={<div className="text-2xl font-semibold text-primary">18:42</div>}
+      countdown={<div className="text-6xl font-semibold text-primary">18:42</div>}
       onBackToDashboard={() => {}}
     />
   );

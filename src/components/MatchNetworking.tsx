@@ -32,11 +32,11 @@ export function MatchNetworkingView({
     <div className="min-h-screen bg-background">
       <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        {countdown && <div className="mb-8">{countdown}</div>}
-
-        <h1 className="text-4xl font-bold mb-4">
-          Skip the weather talk and jump into deep topics!
+        <h1 className="text-4xl font-bold mb-8">
+          Your round has begun!
         </h1>
+
+        {countdown && <div className="mb-8">{countdown}</div>}
 
         {networkingData.iceBreakers && networkingData.iceBreakers.length > 0 && (
           <div className="mt-12">
@@ -157,7 +157,7 @@ export function MatchNetworking() {
         !isTimeUp ? (
           <CountdownTimer
             targetDate={networkingData.networkingEndTime}
-            size="large"
+            className="font-semibold text-primary text-6xl"
             onComplete={() => {
               debugLog('[MatchNetworking] Time is up!');
               setIsTimeUp(true);

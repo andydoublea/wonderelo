@@ -66,11 +66,9 @@ export function ContactSharingPartnerFeedbackView({
         <h1 className="text-4xl font-bold mb-2">Time is up!</h1>
         <p className="text-xl text-muted-foreground mb-6">How was your conversation?</p>
 
-        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-8 max-w-md mx-auto text-left">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
-            Research shows we consistently underestimate how much others enjoyed talking to us. If you enjoyed the conversation, let the other person know.
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto text-center">
+          We often underestimate how much others enjoyed talking to us. If you enjoyed the conversation, let the other person know.
+        </p>
 
         <div className="space-y-6 max-w-md mx-auto">
           {partners.map((partner) => (
