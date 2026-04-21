@@ -641,6 +641,7 @@ function mapRegistrationFromDb(data: any) {
     metAt: data.met_at,
     lastStatusUpdate: data.last_status_update,
     notificationsEnabled: data.notifications_enabled,
+    reminderSmsSentAt: data.reminder_sms_sent_at,
     unconfirmedReason: data.unconfirmed_reason,
     noMatchReason: data.no_match_reason,
     roundCompletedAt: data.round_completed_at,
@@ -1359,18 +1360,16 @@ export async function getParticipantDashboardData(token: string) {
 // ============================================================
 
 /**
- * Get rounds that need SMS reminders sent.
- * Returns scheduled rounds (with published sessions) where:
- *  - reminder_sms_sent_at IS NULL
- *  - status = 'scheduled'
- *  - date and start_time are set
+ * Get rounds that MIGHT need SMS reminders sent.
+ * Returns ALL scheduled rounds (with published sessions) whose date/start_time
+ * are set. No round-level 'already reminded' filter anymore — deduplication is
+ * done per-registration so late registrants still get notified.
  * Filtering by time window is done in application code using parseRoundStartTime().
  */
 export async function getRoundsNeedingReminder() {
   const { data, error } = await db()
     .from('rounds')
     .select('*, sessions!rounds_session_id_fkey(id, name, date, status, user_id, meeting_points)')
-    .is('reminder_sms_sent_at', null)
     .eq('status', 'scheduled')
     .eq('sessions.status', 'published')
     .not('date', 'is', null)
@@ -1387,14 +1386,31 @@ export async function getRoundsNeedingReminder() {
 }
 
 /**
- * Mark a round's SMS reminder as sent (idempotent deduplication).
+ * Mark a single registration's SMS reminder as sent.
+ * Prevents double-sending to the same participant across multiple cron ticks.
  */
-export async function markRoundReminderSent(roundId: string) {
+export async function markRegistrationReminderSent(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+) {
   const { error } = await db()
-    .from('rounds')
+    .from('registrations')
     .update({ reminder_sms_sent_at: new Date().toISOString() })
-    .eq('id', roundId);
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
   if (error) throw error;
+}
+
+/**
+ * @deprecated No-op kept for backward compat with old cron code.
+ * Tracking moved to per-registration (markRegistrationReminderSent).
+ * The rounds.reminder_sms_sent_at column may not exist in all environments,
+ * so this is now a no-op.
+ */
+export async function markRoundReminderSent(_roundId: string) {
+  // intentional no-op
 }
 
 // ============================================================
