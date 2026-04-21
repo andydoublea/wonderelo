@@ -153,7 +153,7 @@ export function SessionSuccessPage({
   const [copied, setCopied] = useState(false);
 
   const eventUrl = `${window.location.origin}/${eventSlug}`;
-  const presenterSlideUrl = `${window.location.origin}/promo/${eventSlug}`;
+  const presenterSlideUrl = `${window.location.origin}/event-promo`;
   const blogPostUrl = 'https://wonderelo.com/blog/how-to-promote-event';
 
   useEffect(() => {
