@@ -888,7 +888,7 @@ function PreviewSessionSuccess() {
       <SessionSuccessView
         session={mockSession}
         eventUrl="https://wonderelo.com/andyconf"
-        presenterSlideUrl="https://wonderelo.com/promo/andyconf"
+        presenterSlideUrl="https://wonderelo.com/event-promo"
         blogPostUrl="https://wonderelo.com/blog/how-to-promote-event"
         copied={false}
         onCopyUrl={() => {}}
