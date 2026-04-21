@@ -2643,12 +2643,18 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
       const minutesUntilStart = Math.round((roundStartUtc.getTime() - now.getTime()) / 60000);
 
       // Get registrations for this round (confirmed + registered with notifications enabled)
+      // AND that haven't been reminded yet. Per-registration deduplication allows
+      // late registrants to still get SMS even after the first cron tick.
       const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
       const eligibleRegs = registrations.filter((reg: any) =>
         ['registered', 'confirmed'].includes(reg.status) &&
         reg.notificationsEnabled !== false &&
-        reg.phone
+        reg.phone &&
+        !reg.reminderSmsSentAt
       );
+      if (eligibleRegs.length === 0) {
+        continue; // nothing to do for this round this tick
+      }
 
       let sent = 0;
       let failed = 0;
@@ -2679,14 +2685,18 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
         const result = await sendSms({ to: reg.phone, body: smsBody });
         if (result.success) {
           sent++;
+          // Mark THIS registration reminded so we don't SMS the same person
+          // again on the next cron tick.
+          try {
+            await db.markRegistrationReminderSent(reg.participantId, round.sessionId, round.id);
+          } catch (e) {
+            console.error(`⚠️ Failed to mark reg reminder for ${reg.participantId}: ${e}`);
+          }
         } else {
           failed++;
           console.error(`❌ SMS failed for ${reg.phone}: ${result.error}`);
         }
       }
-
-      // Mark round as reminded (idempotent)
-      await db.markRoundReminderSent(round.id);
 
       totalSmsSent += sent;
       totalSmsFailed += failed;
