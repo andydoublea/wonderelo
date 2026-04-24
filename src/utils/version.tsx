@@ -9,7 +9,7 @@
 declare const __APP_BUILD_TIME__: string;
 declare const __GIT_HASH__: string;
 
-export const APP_VERSION = '1.19.0';
+export const APP_VERSION = '1.19.1';
 
 export const GIT_HASH: string =
   typeof __GIT_HASH__ !== 'undefined' ? __GIT_HASH__ : 'dev';

@@ -288,16 +288,16 @@ export function SessionRegistrationSelectRoundsView({
                               !isRoundRegisterable(session, r) || registeredRoundsPerSession.get(session.id)?.has(r.id)
                             );
 
-                          if (!canRegister && !isRegisteredRound) {
-                            const lastNonRegisterableIndex = session.rounds
-                              .map((r, i) => ({ round: r, index: i }))
-                              .filter(({ round: r }) => !isRoundRegisterable(session, r) && !registeredRoundsPerSession.get(session.id)?.has(r.id))
-                              .pop()?.index;
-
-                            if (roundIndex !== lastNonRegisterableIndex) {
-                              return null;
-                            }
-                          }
+                          // Note: previously we hid all non-registerable,
+                          // non-registered rounds except the *last* one. That
+                          // caused the "click N → round N+2 gets selected"
+                          // regression: when several rounds' registration
+                          // deadlines expired in quick succession, their DOM
+                          // rows vanished, the rows below shifted up, and the
+                          // user's in-flight click landed on the wrong round.
+                          // Now we render every round regardless — disabled
+                          // visual state for past / non-registerable ones —
+                          // so the row positions stay stable.
 
                           return (
                             <RoundItem
