@@ -10,7 +10,7 @@
 
 import * as db from './db.ts';
 
-export type SmsKind = 'round-starting-soon' | 'round-ended';
+export type SmsKind = 'round-before-confirmation' | 'round-starting-soon' | 'round-ended';
 
 // Use the same Supabase client as db.ts via its internal factory.
 // Rather than re-creating the client here, we use db's raw query mechanism
