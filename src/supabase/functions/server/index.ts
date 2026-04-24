@@ -371,6 +371,9 @@ app.post('/make-server-ce05600a/sessions', async (c) => {
 
     debugLog('✅ Created session:', sessionId);
 
+    // Schedule SMS reminders (published sessions only; fn is idempotent + handles drafts)
+    scheduleSmsForSession(sessionId).catch((e) => errorLog('scheduleSmsForSession after create', e));
+
     return c.json({
       success: true,
       session: newSession
@@ -456,6 +459,9 @@ app.put('/make-server-ce05600a/sessions/:sessionId', async (c) => {
     const updatedSession = await db.getSessionById(sessionId);
 
     debugLog('✅ Updated session:', sessionId);
+
+    // Re-schedule SMS reminders: cancels old + creates new based on new state
+    scheduleSmsForSession(sessionId).catch((e) => errorLog('scheduleSmsForSession after update', e));
 
     return c.json({
       success: true,
@@ -3404,6 +3410,218 @@ app.post('/make-server-ce05600a/test/e2e-matching-legacy', async (c) => {
       steps,
       totalMs: Date.now() - startTime,
     }, 500);
+  }
+});
+
+// ============================================================
+// SMS scheduling via QStash (variant B: batched per round × kind)
+// ============================================================
+import {
+  upsertSchedule, markScheduleScheduled, markScheduleFailed,
+  claimScheduleForDispatch, cancelSchedulesForRound,
+  upsertOutboxAttempting, markOutboxSent, markOutboxFailed,
+  updateOutboxDeliveryStatus, getOverdueSchedules,
+  type SmsKind,
+} from './sms-outbox.ts';
+import { scheduleQStashDelivery, cancelQStashDelivery, verifyQStashSignature } from './qstash.ts';
+
+function getDispatchUrl(): string {
+  const base = Deno.env.get('SUPABASE_URL') || '';
+  return `${base}/functions/v1/make-server-ce05600a/sms/dispatch`;
+}
+
+async function scheduleSmsForSession(sessionId: string) {
+  try {
+    const session = await db.getSessionById(sessionId);
+    if (!session) return;
+
+    const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+    const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
+    const smsRoundEndedEnabled = sysParams.smsRoundEndedEnabled !== false;
+
+    const rounds: any[] = session.rounds || [];
+    const dispatchUrl = getDispatchUrl();
+
+    for (const round of rounds) {
+      const oldSchedules = await cancelSchedulesForRound(round.id);
+      for (const old of oldSchedules) {
+        if (old.qstashMessageId) await cancelQStashDelivery(old.qstashMessageId);
+      }
+      if (session.status !== 'published') continue;
+      if (!round.date || !round.startTime) continue;
+
+      const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
+      const duration = Number(round.duration) || 0;
+
+      const startingTarget = new Date(roundStartUtc.getTime() - confirmationWindowMinutes * 60000);
+      if (startingTarget.getTime() > Date.now()) {
+        await scheduleOneRoundSms('round-starting-soon', round.id, sessionId, startingTarget, dispatchUrl);
+      }
+
+      if (smsRoundEndedEnabled && duration > 0) {
+        const endedTarget = new Date(roundStartUtc.getTime() + duration * 60000);
+        if (endedTarget.getTime() > Date.now()) {
+          await scheduleOneRoundSms('round-ended', round.id, sessionId, endedTarget, dispatchUrl);
+        }
+      }
+    }
+  } catch (e) {
+    errorLog('scheduleSmsForSession error', e);
+  }
+}
+
+async function scheduleOneRoundSms(
+  kind: SmsKind, roundId: string, sessionId: string,
+  targetSendAt: Date, dispatchUrl: string,
+) {
+  const { id: scheduleId, inserted } = await upsertSchedule({ kind, roundId, sessionId, targetSendAt });
+  if (!inserted) return;
+  const dedupId = `wonderelo:${kind}:${roundId}`;
+  const result = await scheduleQStashDelivery({
+    destinationUrl: dispatchUrl,
+    body: { kind, roundId, sessionId },
+    notBefore: targetSendAt,
+    deduplicationId: dedupId,
+    retries: 3,
+  });
+  if (result.ok && result.messageId) {
+    await markScheduleScheduled(scheduleId, result.messageId);
+  } else {
+    await markScheduleFailed(scheduleId, result.error || `status ${result.status}`);
+    errorLog(`QStash schedule failed for ${kind}/${roundId}: ${result.error}`);
+  }
+}
+
+async function dispatchSmsForRound(kind: SmsKind, roundId: string, sessionId: string) {
+  const schedule = await claimScheduleForDispatch(kind, roundId);
+  if (!schedule) return { skipped: 'already dispatched or canceled' };
+
+  const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+  if (kind === 'round-ended' && sysParams.smsRoundEndedEnabled === false) {
+    return { skipped: 'smsRoundEndedEnabled=false' };
+  }
+
+  const session = await db.getSessionById(sessionId);
+  const round = session?.rounds?.find((r: any) => r.id === roundId);
+  if (!session || !round) return { error: 'round not found' };
+
+  const texts = (await db.getAdminSetting('notification_texts')) || {};
+  const template = kind === 'round-starting-soon' ? texts.smsRoundStartingSoon : texts.smsRoundEnded;
+  if (!template) return { error: `template ${kind} not configured` };
+
+  const registrations = await db.getRegistrationsForRound(sessionId, roundId);
+  const eligible = kind === 'round-starting-soon'
+    ? registrations.filter((r: any) =>
+        ['registered', 'confirmed'].includes(r.status) &&
+        r.notificationsEnabled !== false && r.phone)
+    : registrations.filter((r: any) =>
+        ['matched', 'checked-in', 'met'].includes(r.status) &&
+        r.notificationsEnabled !== false && r.phone);
+
+  const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+  const meetingPoints = round?.meetingPoints?.length > 0 ? round.meetingPoints : (session.meetingPoints || []);
+  const location = meetingPoints.length > 0 ? (meetingPoints[0]?.name || meetingPoints[0] || '') : '';
+  const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
+
+  let sent = 0, failed = 0;
+  for (const reg of eligible) {
+    const { row, existing } = await upsertOutboxAttempting({
+      scheduleId: schedule.id, kind,
+      participantId: reg.participantId, sessionId, roundId,
+      targetSendAt: new Date(schedule.targetSendAt),
+    });
+    if (existing && ['sent', 'delivered'].includes(existing.status)) continue;
+
+    const minutesUntilStart = Math.max(0, Math.round((roundStartUtc.getTime() - Date.now()) / 60000));
+    const link = kind === 'round-ended'
+      ? (reg.token ? `${appUrl}/p/${reg.token}/contact-sharing?from=sms-ended` : appUrl)
+      : (reg.token ? `${appUrl}/p/${reg.token}?from=sms-reminder` : appUrl);
+
+    const smsBody = renderSmsTemplate(template, {
+      sessionName: session.name || '',
+      minutes: String(minutesUntilStart),
+      location,
+      firstName: reg.firstName || '',
+      name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
+      time: round.startTime || '',
+      date: round.date || '',
+      link,
+    });
+    const to = composeE164(reg.phone, reg.phoneCountry);
+    if (!to) {
+      await markOutboxFailed(row.id, `bad phone: ${reg.phone} / ${reg.phoneCountry}`);
+      failed++;
+      continue;
+    }
+    const result = await sendSms({ to, body: smsBody });
+    if (result.success) {
+      await markOutboxSent(row.id, result.sid || '', to);
+      sent++;
+    } else {
+      await markOutboxFailed(row.id, result.error || 'twilio failed');
+      failed++;
+    }
+  }
+
+  return { kind, roundId, eligible: eligible.length, sent, failed };
+}
+
+app.post('/make-server-ce05600a/sms/dispatch', async (c) => {
+  try {
+    const rawBody = await c.req.text();
+    const signature = c.req.header('Upstash-Signature');
+    const url = getDispatchUrl();
+    const verified = await verifyQStashSignature(signature, rawBody, url);
+    if (!verified.valid) {
+      errorLog('QStash signature invalid:', verified.reason);
+      return c.json({ error: 'Unauthorized', reason: verified.reason }, 401);
+    }
+    let payload: any;
+    try { payload = JSON.parse(rawBody); } catch { return c.json({ error: 'bad json' }, 400); }
+    const { kind, roundId, sessionId } = payload;
+    if (!kind || !roundId || !sessionId) return c.json({ error: 'missing fields' }, 400);
+    const result = await dispatchSmsForRound(kind, roundId, sessionId);
+    return c.json({ success: true, ...result });
+  } catch (error) {
+    errorLog('sms/dispatch error', error);
+    return c.json({ error: 'dispatch failed', details: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+app.post('/make-server-ce05600a/sms/twilio-status', async (c) => {
+  try {
+    const form = await c.req.formData();
+    const sid = form.get('MessageSid') as string;
+    const status = form.get('MessageStatus') as string;
+    const errorCode = (form.get('ErrorCode') as string) || null;
+    if (!sid || !status) return c.json({ ok: true });
+    await updateOutboxDeliveryStatus(sid, status, errorCode);
+    return c.json({ ok: true });
+  } catch (error) {
+    errorLog('sms/twilio-status error', error);
+    return c.json({ error: 'failed' }, 500);
+  }
+});
+
+app.post('/make-server-ce05600a/cron/sms-reconcile', async (c) => {
+  const expected = Deno.env.get('CRON_SECRET');
+  const got = c.req.header('X-Cron-Secret');
+  if (!expected || got !== expected) return c.json({ error: 'Unauthorized' }, 401);
+  try {
+    const cutoffIso = new Date(Date.now() - 2 * 60000).toISOString();
+    const overdue = await getOverdueSchedules(cutoffIso);
+    const results: any[] = [];
+    for (const sched of overdue) {
+      try {
+        const r = await dispatchSmsForRound(sched.kind, sched.roundId, sched.sessionId);
+        results.push({ scheduleId: sched.id, ...r });
+      } catch (e) {
+        results.push({ scheduleId: sched.id, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return c.json({ success: true, overdueFound: overdue.length, results });
+  } catch (error) {
+    return c.json({ error: String(error) }, 500);
   }
 });
 
