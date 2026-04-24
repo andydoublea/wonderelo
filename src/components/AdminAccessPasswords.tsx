@@ -31,6 +31,8 @@ interface AccessPassword {
   isActive: boolean;
   accessCount: number;
   lastAccessedAt: string | null;
+  visitCount: number;
+  lastVisitedAt: string | null;
   createdAt: string;
 }
 
@@ -39,6 +41,7 @@ interface AccessLog {
   accessedAt: string;
   userAgent: string | null;
   ipAddress: string | null;
+  logType: string;
 }
 
 interface AdminAccessPasswordsProps {
@@ -147,6 +150,7 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
 
   const activeCount = (passwords as AccessPassword[]).filter(p => p.isActive).length;
   const totalAccesses = (passwords as AccessPassword[]).reduce((sum, p) => sum + p.accessCount, 0);
+  const totalVisits = (passwords as AccessPassword[]).reduce((sum, p) => sum + (p.visitCount || 0), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,7 +176,7 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -199,8 +203,19 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total accesses</p>
+                    <p className="text-sm text-muted-foreground">Password entries</p>
                     <p className="text-2xl font-bold">{totalAccesses}</p>
+                  </div>
+                  <Key className="h-8 w-8 text-muted-foreground opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total visits</p>
+                    <p className="text-2xl font-bold">{totalVisits}</p>
                   </div>
                   <Eye className="h-8 w-8 text-muted-foreground opacity-50" />
                 </div>
@@ -217,8 +232,9 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
                     <TableHead>Person</TableHead>
                     <TableHead>Password</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Accesses</TableHead>
-                    <TableHead>Last accessed</TableHead>
+                    <TableHead>Entries</TableHead>
+                    <TableHead>Visits</TableHead>
+                    <TableHead>Last visit</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -226,7 +242,7 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
                 <TableBody>
                   {(passwords as AccessPassword[]).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         No access passwords yet
                       </TableCell>
                     </TableRow>
@@ -257,8 +273,9 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
                           </Badge>
                         </TableCell>
                         <TableCell>{p.accessCount}</TableCell>
+                        <TableCell>{p.visitCount || 0}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(p.lastAccessedAt)}
+                          {formatDate(p.lastVisitedAt)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {formatDate(p.createdAt)}
@@ -388,6 +405,7 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date & time</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Browser</TableHead>
                     <TableHead>IP address</TableHead>
                   </TableRow>
@@ -396,6 +414,11 @@ export function AdminAccessPasswords({ accessToken }: AdminAccessPasswordsProps)
                   {(logs as AccessLog[]).map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="text-sm">{formatDate(log.accessedAt)}</TableCell>
+                      <TableCell>
+                        <Badge variant={log.logType === 'visit' ? 'outline' : 'secondary'} className="text-xs">
+                          {log.logType === 'visit' ? 'Visit' : 'Entry'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-sm">{parseUserAgent(log.userAgent)}</TableCell>
                       <TableCell className="text-sm font-mono">{log.ipAddress || '—'}</TableCell>
                     </TableRow>

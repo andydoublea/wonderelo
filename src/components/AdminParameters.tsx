@@ -26,6 +26,9 @@ const DEFAULT_PARAMETERS: SystemParameters = {
   notificationLateMinutes: 5,
   notificationLateEnabled: true,
   smsRoundEndedEnabled: true,
+  emailBeforeConfirmationEnabled: false,
+  emailAtConfirmationEnabled: false,
+  emailAfterNetworkingEnabled: false,
   minimalGapBetweenRounds: 10,
   minimalRoundDuration: 5,
   maximalRoundDuration: 240,
@@ -76,11 +79,16 @@ const PARAM_DEFS: ParamDef[] = [
   { key: 'contactSharingDelayMinutes', label: 'Contact sharing delay', section: 'timing', type: 'number', min: 0, max: 60, unit: 'min' },
   { key: 'timePickerIntervalMinutes', label: 'Time picker interval', section: 'timing', type: 'number', min: 1, max: 15, unit: 'min' },
   // Notifications
-  { key: 'notificationEarlyEnabled', label: 'Early notif. enabled', section: 'notifications', type: 'boolean' },
-  { key: 'notificationEarlyMinutes', label: 'Early notif. time', section: 'notifications', type: 'number', min: 1, max: 60, unit: 'min' },
-  { key: 'notificationLateEnabled', label: 'Late notif. enabled', section: 'notifications', type: 'boolean' },
-  { key: 'notificationLateMinutes', label: 'Late notif. time', section: 'notifications', type: 'number', min: 1, max: 30, unit: 'min' },
-  { key: 'smsRoundEndedEnabled', label: 'SMS when round ends', section: 'notifications', type: 'boolean' },
+  // BEFORE confirmation time (early warning)
+  { key: 'notificationEarlyEnabled', label: 'SMS before confirmation time — enabled', section: 'notifications', type: 'boolean' },
+  { key: 'emailBeforeConfirmationEnabled', label: 'Email before confirmation time — enabled', section: 'notifications', type: 'boolean' },
+  { key: 'notificationEarlyMinutes', label: 'Before confirmation time — min before round', section: 'notifications', type: 'number', min: 1, max: 60, unit: 'min' },
+  // AT confirmation time (when Confirm button appears)
+  { key: 'notificationLateEnabled', label: 'SMS at confirmation time — enabled', section: 'notifications', type: 'boolean' },
+  { key: 'emailAtConfirmationEnabled', label: 'Email at confirmation time — enabled', section: 'notifications', type: 'boolean' },
+  // AFTER networking (round ended)
+  { key: 'smsRoundEndedEnabled', label: 'SMS after networking — enabled', section: 'notifications', type: 'boolean' },
+  { key: 'emailAfterNetworkingEnabled', label: 'Email after networking — enabled', section: 'notifications', type: 'boolean' },
   // UI
   { key: 'fireThreshold1', label: 'Fire 1 threshold', section: 'ui', type: 'number', min: 1, max: 100 },
   { key: 'fireThreshold2', label: 'Fire 2 threshold', section: 'ui', type: 'number', min: 1, max: 100 },

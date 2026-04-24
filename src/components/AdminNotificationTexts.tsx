@@ -14,11 +14,19 @@ interface AdminNotificationTextsProps {
 
 interface NotificationTexts {
   // SMS Templates
-  smsConfirmationReminder: string;
-  smsRoundStartingSoon: string;
-  smsRoundEnded: string;
+  smsConfirmationReminder: string;  // sent BEFORE confirmation time
+  smsRoundStartingSoon: string;      // sent AT confirmation time
+  smsRoundEnded: string;             // sent AFTER networking
 
-  // Email Templates
+  // Email Templates — one pair per notification point
+  emailBeforeConfirmationSubject: string;
+  emailBeforeConfirmationBody: string;
+  emailAtConfirmationSubject: string;
+  emailAtConfirmationBody: string;
+  emailAfterNetworkingSubject: string;
+  emailAfterNetworkingBody: string;
+
+  // Legacy / other email templates
   emailWelcomeSubject: string;
   emailWelcomeBody: string;
   emailConfirmationReminderSubject: string;
@@ -30,6 +38,34 @@ const DEFAULT_TEXTS: NotificationTexts = {
   smsConfirmationReminder: 'Hi {name}! Please confirm your attendance for "{sessionName}" round starting at {time}. Confirm here: {link}',
   smsRoundStartingSoon: '⏰ Reminder: "{sessionName}" round starts in {minutes} minutes at {location}!',
   smsRoundEnded: 'Hi {name}! Your "{sessionName}" round has ended. Share contacts with your matches: {link}',
+
+  // Email — one pair per notification point
+  emailBeforeConfirmationSubject: 'Your "{sessionName}" round starts soon',
+  emailBeforeConfirmationBody: `Hi {firstName},
+
+Your "{sessionName}" round starts in {minutes} minutes. Get ready!
+
+Confirmation will open shortly at {link}
+
+See you there!
+Wonderelo`,
+  emailAtConfirmationSubject: 'Confirm your attendance — {sessionName}',
+  emailAtConfirmationBody: `Hi {firstName},
+
+Your "{sessionName}" round is about to start. Please confirm your attendance now:
+
+{link}
+
+See you there!
+Wonderelo`,
+  emailAfterNetworkingSubject: 'How was your "{sessionName}" round?',
+  emailAfterNetworkingBody: `Hi {firstName},
+
+Your "{sessionName}" round has ended. Share contacts with your matches:
+
+{link}
+
+Wonderelo`,
 
   // Email
   emailWelcomeSubject: '{eventName} - Wonderelo round details',
@@ -208,12 +244,12 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
             </CardHeader>
             <CardContent className="space-y-6">
 
-              {/* SMS Confirmation Reminder */}
+              {/* SMS before confirmation time */}
               <div className="space-y-2">
                 <Label htmlFor="smsConfirmationReminder">
-                  Confirmation reminder SMS
+                  SMS before confirmation time
                   <span className="text-xs text-muted-foreground ml-2">
-                    (sent when confirmation window opens)
+                    (early warning before the confirmation window opens)
                   </span>
                 </Label>
                 <Textarea
@@ -231,12 +267,12 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 </p>
               </div>
 
-              {/* SMS Round Starting Soon */}
+              {/* SMS at confirmation time */}
               <div className="space-y-2">
                 <Label htmlFor="smsRoundStartingSoon">
-                  Round starting soon SMS
+                  SMS at confirmation time
                   <span className="text-xs text-muted-foreground ml-2">
-                    (sent X minutes before round start)
+                    (sent the moment the Confirm Attendance button appears — confirmationWindowMinutes before round start)
                   </span>
                 </Label>
                 <Textarea
@@ -254,10 +290,10 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 </p>
               </div>
 
-              {/* SMS Round Ended */}
+              {/* SMS after networking */}
               <div className="space-y-2">
                 <Label htmlFor="smsRoundEnded">
-                  Round ended SMS
+                  SMS after networking
                   <span className="text-xs text-muted-foreground ml-2">
                     (sent right after the round ends, to matched participants — toggle in Admin → Parameters)
                   </span>
@@ -277,6 +313,63 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 </p>
               </div>
 
+            </CardContent>
+          </Card>
+
+          {/* ================================================== */}
+          {/* Email templates for the 3 notification points      */}
+          {/* ================================================== */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <Mail className="h-5 w-5 text-blue-500" />
+                </div>
+                <div>
+                  <CardTitle>Notification emails (per event)</CardTitle>
+                  <CardDescription>One subject + body per notification point. Toggle each on/off in Admin → Parameters.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {([
+                { key: 'BeforeConfirmation', label: 'Email before confirmation time', hint: 'sent a few minutes before the confirm window opens' },
+                { key: 'AtConfirmation',     label: 'Email at confirmation time',      hint: 'sent the moment Confirm Attendance becomes available' },
+                { key: 'AfterNetworking',    label: 'Email after networking',          hint: 'sent when the round ends' },
+              ] as const).map(({ key, label, hint }) => {
+                const subjKey = `email${key}Subject` as keyof NotificationTexts;
+                const bodyKey = `email${key}Body` as keyof NotificationTexts;
+                return (
+                  <div key={key} className="space-y-3 pb-4 border-b last:border-0 last:pb-0">
+                    <div className="space-y-2">
+                      <Label htmlFor={subjKey}>
+                        {label} — subject
+                        <span className="text-xs text-muted-foreground ml-2">({hint})</span>
+                      </Label>
+                      <Textarea
+                        id={subjKey}
+                        value={currentTexts[subjKey] as string}
+                        onChange={(e) => updateText(subjKey, e.target.value)}
+                        rows={1}
+                        className={isFieldChanged(subjKey) ? 'border-amber-400 border-2' : ''}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={bodyKey}>{label} — body</Label>
+                      <Textarea
+                        id={bodyKey}
+                        value={currentTexts[bodyKey] as string}
+                        onChange={(e) => updateText(bodyKey, e.target.value)}
+                        rows={7}
+                        className={isFieldChanged(bodyKey) ? 'border-amber-400 border-2' : ''}
+                      />
+                      {isFieldChanged(bodyKey) && (
+                        <p className="text-xs text-amber-600">(modified)</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
 

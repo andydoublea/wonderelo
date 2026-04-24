@@ -1,11 +1,18 @@
 // App version + build metadata.
-// APP_VERSION: bump this manually with each meaningful release (semver).
+// GIT_HASH: short SHA of the commit that produced the build (auto).
 // BUILD_TIME: injected at build time via vite.config.ts (see `define`).
 // FULL_VERSION: human-readable combined string for admin badges/logs.
+//
+// APP_VERSION is kept for legacy/tracking; not shown in the badge anymore
+// because manual bumping drifted from what was actually deployed.
 
 declare const __APP_BUILD_TIME__: string;
+declare const __GIT_HASH__: string;
 
-export const APP_VERSION = '1.18.2';
+export const APP_VERSION = '1.19.0';
+
+export const GIT_HASH: string =
+  typeof __GIT_HASH__ !== 'undefined' ? __GIT_HASH__ : 'dev';
 
 // BUILD_TIME falls back to empty string in dev/test environments that don't define it
 export const BUILD_TIME: string =
@@ -31,4 +38,4 @@ export function formatBuildTime(iso: string): string {
   }
 }
 
-export const FULL_VERSION = `v${APP_VERSION} · ${formatBuildTime(BUILD_TIME)}`;
+export const FULL_VERSION = `${GIT_HASH} · ${formatBuildTime(BUILD_TIME)}`;

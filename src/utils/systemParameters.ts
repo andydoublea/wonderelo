@@ -15,6 +15,12 @@ export interface SystemParameters {
   // typically linking them to the contact-sharing page)
   smsRoundEndedEnabled: boolean;
 
+  // Email toggles — each mirrors the corresponding SMS. Admin can turn SMS
+  // and/or email on independently for each of the 3 notification points.
+  emailBeforeConfirmationEnabled: boolean;
+  emailAtConfirmationEnabled: boolean;
+  emailAfterNetworkingEnabled: boolean;
+
   // Validation constraints
   minimalGapBetweenRounds: number;
   minimalRoundDuration: number;
@@ -61,6 +67,10 @@ const DEFAULT_PARAMETERS: SystemParameters = {
   notificationLateEnabled: true,
 
   smsRoundEndedEnabled: true,
+
+  emailBeforeConfirmationEnabled: false,
+  emailAtConfirmationEnabled: false,
+  emailAfterNetworkingEnabled: false,
 
   minimalGapBetweenRounds: 10,
   minimalRoundDuration: 5,

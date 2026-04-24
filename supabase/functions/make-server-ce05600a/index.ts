@@ -15,11 +15,10 @@ import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
 import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
 import { createMatchesForRound } from './matching.tsx';
-import { sendSms, renderSmsTemplate } from './sms.tsx';
+import { sendSms, renderSmsTemplate, verifyTwilioSignature } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
-import { registerDemoRoutes } from './route-demo.ts';
 import { getScenarioList, runScenario } from './e2e-scenarios.ts';
 
 const app = new Hono();
@@ -372,6 +371,9 @@ app.post('/make-server-ce05600a/sessions', async (c) => {
 
     debugLog('✅ Created session:', sessionId);
 
+    // Schedule SMS reminders (published sessions only; fn is idempotent + handles drafts)
+    scheduleSmsForSession(sessionId).catch((e) => errorLog('scheduleSmsForSession after create', e));
+
     return c.json({
       success: true,
       session: newSession
@@ -457,6 +459,9 @@ app.put('/make-server-ce05600a/sessions/:sessionId', async (c) => {
     const updatedSession = await db.getSessionById(sessionId);
 
     debugLog('✅ Updated session:', sessionId);
+
+    // Re-schedule SMS reminders: cancels old + creates new based on new state
+    scheduleSmsForSession(sessionId).catch((e) => errorLog('scheduleSmsForSession after update', e));
 
     return c.json({
       success: true,
@@ -1029,6 +1034,9 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         notificationLateMinutes: 5,
         notificationLateEnabled: true,
         smsRoundEndedEnabled: true,
+        emailBeforeConfirmationEnabled: false,
+        emailAtConfirmationEnabled: false,
+        emailAfterNetworkingEnabled: false,
         minimalGapBetweenRounds: 10,
         minimalRoundDuration: 5,
         maximalRoundDuration: 240,
@@ -3408,6 +3416,432 @@ app.post('/make-server-ce05600a/test/e2e-matching-legacy', async (c) => {
   }
 });
 
+// ============================================================
+// SMS scheduling via QStash (variant B: batched per round × kind)
+// ============================================================
+import {
+  upsertSchedule, markScheduleScheduled, markScheduleFailed,
+  claimScheduleForDispatch, cancelSchedulesForRound,
+  upsertOutboxAttempting, markOutboxSent, markOutboxFailed,
+  updateOutboxDeliveryStatus, getOverdueSchedules,
+  type SmsKind,
+} from './sms-outbox.ts';
+import { scheduleQStashDelivery, cancelQStashDelivery, verifyQStashSignature } from './qstash.ts';
+
+function getDispatchUrl(): string {
+  const base = Deno.env.get('SUPABASE_URL') || '';
+  return `${base}/functions/v1/make-server-ce05600a/sms/dispatch`;
+}
+
+/**
+ * Schedule all notifications (SMS + email) for a session's rounds.
+ * One QStash message per (round × kind). 3 kinds per round:
+ *   - 'round-before-confirmation' at round_start - notificationEarlyMinutes
+ *   - 'round-starting-soon'        at round_start - confirmationWindowMinutes
+ *   - 'round-ended'                at round_start + duration
+ *
+ * A schedule is created if EITHER its SMS toggle OR its email toggle is ON.
+ * Scheduling is unconditional (toggle state is re-checked at dispatch time,
+ * so admin can flip toggles after publishing).
+ */
+async function scheduleSmsForSession(sessionId: string) {
+  try {
+    const session = await db.getSessionById(sessionId);
+    if (!session) return;
+
+    const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+    const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
+    const notificationEarlyMinutes = Number(sysParams.notificationEarlyMinutes) || 10;
+
+    const rounds: any[] = session.rounds || [];
+    const dispatchUrl = getDispatchUrl();
+
+    for (const round of rounds) {
+      const oldSchedules = await cancelSchedulesForRound(round.id);
+      for (const old of oldSchedules) {
+        if (old.qstashMessageId) await cancelQStashDelivery(old.qstashMessageId);
+      }
+      if (session.status !== 'published') continue;
+      if (!round.date || !round.startTime) continue;
+
+      const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
+      const duration = Number(round.duration) || 0;
+
+      // 1. BEFORE confirmation time
+      const beforeTarget = new Date(roundStartUtc.getTime() - notificationEarlyMinutes * 60000);
+      if (beforeTarget.getTime() > Date.now()) {
+        await scheduleOneRoundSms('round-before-confirmation', round.id, sessionId, beforeTarget, dispatchUrl);
+      }
+
+      // 2. AT confirmation time
+      const atTarget = new Date(roundStartUtc.getTime() - confirmationWindowMinutes * 60000);
+      if (atTarget.getTime() > Date.now()) {
+        await scheduleOneRoundSms('round-starting-soon', round.id, sessionId, atTarget, dispatchUrl);
+      }
+
+      // 3. AFTER networking
+      if (duration > 0) {
+        const endedTarget = new Date(roundStartUtc.getTime() + duration * 60000);
+        if (endedTarget.getTime() > Date.now()) {
+          await scheduleOneRoundSms('round-ended', round.id, sessionId, endedTarget, dispatchUrl);
+        }
+      }
+    }
+  } catch (e) {
+    errorLog('scheduleSmsForSession error', e);
+  }
+}
+
+async function scheduleOneRoundSms(
+  kind: SmsKind, roundId: string, sessionId: string,
+  targetSendAt: Date, dispatchUrl: string,
+) {
+  const { id: scheduleId, inserted } = await upsertSchedule({ kind, roundId, sessionId, targetSendAt });
+  if (!inserted) return;
+  // Dedup ID — QStash rejects ':'. Use '-' separator instead.
+  const dedupId = `wonderelo-${kind}-${roundId}`;
+  const result = await scheduleQStashDelivery({
+    destinationUrl: dispatchUrl,
+    body: { kind, roundId, sessionId },
+    notBefore: targetSendAt,
+    deduplicationId: dedupId,
+    retries: 3,
+  });
+  if (result.ok && result.messageId) {
+    await markScheduleScheduled(scheduleId, result.messageId);
+  } else {
+    await markScheduleFailed(scheduleId, result.error || `status ${result.status}`);
+    errorLog(`QStash schedule failed for ${kind}/${roundId}: ${result.error}`);
+  }
+}
+
+/**
+ * Per-kind config: which admin toggles and templates to use, and which
+ * registration statuses are eligible at this notification point.
+ */
+function kindConfig(kind: SmsKind, sysParams: any, texts: any) {
+  switch (kind) {
+    case 'round-before-confirmation':
+      return {
+        smsEnabled: sysParams.notificationEarlyEnabled !== false,
+        emailEnabled: sysParams.emailBeforeConfirmationEnabled === true,
+        smsTemplate: texts.smsConfirmationReminder,
+        emailSubject: texts.emailBeforeConfirmationSubject,
+        emailBody: texts.emailBeforeConfirmationBody,
+        eligibleStatuses: ['registered', 'confirmed'],
+        linkPath: (token: string) => `/p/${token}?from=notification-before`,
+      };
+    case 'round-starting-soon':
+      return {
+        smsEnabled: sysParams.notificationLateEnabled !== false,
+        emailEnabled: sysParams.emailAtConfirmationEnabled === true,
+        smsTemplate: texts.smsRoundStartingSoon,
+        emailSubject: texts.emailAtConfirmationSubject,
+        emailBody: texts.emailAtConfirmationBody,
+        eligibleStatuses: ['registered', 'confirmed'],
+        linkPath: (token: string) => `/p/${token}?from=sms-reminder`,
+      };
+    case 'round-ended':
+      return {
+        smsEnabled: sysParams.smsRoundEndedEnabled !== false,
+        emailEnabled: sysParams.emailAfterNetworkingEnabled === true,
+        smsTemplate: texts.smsRoundEnded,
+        emailSubject: texts.emailAfterNetworkingSubject,
+        emailBody: texts.emailAfterNetworkingBody,
+        eligibleStatuses: ['matched', 'checked-in', 'met'],
+        linkPath: (token: string) => `/p/${token}/contact-sharing?from=sms-ended`,
+      };
+  }
+}
+
+async function dispatchSmsForRound(kind: SmsKind, roundId: string, sessionId: string) {
+  const schedule = await claimScheduleForDispatch(kind, roundId);
+  if (!schedule) return { skipped: 'already dispatched or canceled' };
+
+  const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+  const texts = (await db.getAdminSetting('notification_texts')) || {};
+  const cfg = kindConfig(kind, sysParams, texts);
+
+  if (!cfg.smsEnabled && !cfg.emailEnabled) {
+    return { skipped: 'both SMS and email disabled for this kind' };
+  }
+
+  const session = await db.getSessionById(sessionId);
+  const round = session?.rounds?.find((r: any) => r.id === roundId);
+  if (!session || !round) return { error: 'round not found' };
+
+  const registrations = await db.getRegistrationsForRound(sessionId, roundId);
+  const eligible = registrations.filter((r: any) =>
+    cfg.eligibleStatuses.includes(r.status) &&
+    r.notificationsEnabled !== false &&
+    (cfg.smsEnabled ? r.phone : r.email) // needs phone for SMS-only; else email suffices
+  );
+
+  const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
+  const meetingPoints = round?.meetingPoints?.length > 0 ? round.meetingPoints : (session.meetingPoints || []);
+  const location = meetingPoints.length > 0 ? (meetingPoints[0]?.name || meetingPoints[0] || '') : '';
+  const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
+
+  let smsSent = 0, smsFailed = 0, emailSent = 0, emailFailed = 0;
+
+  for (const reg of eligible) {
+    const minutesUntilStart = Math.max(0, Math.round((roundStartUtc.getTime() - Date.now()) / 60000));
+    const link = reg.token ? `${appUrl}${cfg.linkPath(reg.token)}` : appUrl;
+    const vars = {
+      sessionName: session.name || '',
+      minutes: String(minutesUntilStart),
+      location,
+      firstName: reg.firstName || '',
+      name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
+      time: round.startTime || '',
+      date: round.date || '',
+      link,
+      eventName: session.name || '',
+    };
+
+    // ---- SMS ----
+    if (cfg.smsEnabled && cfg.smsTemplate && reg.phone) {
+      const { row, existing } = await upsertOutboxAttempting({
+        scheduleId: schedule.id, kind,
+        participantId: reg.participantId, sessionId, roundId,
+        targetSendAt: new Date(schedule.targetSendAt),
+      });
+      const alreadySent = existing && ['sent', 'delivered'].includes(existing.status);
+      if (!alreadySent) {
+        const to = composeE164(reg.phone, reg.phoneCountry);
+        if (!to) {
+          await markOutboxFailed(row.id, `bad phone: ${reg.phone} / ${reg.phoneCountry}`);
+          smsFailed++;
+        } else {
+          const smsBody = renderSmsTemplate(cfg.smsTemplate, vars);
+          const base = Deno.env.get('SUPABASE_URL') || '';
+          const statusCallback = base ? `${base}/functions/v1/make-server-ce05600a/sms/twilio-status` : undefined;
+          const result = await sendSms({ to, body: smsBody, statusCallback });
+          if (result.success) {
+            await markOutboxSent(row.id, result.sid || '', to);
+            smsSent++;
+          } else {
+            await markOutboxFailed(row.id, result.error || 'twilio failed');
+            smsFailed++;
+          }
+        }
+      }
+    }
+
+    // ---- Email ----
+    if (cfg.emailEnabled && cfg.emailSubject && cfg.emailBody && reg.email) {
+      try {
+        const subject = renderSmsTemplate(cfg.emailSubject, vars);
+        const body = renderSmsTemplate(cfg.emailBody, vars);
+        const html = body.replace(/\n/g, '<br>');
+        const result = await sendEmail({ to: reg.email, subject, html });
+        if (result.success) emailSent++;
+        else {
+          emailFailed++;
+          errorLog(`Email ${kind} failed for ${reg.email}: ${result.error}`);
+        }
+      } catch (e) {
+        emailFailed++;
+        errorLog(`Email ${kind} exception for ${reg.email}:`, e);
+      }
+    }
+  }
+
+  return {
+    kind, roundId,
+    eligible: eligible.length,
+    smsSent, smsFailed, emailSent, emailFailed,
+  };
+}
+
+app.post('/make-server-ce05600a/sms/dispatch', async (c) => {
+  try {
+    const rawBody = await c.req.text();
+    const signature = c.req.header('Upstash-Signature');
+    const url = getDispatchUrl();
+    const verified = await verifyQStashSignature(signature, rawBody, url);
+    if (!verified.valid) {
+      errorLog('QStash signature invalid:', verified.reason);
+      return c.json({ error: 'Unauthorized', reason: verified.reason }, 401);
+    }
+    let payload: any;
+    try { payload = JSON.parse(rawBody); } catch { return c.json({ error: 'bad json' }, 400); }
+    const { kind, roundId, sessionId } = payload;
+    if (!kind || !roundId || !sessionId) return c.json({ error: 'missing fields' }, 400);
+    const result = await dispatchSmsForRound(kind, roundId, sessionId);
+    return c.json({ success: true, ...result });
+  } catch (error) {
+    errorLog('sms/dispatch error', error);
+    return c.json({ error: 'dispatch failed', details: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+app.post('/make-server-ce05600a/sms/twilio-status', async (c) => {
+  try {
+    const rawForm = await c.req.text();
+    // Parse form-urlencoded
+    const params = Object.fromEntries(new URLSearchParams(rawForm).entries());
+
+    // Verify signature to prevent anyone from spamming our outbox with fake statuses
+    const sig = c.req.header('X-Twilio-Signature');
+    const base = Deno.env.get('SUPABASE_URL') || '';
+    const fullUrl = `${base}/functions/v1/make-server-ce05600a/sms/twilio-status`;
+    const valid = await verifyTwilioSignature(sig, fullUrl, params);
+    if (!valid) {
+      errorLog('Twilio signature invalid for status callback');
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const sid = params.MessageSid;
+    const status = params.MessageStatus;
+    const errorCode = params.ErrorCode || null;
+    if (!sid || !status) return c.json({ ok: true });
+    await updateOutboxDeliveryStatus(sid, status, errorCode);
+    return c.json({ ok: true });
+  } catch (error) {
+    errorLog('sms/twilio-status error', error);
+    return c.json({ error: 'failed' }, 500);
+  }
+});
+
+/**
+ * Admin: SMS outbox audit list. Requires admin role.
+ * Returns { schedules, outbox, summary } — last 200 of each, last 24h summary.
+ */
+app.get('/make-server-ce05600a/admin/sms-outbox', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Authorization required' }, 401);
+    const token = authHeader.slice(7);
+    const { data: { user } } = await getSupabase().auth.getUser(token);
+    if (!user) return c.json({ error: 'Invalid token' }, 401);
+    const profile = await db.getOrganizerById(user.id);
+    if (profile?.role !== 'admin') return c.json({ error: 'Admin only' }, 403);
+
+    const sb = getGlobalSupabaseClient();
+    const { data: schedules } = await sb
+      .from('sms_schedules')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    const { data: outbox } = await sb
+      .from('sms_outbox')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    // 24h summary
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60000).toISOString();
+    const { data: recent } = await sb
+      .from('sms_outbox')
+      .select('status, kind')
+      .gte('created_at', dayAgo);
+    const summary: Record<string, number> = {};
+    for (const r of (recent || [])) {
+      const key = `${r.kind}:${r.status}`;
+      summary[key] = (summary[key] || 0) + 1;
+      summary[`total:${r.status}`] = (summary[`total:${r.status}`] || 0) + 1;
+    }
+
+    return c.json({
+      success: true,
+      schedules: schedules || [],
+      outbox: outbox || [],
+      summary,
+    });
+  } catch (error) {
+    errorLog('admin/sms-outbox error', error);
+    return c.json({ error: 'Failed', details: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+/**
+ * Admin: resend a single SMS from outbox (manual retry).
+ */
+app.post('/make-server-ce05600a/admin/sms-outbox/:id/resend', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Authorization required' }, 401);
+    const token = authHeader.slice(7);
+    const { data: { user } } = await getSupabase().auth.getUser(token);
+    if (!user) return c.json({ error: 'Invalid token' }, 401);
+    const profile = await db.getOrganizerById(user.id);
+    if (profile?.role !== 'admin') return c.json({ error: 'Admin only' }, 403);
+
+    const id = c.req.param('id');
+    const sb = getGlobalSupabaseClient();
+    const { data: row } = await sb.from('sms_outbox').select('*').eq('id', id).maybeSingle();
+    if (!row) return c.json({ error: 'not found' }, 404);
+
+    // Reset outbox row to attempting so dispatch picks it up cleanly
+    await sb.from('sms_outbox').update({
+      status: 'attempting',
+      attempts: row.attempts + 1,
+      last_attempt_at: new Date().toISOString(),
+    }).eq('id', id);
+
+    // Also reset the parent schedule so dispatch can claim it again
+    if (row.schedule_id) {
+      await sb.from('sms_schedules').update({ status: 'scheduled' }).eq('id', row.schedule_id);
+    }
+
+    const r = await dispatchSmsForRound(row.kind, row.round_id, row.session_id);
+    return c.json({ success: true, ...r });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+/**
+ * Admin: manually trigger scheduleSmsForSession for debugging/backfill.
+ * Useful for sessions that were created before the QStash stack went live,
+ * or for re-scheduling after QStash outages.
+ */
+app.post('/make-server-ce05600a/admin/sms-outbox/trigger-schedule/:sessionId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Authorization required' }, 401);
+    const token = authHeader.slice(7);
+    const { data: { user } } = await getSupabase().auth.getUser(token);
+    if (!user) return c.json({ error: 'Invalid token' }, 401);
+    const profile = await db.getOrganizerById(user.id);
+    if (profile?.role !== 'admin') return c.json({ error: 'Admin only' }, 403);
+
+    const sessionId = c.req.param('sessionId');
+    await scheduleSmsForSession(sessionId);
+    // Return fresh state
+    const sb = getGlobalSupabaseClient();
+    const { data: schedules } = await sb
+      .from('sms_schedules').select('*').eq('session_id', sessionId)
+      .order('created_at', { ascending: false });
+    return c.json({ success: true, sessionId, schedules: schedules || [] });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+app.post('/make-server-ce05600a/cron/sms-reconcile', async (c) => {
+  const expected = Deno.env.get('CRON_SECRET');
+  const got = c.req.header('X-Cron-Secret');
+  if (!expected || got !== expected) return c.json({ error: 'Unauthorized' }, 401);
+  try {
+    const cutoffIso = new Date(Date.now() - 2 * 60000).toISOString();
+    const overdue = await getOverdueSchedules(cutoffIso);
+    const results: any[] = [];
+    for (const sched of overdue) {
+      try {
+        const r = await dispatchSmsForRound(sched.kind, sched.roundId, sched.sessionId);
+        results.push({ scheduleId: sched.id, ...r });
+      } catch (e) {
+        results.push({ scheduleId: sched.id, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return c.json({ success: true, overdueFound: overdue.length, results });
+  } catch (error) {
+    return c.json({ error: String(error) }, 500);
+  }
+});
+
 // Register participant routes
 registerParticipantRoutes(app, getCurrentTime);
 
@@ -3419,8 +3853,5 @@ registerCrmRoutes(app);
 
 // Register i18n routes
 registerI18nRoutes(app);
-
-// Register demo routes (/demo/setup)
-registerDemoRoutes(app);
 
 Deno.serve(app.fetch);
