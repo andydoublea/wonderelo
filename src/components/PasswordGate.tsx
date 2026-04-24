@@ -3,6 +3,7 @@ import { apiBaseUrl } from '../utils/supabase/info';
 
 const STORAGE_KEY = 'wonderelo_site_access';
 const PERSON_KEY = 'wonderelo_access_person';
+const PASSWORD_ID_KEY = 'wonderelo_access_password_id';
 
 function identifyHotjar(personName: string) {
   if (typeof window !== 'undefined' && (window as any).hj) {
@@ -29,6 +30,15 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
       if (personName) {
         identifyHotjar(personName);
       }
+      // Log this visit
+      const passwordId = localStorage.getItem(PASSWORD_ID_KEY);
+      if (passwordId) {
+        fetch(`${apiBaseUrl}/log-access-visit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passwordId }),
+        }).catch(() => {});
+      }
     }
   }, []);
 
@@ -51,6 +61,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
       if (data.valid) {
         localStorage.setItem(STORAGE_KEY, 'granted');
         localStorage.setItem(PERSON_KEY, data.personName);
+        localStorage.setItem(PASSWORD_ID_KEY, data.passwordId);
         identifyHotjar(data.personName);
         setIsUnlocked(true);
       } else {
