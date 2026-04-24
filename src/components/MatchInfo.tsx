@@ -8,9 +8,14 @@ import { CountdownTimer } from './CountdownTimer';
 import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { WondereloHeader } from './WondereloHeader';
+import { MissedRound } from './MissedRound';
 
 export interface MatchData {
   matchId: string;
+  roundId?: string;
+  roundName?: string;
+  sessionId?: string;
+  status?: string;
   meetingPointName: string;
   meetingPointImageUrl?: string;
   meetingPointType?: 'physical' | 'virtual';
@@ -147,6 +152,7 @@ export function MatchInfo() {
   const [isWaitingForMatch, setIsWaitingForMatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeadlineExpired, setIsDeadlineExpired] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
   const MAX_POLL_ATTEMPTS = 60; // 60 * 2s = 120s max wait
@@ -190,6 +196,15 @@ export function MatchInfo() {
       setMatchData(data.matchData);
       setIsLoading(false);
       setIsWaitingForMatch(false);
+
+      // Detect missed: server status or walking deadline already past
+      const md = data.matchData;
+      const alreadyCheckedIn = md?.status === 'checked-in' || md?.status === 'met';
+      const serverMissed = md?.status === 'missed';
+      const deadlinePast = md?.walkingDeadline && new Date(md.walkingDeadline).getTime() <= Date.now();
+      if (!alreadyCheckedIn && (serverMissed || deadlinePast)) {
+        setIsDeadlineExpired(true);
+      }
       return 'matched';
     } catch (err) {
       errorLog('[MatchInfo] Error:', err);
@@ -380,6 +395,21 @@ export function MatchInfo() {
     );
   }
 
+  // Walking deadline expired and participant never checked in — show MissedRound
+  if (isDeadlineExpired && matchData.status !== 'checked-in' && matchData.status !== 'met') {
+    return (
+      <div className="min-h-screen bg-background">
+        <WondereloHeader />
+        <MissedRound
+          participantToken={token!}
+          roundId={matchData.roundId || ''}
+          roundName={matchData.roundName}
+          onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
+        />
+      </div>
+    );
+  }
+
   return (
     <MatchInfoMatchedView
       matchData={matchData}
@@ -389,7 +419,8 @@ export function MatchInfo() {
             targetDate={matchData.walkingDeadline}
             size="large"
             onComplete={() => {
-              debugLog('[MatchInfo] Walking deadline reached');
+              debugLog('[MatchInfo] Walking deadline reached — switching to MissedRound view');
+              setIsDeadlineExpired(true);
             }}
           />
         ) : undefined
