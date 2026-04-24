@@ -2679,28 +2679,38 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
 
     const now = new Date();
 
-    // Pull tunables from admin settings so admin can tune without a redeploy.
-    // Window for "round starting soon" SMS matches the Confirm Attendance
-    // button visibility (confirmationWindowMinutes). One extra minute of slack
-    // is added so a cron tick that happens slightly late still catches the
-    // round before it starts.
+    // Target-time-based scheduling: each SMS has a computed target send time
+    // derived from round_start / round_end. The cron fires SMS only on the
+    // tick where `target_send_time` fell within the last CRON_INTERVAL_MINUTES
+    // (the cron granularity). Per-registration deduplication means any missed
+    // tick is picked up on the next one, still only once per participant.
+    //
+    //   Starting-soon target = round_start - confirmationWindowMinutes
+    //     (exact moment the Confirm Attendance button appears)
+    //   Round-ended  target = round_start + duration
+    //     (exact moment the networking countdown hits 0)
+    //
+    // Catch-up window: CRON_INTERVAL_MINUTES + 1 min slack absorbs cron
+    // jitter and the rare case a round was created inside the target minute.
     const sysParams = (await db.getAdminSetting('system_parameters')) || {};
     const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
     const smsRoundEndedEnabled = sysParams.smsRoundEndedEnabled !== false; // default true
-    const startWindowMinutes = confirmationWindowMinutes + 1; // small cron-jitter buffer
-    const endedLookbackMinutes = 3; // catch rounds that ended in last 3 min
-
-    const startWindowEnd = new Date(now.getTime() + startWindowMinutes * 60000);
-    const endedLookbackStart = new Date(now.getTime() - endedLookbackMinutes * 60000);
+    const CRON_INTERVAL_MINUTES = 1;
+    const SLACK_MINUTES = 1; // tolerate delayed cron ticks
+    const catchupMs = (CRON_INTERVAL_MINUTES + SLACK_MINUTES) * 60000;
 
     // Get all candidate rounds (scheduled + published session)
     const candidateRounds = await db.getRoundsNeedingReminder();
 
-    // Split into two sets: starting-soon, and just-ended.
+    // Split into two sets: starting-soon (target in the last catch-up window)
+    // and just-ended (same).
     const startingSoon = candidateRounds.filter((r: any) => {
       if (!r.date || !r.startTime) return false;
       const roundStartUtc = parseRoundStartTime(r.date, r.startTime);
-      return roundStartUtc >= now && roundStartUtc <= startWindowEnd;
+      const targetSendUtc = new Date(roundStartUtc.getTime() - confirmationWindowMinutes * 60000);
+      // Fire when: target_send_time <= now < target_send_time + catchup
+      const elapsed = now.getTime() - targetSendUtc.getTime();
+      return elapsed >= 0 && elapsed < catchupMs;
     });
     const justEnded = smsRoundEndedEnabled
       ? candidateRounds.filter((r: any) => {
@@ -2708,8 +2718,9 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
           const duration = Number(r.duration) || 0;
           if (duration <= 0) return false;
           const roundStartUtc = parseRoundStartTime(r.date, r.startTime);
-          const endUtc = new Date(roundStartUtc.getTime() + duration * 60000);
-          return endUtc <= now && endUtc >= endedLookbackStart;
+          const targetSendUtc = new Date(roundStartUtc.getTime() + duration * 60000);
+          const elapsed = now.getTime() - targetSendUtc.getTime();
+          return elapsed >= 0 && elapsed < catchupMs;
         })
       : [];
 
@@ -2718,7 +2729,7 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
         success: true,
         message: 'No rounds need reminders',
         roundsChecked: candidateRounds.length,
-        window: { startWindowMinutes, endedLookbackMinutes, smsRoundEndedEnabled },
+        window: { confirmationWindowMinutes, catchupMinutes: CRON_INTERVAL_MINUTES + SLACK_MINUTES, smsRoundEndedEnabled },
       });
     }
 
@@ -2839,91 +2850,6 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
     return c.json({
       error: 'Failed to send round reminders',
       details,
-    }, 500);
-  }
-});
-
-/**
- * Client-triggered: fire the round-ended SMS immediately.
- * Called by the MatchNetworking page when the countdown hits 0 so the SMS
- * arrives at the same moment the "Time is up" screen appears — no waiting
- * for the next cron tick.
- *
- * Auth: any valid participant token for a participant in this round.
- * Dedup: per-registration, same as the cron fallback.
- */
-app.post('/make-server-ce05600a/rounds/:roundId/notify-ended', async (c) => {
-  try {
-    const roundId = c.req.param('roundId');
-    const body = await c.req.json().catch(() => ({}));
-    const token = body.token as string | undefined;
-    if (!token) return c.json({ error: 'token required' }, 400);
-
-    // Validate the token belongs to a participant registered in this round.
-    // Prevents unauthenticated callers from triggering SMS blasts.
-    const participant = await db.getParticipantByToken(token);
-    if (!participant) return c.json({ error: 'Invalid token' }, 401);
-
-    const round = await db.getRoundById(roundId);
-    if (!round) return c.json({ error: 'Round not found' }, 404);
-
-    // Verify: this participant is actually registered in this round.
-    const regs = await db.getRegistrationsByParticipant(participant.participantId);
-    const hasReg = regs.some((r: any) => r.roundId === roundId);
-    if (!hasReg) return c.json({ error: 'Not registered in this round' }, 403);
-
-    // Verify: round actually ended (server-side truth, prevents early firing).
-    // Allow firing up to 30s before the exact end to absorb client clock skew.
-    if (!round.date || !round.startTime || !round.duration) {
-      return c.json({ error: 'Round has no schedule' }, 400);
-    }
-    const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
-    const endUtc = new Date(roundStartUtc.getTime() + Number(round.duration) * 60000);
-    const now = new Date();
-    const SKEW_TOLERANCE_SECONDS = 30;
-    if (now.getTime() < endUtc.getTime() - SKEW_TOLERANCE_SECONDS * 1000) {
-      return c.json({
-        success: false,
-        message: 'Round has not ended yet',
-        endUtc: endUtc.toISOString(),
-      });
-    }
-
-    // Check feature toggle + load template
-    const sysParams = (await db.getAdminSetting('system_parameters')) || {};
-    if (sysParams.smsRoundEndedEnabled === false) {
-      return c.json({ success: true, skipped: 'smsRoundEndedEnabled=false', sent: 0 });
-    }
-    const texts = (await db.getAdminSetting('notification_texts')) || {};
-    const endedTemplate = texts.smsRoundEnded;
-    if (!endedTemplate) {
-      return c.json({ success: false, error: 'smsRoundEnded template not configured' }, 500);
-    }
-
-    // Enrich round with session metadata (like getRoundsNeedingReminder shape).
-    const session = await db.getSessionById(round.sessionId);
-    const fullRound = {
-      ...round,
-      sessionName: session?.name,
-      sessionMeetingPoints: session?.meetingPoints,
-    };
-
-    const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
-    const r = await sendRoundEndedSmsForRound(fullRound, endedTemplate, appUrl);
-
-    return c.json({
-      success: true,
-      triggeredBy: participant.participantId,
-      roundId,
-      eligibleParticipants: r.eligibleCount,
-      smsSent: r.sent,
-      smsFailed: r.failed,
-    });
-  } catch (error) {
-    console.error('💥 notify-ended error:', error);
-    return c.json({
-      error: 'Failed to trigger round-ended SMS',
-      details: error instanceof Error ? error.message : String(error),
     }, 500);
   }
 });
