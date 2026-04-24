@@ -217,6 +217,30 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
           }
         }
 
+        // Fall-through: no active round + no pending matchable round.
+        // If the participant has ANY registration whose round already
+        // completed (roundCompletedAt is set), we tell the client
+        // 'round-completed' so it stops polling and shows a terminal view
+        // instead of spinning 'Finding your match...' forever.
+        const anyCompleted = registrations.find((r: any) => r.roundCompletedAt);
+        if (anyCompleted) {
+          // Pick the most recent completed one for the message context.
+          const latestCompleted = registrations
+            .filter((r: any) => r.roundCompletedAt)
+            .sort((a: any, b: any) => (b.roundCompletedAt > a.roundCompletedAt ? 1 : -1))[0];
+          return c.json({
+            error: 'No active match found',
+            reason: 'round-completed',
+            finalStatus: latestCompleted.status, // 'missed' / 'no-match' / 'met' / etc
+            message:
+              latestCompleted.status === 'missed'
+                ? 'You missed this round.'
+                : latestCompleted.status === 'no-match'
+                ? latestCompleted.noMatchReason || 'You could not be matched with other participants.'
+                : 'This round has ended.',
+          }, 404);
+        }
+
         return c.json({ error: 'No active match found' }, 404);
       }
 

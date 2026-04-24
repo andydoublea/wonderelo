@@ -184,7 +184,17 @@ export function MatchInfo() {
             setIsWaitingForMatch(false);
             return 'no-match';
           }
-          // 404 without no-match = matching hasn't run yet
+          if (errorData.reason === 'round-completed') {
+            // User's round is already over — don't keep polling forever.
+            // Stop and send them back to the dashboard where the correct
+            // post-round state (missed / no-match / met) is shown.
+            stopPolling();
+            setIsLoading(false);
+            setIsWaitingForMatch(false);
+            navigate(`/p/${token}?from=match`);
+            return 'no-match';
+          }
+          // 404 without a specific reason = matching hasn't run yet
           return 'not-ready';
         }
         const errorText = await response.text();
