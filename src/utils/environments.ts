@@ -3,6 +3,8 @@
  * Used by AdminParameters to fetch and display parameters from all environments.
  */
 
+import { projectId, supabaseUrl } from './supabase/info';
+
 export type EnvironmentId = 'development' | 'staging' | 'production';
 
 export interface EnvironmentConfig {
@@ -57,9 +59,11 @@ export const ENVIRONMENTS: EnvironmentConfig[] = [
 ];
 
 export function getCurrentEnvironmentId(): EnvironmentId {
-  const url = import.meta.env.VITE_SUPABASE_URL || '';
-  if (url.includes('127.0.0.1') || url.includes('localhost')) return 'development';
-  if (url.includes('dqoybysbooxngrsxaekd')) return 'staging';
+  // Use resolved values from info.tsx so detection works even when
+  // VITE_SUPABASE_URL isn't set explicitly (e.g. staging builds only set
+  // VITE_SUPABASE_PROJECT_ID).
+  if (supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('localhost')) return 'development';
+  if (projectId === 'dqoybysbooxngrsxaekd') return 'staging';
   return 'production';
 }
 

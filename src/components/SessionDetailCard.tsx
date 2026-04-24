@@ -101,17 +101,19 @@ export function SessionDetailCard({
     return status;
   };
 
-  const formatRegistrationStart = (registrationStart?: string, status?: NetworkingSession['status']) => {
+  const formatRegistrationStart = (registrationStart?: string, status?: NetworkingSession['status'], createdAt?: string) => {
     // If draft, no registration start configured yet
     if (status === 'draft') {
       return 'Not configured';
     }
-    // Published/scheduled sessions: if no registrationStart, registration is already open
-    if (!registrationStart) {
+    // Fall back to session creation time so the displayed date is stable
+    // across all lifecycle states (scheduled → published → completed).
+    const effectiveStart = registrationStart || createdAt;
+    if (!effectiveStart) {
       return 'Open now';
     }
 
-    const regDate = new Date(registrationStart);
+    const regDate = new Date(effectiveStart);
     
     // Helper to format date with relative days (yesterday, today, tomorrow)
     const formatDateWithRelative = (date: Date): string => {
@@ -319,7 +321,7 @@ export function SessionDetailCard({
           <div className="text-sm flex items-center gap-2">
             <CalendarCheck className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">Registration start:</span>
-            <span>{formatRegistrationStart(session.registrationStart, session.status)}</span>
+            <span>{formatRegistrationStart(session.registrationStart, session.status, session.createdAt)}</span>
           </div>
 
           {session.meetingPoints && session.meetingPoints.length > 0 && (
