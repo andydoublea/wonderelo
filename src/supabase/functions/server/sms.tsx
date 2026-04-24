@@ -19,6 +19,8 @@ function getTwilioCredentials(): { accountSid: string; authToken: string } | nul
 interface SendSmsParams {
   to: string;
   body: string;
+  /** Optional URL for Twilio to POST delivery status updates. */
+  statusCallback?: string;
 }
 
 interface SendSmsResult {
@@ -26,6 +28,45 @@ interface SendSmsResult {
   sid?: string;
   error?: string;
   devMode?: boolean;
+}
+
+/**
+ * Verify that a webhook request came from Twilio.
+ * Docs: https://www.twilio.com/docs/usage/webhooks/webhooks-security
+ *
+ * 1. Concatenate full URL (incl. https://…) + sorted POST params.
+ * 2. HMAC-SHA1 with TWILIO_AUTH_TOKEN.
+ * 3. Base64 encode; compare to X-Twilio-Signature header.
+ */
+export async function verifyTwilioSignature(
+  signatureHeader: string | null,
+  fullUrl: string,
+  params: Record<string, string>,
+): Promise<boolean> {
+  if (!signatureHeader) return false;
+  const creds = getTwilioCredentials();
+  if (!creds) return false;
+
+  const sortedKeys = Object.keys(params).sort();
+  let data = fullUrl;
+  for (const k of sortedKeys) data += k + params[k];
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(creds.authToken),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign'],
+  );
+  const signatureBuf = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+  const b64 = btoa(String.fromCharCode(...new Uint8Array(signatureBuf)));
+
+  // Constant-time compare
+  if (b64.length !== signatureHeader.length) return false;
+  let diff = 0;
+  for (let i = 0; i < b64.length; i++) diff |= b64.charCodeAt(i) ^ signatureHeader.charCodeAt(i);
+  return diff === 0;
 }
 
 /**
@@ -80,11 +121,11 @@ export async function sendSms(params: SendSmsParams): Promise<SendSmsResult> {
         'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        To: toNumber,
-        From: SENDER_ID,
-        Body: params.body,
-      }).toString(),
+      body: (() => {
+        const p: Record<string, string> = { To: toNumber, From: SENDER_ID, Body: params.body };
+        if (params.statusCallback) p.StatusCallback = params.statusCallback;
+        return new URLSearchParams(p).toString();
+      })(),
     });
 
     const data = await response.json();

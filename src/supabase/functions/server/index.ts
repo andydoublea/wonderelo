@@ -15,7 +15,7 @@ import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
 import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
 import { createMatchesForRound } from './matching.tsx';
-import { sendSms, renderSmsTemplate } from './sms.tsx';
+import { sendSms, renderSmsTemplate, verifyTwilioSignature } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
@@ -3553,7 +3553,9 @@ async function dispatchSmsForRound(kind: SmsKind, roundId: string, sessionId: st
       failed++;
       continue;
     }
-    const result = await sendSms({ to, body: smsBody });
+    const base = Deno.env.get('SUPABASE_URL') || '';
+    const statusCallback = base ? `${base}/functions/v1/make-server-ce05600a/sms/twilio-status` : undefined;
+    const result = await sendSms({ to, body: smsBody, statusCallback });
     if (result.success) {
       await markOutboxSent(row.id, result.sid || '', to);
       sent++;
@@ -3590,16 +3592,117 @@ app.post('/make-server-ce05600a/sms/dispatch', async (c) => {
 
 app.post('/make-server-ce05600a/sms/twilio-status', async (c) => {
   try {
-    const form = await c.req.formData();
-    const sid = form.get('MessageSid') as string;
-    const status = form.get('MessageStatus') as string;
-    const errorCode = (form.get('ErrorCode') as string) || null;
+    const rawForm = await c.req.text();
+    // Parse form-urlencoded
+    const params = Object.fromEntries(new URLSearchParams(rawForm).entries());
+
+    // Verify signature to prevent anyone from spamming our outbox with fake statuses
+    const sig = c.req.header('X-Twilio-Signature');
+    const base = Deno.env.get('SUPABASE_URL') || '';
+    const fullUrl = `${base}/functions/v1/make-server-ce05600a/sms/twilio-status`;
+    const valid = await verifyTwilioSignature(sig, fullUrl, params);
+    if (!valid) {
+      errorLog('Twilio signature invalid for status callback');
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const sid = params.MessageSid;
+    const status = params.MessageStatus;
+    const errorCode = params.ErrorCode || null;
     if (!sid || !status) return c.json({ ok: true });
     await updateOutboxDeliveryStatus(sid, status, errorCode);
     return c.json({ ok: true });
   } catch (error) {
     errorLog('sms/twilio-status error', error);
     return c.json({ error: 'failed' }, 500);
+  }
+});
+
+/**
+ * Admin: SMS outbox audit list. Requires admin role.
+ * Returns { schedules, outbox, summary } — last 200 of each, last 24h summary.
+ */
+app.get('/make-server-ce05600a/admin/sms-outbox', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Authorization required' }, 401);
+    const token = authHeader.slice(7);
+    const { data: { user } } = await getSupabase().auth.getUser(token);
+    if (!user) return c.json({ error: 'Invalid token' }, 401);
+    const profile = await db.getOrganizerById(user.id);
+    if (profile?.role !== 'admin') return c.json({ error: 'Admin only' }, 403);
+
+    const sb = getGlobalSupabaseClient();
+    const { data: schedules } = await sb
+      .from('sms_schedules')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    const { data: outbox } = await sb
+      .from('sms_outbox')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    // 24h summary
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60000).toISOString();
+    const { data: recent } = await sb
+      .from('sms_outbox')
+      .select('status, kind')
+      .gte('created_at', dayAgo);
+    const summary: Record<string, number> = {};
+    for (const r of (recent || [])) {
+      const key = `${r.kind}:${r.status}`;
+      summary[key] = (summary[key] || 0) + 1;
+      summary[`total:${r.status}`] = (summary[`total:${r.status}`] || 0) + 1;
+    }
+
+    return c.json({
+      success: true,
+      schedules: schedules || [],
+      outbox: outbox || [],
+      summary,
+    });
+  } catch (error) {
+    errorLog('admin/sms-outbox error', error);
+    return c.json({ error: 'Failed', details: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+/**
+ * Admin: resend a single SMS from outbox (manual retry).
+ */
+app.post('/make-server-ce05600a/admin/sms-outbox/:id/resend', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Authorization required' }, 401);
+    const token = authHeader.slice(7);
+    const { data: { user } } = await getSupabase().auth.getUser(token);
+    if (!user) return c.json({ error: 'Invalid token' }, 401);
+    const profile = await db.getOrganizerById(user.id);
+    if (profile?.role !== 'admin') return c.json({ error: 'Admin only' }, 403);
+
+    const id = c.req.param('id');
+    const sb = getGlobalSupabaseClient();
+    const { data: row } = await sb.from('sms_outbox').select('*').eq('id', id).maybeSingle();
+    if (!row) return c.json({ error: 'not found' }, 404);
+
+    // Reset outbox row to attempting so dispatch picks it up cleanly
+    await sb.from('sms_outbox').update({
+      status: 'attempting',
+      attempts: row.attempts + 1,
+      last_attempt_at: new Date().toISOString(),
+    }).eq('id', id);
+
+    // Also reset the parent schedule so dispatch can claim it again
+    if (row.schedule_id) {
+      await sb.from('sms_schedules').update({ status: 'scheduled' }).eq('id', row.schedule_id);
+    }
+
+    const r = await dispatchSmsForRound(row.kind, row.round_id, row.session_id);
+    return c.json({ success: true, ...r });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
 });
 

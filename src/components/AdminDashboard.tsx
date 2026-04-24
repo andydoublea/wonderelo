@@ -179,6 +179,14 @@ const adminTools = [
     category: 'settings',
   },
   {
+    id: 'sms-outbox',
+    title: 'SMS outbox',
+    description: 'Live status of scheduled, sent and delivered SMS',
+    icon: Bell,
+    route: '/admin/sms-outbox',
+    category: 'operations',
+  },
+  {
     id: 'statuses-guide',
     title: 'Statuses guide',
     description: 'Reference for all status flags',
@@ -207,6 +215,7 @@ const adminTools = [
 const categories = [
   { id: 'user-management', title: 'User management' },
   { id: 'settings', title: 'Settings' },
+  { id: 'operations', title: 'Operations' },
   { id: 'documentation', title: 'Documentation' },
 ];
 
