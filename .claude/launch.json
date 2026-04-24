@@ -4,8 +4,8 @@
     {
       "name": "vite-dev",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--port", "3011", "--host"],
-      "port": 3011,
+      "runtimeArgs": ["vite", "--host"],
+      "autoPort": true,
       "env": {
         "VITE_SUPABASE_URL": "http://127.0.0.1:54321",
         "VITE_SUPABASE_PROJECT_ID": "local",

@@ -1027,6 +1027,7 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         notificationEarlyEnabled: true,
         notificationLateMinutes: 5,
         notificationLateEnabled: true,
+        smsRoundEndedEnabled: true,
         minimalGapBetweenRounds: 10,
         minimalRoundDuration: 5,
         maximalRoundDuration: 240,
@@ -1509,6 +1510,78 @@ app.put('/make-server-ce05600a/admin/notification-texts', async (c) => {
   } catch (error) {
     errorLog('Error updating notification texts:', error);
     return c.json({ error: 'Failed to update notification texts' }, 500);
+  }
+});
+
+// ============================================
+// TOAST OVERRIDES (editable UI copy for every toast.* call)
+// ============================================
+
+// Public GET — called by every client at app boot; no auth so the map loads
+// even for anonymous visitors (participants using magic-link pages, etc.).
+app.get('/make-server-ce05600a/public/toast-overrides', async (c) => {
+  try {
+    const overrides = await db.getAdminSetting('toast_overrides');
+    return c.json({ success: true, overrides: overrides || {} });
+  } catch (error) {
+    errorLog('Error fetching toast overrides:', error);
+    return c.json({ success: true, overrides: {} });
+  }
+});
+
+// Admin GET — identical payload but requires a logged-in user; used by the
+// admin editor UI so it can distinguish "no overrides configured" from a
+// network error.
+app.get('/make-server-ce05600a/admin/toast-overrides', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) return c.json({ error: 'Invalid token' }, 401);
+
+    const overrides = await db.getAdminSetting('toast_overrides');
+    return c.json({ success: true, overrides: overrides || {} });
+  } catch (error) {
+    errorLog('Error fetching admin toast overrides:', error);
+    return c.json({ error: 'Failed to fetch toast overrides' }, 500);
+  }
+});
+
+// Admin PUT — replaces the entire overrides map. Body: { overrides: {...} }.
+// Empty-string / identical-to-original values are stripped by the client so
+// the stored map only contains "effective" overrides.
+app.put('/make-server-ce05600a/admin/toast-overrides', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) return c.json({ error: 'Invalid token' }, 401);
+
+    const body = await c.req.json();
+    const overrides = body?.overrides;
+    if (!overrides || typeof overrides !== 'object') {
+      return c.json({ error: 'overrides object is required' }, 400);
+    }
+
+    // Sanity: keys & values must be strings
+    for (const [k, v] of Object.entries(overrides)) {
+      if (typeof k !== 'string' || typeof v !== 'string') {
+        return c.json({ error: 'overrides must be a string->string map' }, 400);
+      }
+    }
+
+    await db.setAdminSetting('toast_overrides', overrides);
+    debugLog('✅ Toast overrides updated by user:', user.id, '— keys:', Object.keys(overrides).length);
+    return c.json({ success: true, overrides });
+  } catch (error) {
+    errorLog('Error updating toast overrides:', error);
+    return c.json({ error: 'Failed to update toast overrides' }, 500);
   }
 });
 
@@ -2599,6 +2672,88 @@ app.get('/make-server-ce05600a/public/theme', async (c) => {
 // CRON: Automatic round reminders (SMS)
 // ============================================
 
+/**
+ * Send the "round just ended" SMS to all eligible participants in a round.
+ * Shared between the cron fallback and the client-triggered endpoint.
+ * Per-registration deduplication prevents duplicate sends.
+ *
+ * Returns counts + per-recipient results.
+ */
+async function sendRoundEndedSmsForRound(round: any, endedTemplate: string, appUrl: string) {
+  const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
+  const eligibleRegs = registrations.filter((reg: any) =>
+    ['matched', 'checked-in', 'met'].includes(reg.status) &&
+    reg.notificationsEnabled !== false &&
+    reg.phone &&
+    !reg.endReminderSmsSentAt
+  );
+  let sent = 0;
+  let failed = 0;
+  for (const reg of eligibleRegs) {
+    // Claim-first: atomically set end_reminder_sms_sent_at if still NULL. If
+    // another concurrent cron tick already claimed it, skip (returns false).
+    let claimed = false;
+    try {
+      claimed = await db.claimRegistrationEndReminder(reg.participantId, round.sessionId, round.id);
+    } catch (e) {
+      console.error(`⚠️ claimRegistrationEndReminder failed for ${reg.participantId}: ${e}`);
+      continue;
+    }
+    if (!claimed) continue; // another tick got it first
+
+    const link = reg.token ? `${appUrl}/p/${reg.token}/contact-sharing?from=sms-ended` : appUrl;
+    const smsBody = renderSmsTemplate(endedTemplate, {
+      sessionName: round.sessionName || round.name || '',
+      firstName: reg.firstName || '',
+      name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
+      time: round.startTime || '',
+      date: round.date || '',
+      link,
+    });
+    const to = composeE164(reg.phone, reg.phoneCountry);
+    if (!to) {
+      failed++;
+      console.error(`❌ Cannot compose phone for ${reg.participantId}: phone=${reg.phone} country=${reg.phoneCountry}`);
+      // revert claim so next tick has chance (unlikely to help, but correct)
+      try { await db.releaseRegistrationEndReminder(reg.participantId, round.sessionId, round.id); } catch {}
+      continue;
+    }
+    const result = await sendSms({ to, body: smsBody });
+    if (result.success) {
+      sent++;
+    } else {
+      failed++;
+      console.error(`❌ SMS ended failed for ${to}: ${result.error}`);
+      // Revert so next tick retries
+      try {
+        await db.releaseRegistrationEndReminder(reg.participantId, round.sessionId, round.id);
+      } catch (e) {
+        console.error(`⚠️ releaseRegistrationEndReminder failed for ${reg.participantId}: ${e}`);
+      }
+    }
+  }
+  return { eligibleCount: eligibleRegs.length, sent, failed };
+}
+
+/**
+ * Build an E.164 phone number from separate country-code + local number fields.
+ * Matches the behaviour of the Confirm Attendance button: needs reg.phone
+ * populated at all, and reg.phoneCountry (e.g. "+421") to prepend. If the
+ * phone already starts with "+" it's used as-is.
+ */
+function composeE164(phone: string | undefined, phoneCountry: string | undefined): string | null {
+  if (!phone) return null;
+  const clean = phone.replace(/[\s\-()]/g, '');
+  if (clean.startsWith('+')) return clean;
+  if (clean.startsWith('00')) return '+' + clean.slice(2);
+  const prefix = (phoneCountry || '').trim();
+  if (!prefix) return null;
+  // If phone starts with 0 (local format), strip the 0 before prefixing.
+  const local = clean.startsWith('0') ? clean.slice(1) : clean;
+  const normalizedPrefix = prefix.startsWith('+') ? prefix : '+' + prefix;
+  return `${normalizedPrefix}${local}`;
+}
+
 app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
   try {
     // Auth: verify cron secret
@@ -2609,102 +2764,188 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
     }
 
     const now = new Date();
-    const WINDOW_MINUTES = 7; // 7-min window for cron jitter reliability
-    const windowEnd = new Date(now.getTime() + WINDOW_MINUTES * 60000);
 
-    // Get all scheduled rounds with published sessions that haven't had reminders sent
+    // Target-time-based scheduling: each SMS has a computed target send time
+    // derived from round_start / round_end. The cron fires SMS only on the
+    // tick where `target_send_time` fell within the last CRON_INTERVAL_MINUTES
+    // (the cron granularity). Per-registration deduplication means any missed
+    // tick is picked up on the next one, still only once per participant.
+    //
+    //   Starting-soon target = round_start - confirmationWindowMinutes
+    //     (exact moment the Confirm Attendance button appears)
+    //   Round-ended  target = round_start + duration
+    //     (exact moment the networking countdown hits 0)
+    //
+    // Catch-up window: sized to match cron cadence. pg_cron runs every 5s
+    // on staging for sub-minute precision; 20s window (= 5s cadence + 15s
+    // slack) is plenty to catch a tick even under moderate network jitter,
+    // while short enough that the row-level claim race is tiny.
+    //
+    // A query-string override (?catchupMs=...) exists for tests / one-off
+    // backfills so we can run a wide-window sweep without redeploying.
+    const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+    const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
+    const smsRoundEndedEnabled = sysParams.smsRoundEndedEnabled !== false; // default true
+    const overrideMs = Number(c.req.query('catchupMs')) || 0;
+    // 1s cron cadence + 1s slack. Claim-first atomic UPDATE handles the
+    // tiny race where consecutive ticks might see the same unsent row.
+    const catchupMs = overrideMs > 0 ? overrideMs : 2_000;
+
+    // Get all candidate rounds (scheduled + published session)
     const candidateRounds = await db.getRoundsNeedingReminder();
 
-    // Filter by time window: round starts between now and now+7min
-    const roundsToNotify = candidateRounds.filter((r: any) => {
+    // Split into two sets: starting-soon (target in the last catch-up window)
+    // and just-ended (same).
+    const startingSoon = candidateRounds.filter((r: any) => {
       if (!r.date || !r.startTime) return false;
       const roundStartUtc = parseRoundStartTime(r.date, r.startTime);
-      return roundStartUtc >= now && roundStartUtc <= windowEnd;
+      const targetSendUtc = new Date(roundStartUtc.getTime() - confirmationWindowMinutes * 60000);
+      // Fire when: target_send_time <= now < target_send_time + catchup
+      const elapsed = now.getTime() - targetSendUtc.getTime();
+      return elapsed >= 0 && elapsed < catchupMs;
     });
+    const justEnded = smsRoundEndedEnabled
+      ? candidateRounds.filter((r: any) => {
+          if (!r.date || !r.startTime) return false;
+          const duration = Number(r.duration) || 0;
+          if (duration <= 0) return false;
+          const roundStartUtc = parseRoundStartTime(r.date, r.startTime);
+          const targetSendUtc = new Date(roundStartUtc.getTime() + duration * 60000);
+          const elapsed = now.getTime() - targetSendUtc.getTime();
+          return elapsed >= 0 && elapsed < catchupMs;
+        })
+      : [];
 
-    if (roundsToNotify.length === 0) {
-      return c.json({ success: true, message: 'No rounds need reminders', roundsChecked: candidateRounds.length });
+    if (startingSoon.length === 0 && justEnded.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No rounds need reminders',
+        roundsChecked: candidateRounds.length,
+        window: { confirmationWindowMinutes, catchupMs, smsRoundEndedEnabled },
+      });
     }
 
-    // Load SMS template
-    const texts = await db.getAdminSetting('notification_texts');
-    const template = texts?.smsRoundStartingSoon;
-    if (!template) {
-      console.log('⚠️ No smsRoundStartingSoon template configured');
-      return c.json({ success: false, error: 'SMS template not configured' }, 500);
-    }
+    // Load SMS templates
+    const texts = (await db.getAdminSetting('notification_texts')) || {};
+    const startingTemplate = texts.smsRoundStartingSoon;
+    const endedTemplate = texts.smsRoundEnded;
 
     let totalSmsSent = 0;
     let totalSmsFailed = 0;
     const roundResults: any[] = [];
+    const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
 
-    for (const round of roundsToNotify) {
-      const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
-      const minutesUntilStart = Math.round((roundStartUtc.getTime() - now.getTime()) / 60000);
+    // ---- Starting-soon pass ----
+    if (startingSoon.length > 0 && startingTemplate) {
+      for (const round of startingSoon) {
+        const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
+        const minutesUntilStart = Math.max(0, Math.round((roundStartUtc.getTime() - now.getTime()) / 60000));
 
-      // Get registrations for this round (confirmed + registered with notifications enabled)
-      const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
-      const eligibleRegs = registrations.filter((reg: any) =>
-        ['registered', 'confirmed'].includes(reg.status) &&
-        reg.notificationsEnabled !== false &&
-        reg.phone
-      );
+        const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
+        const eligibleRegs = registrations.filter((reg: any) =>
+          ['registered', 'confirmed'].includes(reg.status) &&
+          reg.notificationsEnabled !== false &&
+          reg.phone &&
+          !reg.reminderSmsSentAt
+        );
+        if (eligibleRegs.length === 0) continue;
 
-      let sent = 0;
-      let failed = 0;
+        const meetingPoints = round.meetingPoints?.length > 0 ? round.meetingPoints : round.sessionMeetingPoints || [];
+        const location = meetingPoints.length > 0 ? (meetingPoints[0]?.name || meetingPoints[0] || '') : '';
 
-      // Determine location from round meeting points or session meeting points
-      const meetingPoints = round.meetingPoints?.length > 0
-        ? round.meetingPoints
-        : round.sessionMeetingPoints || [];
-      const location = meetingPoints.length > 0
-        ? (meetingPoints[0]?.name || meetingPoints[0] || '')
-        : '';
+        let sent = 0;
+        let failed = 0;
+        for (const reg of eligibleRegs) {
+          // Claim-first: atomically set reminder_sms_sent_at if still NULL.
+          // Prevents duplicate sends when multiple cron ticks race.
+          let claimed = false;
+          try {
+            claimed = await db.claimRegistrationReminder(reg.participantId, round.sessionId, round.id);
+          } catch (e) {
+            console.error(`⚠️ claimRegistrationReminder failed for ${reg.participantId}: ${e}`);
+            continue;
+          }
+          if (!claimed) continue; // another tick got it first
 
-      for (const reg of eligibleRegs) {
-        const smsBody = renderSmsTemplate(template, {
-          sessionName: round.sessionName || round.name || '',
-          minutes: String(minutesUntilStart),
-          location,
-          firstName: reg.firstName || '',
-          name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
-          time: round.startTime || '',
-          date: round.date || '',
-        });
-
-        const result = await sendSms({ to: reg.phone, body: smsBody });
-        if (result.success) {
-          sent++;
-        } else {
-          failed++;
-          console.error(`❌ SMS failed for ${reg.phone}: ${result.error}`);
+          const link = reg.token ? `${appUrl}/p/${reg.token}?from=sms-reminder` : appUrl;
+          const smsBody = renderSmsTemplate(startingTemplate, {
+            sessionName: round.sessionName || round.name || '',
+            minutes: String(minutesUntilStart),
+            location,
+            firstName: reg.firstName || '',
+            name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
+            time: round.startTime || '',
+            date: round.date || '',
+            link,
+          });
+          const to = composeE164(reg.phone, reg.phoneCountry);
+          if (!to) {
+            failed++;
+            console.error(`❌ Cannot compose phone for ${reg.participantId}: phone=${reg.phone} country=${reg.phoneCountry}`);
+            try { await db.releaseRegistrationReminder(reg.participantId, round.sessionId, round.id); } catch {}
+            continue;
+          }
+          const result = await sendSms({ to, body: smsBody });
+          if (result.success) {
+            sent++;
+          } else {
+            failed++;
+            console.error(`❌ SMS starting failed for ${to}: ${result.error}`);
+            try {
+              await db.releaseRegistrationReminder(reg.participantId, round.sessionId, round.id);
+            } catch (e) {
+              console.error(`⚠️ releaseRegistrationReminder failed for ${reg.participantId}: ${e}`);
+            }
+          }
         }
+        totalSmsSent += sent;
+        totalSmsFailed += failed;
+        roundResults.push({
+          kind: 'starting-soon',
+          roundId: round.id,
+          roundName: round.name,
+          sessionName: round.sessionName,
+          startsIn: `${minutesUntilStart}min`,
+          eligibleParticipants: eligibleRegs.length,
+          smsSent: sent,
+          smsFailed: failed,
+        });
       }
-
-      // Mark round as reminded (idempotent)
-      await db.markRoundReminderSent(round.id);
-
-      totalSmsSent += sent;
-      totalSmsFailed += failed;
-      roundResults.push({
-        roundId: round.id,
-        roundName: round.name,
-        sessionName: round.sessionName,
-        startsIn: `${minutesUntilStart}min`,
-        eligibleParticipants: eligibleRegs.length,
-        smsSent: sent,
-        smsFailed: failed,
-      });
+    } else if (startingSoon.length > 0 && !startingTemplate) {
+      console.log('⚠️ No smsRoundStartingSoon template configured — skipping starting-soon pass');
     }
 
-    console.log(`📱 CRON ROUND REMINDERS: ${roundsToNotify.length} rounds, ${totalSmsSent} SMS sent, ${totalSmsFailed} failed`);
+    // ---- Round-ended pass (fallback for clients that didn't trigger /notify-ended) ----
+    if (justEnded.length > 0 && endedTemplate) {
+      for (const round of justEnded) {
+        const r = await sendRoundEndedSmsForRound(round, endedTemplate, appUrl);
+        if (r.eligibleCount === 0) continue;
+        totalSmsSent += r.sent;
+        totalSmsFailed += r.failed;
+        roundResults.push({
+          kind: 'just-ended',
+          roundId: round.id,
+          roundName: round.name,
+          sessionName: round.sessionName,
+          eligibleParticipants: r.eligibleCount,
+          smsSent: r.sent,
+          smsFailed: r.failed,
+        });
+      }
+    } else if (justEnded.length > 0 && !endedTemplate) {
+      console.log('⚠️ No smsRoundEnded template configured — skipping round-ended pass');
+    }
+
+    console.log(`📱 CRON ROUND REMINDERS: ${startingSoon.length} starting-soon + ${justEnded.length} just-ended rounds, ${totalSmsSent} SMS sent, ${totalSmsFailed} failed`);
 
     return c.json({
       success: true,
-      roundsProcessed: roundsToNotify.length,
+      startingSoonRounds: startingSoon.length,
+      justEndedRounds: justEnded.length,
       totalSmsSent,
       totalSmsFailed,
       rounds: roundResults,
+      window: { startWindowMinutes, endedLookbackMinutes, smsRoundEndedEnabled },
     });
 
   } catch (error) {

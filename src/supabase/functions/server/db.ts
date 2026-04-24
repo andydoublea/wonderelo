@@ -641,6 +641,8 @@ function mapRegistrationFromDb(data: any) {
     metAt: data.met_at,
     lastStatusUpdate: data.last_status_update,
     notificationsEnabled: data.notifications_enabled,
+    reminderSmsSentAt: data.reminder_sms_sent_at,
+    endReminderSmsSentAt: data.end_reminder_sms_sent_at,
     unconfirmedReason: data.unconfirmed_reason,
     noMatchReason: data.no_match_reason,
     roundCompletedAt: data.round_completed_at,
@@ -689,6 +691,8 @@ export async function getRegistrationsForRound(sessionId: string, roundId: strin
         firstName: r.participants.first_name,
         lastName: r.participants.last_name,
         phone: r.participants.phone,
+        phoneCountry: r.participants.phone_country,
+        token: r.participants.token,
       };
     }
     return reg;
@@ -1358,18 +1362,16 @@ export async function getParticipantDashboardData(token: string) {
 // ============================================================
 
 /**
- * Get rounds that need SMS reminders sent.
- * Returns scheduled rounds (with published sessions) where:
- *  - reminder_sms_sent_at IS NULL
- *  - status = 'scheduled'
- *  - date and start_time are set
+ * Get rounds that MIGHT need SMS reminders sent.
+ * Returns ALL scheduled rounds (with published sessions) whose date/start_time
+ * are set. No round-level 'already reminded' filter anymore — deduplication is
+ * done per-registration so late registrants still get notified.
  * Filtering by time window is done in application code using parseRoundStartTime().
  */
 export async function getRoundsNeedingReminder() {
   const { data, error } = await db()
     .from('rounds')
     .select('*, sessions!rounds_session_id_fkey(id, name, date, status, user_id, meeting_points)')
-    .is('reminder_sms_sent_at', null)
     .eq('status', 'scheduled')
     .eq('sessions.status', 'published')
     .not('date', 'is', null)
@@ -1386,14 +1388,120 @@ export async function getRoundsNeedingReminder() {
 }
 
 /**
- * Mark a round's SMS reminder as sent (idempotent deduplication).
+ * Atomically claim a registration's starting-soon SMS. Returns true if the
+ * caller successfully claimed it (no other process had sent it yet).
+ *
+ * This is claim-first: we set reminder_sms_sent_at BEFORE calling Twilio.
+ * If Twilio send fails, the caller MUST call releaseRegistrationReminder()
+ * to revert so the next cron tick retries.
+ *
+ * Safe under concurrent pg_cron ticks racing each other: a conditional
+ * UPDATE with RETURNING is atomic at the row level in PostgreSQL.
  */
-export async function markRoundReminderSent(roundId: string) {
-  const { error } = await db()
-    .from('rounds')
+export async function claimRegistrationReminder(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+): Promise<boolean> {
+  const { data, error } = await db()
+    .from('registrations')
     .update({ reminder_sms_sent_at: new Date().toISOString() })
-    .eq('id', roundId);
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId)
+    .is('reminder_sms_sent_at', null)
+    .select('participant_id');
   if (error) throw error;
+  return (data?.length || 0) > 0;
+}
+
+export async function releaseRegistrationReminder(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+) {
+  const { error } = await db()
+    .from('registrations')
+    .update({ reminder_sms_sent_at: null })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/** @deprecated Use claimRegistrationReminder() (claim-first is race-safe). */
+export async function markRegistrationReminderSent(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+) {
+  const { error } = await db()
+    .from('registrations')
+    .update({ reminder_sms_sent_at: new Date().toISOString() })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/**
+ * Atomically claim a registration's round-ended SMS. Returns true on claim.
+ * On Twilio failure, caller must releaseRegistrationEndReminder() to retry.
+ */
+export async function claimRegistrationEndReminder(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+): Promise<boolean> {
+  const { data, error } = await db()
+    .from('registrations')
+    .update({ end_reminder_sms_sent_at: new Date().toISOString() })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId)
+    .is('end_reminder_sms_sent_at', null)
+    .select('participant_id');
+  if (error) throw error;
+  return (data?.length || 0) > 0;
+}
+
+export async function releaseRegistrationEndReminder(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+) {
+  const { error } = await db()
+    .from('registrations')
+    .update({ end_reminder_sms_sent_at: null })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/** @deprecated Use claimRegistrationEndReminder() (claim-first is race-safe). */
+export async function markRegistrationEndReminderSent(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+) {
+  const { error } = await db()
+    .from('registrations')
+    .update({ end_reminder_sms_sent_at: new Date().toISOString() })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/**
+ * @deprecated No-op kept for backward compat with old cron code.
+ * Tracking moved to per-registration (markRegistrationReminderSent).
+ * The rounds.reminder_sms_sent_at column may not exist in all environments,
+ * so this is now a no-op.
+ */
+export async function markRoundReminderSent(_roundId: string) {
+  // intentional no-op
 }
 
 // ============================================================

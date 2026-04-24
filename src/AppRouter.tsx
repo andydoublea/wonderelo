@@ -54,6 +54,7 @@ import { useStoreSync } from './hooks/useStoreSync';
 const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const AdminIceBreakers = lazy(() => import('./components/AdminIceBreakers').then(m => ({ default: m.AdminIceBreakers })));
 const AdminNotificationTexts = lazy(() => import('./components/AdminNotificationTexts').then(m => ({ default: m.AdminNotificationTexts })));
+const AdminToastMessages = lazy(() => import('./components/AdminToastMessages').then(m => ({ default: m.AdminToastMessages })));
 const AdminGiftCards = lazy(() => import('./components/AdminGiftCards').then(m => ({ default: m.AdminGiftCards })));
 const AdminAccessPasswords = lazy(() => import('./components/AdminAccessPasswords').then(m => ({ default: m.AdminAccessPasswords })));
 const AdminBilling = lazy(() => import('./components/AdminBilling').then(m => ({ default: m.AdminBilling })));
@@ -865,6 +866,34 @@ function AdminNotificationTextsRoute() {
       />
       <Suspense fallback={<RouteLoader />}>
         <AdminNotificationTexts
+          accessToken={accessToken}
+          onBack={() => navigate('/admin')}
+        />
+      </Suspense>
+    </>
+  );
+}
+
+function AdminToastMessagesRoute() {
+  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <AuthenticatedNav
+        currentView="admin"
+        currentUser={currentUser}
+        isAdminUser={isAdminUser()}
+        onNavigateToDashboard={() => navigate('/dashboard')}
+        onNavigateToRounds={() => navigate('/rounds')}
+        onNavigateToAccountSettings={() => navigate('/account-settings')}
+        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
+        onNavigateToBilling={() => navigate('/billing')}
+        onNavigateToAdmin={() => navigate('/admin')}
+        onSignOut={handleSignOut}
+      />
+      <Suspense fallback={<RouteLoader />}>
+        <AdminToastMessages
           accessToken={accessToken}
           onBack={() => navigate('/admin')}
         />
@@ -2066,6 +2095,7 @@ function AppProviderWithRouter() {
             h(Route, { path: '/admin/theme', element: h(AdminRoute, null, h(AdminThemeRoute)) }),
             h(Route, { path: '/admin/ice-breakers', element: h(AdminRoute, null, h(AdminIceBreakersRoute)) }),
             h(Route, { path: '/admin/notification-texts', element: h(AdminRoute, null, h(AdminNotificationTextsRoute)) }),
+            h(Route, { path: '/admin/toast-messages', element: h(AdminRoute, null, h(AdminToastMessagesRoute)) }),
             h(Route, { path: '/admin/gift-cards', element: h(AdminRoute, null, h(AdminGiftCardsRoute)) }),
             h(Route, { path: '/admin/access-passwords', element: h(AdminRoute, null, h(AdminAccessPasswordsRoute)) }),
             h(Route, { path: '/admin/billing', element: h(AdminRoute, null, h(AdminBillingRoute)) }),

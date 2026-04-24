@@ -42,8 +42,8 @@ export function EventPromoPageView({
 }: EventPromoPageViewProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="container mx-auto max-w-7xl px-6 py-12 flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+      <div className="container mx-auto max-w-7xl px-6 py-12 flex-1 flex items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
           <div className="flex flex-col items-center justify-center space-y-8">
             <div className="bg-white p-8 rounded-2xl shadow-lg">
               {qrCodeUrl ? (
@@ -60,8 +60,8 @@ export function EventPromoPageView({
             </div>
 
             <div className="text-center space-y-2">
-              <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 rounded-full">
-                <span className="text-2xl font-mono font-semibold text-primary">
+              <div className="inline-flex items-center gap-2 px-8 py-4 bg-primary/10 rounded-full">
+                <span className="text-5xl font-mono font-semibold text-primary">
                   #{displaySlug || eventSlug}
                 </span>
               </div>

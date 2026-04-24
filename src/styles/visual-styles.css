@@ -1137,7 +1137,7 @@
   font-size: 1.5rem !important;
 }
 .vs-jasper .wonderelo-logo-large {
-  font-size: 2.5rem !important;
+  font-size: 4rem !important;
 }
 
 /* ---- Buttons ---- */
@@ -1480,4 +1480,171 @@ button.btn-group-right,
 @media (min-width: 768px) {
   .demo-arrow-down { display: none; }
   .demo-arrow-right { display: block; }
+}
+
+/* ==========================================================================
+   TOAST NOTIFICATIONS — Jasper theme
+   Warm vanilla backgrounds, orange accents, dark green headings.
+   Overrides sonner's defaults to match the site's Jasper visual language.
+   Toasts render to document.body (outside #root), so selectors are unscoped.
+   ========================================================================== */
+
+[data-sonner-toaster] {
+  font-family: inherit !important;
+}
+
+/* Base toast — warm cream, rounded, soft shadow */
+[data-sonner-toast] {
+  border-radius: 0.875rem !important;
+  border: 1px solid #e8e2d8 !important;
+  background: #fffdf7 !important;
+  box-shadow:
+    0 4px 20px -4px rgba(26, 58, 42, 0.08),
+    0 2px 8px -2px rgba(0, 0, 0, 0.04) !important;
+  padding: 14px 16px !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+  gap: 12px !important;
+  color: #1a1a1a !important;
+  backdrop-filter: none !important;
+}
+
+/* Title — dark green, tight tracking */
+[data-sonner-toast] [data-title] {
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+  letter-spacing: -0.005em !important;
+  color: #0d2b1a !important;
+}
+
+/* Description — muted warm gray */
+[data-sonner-toast] [data-description] {
+  font-size: 0.8125rem !important;
+  color: #3d3d3d !important;
+  opacity: 0.9 !important;
+  margin-top: 2px !important;
+}
+
+/* Icon container & sizing */
+[data-sonner-toast] [data-icon] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  margin-top: 1px !important;
+}
+
+[data-sonner-toast] [data-icon] svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+/* ---- Success: soft sage cream, dark green accent ---- */
+[data-sonner-toast][data-type="success"] {
+  background: #f2f7f3 !important;
+  border-color: color-mix(in srgb, #1a3a2a 22%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="success"] [data-title] {
+  color: #0d2b1a !important;
+}
+[data-sonner-toast][data-type="success"] [data-icon],
+[data-sonner-toast][data-type="success"] [data-icon] svg {
+  color: #1a3a2a !important;
+}
+
+/* ---- Error: warm orange-cream, orange accent ---- */
+[data-sonner-toast][data-type="error"] {
+  background: #fef0eb !important;
+  border-color: color-mix(in srgb, #e8552e 32%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="error"] [data-title] {
+  color: #8b2e1c !important;
+}
+[data-sonner-toast][data-type="error"] [data-icon],
+[data-sonner-toast][data-type="error"] [data-icon] svg {
+  color: #e8552e !important;
+}
+
+/* ---- Warning: warm amber-cream ---- */
+[data-sonner-toast][data-type="warning"] {
+  background: #fef8ed !important;
+  border-color: color-mix(in srgb, #d97706 25%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="warning"] [data-title] {
+  color: #78400a !important;
+}
+[data-sonner-toast][data-type="warning"] [data-icon],
+[data-sonner-toast][data-type="warning"] [data-icon] svg {
+  color: #d97706 !important;
+}
+
+/* ---- Info: vanilla with orange accent ---- */
+[data-sonner-toast][data-type="info"] {
+  background: #fffdf7 !important;
+  border-color: color-mix(in srgb, #e8552e 20%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="info"] [data-title] {
+  color: #1a3a2a !important;
+}
+[data-sonner-toast][data-type="info"] [data-icon],
+[data-sonner-toast][data-type="info"] [data-icon] svg {
+  color: #e8552e !important;
+}
+
+/* ---- Loading ---- */
+[data-sonner-toast][data-type="loading"] [data-icon],
+[data-sonner-toast][data-type="loading"] [data-icon] svg {
+  color: #e8552e !important;
+}
+
+/* ---- Close button: rounded pill, warm border ---- */
+[data-sonner-toast] [data-close-button] {
+  border-radius: 9999px !important;
+  border: 1px solid #e8e2d8 !important;
+  background: #fffdf7 !important;
+  color: #3d3d3d !important;
+  opacity: 0.6 !important;
+  transition: opacity 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease !important;
+  width: 20px !important;
+  height: 20px !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1 !important;
+  background: #fef0eb !important;
+  border-color: #e8552e !important;
+  color: #e8552e !important;
+}
+
+/* ---- Action button: Jasper pill, filled orange ---- */
+[data-sonner-toast] [data-button]:not([data-cancel]) {
+  border-radius: 9999px !important;
+  background: #e8552e !important;
+  color: white !important;
+  font-weight: 500 !important;
+  padding: 4px 12px !important;
+  letter-spacing: 0.01em !important;
+  border: 1px solid #e8552e !important;
+  transition: background 150ms ease, border-color 150ms ease !important;
+}
+
+[data-sonner-toast] [data-button]:not([data-cancel]):hover {
+  background: #d14a25 !important;
+  border-color: #d14a25 !important;
+}
+
+/* ---- Cancel button: ghost pill ---- */
+[data-sonner-toast] [data-cancel] {
+  border-radius: 9999px !important;
+  background: transparent !important;
+  color: #3d3d3d !important;
+  border: 1px solid #e8e2d8 !important;
+  font-weight: 500 !important;
+  padding: 4px 12px !important;
+  transition: background 150ms ease, border-color 150ms ease !important;
+}
+
+[data-sonner-toast] [data-cancel]:hover {
+  background: #fef0eb !important;
+  border-color: #e8552e !important;
 }

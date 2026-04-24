@@ -38,16 +38,15 @@ export function WondereloHeader() {
   }, [token]);
 
   const displayName = firstName && lastName ? `${firstName} ${lastName}` : firstName || 'Participant';
-  const hasToken = !!token;
 
   const handleLogoClick = () => {
     if (token) navigate(`/p/${token}`);
     else navigate('/');
   };
 
-  const handleDashboard = () => token && navigate(`/p/${token}`);
-  const handleProfile = () => token && navigate(`/p/${token}/profile`);
-  const handleAddressBook = () => token && navigate(`/p/${token}/address-book`);
+  const handleDashboard = () => { if (token) navigate(`/p/${token}`); };
+  const handleProfile = () => { if (token) navigate(`/p/${token}/profile`); };
+  const handleAddressBook = () => { if (token) navigate(`/p/${token}/address-book`); };
   const handleHome = () => {
     sessionStorage.setItem('allow_participant_browsing', 'true');
     navigate('/');
@@ -68,38 +67,36 @@ export function WondereloHeader() {
             Wonderelo
           </button>
 
-          {hasToken && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <User className="h-4 w-4 mr-2" />
-                  {displayName}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleDashboard}>
-                  <LayoutDashboard className="h-4 w-4 mr-2" />
-                  Dashboard
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleProfile}>
-                  <UserCircle className="h-4 w-4 mr-2" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleAddressBook}>
-                  <BookUser className="h-4 w-4 mr-2" />
-                  Address Book
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleHome}>
-                  <Home className="h-4 w-4 mr-2" />
-                  Homepage
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <User className="h-4 w-4 mr-2" />
+                {displayName}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDashboard}>
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleProfile}>
+                <UserCircle className="h-4 w-4 mr-2" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAddressBook}>
+                <BookUser className="h-4 w-4 mr-2" />
+                Address Book
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleHome}>
+                <Home className="h-4 w-4 mr-2" />
+                Homepage
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </nav>
