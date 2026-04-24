@@ -19,6 +19,7 @@ import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
 import { registerCrmRoutes } from './route-crm.ts';
 import { registerI18nRoutes } from './route-i18n.ts';
+import { registerDemoRoutes } from './route-demo.ts';
 import { getScenarioList, runScenario } from './e2e-scenarios.ts';
 
 const app = new Hono();
@@ -3418,5 +3419,8 @@ registerCrmRoutes(app);
 
 // Register i18n routes
 registerI18nRoutes(app);
+
+// Register demo routes (/demo/setup)
+registerDemoRoutes(app);
 
 Deno.serve(app.fetch);
