@@ -1,15 +1,32 @@
 
   import { defineConfig } from 'vite';
   import react from '@vitejs/plugin-react-swc';
+  import { execSync } from 'child_process';
   import path from 'path';
 
   // Build timestamp injected at build time so every deploy has a unique, sortable ID
   const BUILD_TIME = new Date().toISOString();
 
+  // Short git SHA, injected at build time. Vercel auto-sets VERCEL_GIT_COMMIT_SHA;
+  // locally we fall back to `git rev-parse`. "dev" when neither is available.
+  function resolveGitHash(): string {
+    if (process.env.VERCEL_GIT_COMMIT_SHA) {
+      return process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 7);
+    }
+    try {
+      return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+    } catch {
+      return 'dev';
+    }
+  }
+
+  const GIT_HASH = resolveGitHash();
+
   export default defineConfig({
     define: {
-      // Exposes __APP_BUILD_TIME__ as a global string in the compiled bundle
+      // Exposes __APP_BUILD_TIME__ and __GIT_HASH__ as global strings in the bundle
       __APP_BUILD_TIME__: JSON.stringify(BUILD_TIME),
+      __GIT_HASH__: JSON.stringify(GIT_HASH),
     },
     plugins: [react()],
     resolve: {
