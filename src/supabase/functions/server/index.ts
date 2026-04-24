@@ -2690,14 +2690,18 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
     //   Round-ended  target = round_start + duration
     //     (exact moment the networking countdown hits 0)
     //
-    // Catch-up window: CRON_INTERVAL_MINUTES + 1 min slack absorbs cron
-    // jitter and the rare case a round was created inside the target minute.
+    // Catch-up window: sized to match cron cadence. pg_cron runs every 5s
+    // on staging for sub-minute precision; 20s window (= 5s cadence + 15s
+    // slack) is plenty to catch a tick even under moderate network jitter,
+    // while short enough that the row-level claim race is tiny.
+    //
+    // A query-string override (?catchupMs=...) exists for tests / one-off
+    // backfills so we can run a wide-window sweep without redeploying.
     const sysParams = (await db.getAdminSetting('system_parameters')) || {};
     const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
     const smsRoundEndedEnabled = sysParams.smsRoundEndedEnabled !== false; // default true
-    const CRON_INTERVAL_MINUTES = 1;
-    const SLACK_MINUTES = 1; // tolerate delayed cron ticks
-    const catchupMs = (CRON_INTERVAL_MINUTES + SLACK_MINUTES) * 60000;
+    const overrideMs = Number(c.req.query('catchupMs')) || 0;
+    const catchupMs = overrideMs > 0 ? overrideMs : 20_000;
 
     // Get all candidate rounds (scheduled + published session)
     const candidateRounds = await db.getRoundsNeedingReminder();
@@ -2729,7 +2733,7 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
         success: true,
         message: 'No rounds need reminders',
         roundsChecked: candidateRounds.length,
-        window: { confirmationWindowMinutes, catchupMinutes: CRON_INTERVAL_MINUTES + SLACK_MINUTES, smsRoundEndedEnabled },
+        window: { confirmationWindowMinutes, catchupMs, smsRoundEndedEnabled },
       });
     }
 
