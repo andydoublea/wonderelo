@@ -1027,6 +1027,7 @@ app.get('/make-server-ce05600a/system-parameters', async (c) => {
         notificationEarlyEnabled: true,
         notificationLateMinutes: 5,
         notificationLateEnabled: true,
+        smsRoundEndedEnabled: true,
         minimalGapBetweenRounds: 10,
         minimalRoundDuration: 5,
         maximalRoundDuration: 240,
@@ -2599,6 +2600,25 @@ app.get('/make-server-ce05600a/public/theme', async (c) => {
 // CRON: Automatic round reminders (SMS)
 // ============================================
 
+/**
+ * Build an E.164 phone number from separate country-code + local number fields.
+ * Matches the behaviour of the Confirm Attendance button: needs reg.phone
+ * populated at all, and reg.phoneCountry (e.g. "+421") to prepend. If the
+ * phone already starts with "+" it's used as-is.
+ */
+function composeE164(phone: string | undefined, phoneCountry: string | undefined): string | null {
+  if (!phone) return null;
+  const clean = phone.replace(/[\s\-()]/g, '');
+  if (clean.startsWith('+')) return clean;
+  if (clean.startsWith('00')) return '+' + clean.slice(2);
+  const prefix = (phoneCountry || '').trim();
+  if (!prefix) return null;
+  // If phone starts with 0 (local format), strip the 0 before prefixing.
+  const local = clean.startsWith('0') ? clean.slice(1) : clean;
+  const normalizedPrefix = prefix.startsWith('+') ? prefix : '+' + prefix;
+  return `${normalizedPrefix}${local}`;
+}
+
 app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
   try {
     // Auth: verify cron secret
@@ -2609,116 +2629,198 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
     }
 
     const now = new Date();
-    const WINDOW_MINUTES = 7; // 7-min window for cron jitter reliability
-    const windowEnd = new Date(now.getTime() + WINDOW_MINUTES * 60000);
 
-    // Get all scheduled rounds with published sessions that haven't had reminders sent
+    // Pull tunables from admin settings so admin can tune without a redeploy.
+    // Window for "round starting soon" SMS matches the Confirm Attendance
+    // button visibility (confirmationWindowMinutes). One extra minute of slack
+    // is added so a cron tick that happens slightly late still catches the
+    // round before it starts.
+    const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+    const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
+    const smsRoundEndedEnabled = sysParams.smsRoundEndedEnabled !== false; // default true
+    const startWindowMinutes = confirmationWindowMinutes + 1; // small cron-jitter buffer
+    const endedLookbackMinutes = 3; // catch rounds that ended in last 3 min
+
+    const startWindowEnd = new Date(now.getTime() + startWindowMinutes * 60000);
+    const endedLookbackStart = new Date(now.getTime() - endedLookbackMinutes * 60000);
+
+    // Get all candidate rounds (scheduled + published session)
     const candidateRounds = await db.getRoundsNeedingReminder();
 
-    // Filter by time window: round starts between now and now+7min
-    const roundsToNotify = candidateRounds.filter((r: any) => {
+    // Split into two sets: starting-soon, and just-ended.
+    const startingSoon = candidateRounds.filter((r: any) => {
       if (!r.date || !r.startTime) return false;
       const roundStartUtc = parseRoundStartTime(r.date, r.startTime);
-      return roundStartUtc >= now && roundStartUtc <= windowEnd;
+      return roundStartUtc >= now && roundStartUtc <= startWindowEnd;
     });
+    const justEnded = smsRoundEndedEnabled
+      ? candidateRounds.filter((r: any) => {
+          if (!r.date || !r.startTime) return false;
+          const duration = Number(r.duration) || 0;
+          if (duration <= 0) return false;
+          const roundStartUtc = parseRoundStartTime(r.date, r.startTime);
+          const endUtc = new Date(roundStartUtc.getTime() + duration * 60000);
+          return endUtc <= now && endUtc >= endedLookbackStart;
+        })
+      : [];
 
-    if (roundsToNotify.length === 0) {
-      return c.json({ success: true, message: 'No rounds need reminders', roundsChecked: candidateRounds.length });
+    if (startingSoon.length === 0 && justEnded.length === 0) {
+      return c.json({
+        success: true,
+        message: 'No rounds need reminders',
+        roundsChecked: candidateRounds.length,
+        window: { startWindowMinutes, endedLookbackMinutes, smsRoundEndedEnabled },
+      });
     }
 
-    // Load SMS template
-    const texts = await db.getAdminSetting('notification_texts');
-    const template = texts?.smsRoundStartingSoon;
-    if (!template) {
-      console.log('⚠️ No smsRoundStartingSoon template configured');
-      return c.json({ success: false, error: 'SMS template not configured' }, 500);
-    }
+    // Load SMS templates
+    const texts = (await db.getAdminSetting('notification_texts')) || {};
+    const startingTemplate = texts.smsRoundStartingSoon;
+    const endedTemplate = texts.smsRoundEnded;
 
     let totalSmsSent = 0;
     let totalSmsFailed = 0;
     const roundResults: any[] = [];
+    const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
 
-    for (const round of roundsToNotify) {
-      const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
-      const minutesUntilStart = Math.round((roundStartUtc.getTime() - now.getTime()) / 60000);
+    // ---- Starting-soon pass ----
+    if (startingSoon.length > 0 && startingTemplate) {
+      for (const round of startingSoon) {
+        const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
+        const minutesUntilStart = Math.max(0, Math.round((roundStartUtc.getTime() - now.getTime()) / 60000));
 
-      // Get registrations for this round (confirmed + registered with notifications enabled)
-      // AND that haven't been reminded yet. Per-registration deduplication allows
-      // late registrants to still get SMS even after the first cron tick.
-      const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
-      const eligibleRegs = registrations.filter((reg: any) =>
-        ['registered', 'confirmed'].includes(reg.status) &&
-        reg.notificationsEnabled !== false &&
-        reg.phone &&
-        !reg.reminderSmsSentAt
-      );
-      if (eligibleRegs.length === 0) {
-        continue; // nothing to do for this round this tick
-      }
+        const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
+        const eligibleRegs = registrations.filter((reg: any) =>
+          ['registered', 'confirmed'].includes(reg.status) &&
+          reg.notificationsEnabled !== false &&
+          reg.phone &&
+          !reg.reminderSmsSentAt
+        );
+        if (eligibleRegs.length === 0) continue;
 
-      let sent = 0;
-      let failed = 0;
+        const meetingPoints = round.meetingPoints?.length > 0 ? round.meetingPoints : round.sessionMeetingPoints || [];
+        const location = meetingPoints.length > 0 ? (meetingPoints[0]?.name || meetingPoints[0] || '') : '';
 
-      // Determine location from round meeting points or session meeting points
-      const meetingPoints = round.meetingPoints?.length > 0
-        ? round.meetingPoints
-        : round.sessionMeetingPoints || [];
-      const location = meetingPoints.length > 0
-        ? (meetingPoints[0]?.name || meetingPoints[0] || '')
-        : '';
-
-      const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
-
-      for (const reg of eligibleRegs) {
-        const link = reg.token ? `${appUrl}/p/${reg.token}?from=sms-reminder` : appUrl;
-        const smsBody = renderSmsTemplate(template, {
-          sessionName: round.sessionName || round.name || '',
-          minutes: String(minutesUntilStart),
-          location,
-          firstName: reg.firstName || '',
-          name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
-          time: round.startTime || '',
-          date: round.date || '',
-          link,
-        });
-
-        const result = await sendSms({ to: reg.phone, body: smsBody });
-        if (result.success) {
-          sent++;
-          // Mark THIS registration reminded so we don't SMS the same person
-          // again on the next cron tick.
-          try {
-            await db.markRegistrationReminderSent(reg.participantId, round.sessionId, round.id);
-          } catch (e) {
-            console.error(`⚠️ Failed to mark reg reminder for ${reg.participantId}: ${e}`);
+        let sent = 0;
+        let failed = 0;
+        for (const reg of eligibleRegs) {
+          const link = reg.token ? `${appUrl}/p/${reg.token}?from=sms-reminder` : appUrl;
+          const smsBody = renderSmsTemplate(startingTemplate, {
+            sessionName: round.sessionName || round.name || '',
+            minutes: String(minutesUntilStart),
+            location,
+            firstName: reg.firstName || '',
+            name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
+            time: round.startTime || '',
+            date: round.date || '',
+            link,
+          });
+          const to = composeE164(reg.phone, reg.phoneCountry);
+          if (!to) {
+            failed++;
+            console.error(`❌ Cannot compose phone for ${reg.participantId}: phone=${reg.phone} country=${reg.phoneCountry}`);
+            continue;
           }
-        } else {
-          failed++;
-          console.error(`❌ SMS failed for ${reg.phone}: ${result.error}`);
+          const result = await sendSms({ to, body: smsBody });
+          if (result.success) {
+            sent++;
+            try {
+              await db.markRegistrationReminderSent(reg.participantId, round.sessionId, round.id);
+            } catch (e) {
+              console.error(`⚠️ Failed to mark reg starting reminder for ${reg.participantId}: ${e}`);
+            }
+          } else {
+            failed++;
+            console.error(`❌ SMS starting failed for ${to}: ${result.error}`);
+          }
         }
+        totalSmsSent += sent;
+        totalSmsFailed += failed;
+        roundResults.push({
+          kind: 'starting-soon',
+          roundId: round.id,
+          roundName: round.name,
+          sessionName: round.sessionName,
+          startsIn: `${minutesUntilStart}min`,
+          eligibleParticipants: eligibleRegs.length,
+          smsSent: sent,
+          smsFailed: failed,
+        });
       }
-
-      totalSmsSent += sent;
-      totalSmsFailed += failed;
-      roundResults.push({
-        roundId: round.id,
-        roundName: round.name,
-        sessionName: round.sessionName,
-        startsIn: `${minutesUntilStart}min`,
-        eligibleParticipants: eligibleRegs.length,
-        smsSent: sent,
-        smsFailed: failed,
-      });
+    } else if (startingSoon.length > 0 && !startingTemplate) {
+      console.log('⚠️ No smsRoundStartingSoon template configured — skipping starting-soon pass');
     }
 
-    console.log(`📱 CRON ROUND REMINDERS: ${roundsToNotify.length} rounds, ${totalSmsSent} SMS sent, ${totalSmsFailed} failed`);
+    // ---- Round-ended pass ----
+    if (justEnded.length > 0 && endedTemplate) {
+      for (const round of justEnded) {
+        const registrations = await db.getRegistrationsForRound(round.sessionId, round.id);
+        // Only notify participants who actually took part (matched, checked-in, or met).
+        const eligibleRegs = registrations.filter((reg: any) =>
+          ['matched', 'checked-in', 'met'].includes(reg.status) &&
+          reg.notificationsEnabled !== false &&
+          reg.phone &&
+          !reg.endReminderSmsSentAt
+        );
+        if (eligibleRegs.length === 0) continue;
+
+        let sent = 0;
+        let failed = 0;
+        for (const reg of eligibleRegs) {
+          const link = reg.token ? `${appUrl}/p/${reg.token}/contact-sharing?from=sms-ended` : appUrl;
+          const smsBody = renderSmsTemplate(endedTemplate, {
+            sessionName: round.sessionName || round.name || '',
+            firstName: reg.firstName || '',
+            name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
+            time: round.startTime || '',
+            date: round.date || '',
+            link,
+          });
+          const to = composeE164(reg.phone, reg.phoneCountry);
+          if (!to) {
+            failed++;
+            console.error(`❌ Cannot compose phone for ${reg.participantId}: phone=${reg.phone} country=${reg.phoneCountry}`);
+            continue;
+          }
+          const result = await sendSms({ to, body: smsBody });
+          if (result.success) {
+            sent++;
+            try {
+              await db.markRegistrationEndReminderSent(reg.participantId, round.sessionId, round.id);
+            } catch (e) {
+              console.error(`⚠️ Failed to mark reg end reminder for ${reg.participantId}: ${e}`);
+            }
+          } else {
+            failed++;
+            console.error(`❌ SMS ended failed for ${to}: ${result.error}`);
+          }
+        }
+        totalSmsSent += sent;
+        totalSmsFailed += failed;
+        roundResults.push({
+          kind: 'just-ended',
+          roundId: round.id,
+          roundName: round.name,
+          sessionName: round.sessionName,
+          eligibleParticipants: eligibleRegs.length,
+          smsSent: sent,
+          smsFailed: failed,
+        });
+      }
+    } else if (justEnded.length > 0 && !endedTemplate) {
+      console.log('⚠️ No smsRoundEnded template configured — skipping round-ended pass');
+    }
+
+    console.log(`📱 CRON ROUND REMINDERS: ${startingSoon.length} starting-soon + ${justEnded.length} just-ended rounds, ${totalSmsSent} SMS sent, ${totalSmsFailed} failed`);
 
     return c.json({
       success: true,
-      roundsProcessed: roundsToNotify.length,
+      startingSoonRounds: startingSoon.length,
+      justEndedRounds: justEnded.length,
       totalSmsSent,
       totalSmsFailed,
       rounds: roundResults,
+      window: { startWindowMinutes, endedLookbackMinutes, smsRoundEndedEnabled },
     });
 
   } catch (error) {

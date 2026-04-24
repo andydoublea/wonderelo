@@ -642,6 +642,7 @@ function mapRegistrationFromDb(data: any) {
     lastStatusUpdate: data.last_status_update,
     notificationsEnabled: data.notifications_enabled,
     reminderSmsSentAt: data.reminder_sms_sent_at,
+    endReminderSmsSentAt: data.end_reminder_sms_sent_at,
     unconfirmedReason: data.unconfirmed_reason,
     noMatchReason: data.no_match_reason,
     roundCompletedAt: data.round_completed_at,
@@ -690,6 +691,7 @@ export async function getRegistrationsForRound(sessionId: string, roundId: strin
         firstName: r.participants.first_name,
         lastName: r.participants.last_name,
         phone: r.participants.phone,
+        phoneCountry: r.participants.phone_country,
         token: r.participants.token,
       };
     }
@@ -1397,6 +1399,24 @@ export async function markRegistrationReminderSent(
   const { error } = await db()
     .from('registrations')
     .update({ reminder_sms_sent_at: new Date().toISOString() })
+    .eq('participant_id', participantId)
+    .eq('session_id', sessionId)
+    .eq('round_id', roundId);
+  if (error) throw error;
+}
+
+/**
+ * Mark a single registration's round-END SMS reminder as sent.
+ * Used by the round-ended SMS notification (admin-toggleable).
+ */
+export async function markRegistrationEndReminderSent(
+  participantId: string,
+  sessionId: string,
+  roundId: string,
+) {
+  const { error } = await db()
+    .from('registrations')
+    .update({ end_reminder_sms_sent_at: new Date().toISOString() })
     .eq('participant_id', participantId)
     .eq('session_id', sessionId)
     .eq('round_id', roundId);

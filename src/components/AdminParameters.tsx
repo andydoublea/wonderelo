@@ -25,6 +25,7 @@ const DEFAULT_PARAMETERS: SystemParameters = {
   notificationEarlyEnabled: true,
   notificationLateMinutes: 5,
   notificationLateEnabled: true,
+  smsRoundEndedEnabled: true,
   minimalGapBetweenRounds: 10,
   minimalRoundDuration: 5,
   maximalRoundDuration: 240,
@@ -79,6 +80,7 @@ const PARAM_DEFS: ParamDef[] = [
   { key: 'notificationEarlyMinutes', label: 'Early notif. time', section: 'notifications', type: 'number', min: 1, max: 60, unit: 'min' },
   { key: 'notificationLateEnabled', label: 'Late notif. enabled', section: 'notifications', type: 'boolean' },
   { key: 'notificationLateMinutes', label: 'Late notif. time', section: 'notifications', type: 'number', min: 1, max: 30, unit: 'min' },
+  { key: 'smsRoundEndedEnabled', label: 'SMS when round ends', section: 'notifications', type: 'boolean' },
   // UI
   { key: 'fireThreshold1', label: 'Fire 1 threshold', section: 'ui', type: 'number', min: 1, max: 100 },
   { key: 'fireThreshold2', label: 'Fire 2 threshold', section: 'ui', type: 'number', min: 1, max: 100 },
