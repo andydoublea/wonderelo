@@ -95,8 +95,8 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Get participant registrations
       const registrations = await db.getRegistrationsByParticipant(participant.participantId);
 
-      // Find the ACTIVE match (status: matched, checked-in, met) — exclude completed rounds
-      const activeStatuses = ['matched', 'checked-in', 'met'];
+      // Find the ACTIVE match — includes 'missed' so UI can render the MissedRound view
+      const activeStatuses = ['matched', 'checked-in', 'met', 'missed'];
       const activeRegistration = registrations.find((r: any) =>
         activeStatuses.includes(r.status) && !r.roundCompletedAt
       );
@@ -175,6 +175,10 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
                         participantId: participant.participantId,
                         matchData: {
                           matchId: match.matchId,
+                          roundId,
+                          roundName: matchRound?.name || null,
+                          sessionId,
+                          status: newActiveReg.status,
                           meetingPointName: match.meetingPoint || 'TBD',
                           meetingPointImageUrl: meetingPointObj?.imageUrl || null,
                           meetingPointType: meetingPointObj?.type || 'physical',
@@ -282,6 +286,10 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       // Build match data response
       const matchData = {
         matchId: match.matchId,
+        roundId,
+        roundName: round?.name || null,
+        sessionId,
+        status: activeRegistration.status,
         meetingPointName: match.meetingPoint || 'TBD',
         meetingPointImageUrl: meetingPointObj?.imageUrl || null,
         meetingPointType: meetingPointObj?.type || 'physical',
@@ -862,6 +870,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
 
       const networkingData = {
         matchId: match.matchId,
+        roundId: round?.id || activeRegistration.roundId,
         roundName: round?.name || 'Networking Round',
         networkingEndTime,
         partners,

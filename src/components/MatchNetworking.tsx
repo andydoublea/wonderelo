@@ -7,6 +7,7 @@ import { WondereloHeader } from './WondereloHeader';
 
 export interface NetworkingData {
   matchId: string;
+  roundId?: string;
   roundName: string;
   networkingEndTime: string;
   partners: { id: string; firstName: string; lastName: string; }[];

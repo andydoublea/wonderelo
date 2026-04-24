@@ -10,7 +10,11 @@ export interface SystemParameters {
   notificationEarlyEnabled: boolean;
   notificationLateMinutes: number;
   notificationLateEnabled: boolean;
-  
+
+  // Round-ended SMS (to matched participants right after the round ends,
+  // typically linking them to the contact-sharing page)
+  smsRoundEndedEnabled: boolean;
+
   // Validation constraints
   minimalGapBetweenRounds: number;
   minimalRoundDuration: number;
@@ -55,7 +59,9 @@ const DEFAULT_PARAMETERS: SystemParameters = {
   notificationEarlyEnabled: true,
   notificationLateMinutes: 5,
   notificationLateEnabled: true,
-  
+
+  smsRoundEndedEnabled: true,
+
   minimalGapBetweenRounds: 10,
   minimalRoundDuration: 5,
   maximalRoundDuration: 240,

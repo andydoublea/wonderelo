@@ -16,6 +16,7 @@ interface NotificationTexts {
   // SMS Templates
   smsConfirmationReminder: string;
   smsRoundStartingSoon: string;
+  smsRoundEnded: string;
 
   // Email Templates
   emailWelcomeSubject: string;
@@ -28,6 +29,7 @@ const DEFAULT_TEXTS: NotificationTexts = {
   // SMS
   smsConfirmationReminder: 'Hi {name}! Please confirm your attendance for "{sessionName}" round starting at {time}. Confirm here: {link}',
   smsRoundStartingSoon: '⏰ Reminder: "{sessionName}" round starts in {minutes} minutes at {location}!',
+  smsRoundEnded: 'Hi {name}! Your "{sessionName}" round has ended. Share contacts with your matches: {link}',
 
   // Email
   emailWelcomeSubject: '{eventName} - Wonderelo round details',
@@ -247,6 +249,29 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 <p className="text-xs text-muted-foreground">
                   {currentTexts.smsRoundStartingSoon.length} characters
                   {isFieldChanged('smsRoundStartingSoon') && (
+                    <span className="text-amber-600 ml-2">(modified)</span>
+                  )}
+                </p>
+              </div>
+
+              {/* SMS Round Ended */}
+              <div className="space-y-2">
+                <Label htmlFor="smsRoundEnded">
+                  Round ended SMS
+                  <span className="text-xs text-muted-foreground ml-2">
+                    (sent right after the round ends, to matched participants — toggle in Admin → Parameters)
+                  </span>
+                </Label>
+                <Textarea
+                  id="smsRoundEnded"
+                  value={currentTexts.smsRoundEnded}
+                  onChange={(e) => updateText('smsRoundEnded', e.target.value)}
+                  rows={3}
+                  className={isFieldChanged('smsRoundEnded') ? 'border-amber-400 border-2' : ''}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {currentTexts.smsRoundEnded.length} characters
+                  {isFieldChanged('smsRoundEnded') && (
                     <span className="text-amber-600 ml-2">(modified)</span>
                   )}
                 </p>
