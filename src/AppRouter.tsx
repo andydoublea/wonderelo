@@ -732,8 +732,27 @@ function EventPageSettingsRoute() {
 }
 
 function EventPromoPageRoute() {
-  const { eventSlug, sessions, currentUser } = useApp();
+  const { eventSlug, sessions, currentUser, loadSessions } = useApp();
   const navigate = useNavigate();
+
+  // The promo page is often left open on a big screen at the event — refresh
+  // session/round data every 30s and whenever the tab becomes visible, so
+  // registration counts, statuses, and time-sensitive badges stay current.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!document.hidden) loadSessions();
+    }, 30000);
+
+    const onVisibility = () => {
+      if (!document.hidden) loadSessions();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [loadSessions]);
 
   return (
     <EventPromoPage
