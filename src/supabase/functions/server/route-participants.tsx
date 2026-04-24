@@ -862,6 +862,7 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
 
       const networkingData = {
         matchId: match.matchId,
+        roundId: round?.id || activeRegistration.roundId,
         roundName: round?.name || 'Networking Round',
         networkingEndTime,
         partners,

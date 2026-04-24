@@ -7,6 +7,7 @@ import { WondereloHeader } from './WondereloHeader';
 
 export interface NetworkingData {
   matchId: string;
+  roundId?: string;
   roundName: string;
   networkingEndTime: string;
   partners: { id: string; firstName: string; lastName: string; }[];
@@ -161,6 +162,19 @@ export function MatchNetworking() {
             onComplete={() => {
               debugLog('[MatchNetworking] Time is up!');
               setIsTimeUp(true);
+              // Fire-and-forget: trigger server-side round-ended SMS at the
+              // exact moment "Time is up" appears. Per-reg dedup prevents
+              // duplicates if the cron fallback also fires this round.
+              if (networkingData.roundId && token) {
+                fetch(`${apiBaseUrl}/rounds/${networkingData.roundId}/notify-ended`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${publicAnonKey}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ token }),
+                }).catch((e) => errorLog('[MatchNetworking] notify-ended failed', e));
+              }
               navigate(`/p/${token}/contact-sharing`);
             }}
           />
