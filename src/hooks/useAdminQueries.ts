@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiBaseUrl } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { toast } from 'sonner@2.0.3';
 import { errorLog } from '../utils/debug';
 
@@ -27,6 +27,7 @@ async function getAccessToken(): Promise<string> {
 
 export const adminQueryKeys = {
   notificationTexts: ['admin', 'notification-texts'] as const,
+  toastOverrides: ['admin', 'toast-overrides'] as const,
   parameters: ['admin', 'parameters'] as const,
   iceBreakers: ['admin', 'ice-breakers'] as const,
   giftCards: ['admin', 'gift-cards'] as const,
@@ -98,6 +99,49 @@ export function useSaveNotificationTexts(accessToken: string) {
     onError: (error: Error) => {
       errorLog('Error saving notification texts:', error);
       toast.error(error.message || 'Failed to save notification texts');
+    },
+  });
+}
+
+// ========================================
+// TOAST OVERRIDES
+// ========================================
+
+export function useToastOverrides(_accessToken: string) {
+  return useQuery({
+    queryKey: adminQueryKeys.toastOverrides,
+    queryFn: async () => {
+      // Read from the public endpoint — this is just UI copy anyone's allowed to see
+      // (it's what every user's browser downloads on boot). Keeps read working even
+      // when admin auth has issues locally; the write path still requires admin auth.
+      const res = await fetch(`${apiBaseUrl}/public/toast-overrides`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      if (!res.ok) throw new Error(`Failed to fetch toast overrides (${res.status})`);
+      const data = await res.json();
+      return (data.overrides ?? {}) as Record<string, string>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSaveToastOverrides(accessToken: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (overrides: Record<string, string>) => {
+      return adminFetch('/admin/toast-overrides', accessToken, {
+        method: 'PUT',
+        body: JSON.stringify({ overrides }),
+      });
+    },
+    onSuccess: (_data, overrides) => {
+      queryClient.setQueryData(adminQueryKeys.toastOverrides, overrides);
+      toast.success('Toast messages saved');
+    },
+    onError: (error: Error) => {
+      errorLog('Error saving toast overrides:', error);
+      toast.error(error.message || 'Failed to save toast messages');
     },
   });
 }

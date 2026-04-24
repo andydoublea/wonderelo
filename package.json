@@ -68,6 +68,9 @@
             "vite": "6.3.5"
       },
       "scripts": {
+            "scan:toasts": "node scripts/scan-toasts.mjs",
+            "predev": "node scripts/scan-toasts.mjs",
+            "prebuild": "node scripts/scan-toasts.mjs",
             "dev": "vite --port 3001",
             "dev:local": "supabase start && vite --port 3001",
             "build": "vite build",
