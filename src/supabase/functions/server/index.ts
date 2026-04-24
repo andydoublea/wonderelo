@@ -2690,6 +2690,17 @@ async function sendRoundEndedSmsForRound(round: any, endedTemplate: string, appU
   let sent = 0;
   let failed = 0;
   for (const reg of eligibleRegs) {
+    // Claim-first: atomically set end_reminder_sms_sent_at if still NULL. If
+    // another concurrent cron tick already claimed it, skip (returns false).
+    let claimed = false;
+    try {
+      claimed = await db.claimRegistrationEndReminder(reg.participantId, round.sessionId, round.id);
+    } catch (e) {
+      console.error(`⚠️ claimRegistrationEndReminder failed for ${reg.participantId}: ${e}`);
+      continue;
+    }
+    if (!claimed) continue; // another tick got it first
+
     const link = reg.token ? `${appUrl}/p/${reg.token}/contact-sharing?from=sms-ended` : appUrl;
     const smsBody = renderSmsTemplate(endedTemplate, {
       sessionName: round.sessionName || round.name || '',
@@ -2703,19 +2714,22 @@ async function sendRoundEndedSmsForRound(round: any, endedTemplate: string, appU
     if (!to) {
       failed++;
       console.error(`❌ Cannot compose phone for ${reg.participantId}: phone=${reg.phone} country=${reg.phoneCountry}`);
+      // revert claim so next tick has chance (unlikely to help, but correct)
+      try { await db.releaseRegistrationEndReminder(reg.participantId, round.sessionId, round.id); } catch {}
       continue;
     }
     const result = await sendSms({ to, body: smsBody });
     if (result.success) {
       sent++;
-      try {
-        await db.markRegistrationEndReminderSent(reg.participantId, round.sessionId, round.id);
-      } catch (e) {
-        console.error(`⚠️ Failed to mark reg end reminder for ${reg.participantId}: ${e}`);
-      }
     } else {
       failed++;
       console.error(`❌ SMS ended failed for ${to}: ${result.error}`);
+      // Revert so next tick retries
+      try {
+        await db.releaseRegistrationEndReminder(reg.participantId, round.sessionId, round.id);
+      } catch (e) {
+        console.error(`⚠️ releaseRegistrationEndReminder failed for ${reg.participantId}: ${e}`);
+      }
     }
   }
   return { eligibleCount: eligibleRegs.length, sent, failed };
@@ -2773,7 +2787,9 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
     const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
     const smsRoundEndedEnabled = sysParams.smsRoundEndedEnabled !== false; // default true
     const overrideMs = Number(c.req.query('catchupMs')) || 0;
-    const catchupMs = overrideMs > 0 ? overrideMs : 20_000;
+    // 1s cron cadence + 1s slack. Claim-first atomic UPDATE handles the
+    // tiny race where consecutive ticks might see the same unsent row.
+    const catchupMs = overrideMs > 0 ? overrideMs : 2_000;
 
     // Get all candidate rounds (scheduled + published session)
     const candidateRounds = await db.getRoundsNeedingReminder();
@@ -2840,6 +2856,17 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
         let sent = 0;
         let failed = 0;
         for (const reg of eligibleRegs) {
+          // Claim-first: atomically set reminder_sms_sent_at if still NULL.
+          // Prevents duplicate sends when multiple cron ticks race.
+          let claimed = false;
+          try {
+            claimed = await db.claimRegistrationReminder(reg.participantId, round.sessionId, round.id);
+          } catch (e) {
+            console.error(`⚠️ claimRegistrationReminder failed for ${reg.participantId}: ${e}`);
+            continue;
+          }
+          if (!claimed) continue; // another tick got it first
+
           const link = reg.token ? `${appUrl}/p/${reg.token}?from=sms-reminder` : appUrl;
           const smsBody = renderSmsTemplate(startingTemplate, {
             sessionName: round.sessionName || round.name || '',
@@ -2855,19 +2882,20 @@ app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
           if (!to) {
             failed++;
             console.error(`❌ Cannot compose phone for ${reg.participantId}: phone=${reg.phone} country=${reg.phoneCountry}`);
+            try { await db.releaseRegistrationReminder(reg.participantId, round.sessionId, round.id); } catch {}
             continue;
           }
           const result = await sendSms({ to, body: smsBody });
           if (result.success) {
             sent++;
-            try {
-              await db.markRegistrationReminderSent(reg.participantId, round.sessionId, round.id);
-            } catch (e) {
-              console.error(`⚠️ Failed to mark reg starting reminder for ${reg.participantId}: ${e}`);
-            }
           } else {
             failed++;
             console.error(`❌ SMS starting failed for ${to}: ${result.error}`);
+            try {
+              await db.releaseRegistrationReminder(reg.participantId, round.sessionId, round.id);
+            } catch (e) {
+              console.error(`⚠️ releaseRegistrationReminder failed for ${reg.participantId}: ${e}`);
+            }
           }
         }
         totalSmsSent += sent;
