@@ -542,6 +542,12 @@ export function ParticipantDashboard() {
   // Track last optimistic update to prevent refetch from overwriting it
   const lastOptimisticUpdateRef = useRef<number>(0);
 
+  // Count consecutive failed initial loads (no cached data available).
+  // Used to retry silently a few times before showing the terminal error screen —
+  // avoids false-alarming the user when a single fetch fails due to iOS backgrounding,
+  // flaky mobile networks, or a transient server hiccup.
+  const initialFetchFailCountRef = useRef<number>(0);
+
   // Track if user came from /match page — read once on mount, used by all redirect-prevention checks
   // This prevents race condition where T-0 useEffect cleans URL before status useEffect reads it
   const cameFromMatchRef = useRef<boolean>(
@@ -932,24 +938,24 @@ export function ParticipantDashboard() {
     if (isFetching) {
       return;
     }
-    
+
     setIsFetching(true);
-    
+
     // Track if this is a background refetch (we already have data)
     const isBackgroundRefetch = sessions.length > 0 || registrations.length > 0;
-    
+
     try {
       // OPTIMIZATION: Use new dashboard endpoint - gets everything in ONE request
       const baseUrl = addSimulatedTimeParam(`${apiBaseUrl}/p/${token}/dashboard`);
-      
+
       // Add cache busting parameter to ensure fresh data
       const separator = baseUrl.includes('?') ? '&' : '?';
       const url = `${baseUrl}${separator}_cb=${Date.now()}`;
-      
-      // Create AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-      
+
+      // No AbortController timeout — iOS Safari throttles/pauses setTimeout when the tab
+      // is backgrounded (phone locked), and on resume an "overdue" timer fires immediately,
+      // aborting in-flight fetches and showing a false "Failed to load dashboard" error.
+      // The browser's own network stack handles truly dead connections.
       const response = await fetch(
         url,
         {
@@ -957,11 +963,8 @@ export function ParticipantDashboard() {
             'Authorization': `Bearer ${publicAnonKey}`,
             'Content-Type': 'application/json',
           },
-          signal: controller.signal
         }
       );
-      
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -1107,25 +1110,44 @@ export function ParticipantDashboard() {
         participantId: data.participantId || ''
       }));
       
-      // Clear error state on successful fetch
+      // Clear error state and retry counter on successful fetch
+      initialFetchFailCountRef.current = 0;
       if (error) {
         setError(null);
       }
-      
+      setIsLoading(false);
     } catch (error) {
       debugLog('[ParticipantDashboard] Error fetching data:', error);
-      
+
       // If this is a background refetch (we already have data), don't show error screen
       // Just log and keep the existing data
       if (isBackgroundRefetch) {
         debugLog('⚠️ Background refetch failed, keeping existing data');
+        setIsLoading(false);
       } else {
-        // This is the initial load - show error screen
-        toast.error('Failed to load data');
-        setError('Failed to load data');
+        // Initial load failed. Retry silently before showing the terminal error screen —
+        // iOS Safari often fails in-flight fetches around lock/unlock, and a single failure
+        // should not block the user from seeing their dashboard.
+        initialFetchFailCountRef.current += 1;
+        const attempt = initialFetchFailCountRef.current;
+        debugLog(`⚠️ Initial fetch failed (attempt ${attempt})`);
+
+        if (attempt < 3) {
+          // Retry after a short backoff. Keep the loading spinner visible by not
+          // clearing isLoading — the user should see a spinner, not a flash of empty UI.
+          const delayMs = attempt === 1 ? 1500 : 3000;
+          debugLog(`🔁 Retrying initial fetch in ${delayMs}ms…`);
+          setTimeout(() => {
+            fetchData();
+          }, delayMs);
+        } else {
+          // Give up after 3 attempts — show the terminal error screen
+          toast.error('Failed to load data');
+          setError('Failed to load data');
+          setIsLoading(false);
+        }
       }
     } finally {
-      setIsLoading(false);
       setIsFetching(false);
     }
   };
