@@ -350,21 +350,48 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
         return;
       }
 
-      // Fetch user profile from backend
-      const profileResponse = await fetch(
-        `${apiBaseUrl}/profile`,
-        {
-          headers: {
-            'Authorization': `Bearer ${data.session.access_token}`,
-            'Content-Type': 'application/json',
-          },
+      // Fetch user profile from backend. Retry on transient failure — without the
+      // profile we end up with a "half-logged-in" user missing organizerName/urlSlug,
+      // which silently breaks the dashboard and Account Settings. Never complete
+      // sign-in without a profile.
+      let userProfile: any = null;
+      let lastProfileError = '';
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const profileResponse = await fetch(`${apiBaseUrl}/profile`, {
+            headers: {
+              'Authorization': `Bearer ${data.session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (profileResponse.ok) {
+            const profileResult = await profileResponse.json();
+            if (profileResult?.profile?.organizerName) {
+              userProfile = profileResult.profile;
+              break;
+            }
+            lastProfileError = `Profile response missing organizerName (attempt ${attempt})`;
+          } else {
+            lastProfileError = `Profile fetch HTTP ${profileResponse.status} (attempt ${attempt})`;
+          }
+        } catch (err) {
+          lastProfileError = `Profile fetch exception (attempt ${attempt}): ${err instanceof Error ? err.message : String(err)}`;
         }
-      );
+        errorLog(lastProfileError);
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 400 * attempt));
+        }
+      }
 
-      let userProfile = null;
-      if (profileResponse.ok) {
-        const profileResult = await profileResponse.json();
-        userProfile = profileResult.profile;
+      if (!userProfile) {
+        errorLog('Sign-in aborted: could not load profile after retries.', lastProfileError);
+        // Clean up the half-established session so the user can retry cleanly
+        try {
+          const { supabase } = await import('../utils/supabase/client');
+          await supabase.auth.signOut();
+        } catch {}
+        setError('Signed in, but could not load your profile. Please try again.');
+        return;
       }
 
       // Create user object for onComplete

@@ -129,15 +129,15 @@ export function UserPublicPageView({
         </nav>
       )}
 
+      <OrganizerHeader
+        profileImageUrl={userProfile?.profileImageUrl}
+        eventName={userProfile?.eventName}
+        organizerName={userProfile?.organizerName}
+        variant="banner"
+      />
+
       <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
         <div className="max-w-md mx-auto w-full space-y-4">
-          <OrganizerHeader
-            profileImageUrl={userProfile?.profileImageUrl}
-            eventName={userProfile?.eventName}
-            organizerName={userProfile?.organizerName}
-            variant="boxed"
-          />
-
           <div className="text-center">
             <button
               type="button"
@@ -145,7 +145,7 @@ export function UserPublicPageView({
               className="flex items-center gap-1 text-sm text-foreground underline hover:text-primary mx-auto"
             >
               <HelpCircle className="h-3.5 w-3.5" />
-              How it works
+              How rounds work
             </button>
           </div>
 
@@ -233,7 +233,7 @@ export function UserPublicPageView({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <HelpCircle className="h-5 w-5" />
-              How it works
+              How rounds work
             </DialogTitle>
           </DialogHeader>
 
@@ -826,23 +826,32 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
           </nav>
         )}
 
+        <OrganizerHeader
+          profileImageUrl={userProfile?.profileImageUrl}
+          eventName={userProfile?.eventName}
+          organizerName={userProfile?.organizerName}
+          variant="banner"
+        />
+
         <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-          <OrganizerHeader 
-            profileImageUrl={userProfile?.profileImageUrl}
-            eventName={userProfile?.eventName}
-            organizerName={userProfile?.organizerName}
-            variant="boxed"
-          />
-
-          <div className="mb-8">
-
+          <div className="max-w-md mx-auto w-full">
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setHowItWorksDialogOpen(true)}
+                className="flex items-center gap-1 text-sm text-foreground underline hover:text-primary mx-auto"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                How rounds work
+              </button>
+            </div>
           </div>
 
           <div className="text-center py-12 flex-1">
             <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="mb-2">No rounds available</h3>
+            <h2 className="text-2xl font-bold mb-2">No rounds available</h2>
             <p className="text-muted-foreground">
               Please check back later
             </p>
@@ -907,6 +916,48 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
             </DialogContent>
           </Dialog>
 
+          <Dialog open={howItWorksDialogOpen} onOpenChange={setHowItWorksDialogOpen}>
+            <DialogContent className="max-w-md" aria-describedby={undefined}>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5" />
+                  How rounds work
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="mt-4 space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">1</div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">Register to rounds</p>
+                    <p className="text-sm text-muted-foreground">Choose times when you are available to meet and give us your contacts</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">2</div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">Confirm attendance</p>
+                    <p className="text-sm text-muted-foreground">You will get a reminder 5 minutes before the round to confirm you are in. Stay close to meeting points.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">3</div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">Meet someone new</p>
+                    <p className="text-sm text-muted-foreground">We will pick a match for you with a meeting place. You have 3 minutes to meeting with your match.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">4</div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">Exchange contacts... or not</p>
+                    <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().defaultRoundDuration || 10} minutes after the meeting.</p>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
         </div>
       </div>
     );
@@ -959,61 +1010,63 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
           </nav>
         )}
 
-        <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-          <div className="mb-8 text-center">
-            <div className="flex flex-col items-center mb-6">
-              <Skeleton className="h-20 w-20 rounded-full mb-4" />
-              <Skeleton className="h-4 w-48 mb-2" />
-              <Skeleton className="h-5 w-32" />
-            </div>
+        <div className="bg-muted/30 border-b border-border w-full">
+          <div className="flex flex-col items-center gap-3 px-4" style={{ paddingTop: 20, paddingBottom: 20 }}>
+            <Skeleton className="h-16 w-16 rounded-full" />
+            <Skeleton className="h-4 w-32" />
           </div>
+        </div>
 
-          <div className="mb-8">
+        <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
+          <div className="max-w-md mx-auto w-full space-y-4">
             <div className="text-center">
+              <Skeleton className="h-4 w-28 mx-auto" />
+            </div>
+
+            <div className="text-center pt-4">
               <Skeleton className="h-8 w-64 mx-auto" />
             </div>
-          </div>
 
-          <div className="space-y-4 flex-1">
-            {[1, 2].map((i) => (
-              <Card key={i}>
-                <CardContent className="pt-4 pr-4 pb-6 pl-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <Skeleton className="h-6 w-3/4 mb-2" />
-                      <div className="flex items-center gap-4 mt-1">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-4 w-28" />
+            <div className="space-y-4 flex-1">
+              {[1, 2].map((i) => (
+                <Card key={i}>
+                  <CardContent className="pt-4 pr-4 pb-6 pl-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <Skeleton className="h-6 w-3/4 mb-2" />
+                        <div className="flex items-center gap-4 mt-1">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-28" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm mb-3">
-                    <Skeleton className="h-4 w-36" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                  
-                  <div className="space-y-2 mt-4">
-                    {[1, 2, 3].map((j) => (
-                      <div key={j} className="border border-border rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <Skeleton className="h-5 w-40" />
-                          <Skeleton className="h-4 w-24" />
+
+                    <div className="flex items-center gap-4 text-sm mb-3">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+
+                    <div className="space-y-2 mt-4">
+                      {[1, 2, 3].map((j) => (
+                        <div key={j} className="border border-border rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <Skeleton className="h-5 w-40" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                          <Skeleton className="h-4 w-full mb-2" />
+                          <Skeleton className="h-4 w-2/3" />
                         </div>
-                        <Skeleton className="h-4 w-full mb-2" />
-                        <Skeleton className="h-4 w-2/3" />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-          <div className="mt-6">
-            <Skeleton className="h-10 w-full" />
+            <div className="mt-6">
+              <Skeleton className="h-10 w-full" />
+            </div>
           </div>
-
         </div>
       </div>
     );
