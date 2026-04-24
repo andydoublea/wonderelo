@@ -3476,7 +3476,8 @@ async function scheduleOneRoundSms(
 ) {
   const { id: scheduleId, inserted } = await upsertSchedule({ kind, roundId, sessionId, targetSendAt });
   if (!inserted) return;
-  const dedupId = `wonderelo:${kind}:${roundId}`;
+  // Dedup ID — QStash rejects ':'. Use '-' separator instead.
+  const dedupId = `wonderelo-${kind}-${roundId}`;
   const result = await scheduleQStashDelivery({
     destinationUrl: dispatchUrl,
     body: { kind, roundId, sessionId },
@@ -3701,6 +3702,34 @@ app.post('/make-server-ce05600a/admin/sms-outbox/:id/resend', async (c) => {
 
     const r = await dispatchSmsForRound(row.kind, row.round_id, row.session_id);
     return c.json({ success: true, ...r });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+/**
+ * Admin: manually trigger scheduleSmsForSession for debugging/backfill.
+ * Useful for sessions that were created before the QStash stack went live,
+ * or for re-scheduling after QStash outages.
+ */
+app.post('/make-server-ce05600a/admin/sms-outbox/trigger-schedule/:sessionId', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return c.json({ error: 'Authorization required' }, 401);
+    const token = authHeader.slice(7);
+    const { data: { user } } = await getSupabase().auth.getUser(token);
+    if (!user) return c.json({ error: 'Invalid token' }, 401);
+    const profile = await db.getOrganizerById(user.id);
+    if (profile?.role !== 'admin') return c.json({ error: 'Admin only' }, 403);
+
+    const sessionId = c.req.param('sessionId');
+    await scheduleSmsForSession(sessionId);
+    // Return fresh state
+    const sb = getGlobalSupabaseClient();
+    const { data: schedules } = await sb
+      .from('sms_schedules').select('*').eq('session_id', sessionId)
+      .order('created_at', { ascending: false });
+    return c.json({ success: true, sessionId, schedules: schedules || [] });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
