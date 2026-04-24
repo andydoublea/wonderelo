@@ -208,12 +208,12 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
             </CardHeader>
             <CardContent className="space-y-6">
 
-              {/* SMS Confirmation Reminder */}
+              {/* SMS before confirmation time */}
               <div className="space-y-2">
                 <Label htmlFor="smsConfirmationReminder">
-                  Confirmation reminder SMS
+                  SMS before confirmation time
                   <span className="text-xs text-muted-foreground ml-2">
-                    (sent when confirmation window opens)
+                    (early warning before the confirmation window opens)
                   </span>
                 </Label>
                 <Textarea
@@ -231,12 +231,12 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 </p>
               </div>
 
-              {/* SMS Round Starting Soon */}
+              {/* SMS at confirmation time */}
               <div className="space-y-2">
                 <Label htmlFor="smsRoundStartingSoon">
-                  Round starting soon SMS
+                  SMS at confirmation time
                   <span className="text-xs text-muted-foreground ml-2">
-                    (sent X minutes before round start)
+                    (sent the moment the Confirm Attendance button appears — confirmationWindowMinutes before round start)
                   </span>
                 </Label>
                 <Textarea
@@ -254,10 +254,10 @@ export function AdminNotificationTexts({ accessToken, onBack }: AdminNotificatio
                 </p>
               </div>
 
-              {/* SMS Round Ended */}
+              {/* SMS after networking */}
               <div className="space-y-2">
                 <Label htmlFor="smsRoundEnded">
-                  Round ended SMS
+                  SMS after networking
                   <span className="text-xs text-muted-foreground ml-2">
                     (sent right after the round ends, to matched participants — toggle in Admin → Parameters)
                   </span>
