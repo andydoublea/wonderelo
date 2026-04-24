@@ -5,7 +5,7 @@ interface OrganizerHeaderProps {
   profileImageUrl?: string;
   eventName?: string;
   organizerName?: string;
-  variant?: 'default' | 'boxed';
+  variant?: 'default' | 'boxed' | 'banner';
   size?: 'default' | 'small';
 }
 
@@ -46,15 +46,22 @@ export function OrganizerHeader({
       
       {/* Text - centered */}
       <div className="text-center">
-        <p className={`${textSize} text-muted-foreground`}>
-          Wonderelo networking rounds hosted by
-        </p>
         <p className={`${textSize} font-medium text-foreground`}>
           {eventName || organizerName || 'Event organizer'}
         </p>
       </div>
     </>
   );
+
+  if (variant === 'banner') {
+    return (
+      <div className="bg-muted/30 border-b border-border w-full">
+        <div className="flex flex-col items-center gap-3 px-4" style={{ paddingTop: 20, paddingBottom: 20 }}>
+          {content}
+        </div>
+      </div>
+    );
+  }
 
   if (variant === 'boxed') {
     return (
