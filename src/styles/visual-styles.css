@@ -1473,3 +1473,11 @@ button.btn-group-right,
   border-bottom-right-radius: 9999px !important;
   margin-left: -1px !important;
 }
+
+/* Demo page switcher arrow — vertical on mobile, horizontal on desktop */
+.demo-arrow-down { display: block; }
+.demo-arrow-right { display: none; }
+@media (min-width: 768px) {
+  .demo-arrow-down { display: none; }
+  .demo-arrow-right { display: block; }
+}

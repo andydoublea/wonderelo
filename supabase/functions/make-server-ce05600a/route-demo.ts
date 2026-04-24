@@ -104,12 +104,18 @@ async function ensureDemoOrganizer(): Promise<void> {
       .insert({
         id: DEMO_ORGANIZER_ID,
         email: 'demo@wonderelo.com',
-        organizer_name: 'Wonderelo Demo',
+        organizer_name: 'Lovely event',
         url_slug: DEMO_SLUG,
         role: 'organizer',
         description: 'Experience Wonderelo speed networking firsthand. This is a live demo event.',
       });
     if (error && !error.message?.includes('duplicate')) throw error;
+  } else {
+    // Keep display name in sync with current branding (idempotent)
+    await db()
+      .from('organizer_profiles')
+      .update({ organizer_name: 'Lovely event' })
+      .eq('id', DEMO_ORGANIZER_ID);
   }
 }
 

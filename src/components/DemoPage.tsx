@@ -1,45 +1,58 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Button } from './ui/button';
-import { OrganizerHeader } from './OrganizerHeader';
+import { EventPromoPage } from './EventPromoPage';
 import { UserPublicPage } from './UserPublicPage';
 import { Footer } from './Footer';
-import { ArrowRight, Eye, X, Loader2 } from 'lucide-react';
+import { Eye, Loader2, Monitor, Smartphone, ArrowLeft, ArrowRight, ArrowDown } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+import { NetworkingSession } from '../App';
+
+type Phase = 'slide' | 'event';
+
+const DEMO_DISPLAY_NAME = 'Lovely event';
+const DEMO_DISPLAY_SLUG = 'Lovelyevent';
+
+interface DemoUserProfile {
+  profileImageUrl?: string;
+}
 
 export function DemoPage() {
   const navigate = useNavigate();
-  const [phase, setPhase] = useState<'slide' | 'event'>('slide');
-  const [showBanner, setShowBanner] = useState(true);
+  const [phase, setPhase] = useState<Phase>('slide');
   const [isSettingUp, setIsSettingUp] = useState(true);
-  const [setupError, setSetupError] = useState('');
+  const [userProfile, setUserProfile] = useState<DemoUserProfile | null>(null);
+  const [sessions, setSessions] = useState<NetworkingSession[]>([]);
 
-  // QR code
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  // Ensure demo data is ready, then fetch the public event data
   useEffect(() => {
-    const generateQR = async () => {
+    let cancelled = false;
+
+    const fetchDemoData = async () => {
       try {
-        const QRCode = (await import('qrcode')).default;
-        const url = `${window.location.origin}/demo`;
-        const qrDataUrl = await QRCode.toDataURL(url, {
-          width: 400,
-          margin: 2,
-          color: { dark: '#000000', light: '#FFFFFF' },
+        const res = await fetch(`${apiBaseUrl}/public/user/demo`, {
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json',
+          },
         });
-        setQrCodeUrl(qrDataUrl);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.success) {
+          // Only keep the profile image — name/slug are overridden with demo branding below
+          setUserProfile({
+            profileImageUrl: data.user?.profileImageUrl,
+          });
+          setSessions(data.sessions || []);
+        }
       } catch {
-        // QR code generation failed, not critical
+        // Non-critical — slide will still render with empty session list
       }
     };
-    generateQR();
-  }, []);
 
-  // Call backend to ensure demo data is ready
-  useEffect(() => {
     const setup = async () => {
       try {
         setIsSettingUp(true);
-        setSetupError('');
         const res = await fetch(`${apiBaseUrl}/demo/setup`, {
           method: 'POST',
           headers: {
@@ -48,170 +61,133 @@ export function DemoPage() {
           },
         });
         const data = await res.json();
-        if (!data.success) {
-          setSetupError(data.error || 'Failed to set up demo');
+        if (data.success) {
+          await fetchDemoData();
         }
-      } catch (err) {
-        setSetupError('Could not connect to backend');
+      } catch {
+        // Backend unreachable — fail silently; demo just won't show live data
       } finally {
-        setIsSettingUp(false);
+        if (!cancelled) setIsSettingUp(false);
       }
     };
+
     setup();
 
     // Refresh demo data every 2 minutes to keep rounds in the future
     const interval = setInterval(setup, 120_000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Sticky demo banner */}
-      {showBanner && (
-        <div className="sticky top-0 z-[60] bg-primary text-primary-foreground">
-          <div className="container mx-auto max-w-6xl px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 flex-shrink-0" />
-              <span className="text-sm font-medium">
-                This is a demo — explore how participants experience Wonderelo networking rounds.
-              </span>
+      {/* Sticky demo switcher banner */}
+      <div className="sticky top-0 z-50 bg-primary text-primary-foreground" style={{ zIndex: 60 }}>
+        <div className="container mx-auto max-w-6xl px-4 py-3">
+          {/* Header row: Demo mode badge + Back to homepage */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary-foreground/15 text-xs font-medium uppercase tracking-wide">
+              <Eye className="h-3.5 w-3.5" />
+              Demo mode
+              {isSettingUp && <Loader2 className="h-3 w-3 animate-spin opacity-80" />}
             </div>
             <button
-              onClick={() => setShowBanner(false)}
-              className="p-1 hover:bg-primary-foreground/20 rounded transition-colors flex-shrink-0"
+              type="button"
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-1 rounded-md hover:bg-primary-foreground/15 transition-colors"
             >
-              <X className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" />
+              Back to homepage
             </button>
+          </div>
+
+          {/* Switcher */}
+          <div className="flex flex-col md:flex-row gap-2" style={{ alignItems: 'stretch' }}>
+            <div className="flex-1">
+              <PhaseButton
+                active={phase === 'slide'}
+                icon={<Monitor className="h-5 w-5" />}
+                title="Presenter slide"
+                description="Projected on screen at the event — participants scan the QR code to join."
+                onClick={() => {
+                  setPhase('slide');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            </div>
+            <div
+              aria-hidden="true"
+              className="flex items-center justify-center text-primary-foreground/80"
+            >
+              <ArrowDown className="h-5 w-5 demo-arrow-down" />
+              <ArrowRight className="h-5 w-5 demo-arrow-right" />
+            </div>
+            <div className="flex-1">
+              <PhaseButton
+                active={phase === 'event'}
+                icon={<Smartphone className="h-5 w-5" />}
+                title="Event page"
+                description="What participants see on their phone after scanning to register for rounds."
+                onClick={() => {
+                  setPhase('event');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Phase: Slide (what's projected at the event) */}
-      {phase === 'slide' && (
-        <>
-          <div className="flex-1 flex flex-col">
-            <div className="container mx-auto max-w-7xl px-6 py-12 flex-1">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[70vh]">
-                {/* Left Side - QR Code */}
-                <div className="flex flex-col items-center justify-center space-y-8">
-                  <div className="text-center space-y-3">
-                    <h1 className="text-4xl lg:text-5xl font-bold tracking-tight">
-                      Join the networking
-                    </h1>
-                    <p className="text-xl text-muted-foreground">
-                      Scan the QR code to register for speed networking rounds
-                    </p>
-                  </div>
-
-                  <div className="bg-white p-8 rounded-2xl shadow-lg">
-                    {qrCodeUrl ? (
-                      <img
-                        src={qrCodeUrl}
-                        alt="Demo QR Code"
-                        className="w-full h-full max-w-[300px]"
-                      />
-                    ) : (
-                      <div className="w-[300px] h-[300px] flex items-center justify-center bg-muted rounded">
-                        <p className="text-muted-foreground">Generating QR code...</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-semibold text-primary wonderelo-logo">Wonderelo</h2>
-                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 rounded-full">
-                      <span className="text-xl font-mono font-semibold text-primary">
-                        wonderelo.com/demo
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Side - Event info */}
-                <div className="flex flex-col items-center space-y-6">
-                  <OrganizerHeader
-                    eventName="Demo Event"
-                    organizerName="Wonderelo Demo"
-                    variant="boxed"
-                  />
-
-                  <div className="w-full max-w-md bg-muted/50 rounded-lg p-6 space-y-4">
-                    <h3 className="font-semibold text-lg">Speed Networking</h3>
-                    <p className="text-muted-foreground text-sm">
-                      5 rounds of 1-on-1 networking, each lasting 7 minutes.
-                      Get matched with someone new each round!
-                    </p>
-                    {isSettingUp && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Preparing demo...
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* CTA to continue to event page */}
-            <div className="container mx-auto max-w-7xl px-6 pb-12">
-              <div className="text-center">
-                <Button
-                  size="lg"
-                  className="gap-2 text-lg px-8 py-6"
-                  disabled={isSettingUp}
-                  onClick={() => {
-                    setPhase('event');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                >
-                  {isSettingUp ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Setting up demo...
-                    </>
-                  ) : (
-                    <>
-                      See the participant view
-                      <ArrowRight className="h-5 w-5" />
-                    </>
-                  )}
-                </Button>
-                {setupError && (
-                  <p className="text-sm text-destructive mt-3">{setupError}</p>
-                )}
-                <p className="text-sm text-muted-foreground mt-3">
-                  This is what gets projected on the screen at your event.
-                  <br />
-                  Click to see what participants see on their phone after scanning.
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Phase: Event page (what the participant sees on their phone) */}
-      {phase === 'event' && (
-        <div className="flex-1">
-          {/* Back to slide button */}
-          <div className="container mx-auto max-w-2xl px-6 pt-6 pb-2">
-            <button
-              onClick={() => {
-                setPhase('slide');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              &larr; Back to projection slide
-            </button>
-          </div>
-
-          {/* Real event page powered by backend */}
+      <div className="flex-1">
+        {phase === 'slide' ? (
+          <EventPromoPage
+            eventSlug="demo"
+            displaySlug={DEMO_DISPLAY_SLUG}
+            sessions={sessions}
+            organizerName={DEMO_DISPLAY_NAME}
+            eventName={DEMO_DISPLAY_NAME}
+            profileImageUrl={userProfile?.profileImageUrl}
+          />
+        ) : (
           <UserPublicPage userSlug="demo" />
-        </div>
-      )}
+        )}
+      </div>
 
       <Footer />
     </div>
+  );
+}
+
+interface PhaseButtonProps {
+  active: boolean;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+}
+
+function PhaseButton({ active, icon, title, description, onClick }: PhaseButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={[
+        'w-full h-full rounded-lg p-4 text-left transition-colors border',
+        active
+          ? 'bg-white text-primary border-white shadow-sm'
+          : 'bg-primary-foreground/10 border-primary-foreground/20 hover:bg-primary-foreground/20',
+      ].join(' ')}
+    >
+      <div className="flex items-center gap-2 font-semibold text-base">
+        {icon}
+        {title}
+      </div>
+      <div className={['text-sm mt-1', active ? 'text-primary/80' : 'opacity-90'].join(' ')}>
+        {description}
+      </div>
+    </button>
   );
 }

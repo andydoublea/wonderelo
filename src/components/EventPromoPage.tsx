@@ -9,7 +9,8 @@ interface EventPromoPageProps {
   organizerName?: string;
   eventName?: string;
   profileImageUrl?: string;
-  onBack: () => void;
+  displaySlug?: string;
+  onBack?: () => void;
 }
 
 // ============================================================
@@ -24,7 +25,8 @@ export interface EventPromoPageViewProps {
   organizerName?: string;
   eventName?: string;
   profileImageUrl?: string;
-  onBack: () => void;
+  displaySlug?: string;
+  onBack?: () => void;
 }
 
 export function EventPromoPageView({
@@ -35,6 +37,7 @@ export function EventPromoPageView({
   organizerName,
   eventName,
   profileImageUrl,
+  displaySlug,
   onBack,
 }: EventPromoPageViewProps) {
   return (
@@ -59,7 +62,7 @@ export function EventPromoPageView({
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 rounded-full">
                 <span className="text-2xl font-mono font-semibold text-primary">
-                  #{eventSlug}
+                  #{displaySlug || eventSlug}
                 </span>
               </div>
             </div>
@@ -89,21 +92,23 @@ export function EventPromoPageView({
         </div>
       </div>
 
-      <div className="pb-8">
-        <div className="text-center">
-          <button
-            onClick={onBack}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Back to dashboard
-          </button>
+      {onBack && (
+        <div className="pb-8">
+          <div className="text-center">
+            <button
+              onClick={onBack}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Back to dashboard
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, profileImageUrl, onBack }: EventPromoPageProps) {
+export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, profileImageUrl, displaySlug, onBack }: EventPromoPageProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   const publicUrl = `${window.location.origin}/${eventSlug}`;
@@ -141,6 +146,7 @@ export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, 
       organizerName={organizerName}
       eventName={eventName}
       profileImageUrl={profileImageUrl}
+      displaySlug={displaySlug}
       onBack={onBack}
     />
   );
