@@ -1514,6 +1514,78 @@ app.put('/make-server-ce05600a/admin/notification-texts', async (c) => {
 });
 
 // ============================================
+// TOAST OVERRIDES (editable UI copy for every toast.* call)
+// ============================================
+
+// Public GET — called by every client at app boot; no auth so the map loads
+// even for anonymous visitors (participants using magic-link pages, etc.).
+app.get('/make-server-ce05600a/public/toast-overrides', async (c) => {
+  try {
+    const overrides = await db.getAdminSetting('toast_overrides');
+    return c.json({ success: true, overrides: overrides || {} });
+  } catch (error) {
+    errorLog('Error fetching toast overrides:', error);
+    return c.json({ success: true, overrides: {} });
+  }
+});
+
+// Admin GET — identical payload but requires a logged-in user; used by the
+// admin editor UI so it can distinguish "no overrides configured" from a
+// network error.
+app.get('/make-server-ce05600a/admin/toast-overrides', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) return c.json({ error: 'Invalid token' }, 401);
+
+    const overrides = await db.getAdminSetting('toast_overrides');
+    return c.json({ success: true, overrides: overrides || {} });
+  } catch (error) {
+    errorLog('Error fetching admin toast overrides:', error);
+    return c.json({ error: 'Failed to fetch toast overrides' }, 500);
+  }
+});
+
+// Admin PUT — replaces the entire overrides map. Body: { overrides: {...} }.
+// Empty-string / identical-to-original values are stripped by the client so
+// the stored map only contains "effective" overrides.
+app.put('/make-server-ce05600a/admin/toast-overrides', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) return c.json({ error: 'Invalid token' }, 401);
+
+    const body = await c.req.json();
+    const overrides = body?.overrides;
+    if (!overrides || typeof overrides !== 'object') {
+      return c.json({ error: 'overrides object is required' }, 400);
+    }
+
+    // Sanity: keys & values must be strings
+    for (const [k, v] of Object.entries(overrides)) {
+      if (typeof k !== 'string' || typeof v !== 'string') {
+        return c.json({ error: 'overrides must be a string->string map' }, 400);
+      }
+    }
+
+    await db.setAdminSetting('toast_overrides', overrides);
+    debugLog('✅ Toast overrides updated by user:', user.id, '— keys:', Object.keys(overrides).length);
+    return c.json({ success: true, overrides });
+  } catch (error) {
+    errorLog('Error updating toast overrides:', error);
+    return c.json({ error: 'Failed to update toast overrides' }, 500);
+  }
+});
+
+// ============================================
 // ADMIN: User Management
 // ============================================
 
