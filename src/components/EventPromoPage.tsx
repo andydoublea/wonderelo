@@ -86,6 +86,7 @@ export function EventPromoPageView({
                 userSlug={eventSlug}
                 eventName={displayName}
                 noWrapper={true}
+                hideStickyBar={true}
               />
             )}
           </div>

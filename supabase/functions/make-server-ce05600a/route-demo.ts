@@ -157,7 +157,7 @@ async function ensureDemoSession(now: Date): Promise<void> {
 }
 
 async function refreshDemoRounds(now: Date): Promise<string[]> {
-  // Get existing rounds for the demo session
+  // Get existing rounds
   const { data: existingRounds } = await db()
     .from('rounds')
     .select('*')
@@ -166,65 +166,31 @@ async function refreshDemoRounds(now: Date): Promise<string[]> {
 
   const rounds = existingRounds || [];
 
-  // Check if any round has entered confirmation window or expired
-  const needsRefresh = rounds.length < 5 || rounds.some(r => isConfirmationStarted(r, now));
+  // Refresh if: missing rounds, ANY round expired, or first round entered confirmation window
+  const needsRefresh =
+    rounds.length < 5 ||
+    rounds.some(r => isRoundExpired(r, now) || isConfirmationStarted(r, now));
 
   if (!needsRefresh) {
     debugLog('[demo] Rounds still valid, no refresh needed');
     return rounds.map(r => r.id);
   }
 
-  debugLog('[demo] Refreshing demo rounds');
+  debugLog('[demo] Refreshing all demo rounds (full reset)');
 
-  // Delete all old rounds and their registrations
-  for (const round of rounds) {
-    if (isConfirmationStarted(round, now)) {
-      // Delete registrations for this round (cascade won't happen with PostgREST)
-      await db()
-        .from('registrations')
-        .delete()
-        .eq('round_id', round.id)
-        .eq('session_id', DEMO_SESSION_ID);
-      // Delete matches for this round
-      await db()
-        .from('matches')
-        .delete()
-        .eq('round_id', round.id)
-        .eq('session_id', DEMO_SESSION_ID);
-      // Delete the round
-      await db()
-        .from('rounds')
-        .delete()
-        .eq('id', round.id);
-    }
+  // Wipe all existing rounds + their registrations + matches.
+  // Simpler than incremental refresh and keeps round names consistent (1..5).
+  if (rounds.length > 0) {
+    const roundIds = rounds.map(r => r.id);
+    await db().from('matches').delete().in('round_id', roundIds);
+    await db().from('registrations').delete().in('round_id', roundIds);
+    await db().from('rounds').delete().in('id', roundIds);
   }
 
-  // Get remaining rounds
-  const { data: remainingRounds } = await db()
-    .from('rounds')
-    .select('*')
-    .eq('session_id', DEMO_SESSION_ID)
-    .order('sort_order', { ascending: true });
-
-  const remaining = remainingRounds || [];
-  const missingCount = 5 - remaining.length;
-
-  if (missingCount <= 0) {
-    return remaining.map(r => r.id);
-  }
-
-  // Generate new rounds to fill up to 5
+  // Insert 5 fresh rounds rolling forward from `now` (which is already in
+  // client-local wall-clock for correct startTime strings)
   const newRounds = generateFutureRounds(now);
-  // Only take as many as we need
-  const roundsToAdd = newRounds.slice(newRounds.length - missingCount);
-
-  // Re-sort: existing rounds get lower sort_order, new rounds get higher
-  for (let i = 0; i < roundsToAdd.length; i++) {
-    roundsToAdd[i].sortOrder = remaining.length + i;
-    roundsToAdd[i].name = `Round ${remaining.length + i + 1}`;
-  }
-
-  for (const round of roundsToAdd) {
+  for (const round of newRounds) {
     const { error } = await db()
       .from('rounds')
       .insert({
@@ -243,14 +209,7 @@ async function refreshDemoRounds(now: Date): Promise<string[]> {
     if (error) throw error;
   }
 
-  // Get all round IDs
-  const { data: allRounds } = await db()
-    .from('rounds')
-    .select('id')
-    .eq('session_id', DEMO_SESSION_ID)
-    .order('sort_order', { ascending: true });
-
-  return (allRounds || []).map(r => r.id);
+  return newRounds.map(r => r.id);
 }
 
 async function ensureMockParticipants(roundIds: string[]): Promise<void> {
@@ -311,7 +270,17 @@ export function registerDemoRoutes(app: any): void {
   // POST /demo/setup — ensure demo data is fresh
   app.post('/make-server-ce05600a/demo/setup', async (c: any) => {
     try {
-      const now = new Date();
+      // Body may include { tzOffsetMinutes } from the client. The Edge function
+      // runs in UTC, but rounds are stored as wall-clock strings ("HH:mm") that
+      // the frontend interprets in its local TZ. To keep the times meaningful
+      // for the visitor, shift our `now` by the client's offset before computing.
+      // getTimezoneOffset() returns minutes WEST of UTC (CEST = -120, PST = +480),
+      // so adding that to the millisecond timestamp gives the client wall-clock.
+      let body: any = {};
+      try { body = await c.req.json(); } catch { /* no body, fine */ }
+      const tzOffsetMinutes: number =
+        typeof body?.tzOffsetMinutes === 'number' ? body.tzOffsetMinutes : 0;
+      const now = new Date(Date.now() - tzOffsetMinutes * 60 * 1000);
 
       await ensureDemoOrganizer();
       await ensureDemoSession(now);

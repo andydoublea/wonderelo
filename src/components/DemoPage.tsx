@@ -59,6 +59,10 @@ export function DemoPage() {
             'Authorization': `Bearer ${publicAnonKey}`,
             'Content-Type': 'application/json',
           },
+          // Pass client TZ offset so backend generates round times in our local
+          // wall-clock (otherwise the UTC backend would emit times that look
+          // ~2h in the past for CEST visitors).
+          body: JSON.stringify({ tzOffsetMinutes: new Date().getTimezoneOffset() }),
         });
         const data = await res.json();
         if (data.success) {

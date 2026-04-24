@@ -35,6 +35,7 @@ interface SessionRegistrationProps {
   participantToken?: string | null; // Participant token if logged in
   participantStatusMap?: Map<string, string>; // roundId -> participantStatus (for registered rounds)
   noWrapper?: boolean; // If true, don't render the outer container wrappers
+  hideStickyBar?: boolean; // If true, hide the sticky Continue / "Select at least one round" bottom bar (presentation mode)
   onStepChange?: (step: 'select-rounds' | 'auth-choice' | 'meeting-points' | 'email-verification-waiting' | 'confirmation') => void; // Callback when step changes
 }
 
@@ -107,6 +108,7 @@ export interface SessionRegistrationSelectRoundsViewProps {
 
   // Flags
   noWrapper?: boolean;
+  hideStickyBar?: boolean;
 
   // Helpers (pure)
   isRoundRegisterable: (session: NetworkingSession, round: any) => boolean;
@@ -141,6 +143,7 @@ export function SessionRegistrationSelectRoundsView({
   showRoundRules,
   roundRules,
   noWrapper = false,
+  hideStickyBar = false,
   isRoundRegisterable,
   generateRoundTimeDisplay,
   onShowMeetingPoints,
@@ -340,32 +343,34 @@ export function SessionRegistrationSelectRoundsView({
         </div>
 
         {/* Add padding to prevent content from being hidden under sticky button */}
-        <div className="h-32" />
+        {!hideStickyBar && <div className="h-32" />}
 
         {/* Continue button and text */}
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10" style={{ minHeight: '100px' }}>
-          <div className="container mx-auto max-w-md space-y-3">
-            <Button
-              onClick={onContinue}
-              className="w-full"
-              disabled={selectedSessions.length === 0 || !canContinue}
-            >
-              Continue
-            </Button>
+        {!hideStickyBar && (
+          <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10" style={{ minHeight: '100px' }}>
+            <div className="container mx-auto max-w-md space-y-3">
+              <Button
+                onClick={onContinue}
+                className="w-full"
+                disabled={selectedSessions.length === 0 || !canContinue}
+              >
+                Continue
+              </Button>
 
-            {selectedSessions.length === 0 && (
-              <p className="text-sm text-center text-muted-foreground">
-                Select at least one round
-              </p>
-            )}
+              {selectedSessions.length === 0 && (
+                <p className="text-sm text-center text-muted-foreground">
+                  Select at least one round
+                </p>
+              )}
 
-            {errorMessage && selectedSessions.length > 0 && (
-              <p className="text-sm text-center text-muted-foreground">
-                {errorMessage}
-              </p>
-            )}
+              {errorMessage && selectedSessions.length > 0 && (
+                <p className="text-sm text-center text-muted-foreground">
+                  {errorMessage}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Meeting Points Dialog */}
         <MeetingPointsDialog
@@ -438,7 +443,7 @@ export function SessionRegistrationSelectRoundsView({
   );
 }
 
-export function SessionRegistration({ sessions, userSlug, eventName, registeredRoundIds = [], registeredRoundsMap = new Map(), registeredRoundsPerSession = new Map(), participantProfile, participantToken, participantStatusMap = new Map(), noWrapper = false, onStepChange }: SessionRegistrationProps) {
+export function SessionRegistration({ sessions, userSlug, eventName, registeredRoundIds = [], registeredRoundsMap = new Map(), registeredRoundsPerSession = new Map(), participantProfile, participantToken, participantStatusMap = new Map(), noWrapper = false, hideStickyBar = false, onStepChange }: SessionRegistrationProps) {
   const navigate = useNavigate();
   const { getCurrentTime } = useTime();
   const [selectedSessions, setSelectedSessions] = useState<SelectedSession[]>([]);
@@ -2432,6 +2437,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
         showRoundRules={showRoundRules}
         roundRules={roundRules}
         noWrapper={noWrapper}
+        hideStickyBar={hideStickyBar}
         isRoundRegisterable={isRoundRegisterable}
         generateRoundTimeDisplay={generateRoundTimeDisplay}
         onShowMeetingPoints={(sessionId) => {
