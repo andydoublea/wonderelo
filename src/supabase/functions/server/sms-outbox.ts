@@ -314,6 +314,150 @@ export async function upsertOutboxAttempting(p: {
   return { created: true, row: mapOutbox(data) };
 }
 
+/**
+ * Bulk version of upsertOutboxAttempting for fan-out at scale.
+ * Returns { rows, alreadySent } where:
+ *   - rows: outbox rows ready to send (id-keyed by participant_id)
+ *   - alreadySent: participant_ids that should be skipped (sent/delivered already)
+ *
+ * One round-trip to read existing rows + one round-trip to upsert new ones,
+ * regardless of recipient count. Replaces 3N queries with 2 chunked operations.
+ */
+export async function bulkUpsertOutboxAttempting(
+  scheduleId: string | null,
+  kind: SmsKind,
+  sessionId: string,
+  roundId: string,
+  participantIds: string[],
+  targetSendAt: Date,
+): Promise<{ rowsByParticipant: Map<string, SmsOutboxRow>; alreadySent: Set<string> }> {
+  const out = new Map<string, SmsOutboxRow>();
+  const alreadySent = new Set<string>();
+  if (participantIds.length === 0) return { rowsByParticipant: out, alreadySent };
+
+  // 1) Read existing rows for this (kind, round). One query, paginated for safety.
+  const existingByPid = new Map<string, any>();
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await sb()
+      .from('sms_outbox')
+      .select('*')
+      .eq('kind', kind)
+      .eq('round_id', roundId)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data) existingByPid.set(r.participant_id, r);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  // 2) Partition: skip-already-sent / re-arm-existing / insert-new
+  const toReArm: any[] = [];
+  const toInsert: any[] = [];
+  const now = new Date().toISOString();
+  const targetIso = targetSendAt.toISOString();
+
+  for (const pid of participantIds) {
+    const ex = existingByPid.get(pid);
+    if (ex) {
+      if (['sent', 'delivered'].includes(ex.status)) {
+        alreadySent.add(pid);
+        continue;
+      }
+      toReArm.push({ id: ex.id, attempts: (ex.attempts || 0) + 1 });
+    } else {
+      toInsert.push({
+        schedule_id: scheduleId,
+        kind, participant_id: pid, session_id: sessionId, round_id: roundId,
+        target_send_at: targetIso, status: 'attempting', attempts: 1, last_attempt_at: now,
+      });
+    }
+  }
+
+  // 3a) Bulk INSERT new rows. Postgres returns the inserted rows including UUIDs.
+  if (toInsert.length > 0) {
+    const CHUNK = 500;
+    for (let i = 0; i < toInsert.length; i += CHUNK) {
+      const slice = toInsert.slice(i, i + CHUNK);
+      const { data, error } = await sb()
+        .from('sms_outbox')
+        .insert(slice)
+        .select('*');
+      if (error) throw error;
+      for (const r of data || []) out.set(r.participant_id, mapOutbox(r));
+    }
+  }
+
+  // 3b) Bulk UPDATE re-arm existing rows. Each row has its own attempts count
+  // so we can't do a single UPDATE — but we can chunk individual UPDATEs in
+  // parallel chunks. At realistic event sizes (re-arms only happen on retries),
+  // this is rare so we just sequence them.
+  for (const r of toReArm) {
+    const { data, error } = await sb()
+      .from('sms_outbox')
+      .update({ status: 'attempting', attempts: r.attempts, last_attempt_at: now, schedule_id: scheduleId })
+      .eq('id', r.id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    if (data) out.set(data.participant_id, mapOutbox(data));
+  }
+
+  return { rowsByParticipant: out, alreadySent };
+}
+
+/**
+ * Bulk-update outbox rows to status='sent'. PostgREST upsert can't be used
+ * (it tries to INSERT on no-conflict, requiring all NOT NULL columns we'd
+ * have to re-fetch). Instead we group rows by their unique value tuple where
+ * possible — but realistically every row has its own twilio_sid, so we run
+ * UPDATEs in parallel chunks. ~30 concurrent updates × ~10ms each = ~16ms
+ * per row at scale, so 5000 finishes in under 2s.
+ */
+const UPDATE_CONCURRENCY = 30;
+
+export async function bulkMarkOutboxSent(updates: Array<{ id: string; twilioSid: string; phoneSentTo: string }>) {
+  if (updates.length === 0) return;
+  const now = new Date().toISOString();
+  for (let i = 0; i < updates.length; i += UPDATE_CONCURRENCY) {
+    const chunk = updates.slice(i, i + UPDATE_CONCURRENCY);
+    await Promise.all(chunk.map(async (u) => {
+      const { error } = await sb()
+        .from('sms_outbox')
+        .update({
+          status: 'sent',
+          twilio_sid: u.twilioSid,
+          phone_sent_to: u.phoneSentTo,
+          sent_at: now,
+          last_error: null,
+        })
+        .eq('id', u.id);
+      if (error) throw error;
+    }));
+  }
+}
+
+export async function bulkMarkOutboxFailed(updates: Array<{ id: string; error: string }>) {
+  if (updates.length === 0) return;
+  const now = new Date().toISOString();
+  for (let i = 0; i < updates.length; i += UPDATE_CONCURRENCY) {
+    const chunk = updates.slice(i, i + UPDATE_CONCURRENCY);
+    await Promise.all(chunk.map(async (u) => {
+      const { error } = await sb()
+        .from('sms_outbox')
+        .update({
+          status: 'failed',
+          last_error: u.error.slice(0, 500),
+          failed_at: now,
+        })
+        .eq('id', u.id);
+      if (error) throw error;
+    }));
+  }
+}
+
 export async function markOutboxSent(id: string, twilioSid: string, phoneSentTo: string) {
   const { error } = await sb()
     .from('sms_outbox')

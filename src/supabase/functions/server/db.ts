@@ -675,14 +675,34 @@ export async function getRegistrationCountsByRounds(roundIds: string[]): Promise
   return counts;
 }
 
+/**
+ * PostgREST caps `.select()` results at 1000 rows by default. For scaled events
+ * (>1000 registrations in one round), we MUST page or matching/dashboard will
+ * silently see truncated data — half the participants get dropped.
+ */
+const MAX_PAGE = 1000;
+
+async function fetchAllPages<T>(buildQuery: () => any): Promise<T[]> {
+  const out: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQuery().range(from, from + MAX_PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    out.push(...data);
+    if (data.length < MAX_PAGE) break;
+    from += MAX_PAGE;
+  }
+  return out;
+}
+
 export async function getRegistrationsForRound(sessionId: string, roundId: string) {
-  const { data, error } = await db()
+  const data = await fetchAllPages<any>(() => db()
     .from('registrations')
     .select('*, participants(*)')
     .eq('session_id', sessionId)
-    .eq('round_id', roundId);
-  if (error) throw error;
-  return (data || []).map(r => {
+    .eq('round_id', roundId));
+  return data.map(r => {
     const reg = mapRegistrationFromDb(r);
     if (r.participants) {
       return {
@@ -700,12 +720,10 @@ export async function getRegistrationsForRound(sessionId: string, roundId: strin
 }
 
 export async function getRegistrationsForSession(sessionId: string) {
-  const { data, error } = await db()
+  return await fetchAllPages<any>(() => db()
     .from('registrations')
     .select('participant_id, round_id, status')
-    .eq('session_id', sessionId);
-  if (error) throw error;
-  return data || [];
+    .eq('session_id', sessionId));
 }
 
 export async function getConfirmedForRound(sessionId: string, roundId: string) {
@@ -962,15 +980,15 @@ export async function getMatchParticipants(matchId: string) {
 export async function getMatchParticipantsBatch(sessionId: string): Promise<Map<string, string[]>> {
   // No status filter — we need ALL participants who were ever matched (including cancelled/completed)
   // to build accurate meeting history and prevent re-matching people who already met.
-  const { data, error } = await db()
+  // Paginated to support large events (>1000 matched registrations).
+  const data = await fetchAllPages<any>(() => db()
     .from('registrations')
     .select('match_id, participant_id')
     .eq('session_id', sessionId)
-    .not('match_id', 'is', null);
-  if (error) throw error;
+    .not('match_id', 'is', null));
 
   const map = new Map<string, string[]>();
-  for (const row of (data || [])) {
+  for (const row of data) {
     const matchId = row.match_id;
     if (!map.has(matchId)) {
       map.set(matchId, []);
@@ -1037,6 +1055,76 @@ export async function bulkUpdateRegistrationStatusByIds(
     .eq('round_id', roundId)
     .in('participant_id', participantIds);
   if (error) throw error;
+}
+
+/**
+ * Bulk insert matches in a single query.
+ * Avoids N round-trips when persisting hundreds/thousands of matches.
+ */
+export async function createMatchesBatch(matches: Array<{
+  matchId: string;
+  sessionId: string;
+  roundId: string;
+  meetingPoint?: string;
+}>) {
+  if (matches.length === 0) return;
+  const rows = matches.map(m => ({
+    id: m.matchId,
+    session_id: m.sessionId,
+    round_id: m.roundId,
+    meeting_point: m.meetingPoint || null,
+  }));
+  // Insert in chunks of 500 to stay under PostgREST request size limits
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const { error } = await db().from('matches').insert(slice);
+    if (error) throw error;
+  }
+}
+
+/**
+ * Bulk assign matched-state to many registrations using a single UPSERT.
+ * Each row has its own match_id, partner names, identification number, etc.
+ * Replaces 2N+ serial UPDATE queries with one upsert that scales to thousands of rows.
+ */
+export async function bulkAssignMatchesToRegistrations(
+  sessionId: string,
+  roundId: string,
+  organizerId: string,
+  assignments: Array<{
+    participantId: string;
+    matchId: string;
+    matchPartnerNames: string[];
+    meetingPointId: string;
+    identificationNumber: number;
+    identificationOptions: number[];
+  }>
+) {
+  if (assignments.length === 0) return;
+  const now = new Date().toISOString();
+  const rows = assignments.map(a => ({
+    participant_id: a.participantId,
+    session_id: sessionId,
+    round_id: roundId,
+    organizer_id: organizerId,
+    status: 'matched',
+    match_id: a.matchId,
+    match_partner_names: a.matchPartnerNames,
+    meeting_point_id: a.meetingPointId,
+    matched_at: now,
+    identification_number: a.identificationNumber,
+    identification_options: a.identificationOptions,
+    last_status_update: now,
+  }));
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const { error } = await db()
+      .from('registrations')
+      .upsert(slice, { onConflict: 'participant_id,session_id,round_id' });
+    if (error) throw error;
+  }
 }
 
 // ============================================================

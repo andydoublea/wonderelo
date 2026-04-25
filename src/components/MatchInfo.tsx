@@ -207,11 +207,20 @@ export function MatchInfo() {
       setIsLoading(false);
       setIsWaitingForMatch(false);
 
-      // Detect missed: server status or walking deadline already past
+      // Cross-device sync: if the user already advanced past the meeting-point
+      // step on another device (status='checked-in' or 'met'), redirect them
+      // to the next step instead of leaving them stuck on this page.
       const md = data.matchData;
       const alreadyCheckedIn = md?.status === 'checked-in' || md?.status === 'met';
       const serverMissed = md?.status === 'missed';
       const deadlinePast = md?.walkingDeadline && new Date(md.walkingDeadline).getTime() <= Date.now();
+
+      if (alreadyCheckedIn) {
+        stopPolling();
+        navigate(`/p/${token}/match-partner`);
+        return 'matched';
+      }
+
       if (!alreadyCheckedIn && (serverMissed || deadlinePast)) {
         setIsDeadlineExpired(true);
       }
@@ -231,13 +240,36 @@ export function MatchInfo() {
 
     let mounted = true;
 
+    // Resumability: refetch state when the tab becomes visible again. Lets
+    // a user on Device A who walked away to Device B (where they checked in,
+    // confirmed, etc) come back to A and find this page in sync.
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && mounted) {
+        debugLog('[MatchInfo] Tab visible — refetching match');
+        fetchMatch();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     const init = async () => {
       debugLog('[MatchInfo] Loading match data for token:', token);
       const result = await fetchMatch();
 
       if (!mounted) return;
 
-      if (result === 'matched' || result === 'no-match') {
+      if (result === 'matched') {
+        // Even after matched, keep a slow background poll going so we detect
+        // status flips from another device (matched → checked-in / met /
+        // missed / round-completed) and auto-navigate.
+        stopPolling();
+        pollIntervalRef.current = setInterval(() => {
+          if (!mounted) return;
+          fetchMatch();
+        }, 8000);
+        return;
+      }
+
+      if (result === 'no-match') {
         stopPolling();
         return;
       }
@@ -264,7 +296,14 @@ export function MatchInfo() {
           const pollResult = await fetchMatch();
           if (!mounted) return;
 
-          if (pollResult === 'matched' || pollResult === 'no-match') {
+          if (pollResult === 'matched') {
+            // Switch to slow background poll for cross-device sync
+            stopPolling();
+            pollIntervalRef.current = setInterval(() => {
+              if (!mounted) return;
+              fetchMatch();
+            }, 8000);
+          } else if (pollResult === 'no-match') {
             stopPolling();
           }
           // 'not-ready' and 'error' during poll: keep polling
@@ -282,6 +321,7 @@ export function MatchInfo() {
     return () => {
       mounted = false;
       stopPolling();
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [token]);
 

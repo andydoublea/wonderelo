@@ -69,6 +69,10 @@
       },
       "scripts": {
             "scan:toasts": "node scripts/scan-toasts.mjs",
+            "test:e2e": "node scripts/run-e2e-tests.mjs",
+            "test:e2e:all": "node scripts/run-e2e-tests.mjs all",
+            "test:e2e:stress": "node scripts/run-e2e-tests.mjs --category=Stress",
+            "test:e2e:resume": "node scripts/run-e2e-tests.mjs --category=Resumability",
             "predev": "node scripts/scan-toasts.mjs",
             "prebuild": "node scripts/scan-toasts.mjs",
             "dev": "vite --port 3001",

@@ -5,6 +5,7 @@
 
 import * as db from './db.ts';
 import { createMatchesForRound } from './matching.tsx';
+import { dispatchSmsForRound } from './sms-dispatch.tsx';
 
 // Types
 type StepFn = (name: string, fn: () => Promise<any>) => Promise<any>;
@@ -63,7 +64,7 @@ async function createTestSession(supabase: any, organizerId: string, options: { 
     maxParticipants: 100,
     meetingPoints: ['Lobby', 'Table 1'],
     iceBreakers: ['Test?'],
-    rounds: [{ id: roundId, startTime: roundStartTime, duration: 10, name: 'Test Round' }],
+    rounds: [{ id: roundId, startTime: roundStartTime, duration: 10, name: 'Test Round', date: roundDate }],
     registrationStart: new Date(Date.now() - 3600000).toISOString(),
   });
   return { sessionId, roundId, roundStartTime, roundDate };
@@ -117,6 +118,127 @@ async function getStatuses(pids: string[], sessionId: string, roundId: string): 
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(`Assertion failed: ${message}`);
+}
+
+// ----- BULK HELPERS (for stress tests) -----
+
+/**
+ * Register participants in batches of 100 using PostgREST bulk insert.
+ * 200 participants → 4 round-trips instead of 400.
+ */
+async function registerParticipantsBulk(
+  supabase: any,
+  count: number,
+  sessionId: string,
+  roundId: string,
+  organizerId: string,
+  options: { confirmed?: boolean } = {}
+): Promise<{ ids: string[]; tokens: string[] }> {
+  const BATCH = 100;
+  const ids: string[] = [];
+  const tokens: string[] = [];
+  const participantRows: any[] = [];
+  const registrationRows: any[] = [];
+
+  const baseTs = Date.now();
+  const now = new Date().toISOString();
+  for (let i = 0; i < count; i++) {
+    const pid = `p-stress-${baseTs}-${i}`;
+    const tok = `tok-stress-${baseTs}-${i}-${Math.random().toString(36).substring(2, 8)}`;
+    const email = `stress-${baseTs}-${i}@test.com`;
+    ids.push(pid);
+    tokens.push(tok);
+
+    participantRows.push({
+      id: pid,
+      email,
+      token: tok,
+      first_name: `S${String(i + 1).padStart(3, '0')}`,
+      last_name: 'Stress',
+      phone: null,
+      phone_country: '+421',
+    });
+    registrationRows.push({
+      participant_id: pid,
+      session_id: sessionId,
+      round_id: roundId,
+      organizer_id: organizerId,
+      status: options.confirmed ? 'confirmed' : 'registered',
+      topics: [],
+      // Default true so SMS dispatch tests pick up these registrations.
+      // Matching tests don't care about this column.
+      notifications_enabled: true,
+      registered_at: now,
+      confirmed_at: options.confirmed ? now : null,
+    });
+  }
+
+  // Bulk insert in batches. We use head: 'minimal' / `Prefer: return=minimal`
+  // semantics by NOT selecting after insert — but the JS client still returns
+  // data:null on success. We additionally verify the inserted-row count via a
+  // count query to catch silent truncation we previously observed at n>1000.
+  let participantsInserted = 0;
+  for (let i = 0; i < participantRows.length; i += BATCH) {
+    const slice = participantRows.slice(i, i + BATCH);
+    const { error, data } = await supabase.from('participants').insert(slice).select('id');
+    if (error) throw new Error(`bulk participant insert failed at batch ${i}: ${error.message}`);
+    participantsInserted += (data?.length || 0);
+  }
+  if (participantsInserted !== count) {
+    throw new Error(`participants insert lost rows: inserted ${participantsInserted} of ${count} expected`);
+  }
+
+  let registrationsInserted = 0;
+  for (let i = 0; i < registrationRows.length; i += BATCH) {
+    const slice = registrationRows.slice(i, i + BATCH);
+    const { error, data } = await supabase.from('registrations').insert(slice).select('id');
+    if (error) throw new Error(`bulk registration insert failed at batch ${i}: ${error.message}`);
+    registrationsInserted += (data?.length || 0);
+  }
+  if (registrationsInserted !== count) {
+    throw new Error(`registrations insert lost rows: inserted ${registrationsInserted} of ${count} expected`);
+  }
+
+  return { ids, tokens };
+}
+
+/**
+ * Bulk cleanup using `.in()` filter — 200 ids in 2 queries instead of 400.
+ */
+async function cleanupBulk(supabase: any, sessionId: string, pids: string[]) {
+  const BATCH = 200;
+  for (let i = 0; i < pids.length; i += BATCH) {
+    const slice = pids.slice(i, i + BATCH);
+    await supabase.from('registrations').delete().in('participant_id', slice);
+    await supabase.from('participants').delete().in('id', slice);
+  }
+  await supabase.from('matching_locks').delete().eq('session_id', sessionId);
+  await supabase.from('matches').delete().eq('session_id', sessionId);
+  await supabase.from('sessions').delete().eq('id', sessionId);
+}
+
+/**
+ * Count statuses for a round. PostgREST caps `select()` results at 1000 rows by
+ * default, so we fetch in pages of 1000 to handle stress-test scale (≥2000 regs).
+ */
+async function countStatuses(supabase: any, sessionId: string, roundId: string): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('registrations')
+      .select('status')
+      .eq('session_id', sessionId)
+      .eq('round_id', roundId)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data) counts[r.status] = (counts[r.status] || 0) + 1;
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return counts;
 }
 
 // ============================================================
@@ -329,6 +451,249 @@ defineScenario({
       return { allMatched, unmatchedCount: ids.filter(id => statuses[id]?.status !== 'matched').length };
     });
     await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+// --- CATEGORY 2b: STRESS / SCALE ---
+//
+// These verify the matching pipeline holds up at realistic event sizes.
+// Setup uses bulk inserts (one round-trip per 100 rows) so we don't time out.
+// Each step also reports timing — a regression that doubles matching time
+// will show up as a clear delta even if the assertions still pass.
+
+defineScenario({
+  id: 'stress-50', name: '50 participants → 25 matches (warmup)', category: 'Stress',
+  description: 'Warmup stress test: 50 confirmed participants, all should be matched in pairs',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_50', () => registerParticipantsBulk(supabase, 50, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 25, `expected 25 matches, got ${r.matchCount}`);
+      assert(elapsedMs < 15000, `matching took ${elapsedMs}ms (>15s threshold)`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 50, `expected 50 matched, got ${counts['matched']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'stress-100', name: '100 participants → 50 matches', category: 'Stress',
+  description: '100 confirmed participants, GroupSize=2, all should be matched',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_100', () => registerParticipantsBulk(supabase, 100, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 50, `expected 50 matches, got ${r.matchCount}`);
+      assert(elapsedMs < 30000, `matching took ${elapsedMs}ms (>30s threshold)`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 100, `expected 100 matched, got ${counts['matched']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'stress-200', name: '200 participants → 100 matches', category: 'Stress',
+  description: 'Full-scale stress test: 200 confirmed participants in one round, all paired up',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_200', () => registerParticipantsBulk(supabase, 200, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 100, `expected 100 matches, got ${r.matchCount}`);
+      assert(elapsedMs < 60000, `matching took ${elapsedMs}ms (>60s threshold — algorithm is too slow at 200)`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 200, `expected 200 matched, got ${counts['matched']}`);
+      assert((counts['unconfirmed'] || 0) === 0, `expected 0 unconfirmed, got ${counts['unconfirmed']}`);
+      assert((counts['no-match'] || 0) === 0, `expected 0 no-match, got ${counts['no-match']}`);
+      return { ...counts };
+    });
+    await step('verify_match_invariants', async () => {
+      // Every match must have exactly groupSize=2 participants (no orphans, no triples)
+      const { data: matches } = await supabase.from('matches').select('id').eq('session_id', sessionId).eq('round_id', roundId);
+      assert((matches?.length || 0) === 100, `expected 100 match rows, got ${matches?.length}`);
+      const { data: regs } = await supabase.from('registrations').select('match_id').eq('session_id', sessionId).eq('round_id', roundId);
+      const sizes: Record<string, number> = {};
+      for (const r of regs || []) {
+        if (!r.match_id) continue;
+        sizes[r.match_id] = (sizes[r.match_id] || 0) + 1;
+      }
+      const wrongSize = Object.entries(sizes).filter(([_, n]) => n !== 2);
+      assert(wrongSize.length === 0, `${wrongSize.length} matches have wrong size: ${JSON.stringify(wrongSize.slice(0, 3))}`);
+      return { matchRows: matches?.length, allPairs: wrongSize.length === 0 };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'stress-500', name: '500 participants → 250 matches', category: 'Stress',
+  description: 'Larger event scale: 500 confirmed participants. Matching is O(n³); expect ~15s on local, ~30s on staging',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_500', () => registerParticipantsBulk(supabase, 500, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 250, `expected 250 matches, got ${r.matchCount}`);
+      assert(elapsedMs < 60000, `matching took ${elapsedMs}ms (>60s threshold)`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 500, `expected 500 matched, got ${counts['matched']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'stress-1000', name: '1000 participants → 500 matches', category: 'Stress',
+  description: 'Conference scale: 1000 confirmed participants. May approach edge function timeout',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_1000', () => registerParticipantsBulk(supabase, 1000, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 500, `expected 500 matches, got ${r.matchCount}`);
+      // Permissive threshold so we capture timing data even on slow staging
+      assert(elapsedMs < 180000, `matching took ${elapsedMs}ms (>180s — algorithm too slow even with O(n³) tolerance)`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 1000, `expected 1000 matched, got ${counts['matched']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'stress-2000', name: '2000 participants → 1000 matches', category: 'Stress',
+  description: 'Intermediate scale to characterize where the bottleneck shifts from algorithm to DB I/O',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_2000', () => registerParticipantsBulk(supabase, 2000, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 1000, `expected 1000 matches, got ${r.matchCount}`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 2000, `expected 2000 matched, got ${counts['matched']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'stress-5000', name: '5000 participants → 2500 matches', category: 'Stress',
+  description: 'Mega event scale: 5000 confirmed in one round. Bucket-sort algo + bulk DB writes target <5s for matching itself',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_5000', () => registerParticipantsBulk(supabase, 5000, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 2500, `expected 2500 matches, got ${r.matchCount}`);
+      assert(elapsedMs < 5000, `matching took ${elapsedMs}ms (>5000ms target — performance regression)`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 5000, `expected 5000 matched, got ${counts['matched']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'stress-200-mixed', name: '200 participants, half unconfirmed', category: 'Stress',
+  description: '200 registered but only 100 confirmed → 50 matches + 100 unconfirmed',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids } = await step('bulk_register_200_unconfirmed', () => registerParticipantsBulk(supabase, 200, sessionId, roundId, organizerId, { confirmed: false }));
+    await step('confirm_first_100', async () => {
+      // Bulk-update first 100 to confirmed
+      const firstHundred = ids.slice(0, 100);
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from('registrations')
+        .update({ status: 'confirmed', confirmed_at: now, last_status_update: now })
+        .in('participant_id', firstHundred)
+        .eq('round_id', roundId);
+      if (error) throw error;
+      return { confirmed: 100 };
+    });
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      assert(r.success === true, 'matching should succeed');
+      assert(r.matchCount === 50, `expected 50 matches, got ${r.matchCount}`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_split', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 100, `expected 100 matched, got ${counts['matched']}`);
+      assert((counts['unconfirmed'] || 0) === 100, `expected 100 unconfirmed, got ${counts['unconfirmed']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
   }
 });
 
@@ -1220,6 +1585,335 @@ defineScenario({
         assert(unique.size === numbers.length, `Match ${matchId} has duplicate ID numbers: ${numbers}`);
       }
       return { matchCount: Object.keys(matches).length, allUnique: true };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+// --- CATEGORY 7b: SMS DISPATCH AT SCALE ---
+//
+// These scenarios verify the QStash → /sms/dispatch → Twilio fan-out can
+// service a full event in one round. We cannot actually send SMS during a
+// 2000-recipient test (Twilio cost + carrier rate limits), so the dispatch
+// path uses SMS_MOCK=1 to short-circuit Twilio. The outbox table still
+// records every (kind × participant × round) row, so we assert on those.
+
+async function runSmsDispatchScenario(
+  ctx: TestContext,
+  step: StepFn,
+  count: number,
+  kind: 'round-before-confirmation' | 'round-starting-soon' | 'round-ended',
+) {
+  const { supabase } = ctx;
+  const { organizerId } = await getOrganizerId(supabase);
+  const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { futureRound: true }));
+
+  // For 'round-ended' the participants must be in matched/checked-in/met state.
+  // We patch their statuses post-register via a single bulk UPDATE.
+  const { ids } = await step(`bulk_register_${count}`, () => registerParticipantsBulk(supabase, count, sessionId, roundId, organizerId, { confirmed: true }));
+
+  // Set a phone number on every participant so SMS dispatch picks them up.
+  // We use UPDATE (not upsert) to avoid NOT-NULL email validation on insert path.
+  await step('set_phone_numbers', async () => {
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      // All test participants share a single fake phone number — fine because
+      // SMS_MOCK=1 short-circuits Twilio. We just need a non-empty phone.
+      const { error } = await supabase
+        .from('participants')
+        .update({ phone: '903999999', phone_country: '+421' })
+        .in('id', slice);
+      if (error) throw error;
+    }
+    return { phonesSet: count };
+  });
+
+  if (kind === 'round-ended') {
+    await step('promote_to_met', async () => {
+      const now = new Date().toISOString();
+      const CHUNK = 500;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        const { error } = await supabase.from('registrations').update({ status: 'met', met_at: now, last_status_update: now }).in('participant_id', slice).eq('round_id', roundId);
+        if (error) throw error;
+      }
+      return { promoted: ids.length };
+    });
+  }
+
+  // We need a schedule row to exist (claimScheduleForDispatch reads it).
+  // Insert one directly so we don't need to round-trip through QStash.
+  await step('seed_schedule', async () => {
+    const { error } = await supabase.from('sms_schedules').insert({
+      kind,
+      round_id: roundId,
+      session_id: sessionId,
+      target_send_at: new Date().toISOString(),
+      status: 'scheduled',
+    });
+    if (error) throw error;
+    return { kind, roundId };
+  });
+
+  // Verify notification template exists for this kind. If not, the test
+  // can't proceed (sms-dispatch needs a template to render). We don't write
+  // to admin_settings — that's owned by the operator.
+  await step('verify_template_exists', async () => {
+    const { data: textsRow } = await supabase.from('admin_settings').select('value').eq('key', 'notification_texts').maybeSingle();
+    const texts = (textsRow?.value as any) || {};
+    const templateKey = kind === 'round-before-confirmation' ? 'smsConfirmationReminder'
+      : kind === 'round-starting-soon' ? 'smsRoundStartingSoon' : 'smsRoundEnded';
+    const template = texts[templateKey];
+    assert(typeof template === 'string' && template.length > 0,
+      `admin_settings.notification_texts.${templateKey} must be set on this env (configure via Admin → Notification Texts)`);
+    return { templateKey, templateLength: template.length };
+  });
+
+  // Trigger dispatch directly via in-process function. We bypass the HTTP
+  // /sms/dispatch endpoint (avoids QStash signature plumbing) and pass
+  // mockSms=true to short-circuit Twilio (no credits burned).
+  let smsSent = 0, smsFailed = 0, dispatchMs = 0;
+  await step(`dispatch_${count}`, async () => {
+    const t0 = Date.now();
+    const result: any = await dispatchSmsForRound(kind, roundId, sessionId, { mockSms: true });
+    dispatchMs = Date.now() - t0;
+    assert(result && !result.error, `dispatch failed: ${JSON.stringify(result).slice(0, 200)}`);
+    smsSent = result.smsSent || 0;
+    smsFailed = result.smsFailed || 0;
+    return { smsSent, smsFailed, dispatchMs, eligible: result.eligible, concurrency: result.concurrency };
+  });
+
+  await step('verify_outbox', async () => {
+    // Count outbox rows for this round/kind. With SMS_MOCK=1, all should be 'sent'.
+    const PAGE = 1000;
+    let total = 0, sent = 0, failed = 0, attempting = 0, from = 0;
+    while (true) {
+      const { data, error } = await supabase.from('sms_outbox').select('status').eq('round_id', roundId).eq('kind', kind).range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      total += data.length;
+      for (const r of data) {
+        if (r.status === 'sent' || r.status === 'delivered') sent++;
+        else if (r.status === 'failed' || r.status === 'undelivered') failed++;
+        else attempting++;
+      }
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    assert(total === count, `expected ${count} outbox rows, got ${total} (sent=${sent}, failed=${failed}, attempting=${attempting})`);
+    assert(sent + failed >= count * 0.95, `expected ≥95% finalized (sent or failed), got ${sent + failed}/${count}`);
+    return { total, sent, failed, attempting };
+  });
+
+  await step('cleanup', async () => {
+    await supabase.from('sms_outbox').delete().eq('round_id', roundId);
+    await supabase.from('sms_schedules').delete().eq('round_id', roundId);
+    await cleanupBulk(supabase, sessionId, ids);
+    return {};
+  });
+}
+
+defineScenario({
+  id: 'sms-dispatch-200', name: 'SMS dispatch fans out to 200 recipients', category: 'SMS Scale',
+  description: 'Verify outbox + parallel Twilio dispatch handles a full mid-size event',
+  run: (step, ctx) => runSmsDispatchScenario(ctx, step, 200, 'round-starting-soon'),
+});
+
+defineScenario({
+  id: 'sms-dispatch-1000', name: 'SMS dispatch fans out to 1000 recipients', category: 'SMS Scale',
+  description: 'Mid-event scale: 1000 SMS dispatched in parallel chunks',
+  run: (step, ctx) => runSmsDispatchScenario(ctx, step, 1000, 'round-starting-soon'),
+});
+
+defineScenario({
+  id: 'sms-dispatch-5000', name: 'SMS dispatch fans out to 5000 recipients', category: 'SMS Scale',
+  description: 'Mega event: 5000 SMS — expect total dispatch <60s with concurrency=30',
+  run: (step, ctx) => runSmsDispatchScenario(ctx, step, 5000, 'round-starting-soon'),
+});
+
+defineScenario({
+  id: 'sms-dispatch-after-networking', name: 'round-ended SMS for all met participants', category: 'SMS Scale',
+  description: 'Verify the post-networking SMS (different eligibility filter) fires for all 500 met regs',
+  run: (step, ctx) => runSmsDispatchScenario(ctx, step, 500, 'round-ended'),
+});
+
+// --- CATEGORY 8: CROSS-DEVICE RESUMABILITY ---
+//
+// These verify the SERVER contract that lets the frontend recover from any
+// device-state mismatch. They don't simulate two browsers — they verify the
+// HTTP responses each matching-flow page would receive after a status flip
+// or round-completion happened on another device.
+
+defineScenario({
+  id: 'resume-match-completed', name: 'GET /match returns round-completed when finished', category: 'Resumability',
+  description: 'After roundCompletedAt is set, /match-partner returns 404 with reason=round-completed',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', async () => {
+      const r = await createMatchesForRound(sessionId, roundId);
+      assert(r.matchCount === 1, 'should match');
+      return { matchCount: r.matchCount };
+    });
+
+    await step('mark_round_completed', async () => {
+      // Simulate networking ended on the partner's device — server marks this
+      // registration's round_completed_at, which is what the dashboard does
+      // automatically when round_end_time is past.
+      await db.setRoundCompletedAt(ids[0], sessionId, roundId);
+      await db.setRoundCompletedAt(ids[1], sessionId, roundId);
+      return { completed: true };
+    });
+
+    await step('match_partner_returns_round_completed', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/match-partner`);
+      assert(status === 404, `expected 404, got ${status}`);
+      assert(data.reason === 'round-completed', `expected reason='round-completed', got '${data.reason}'`);
+      return { status, reason: data.reason, finalStatus: data.finalStatus };
+    });
+
+    await step('networking_returns_round_completed', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/networking`);
+      assert(status === 404, `expected 404, got ${status}`);
+      assert(data.reason === 'round-completed', `expected reason='round-completed', got '${data.reason}'`);
+      return { status, reason: data.reason };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'resume-no-match-completed', name: 'GET /match returns round-completed for solo no-match', category: 'Resumability',
+  description: 'Solo participant with roundCompletedAt set still returns round-completed (not no-match)',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Solo', lastName: 'X' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching_no_match', async () => {
+      await createMatchesForRound(sessionId, roundId);
+      const s = await getStatuses(ids, sessionId, roundId);
+      assert(s[ids[0]]?.status === 'no-match', 'should be no-match');
+      return { status: 'no-match' };
+    });
+
+    await step('mark_round_completed', async () => {
+      await db.setRoundCompletedAt(ids[0], sessionId, roundId);
+      return { completed: true };
+    });
+
+    await step('match_partner_returns_round_completed', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/match-partner`);
+      assert(status === 404, `expected 404, got ${status}`);
+      assert(data.reason === 'round-completed', `expected reason='round-completed', got '${data.reason}'`);
+      return { status, reason: data.reason };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'resume-status-flip', name: 'GET /match reflects partner check-in across devices', category: 'Resumability',
+  description: 'When status flips matched→checked-in elsewhere, GET /match returns updated status so client can advance',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { futureRound: true }));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', async () => {
+      const r = await createMatchesForRound(sessionId, roundId);
+      return { matchCount: r.matchCount };
+    });
+
+    await step('match_returns_matched', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/match`);
+      assert(status === 200, `expected 200, got ${status}`);
+      assert(data.matchData?.status === 'matched', `expected status=matched, got ${data.matchData?.status}`);
+      return { status: data.matchData?.status };
+    });
+
+    await step('flip_to_checked_in_on_other_device', async () => {
+      // Simulate Device B clicking "I am here"
+      await db.updateRegistrationStatus(ids[0], sessionId, roundId, 'checked-in', { checkedInAt: new Date().toISOString() });
+      return { status: 'checked-in' };
+    });
+
+    await step('match_now_returns_checked_in', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/match`);
+      assert(status === 200, `expected 200, got ${status}`);
+      assert(data.matchData?.status === 'checked-in', `expected status=checked-in (so client advances to /match-partner), got ${data.matchData?.status}`);
+      return { status: data.matchData?.status };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'resume-dashboard-completed', name: 'Dashboard exposes roundCompletedAt for redirect-skip', category: 'Resumability',
+  description: 'Dashboard endpoint includes roundCompletedAt so client skips ping-pong auto-redirect',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', () => createMatchesForRound(sessionId, roundId));
+    await step('mark_round_completed', async () => {
+      await db.setRoundCompletedAt(ids[0], sessionId, roundId);
+      return { completed: true };
+    });
+
+    await step('dashboard_includes_roundCompletedAt', async () => {
+      const { status, data } = await apiFetch(ctx, `/p/${tokens[0]}/dashboard`);
+      assert(status === 200, `expected 200, got ${status}`);
+      const reg = data.registrations?.find((r: any) => r.roundId === roundId);
+      assert(reg != null, 'should have registration');
+      assert(reg.roundCompletedAt != null, `roundCompletedAt should be set, got ${reg.roundCompletedAt}`);
+      // Status should still be 'matched' (the last active status before completion)
+      assert(reg.status === 'matched', `status should remain 'matched' after completion, got ${reg.status}`);
+      return { status: reg.status, hasRoundCompletedAt: reg.roundCompletedAt != null };
+    });
+
+    await step('cleanup', () => cleanup(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
+  id: 'resume-networking-end-time', name: 'GET /networking includes networkingEndTime for client countdown', category: 'Resumability',
+  description: 'Client uses networkingEndTime to detect cross-device round completion via clock comparison',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { futureRound: true }));
+    const { ids, tokens } = await step('register', () => registerParticipants([{ firstName: 'Anna', lastName: 'A' }, { firstName: 'Boris', lastName: 'B' }], sessionId, roundId, organizerId));
+    await step('confirm', () => confirmParticipants(ids, sessionId, roundId));
+    await step('matching', () => createMatchesForRound(sessionId, roundId));
+    await step('progress_both_to_met', async () => {
+      // Simulate full cross-device progression to networking phase
+      for (const id of ids) {
+        await db.updateRegistrationStatus(id, sessionId, roundId, 'checked-in', { checkedInAt: new Date().toISOString() });
+        await db.updateRegistrationStatus(id, sessionId, roundId, 'met', { metAt: new Date().toISOString() });
+      }
+      return { status: 'met' };
+    });
+
+    await step('networking_returns_endtime', async () => {
+      const { status, data } = await apiFetch(ctx, `/participant/${tokens[0]}/networking`);
+      assert(status === 200, `expected 200, got ${status}: ${JSON.stringify(data).substring(0, 200)}`);
+      assert(data.networkingEndTime != null, `should include networkingEndTime, got ${JSON.stringify(data).substring(0, 200)}`);
+      assert(typeof data.networkingEndTime === 'string', 'networkingEndTime must be string ISO');
+      assert(!isNaN(new Date(data.networkingEndTime).getTime()), 'networkingEndTime must be valid ISO date');
+      return { hasEndTime: true, endTime: data.networkingEndTime };
     });
 
     await step('cleanup', () => cleanup(supabase, sessionId, ids));

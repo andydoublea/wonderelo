@@ -555,7 +555,12 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       );
 
       if (!activeRegistration) {
-        return c.json({ error: 'No active match found' }, 404);
+        const anyCompleted = registrations.find((r: any) => r.roundCompletedAt);
+        return c.json({
+          error: 'No active match found',
+          reason: anyCompleted ? 'round-completed' : 'no-active-match',
+          finalStatus: anyCompleted?.status,
+        }, 404);
       }
 
       const { sessionId, roundId, matchId } = activeRegistration;
@@ -825,7 +830,14 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
       );
 
       if (!activeRegistration) {
-        return c.json({ error: 'No active networking session found' }, 404);
+        // Tell the client whether this is "round over" vs "no networking yet"
+        // so resumability code can navigate appropriately.
+        const anyCompleted = registrations.find((r: any) => r.roundCompletedAt);
+        return c.json({
+          error: 'No active networking session found',
+          reason: anyCompleted ? 'round-completed' : 'no-active-round',
+          finalStatus: anyCompleted?.status,
+        }, 404);
       }
 
       const { sessionId, roundId, matchId } = activeRegistration;

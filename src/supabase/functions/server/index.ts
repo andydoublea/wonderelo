@@ -2750,18 +2750,7 @@ async function sendRoundEndedSmsForRound(round: any, endedTemplate: string, appU
  * populated at all, and reg.phoneCountry (e.g. "+421") to prepend. If the
  * phone already starts with "+" it's used as-is.
  */
-function composeE164(phone: string | undefined, phoneCountry: string | undefined): string | null {
-  if (!phone) return null;
-  const clean = phone.replace(/[\s\-()]/g, '');
-  if (clean.startsWith('+')) return clean;
-  if (clean.startsWith('00')) return '+' + clean.slice(2);
-  const prefix = (phoneCountry || '').trim();
-  if (!prefix) return null;
-  // If phone starts with 0 (local format), strip the 0 before prefixing.
-  const local = clean.startsWith('0') ? clean.slice(1) : clean;
-  const normalizedPrefix = prefix.startsWith('+') ? prefix : '+' + prefix;
-  return `${normalizedPrefix}${local}`;
-}
+// composeE164 is now imported from sms-dispatch.tsx (see top of SMS section)
 
 app.post('/make-server-ce05600a/cron/send-round-reminders', async (c) => {
   try {
@@ -3427,6 +3416,7 @@ import {
   type SmsKind,
 } from './sms-outbox.ts';
 import { scheduleQStashDelivery, cancelQStashDelivery, verifyQStashSignature } from './qstash.ts';
+import { dispatchSmsForRound, composeE164 } from './sms-dispatch.tsx';
 
 function getDispatchUrl(): string {
   const base = Deno.env.get('SUPABASE_URL') || '';
@@ -3515,144 +3505,10 @@ async function scheduleOneRoundSms(
   }
 }
 
-/**
- * Per-kind config: which admin toggles and templates to use, and which
- * registration statuses are eligible at this notification point.
- */
-function kindConfig(kind: SmsKind, sysParams: any, texts: any) {
-  switch (kind) {
-    case 'round-before-confirmation':
-      return {
-        smsEnabled: sysParams.notificationEarlyEnabled !== false,
-        emailEnabled: sysParams.emailBeforeConfirmationEnabled === true,
-        smsTemplate: texts.smsConfirmationReminder,
-        emailSubject: texts.emailBeforeConfirmationSubject,
-        emailBody: texts.emailBeforeConfirmationBody,
-        eligibleStatuses: ['registered', 'confirmed'],
-        linkPath: (token: string) => `/p/${token}?from=notification-before`,
-      };
-    case 'round-starting-soon':
-      return {
-        smsEnabled: sysParams.notificationLateEnabled !== false,
-        emailEnabled: sysParams.emailAtConfirmationEnabled === true,
-        smsTemplate: texts.smsRoundStartingSoon,
-        emailSubject: texts.emailAtConfirmationSubject,
-        emailBody: texts.emailAtConfirmationBody,
-        eligibleStatuses: ['registered', 'confirmed'],
-        linkPath: (token: string) => `/p/${token}?from=sms-reminder`,
-      };
-    case 'round-ended':
-      return {
-        smsEnabled: sysParams.smsRoundEndedEnabled !== false,
-        emailEnabled: sysParams.emailAfterNetworkingEnabled === true,
-        smsTemplate: texts.smsRoundEnded,
-        emailSubject: texts.emailAfterNetworkingSubject,
-        emailBody: texts.emailAfterNetworkingBody,
-        eligibleStatuses: ['matched', 'checked-in', 'met'],
-        linkPath: (token: string) => `/p/${token}/contact-sharing?from=sms-ended`,
-      };
-  }
-}
+// kindConfig + composeE164 + dispatchSmsForRound now live in sms-dispatch.tsx
+// (extracted so e2e tests can call them without HTTP/QStash signature plumbing).
 
-async function dispatchSmsForRound(kind: SmsKind, roundId: string, sessionId: string) {
-  const schedule = await claimScheduleForDispatch(kind, roundId);
-  if (!schedule) return { skipped: 'already dispatched or canceled' };
-
-  const sysParams = (await db.getAdminSetting('system_parameters')) || {};
-  const texts = (await db.getAdminSetting('notification_texts')) || {};
-  const cfg = kindConfig(kind, sysParams, texts);
-
-  if (!cfg.smsEnabled && !cfg.emailEnabled) {
-    return { skipped: 'both SMS and email disabled for this kind' };
-  }
-
-  const session = await db.getSessionById(sessionId);
-  const round = session?.rounds?.find((r: any) => r.id === roundId);
-  if (!session || !round) return { error: 'round not found' };
-
-  const registrations = await db.getRegistrationsForRound(sessionId, roundId);
-  const eligible = registrations.filter((r: any) =>
-    cfg.eligibleStatuses.includes(r.status) &&
-    r.notificationsEnabled !== false &&
-    (cfg.smsEnabled ? r.phone : r.email) // needs phone for SMS-only; else email suffices
-  );
-
-  const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';
-  const meetingPoints = round?.meetingPoints?.length > 0 ? round.meetingPoints : (session.meetingPoints || []);
-  const location = meetingPoints.length > 0 ? (meetingPoints[0]?.name || meetingPoints[0] || '') : '';
-  const roundStartUtc = parseRoundStartTime(round.date, round.startTime);
-
-  let smsSent = 0, smsFailed = 0, emailSent = 0, emailFailed = 0;
-
-  for (const reg of eligible) {
-    const minutesUntilStart = Math.max(0, Math.round((roundStartUtc.getTime() - Date.now()) / 60000));
-    const link = reg.token ? `${appUrl}${cfg.linkPath(reg.token)}` : appUrl;
-    const vars = {
-      sessionName: session.name || '',
-      minutes: String(minutesUntilStart),
-      location,
-      firstName: reg.firstName || '',
-      name: `${reg.firstName || ''} ${reg.lastName || ''}`.trim(),
-      time: round.startTime || '',
-      date: round.date || '',
-      link,
-      eventName: session.name || '',
-    };
-
-    // ---- SMS ----
-    if (cfg.smsEnabled && cfg.smsTemplate && reg.phone) {
-      const { row, existing } = await upsertOutboxAttempting({
-        scheduleId: schedule.id, kind,
-        participantId: reg.participantId, sessionId, roundId,
-        targetSendAt: new Date(schedule.targetSendAt),
-      });
-      const alreadySent = existing && ['sent', 'delivered'].includes(existing.status);
-      if (!alreadySent) {
-        const to = composeE164(reg.phone, reg.phoneCountry);
-        if (!to) {
-          await markOutboxFailed(row.id, `bad phone: ${reg.phone} / ${reg.phoneCountry}`);
-          smsFailed++;
-        } else {
-          const smsBody = renderSmsTemplate(cfg.smsTemplate, vars);
-          const base = Deno.env.get('SUPABASE_URL') || '';
-          const statusCallback = base ? `${base}/functions/v1/make-server-ce05600a/sms/twilio-status` : undefined;
-          const result = await sendSms({ to, body: smsBody, statusCallback });
-          if (result.success) {
-            await markOutboxSent(row.id, result.sid || '', to);
-            smsSent++;
-          } else {
-            await markOutboxFailed(row.id, result.error || 'twilio failed');
-            smsFailed++;
-          }
-        }
-      }
-    }
-
-    // ---- Email ----
-    if (cfg.emailEnabled && cfg.emailSubject && cfg.emailBody && reg.email) {
-      try {
-        const subject = renderSmsTemplate(cfg.emailSubject, vars);
-        const body = renderSmsTemplate(cfg.emailBody, vars);
-        const html = body.replace(/\n/g, '<br>');
-        const result = await sendEmail({ to: reg.email, subject, html });
-        if (result.success) emailSent++;
-        else {
-          emailFailed++;
-          errorLog(`Email ${kind} failed for ${reg.email}: ${result.error}`);
-        }
-      } catch (e) {
-        emailFailed++;
-        errorLog(`Email ${kind} exception for ${reg.email}:`, e);
-      }
-    }
-  }
-
-  return {
-    kind, roundId,
-    eligible: eligible.length,
-    smsSent, smsFailed, emailSent, emailFailed,
-  };
-}
+// dispatchSmsForRound is imported from sms-dispatch.tsx above.
 
 app.post('/make-server-ce05600a/sms/dispatch', async (c) => {
   try {

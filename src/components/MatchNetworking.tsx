@@ -76,7 +76,28 @@ export function MatchNetworking() {
 
   useEffect(() => {
     console.log('🔵 MatchNetworking component mounted, token:', token);
+    let mounted = true;
     loadNetworkingData();
+
+    // Resumability: poll every 10s + refetch instantly on tab-visible.
+    // Detects when round was completed elsewhere (or networking time ended
+    // while the tab was in background) and navigates to the right screen.
+    const interval = setInterval(() => {
+      if (mounted && document.visibilityState === 'visible') loadNetworkingData();
+    }, 10000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && mounted) {
+        debugLog('[MatchNetworking] Tab visible — refetching');
+        loadNetworkingData();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [token]);
 
   const loadNetworkingData = async () => {
@@ -99,6 +120,18 @@ export function MatchNetworking() {
       );
 
       if (!response.ok) {
+        if (response.status === 404) {
+          // Round no longer active — try to recover: probably completed
+          // (round_completed_at set) or status changed. The dashboard will
+          // route to the right place (contact-sharing if matched, etc).
+          let body: any = null;
+          try { body = await response.json(); } catch { /* ignore */ }
+          if (body?.reason === 'round-completed' || body?.reason === 'no-active-round') {
+            debugLog('[MatchNetworking] Round completed — navigating away');
+            navigate(`/p/${token}/contact-sharing`);
+            return;
+          }
+        }
         const errorText = await response.text();
         errorLog('[MatchNetworking] Server error:', errorText);
         throw new Error(`Failed to load networking data: ${errorText}`);
@@ -106,6 +139,15 @@ export function MatchNetworking() {
 
       const data = await response.json();
       debugLog('[MatchNetworking] Networking data loaded:', data);
+
+      // Cross-device sync: if networking already ended (server time past
+      // networkingEndTime), navigate to contact-sharing. Otherwise the
+      // CountdownTimer will fire onComplete and do it.
+      if (data.networkingEndTime && new Date(data.networkingEndTime).getTime() <= Date.now()) {
+        debugLog('[MatchNetworking] networkingEndTime is past — going to contact-sharing');
+        navigate(`/p/${token}/contact-sharing`);
+        return;
+      }
 
       setNetworkingData(data);
       setIsLoading(false);

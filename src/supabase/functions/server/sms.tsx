@@ -21,6 +21,12 @@ interface SendSmsParams {
   body: string;
   /** Optional URL for Twilio to POST delivery status updates. */
   statusCallback?: string;
+  /**
+   * If true, short-circuit to a fake success (no Twilio call). Used by load
+   * tests. The Deno edge runtime is read-only-env so we can't toggle SMS_MOCK
+   * via Deno.env.set; callers pass this flag explicitly instead.
+   */
+  mock?: boolean;
 }
 
 interface SendSmsResult {
@@ -98,7 +104,22 @@ function normalizePhoneNumber(phone: string, countryPrefix = '+421'): string {
   return cleaned;
 }
 
+/**
+ * Send a single SMS via Twilio with retry on 429 (rate limit) and 5xx errors.
+ *
+ * - SMS_MOCK=1 short-circuits to a fake success (used by load tests so we don't
+ *   spend Twilio credits during a 5000-recipient stress run).
+ * - Retries up to 3 times with exponential backoff (200ms, 600ms, 1800ms) for
+ *   429 / 5xx. 4xx other than 429 are permanent failures and not retried.
+ */
 export async function sendSms(params: SendSmsParams): Promise<SendSmsResult> {
+  // Test/load-test escape hatch: pretend we sent. Outbox + status callback
+  // logic still runs as if it succeeded, so dedup/tracking is exercised.
+  // Caller passes `mock: true` (Deno edge runtime is read-only env).
+  if (params.mock) {
+    return { success: true, sid: `mock-${Math.random().toString(36).slice(2, 12)}`, devMode: true };
+  }
+
   const credentials = getTwilioCredentials();
 
   if (!credentials) {
@@ -110,37 +131,58 @@ export async function sendSms(params: SendSmsParams): Promise<SendSmsResult> {
 
   const { accountSid, authToken } = credentials;
   const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-
-  // Normalize the phone number
   const toNumber = normalizePhoneNumber(params.to);
 
-  try {
-    const response = await fetch(twilioUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: (() => {
-        const p: Record<string, string> = { To: toNumber, From: SENDER_ID, Body: params.body };
-        if (params.statusCallback) p.StatusCallback = params.statusCallback;
-        return new URLSearchParams(p).toString();
-      })(),
-    });
+  const MAX_ATTEMPTS = 3;
+  let lastError = 'unknown';
 
-    const data = await response.json();
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(twilioUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${accountSid}:${authToken}`),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: (() => {
+          const p: Record<string, string> = { To: toNumber, From: SENDER_ID, Body: params.body };
+          if (params.statusCallback) p.StatusCallback = params.statusCallback;
+          return new URLSearchParams(p).toString();
+        })(),
+      });
 
-    if (!response.ok) {
-      console.error('❌ Twilio API error:', data);
-      return { success: false, error: data.message || `Twilio error ${data.code}` };
+      const data = await response.json();
+
+      if (response.ok) {
+        if (attempt > 1) console.log(`✅ SMS sent via Twilio (after ${attempt} attempts):`, data.sid);
+        return { success: true, sid: data.sid };
+      }
+
+      const isRetriable = response.status === 429 || response.status >= 500;
+      lastError = data.message || `Twilio error ${data.code} (status ${response.status})`;
+
+      if (!isRetriable || attempt === MAX_ATTEMPTS) {
+        if (response.status === 429) console.error(`⚠️ Twilio 429 rate limit (gave up after ${attempt} attempts):`, lastError);
+        else console.error('❌ Twilio API error:', data);
+        return { success: false, error: lastError };
+      }
+
+      // Exponential backoff: 200ms, 600ms (capped before 3rd attempt)
+      const backoff = 200 * Math.pow(3, attempt - 1);
+      console.log(`⏳ Twilio ${response.status} on attempt ${attempt}, retrying in ${backoff}ms`);
+      await new Promise(r => setTimeout(r, backoff));
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      if (attempt === MAX_ATTEMPTS) {
+        console.error('💥 SMS sending exception (gave up):', error);
+        return { success: false, error: lastError };
+      }
+      const backoff = 200 * Math.pow(3, attempt - 1);
+      await new Promise(r => setTimeout(r, backoff));
     }
-
-    console.log('✅ SMS sent via Twilio:', data.sid);
-    return { success: true, sid: data.sid };
-  } catch (error) {
-    console.error('💥 SMS sending exception:', error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
+
+  return { success: false, error: lastError };
 }
 
 /**

@@ -222,7 +222,23 @@ export function ContactSharing() {
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     loadData();
+
+    // Resumability: re-load on tab-visible. If user already completed
+    // contact-sharing on another device, we'll see their saved sharing
+    // toggles reflected in the UI when they come back here.
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && mounted) {
+        debugLog('[ContactSharing] Tab visible — refetching');
+        loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      mounted = false;
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [token]);
 
   const loadData = async () => {
@@ -245,6 +261,15 @@ export function ContactSharing() {
       );
 
       if (!response.ok) {
+        if (response.status === 404) {
+          let body: any = null;
+          try { body = await response.json(); } catch { /* ignore */ }
+          if (body?.reason === 'round-completed' || body?.reason === 'no-active-round') {
+            debugLog('[ContactSharing] Round no longer active — back to dashboard');
+            navigate(`/p/${token}?from=match`);
+            return;
+          }
+        }
         const errorText = await response.text();
         throw new Error(`Failed to load data: ${errorText}`);
       }

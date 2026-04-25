@@ -806,16 +806,19 @@ export function ParticipantDashboard() {
     // Check if any registration has 'no-match' status that hasn't been shown yet
     const noMatchRegistration = registrations.find((reg: any) => {
       if (reg.status !== 'no-match') return false;
-      
+      // Skip rounds that have already wrapped up — match page will just bounce
+      // back here and we'd churn between /p/:token and /match-point.
+      if (reg.roundCompletedAt) return false;
+
       // Check if we already showed the /match page for this round
       const redirectKey = `no_match_shown_${token}_${reg.roundId}`;
       const alreadyShown = localStorage.getItem(redirectKey);
-      
+
       if (alreadyShown === 'true') {
         debugLog(`🔍 [NO-MATCH] Round ${reg.roundId}: already shown, skipping redirect`);
         return false; // Already shown, don't redirect
       }
-      
+
       debugLog(`🔍 [NO-MATCH] Round ${reg.roundId}: first time detection, will redirect`);
       return true; // First time - will redirect
     });
@@ -833,16 +836,19 @@ export function ParticipantDashboard() {
     // Check if any registration has 'matched' status that hasn't been shown yet
     const matchedRegistration = registrations.find((reg: any) => {
       if (reg.status !== 'matched') return false;
-      
+      // Skip rounds that have already wrapped up — match page will just bounce
+      // back here and we'd churn between /p/:token and /match-point.
+      if (reg.roundCompletedAt) return false;
+
       // Check if we already showed the /match page for this round
       const redirectKey = `matched_shown_${token}_${reg.roundId}`;
       const alreadyShown = localStorage.getItem(redirectKey);
-      
+
       if (alreadyShown === 'true') {
         debugLog(`🔍 [MATCHED] Round ${reg.roundId}: already shown, skipping redirect`);
         return false; // Already shown, don't redirect
       }
-      
+
       debugLog(`🔍 [MATCHED] Round ${reg.roundId}: first time detection, will redirect`);
       return true; // First time - will redirect
     });

@@ -203,11 +203,29 @@ export function MatchPartner() {
   const overriddenOptionsRef = useRef<Record<string, number[]>>({});
 
   useEffect(() => {
+    let mounted = true;
     loadMatchPartnerData();
 
     // Poll for updates every 3 seconds to see if partners check in
-    const interval = setInterval(loadMatchPartnerData, 3000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (mounted && document.visibilityState === 'visible') loadMatchPartnerData();
+    }, 3000);
+
+    // Resumability: refetch instantly when the tab becomes visible (e.g. user
+    // switched from another device and came back).
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && mounted) {
+        debugLog('[MatchPartner] Tab visible — refetching');
+        loadMatchPartnerData();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [token]);
 
   const loadMatchPartnerData = async () => {
@@ -230,6 +248,15 @@ export function MatchPartner() {
       );
 
       if (!response.ok) {
+        if (response.status === 404) {
+          let body: any = null;
+          try { body = await response.json(); } catch { /* ignore */ }
+          if (body?.reason === 'round-completed') {
+            debugLog('[MatchPartner] Round already completed — going to dashboard');
+            navigate(`/p/${token}?from=match`);
+            return;
+          }
+        }
         const errorText = await response.text();
         throw new Error(`Failed to load match partner data: ${errorText}`);
       }
@@ -358,7 +385,7 @@ export function MatchPartner() {
             <h2 className="text-2xl font-bold mb-2">Error</h2>
             <p className="text-muted-foreground mb-6">{error || 'Failed to load match partner data'}</p>
             <button
-              onClick={() => navigate(`/p/${token}`)}
+              onClick={() => navigate(`/p/${token}?from=match`)}
               className="text-muted-foreground hover:text-foreground underline transition-colors"
             >
               Back to dashboard
@@ -387,7 +414,7 @@ export function MatchPartner() {
       wrongGuessPartnerId={wrongGuessPartnerId}
       getOptionsForPartner={getOptionsForPartner}
       onNumberSelect={handleNumberSelection}
-      onBackToDashboard={() => navigate(`/p/${token}`)}
+      onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
     />
   );
 }
