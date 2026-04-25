@@ -140,8 +140,9 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
                       {t('nav.myDashboard', 'My dashboard')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => {
-                        localStorage.removeItem('participant_token');
+                      onClick={async () => {
+                        const { clearParticipantTokenAndDerivedData } = await import('../utils/participantTokenStorage');
+                        clearParticipantTokenAndDerivedData();
                         setParticipantToken(null);
                         toast.success('Logged out successfully');
                       }}

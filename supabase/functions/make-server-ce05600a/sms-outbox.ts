@@ -424,6 +424,10 @@ export async function bulkMarkOutboxSent(updates: Array<{ id: string; twilioSid:
   for (let i = 0; i < updates.length; i += UPDATE_CONCURRENCY) {
     const chunk = updates.slice(i, i + UPDATE_CONCURRENCY);
     await Promise.all(chunk.map(async (u) => {
+      // Only transition from 'attempting' → 'sent'. The Twilio status callback
+      // (sms/twilio-status) may have already promoted us to 'delivered' or
+      // 'undelivered' by the time we run; without this filter we'd overwrite a
+      // terminal state with the intermediate 'sent', losing delivery info.
       const { error } = await sb()
         .from('sms_outbox')
         .update({
@@ -433,7 +437,8 @@ export async function bulkMarkOutboxSent(updates: Array<{ id: string; twilioSid:
           sent_at: now,
           last_error: null,
         })
-        .eq('id', u.id);
+        .eq('id', u.id)
+        .eq('status', 'attempting');
       if (error) throw error;
     }));
   }
@@ -445,6 +450,7 @@ export async function bulkMarkOutboxFailed(updates: Array<{ id: string; error: s
   for (let i = 0; i < updates.length; i += UPDATE_CONCURRENCY) {
     const chunk = updates.slice(i, i + UPDATE_CONCURRENCY);
     await Promise.all(chunk.map(async (u) => {
+      // Same guard: don't overwrite delivered/undelivered set by Twilio webhook.
       const { error } = await sb()
         .from('sms_outbox')
         .update({
@@ -452,7 +458,8 @@ export async function bulkMarkOutboxFailed(updates: Array<{ id: string; error: s
           last_error: u.error.slice(0, 500),
           failed_at: now,
         })
-        .eq('id', u.id);
+        .eq('id', u.id)
+        .eq('status', 'attempting');
       if (error) throw error;
     }));
   }

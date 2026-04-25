@@ -1883,33 +1883,23 @@ function AppProviderWithRouter() {
     // If on event/participant page, just stay on current page (don't navigate)
   };
 
-  // Initialize PWA features
-  useEffect(() => {
-    const initializePWA = async () => {
-      try {
-        // Register service worker
-        const { registerServiceWorker, getPWACapabilities, isOnline } = await import('./utils/pwa');
-        
-        const registration = await registerServiceWorker();
-        if (registration) {
-          debugLog('✅ PWA: Service Worker registered successfully');
-        } else {
-          debugLog('⚠️ PWA: Service Worker not available');
-        }
-
-        // Log PWA capabilities
-        const capabilities = getPWACapabilities();
-        debugLog('PWA capabilities:', capabilities);
-
-        // Check online status
-        debugLog('Online status:', isOnline());
-      } catch (error) {
-        errorLog('PWA initialization error:', error);
-      }
-    };
-
-    initializePWA();
-  }, []);
+  // PWA / Service Worker initialization is intentionally DISABLED.
+  //
+  // The service-worker.js + manifest.json files live in src/public/ but Vite's
+  // default `publicDir` is the project root's `public/` — so SW assets are NOT
+  // copied to the build output. In production the SPA rewrite serves index.html
+  // for /service-worker.js, browser fails to parse HTML as JS, registration fails
+  // silently. Net effect: no caching benefit, but also no stale-JS-after-deploy bug.
+  //
+  // To re-enable PWA properly:
+  //   1. Move src/public/{service-worker.js,manifest.json,offline.html} → public/
+  //   2. Make CACHE_VERSION dynamic (read __APP_BUILD_TIME__ via a Vite plugin
+  //      that text-substitutes during build; otherwise users are stuck on
+  //      'oliwonder-v1.0.0' across all deploys → stale JS after each release)
+  //   3. Re-add the registerServiceWorker() call here
+  //
+  // Until then, suppressing the call avoids polluting console with errors.
+  // useEffect(() => { ... }, []);
 
   // Handle initial load and auth state
   useEffect(() => {

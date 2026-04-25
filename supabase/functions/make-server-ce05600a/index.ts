@@ -694,18 +694,28 @@ app.post('/make-server-ce05600a/p/:token/confirm/:roundId', async (c) => {
 // Register participant
 app.post('/make-server-ce05600a/register-participant', registerParticipant);
 
-// Participant confirm attendance via participantId (legacy endpoint for ParticipantConfirmation component)
+// Participant confirm attendance via participantId (legacy endpoint for ParticipantConfirmation component).
+// Requires the participant's magic-link token in the body to prove ownership — without it any caller
+// who knows or guesses a participantId could confirm attendance for someone else.
 app.post('/make-server-ce05600a/rounds/:roundId/confirm/:participantId', async (c) => {
   try {
     const roundId = c.req.param('roundId');
     const participantId = c.req.param('participantId');
     const body = await c.req.json();
-    const { sessionId } = body;
+    const { sessionId, token } = body;
 
-    debugLog('🎯 CONFIRM ATTENDANCE (via participantId)', { participantId, roundId, sessionId });
+    debugLog('🎯 CONFIRM ATTENDANCE (via participantId)', { participantId, roundId, sessionId, hasToken: !!token });
 
     if (!sessionId) {
       return c.json({ error: 'sessionId is required' }, 400);
+    }
+    if (!token) {
+      return c.json({ error: 'token is required to confirm attendance' }, 401);
+    }
+    // Verify token matches the participantId being confirmed
+    const tokenOwner = await db.getParticipantByToken(token);
+    if (!tokenOwner || tokenOwner.participantId !== participantId) {
+      return c.json({ error: 'Token does not match participant' }, 403);
     }
 
     // Get specific registration
@@ -850,6 +860,38 @@ app.post('/make-server-ce05600a/rounds/:roundId/auto-match', async (c) => {
 
     if (!sessionId || !roundId) {
       return c.json({ error: 'sessionId and roundId are required' }, 400);
+    }
+
+    // Anti-disruption gate: matching is only legitimate within the
+    // confirmation window (T-confirmationWindow .. T+roundDuration).
+    // Without this gate any anon caller could prematurely match early-confirmers
+    // and mark late-confirmers as 'unconfirmed' (irreversible).
+    // Skip-bypass: callers with valid X-Test-Auth (service role) get through —
+    // used by e2e tests to drive matching at synthetic timestamps.
+    const testAuth = verifyE2ETestAuth(c);
+    if (!testAuth.ok) {
+      const session = await db.getSessionById(sessionId);
+      const round = session?.rounds?.find((r: any) => r.id === roundId);
+      if (!session || !round) return c.json({ error: 'Round not found' }, 404);
+      if (round.date && round.startTime && round.startTime !== 'TBD' && round.startTime !== 'To be set') {
+        const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+        const confirmationWindowMin = Number(sysParams.confirmationWindowMinutes) || 5;
+        const roundEndBufferMin = (Number(round.duration) || 0) + 60; // 60min after end is generous
+        const roundStart = parseRoundStartTime(round.date, round.startTime).getTime();
+        const matchingOpensAt = roundStart - confirmationWindowMin * 60_000;
+        const matchingClosesAt = roundStart + roundEndBufferMin * 60_000;
+        const now = getCurrentTime(c).getTime();
+        if (now < matchingOpensAt) {
+          return c.json({
+            error: 'Matching not yet allowed',
+            matchingOpensAt: new Date(matchingOpensAt).toISOString(),
+            secondsUntilOpen: Math.round((matchingOpensAt - now) / 1000),
+          }, 403);
+        }
+        if (now > matchingClosesAt) {
+          return c.json({ error: 'Matching window closed for this round' }, 403);
+        }
+      }
     }
 
     debugLog('🎯 AUTO-MATCH triggered', { sessionId, roundId });
@@ -3191,7 +3233,24 @@ app.get('/make-server-ce05600a/test/e2e-scenarios', async (c) => {
 });
 
 // Run a specific scenario (or all)
+// Auth: require X-Test-Auth header matching service-role JWT.
+// Service role is server-side only (never in client bundle), so this gates the
+// endpoint without needing a new secret. Returns 401 if missing or wrong.
+function verifyE2ETestAuth(c: any): { ok: boolean; reason?: string } {
+  const provided = c.req.header('X-Test-Auth') || '';
+  const expected = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  if (!expected) return { ok: false, reason: 'service role key not configured on this env' };
+  if (!provided) return { ok: false, reason: 'missing X-Test-Auth header' };
+  // Constant-time compare to avoid timing attacks
+  if (provided.length !== expected.length) return { ok: false, reason: 'invalid token' };
+  let diff = 0;
+  for (let i = 0; i < provided.length; i++) diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0 ? { ok: true } : { ok: false, reason: 'invalid token' };
+}
+
 app.post('/make-server-ce05600a/test/e2e-matching', async (c) => {
+  const auth = verifyE2ETestAuth(c);
+  if (!auth.ok) return c.json({ error: 'Unauthorized', reason: auth.reason }, 401);
   try {
     const body = await c.req.json().catch(() => ({}));
     const scenarioId = body.scenario || 'basic-2';
@@ -3224,6 +3283,8 @@ app.post('/make-server-ce05600a/test/e2e-matching', async (c) => {
 
 // Legacy: keep old inline endpoint structure for backward compat (remove later)
 app.post('/make-server-ce05600a/test/e2e-matching-legacy', async (c) => {
+  const auth = verifyE2ETestAuth(c);
+  if (!auth.ok) return c.json({ error: 'Unauthorized', reason: auth.reason }, 401);
   const startTime = Date.now();
   const steps: any[] = [];
   const step = (name: string, fn: () => Promise<any>) => {

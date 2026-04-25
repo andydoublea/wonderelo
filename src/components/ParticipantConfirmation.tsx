@@ -9,6 +9,12 @@ interface ParticipantConfirmationProps {
   sessionId: string;
   roundId: string;
   participantId: string;
+  /**
+   * Magic-link token of the participant. Required by the backend now (server
+   * enforces token-vs-participantId match to prevent attendance-confirmation
+   * spoofing). If you call this component, pass the token from the URL.
+   */
+  token: string;
   roundName: string;
   startTime: string;
   onConfirmed: () => void;
@@ -19,6 +25,7 @@ export function ParticipantConfirmation({
   sessionId,
   roundId,
   participantId,
+  token,
   roundName,
   startTime,
   onConfirmed,
@@ -59,7 +66,7 @@ export function ParticipantConfirmation({
             'Authorization': `Bearer ${publicAnonKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({ sessionId, token }),
         }
       );
 

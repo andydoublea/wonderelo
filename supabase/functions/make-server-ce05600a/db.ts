@@ -679,14 +679,22 @@ export async function getRegistrationCountsByRounds(roundIds: string[]): Promise
  * PostgREST caps `.select()` results at 1000 rows by default. For scaled events
  * (>1000 registrations in one round), we MUST page or matching/dashboard will
  * silently see truncated data — half the participants get dropped.
+ *
+ * Ordering note: PostgREST has no implicit row order. Without an explicit ORDER
+ * BY, two pages may overlap or skip rows when concurrent INSERTs happen between
+ * fetches. Caller passes an `orderColumn` (typically a stable monotonically-
+ * growing column like the primary key or registered_at). Default 'id' fits all
+ * tables that have a sequential PK.
  */
 const MAX_PAGE = 1000;
 
-async function fetchAllPages<T>(buildQuery: () => any): Promise<T[]> {
+async function fetchAllPages<T>(buildQuery: () => any, orderColumn = 'id'): Promise<T[]> {
   const out: T[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await buildQuery().range(from, from + MAX_PAGE - 1);
+    const { data, error } = await buildQuery()
+      .order(orderColumn, { ascending: true })
+      .range(from, from + MAX_PAGE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
     out.push(...data);
@@ -726,28 +734,8 @@ export async function getRegistrationsForSession(sessionId: string) {
     .eq('session_id', sessionId));
 }
 
-export async function getConfirmedForRound(sessionId: string, roundId: string) {
-  const { data, error } = await db()
-    .from('registrations')
-    .select('*, participants(*)')
-    .eq('session_id', sessionId)
-    .eq('round_id', roundId)
-    .eq('status', 'confirmed');
-  if (error) throw error;
-  return (data || []).map(r => {
-    const reg = mapRegistrationFromDb(r);
-    if (r.participants) {
-      return {
-        ...reg,
-        email: r.participants.email,
-        firstName: r.participants.first_name,
-        lastName: r.participants.last_name,
-        phone: r.participants.phone,
-      };
-    }
-    return reg;
-  });
-}
+// (removed) getConfirmedForRound — was dead code; matching now reads from
+// getRegistrationsForRound (paginated) and filters status='confirmed' in memory.
 
 export async function getRegistration(participantId: string, sessionId: string, roundId: string) {
   const { data, error } = await db()
@@ -899,36 +887,8 @@ export async function getMatchById(matchId: string) {
   } : null;
 }
 
-export async function getMatchesByRound(sessionId: string, roundId: string) {
-  const { data, error } = await db()
-    .from('matches')
-    .select('*')
-    .eq('session_id', sessionId)
-    .eq('round_id', roundId);
-  if (error) throw error;
-  return (data || []).map(m => ({
-    matchId: m.id,
-    sessionId: m.session_id,
-    roundId: m.round_id,
-    meetingPoint: m.meeting_point,
-    createdAt: m.created_at,
-  }));
-}
-
-export async function getMatchesForSession(sessionId: string) {
-  const { data, error } = await db()
-    .from('matches')
-    .select('*')
-    .eq('session_id', sessionId);
-  if (error) throw error;
-  return (data || []).map(m => ({
-    matchId: m.id,
-    sessionId: m.session_id,
-    roundId: m.round_id,
-    meetingPoint: m.meeting_point,
-    createdAt: m.created_at,
-  }));
-}
+// (removed) getMatchesByRound + getMatchesForSession — were dead code with no
+// callers. If needed in future, re-add with fetchAllPages() for >1000 matches.
 
 export async function createMatch(match: {
   matchId: string;

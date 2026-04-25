@@ -23,12 +23,12 @@ export function ParticipantLayout({ participantToken, onLogout, firstName, lastN
 
   const currentToken = participantToken || token;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (onLogout) {
       onLogout();
     } else {
-      // Default logout behavior
-      localStorage.removeItem('participant_token');
+      const { clearParticipantTokenAndDerivedData } = await import('../utils/participantTokenStorage');
+      clearParticipantTokenAndDerivedData();
       navigate('/');
     }
   };

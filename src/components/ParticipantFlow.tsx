@@ -13,6 +13,8 @@ interface ParticipantFlowProps {
   roundId: string;
   sessionId: string;
   participantId: string;
+  /** Magic-link token; required when calling confirm endpoint. */
+  token: string;
   roundName: string;
   startTime: string;
   onComplete?: () => void;
@@ -22,6 +24,7 @@ export function ParticipantFlow({
   roundId,
   sessionId,
   participantId,
+  token,
   roundName,
   startTime,
   onComplete
@@ -158,6 +161,7 @@ export function ParticipantFlow({
         sessionId={sessionId}
         roundId={roundId}
         participantId={participantId}
+        token={token}
         roundName={roundName}
         startTime={startTime}
         onConfirmed={handleConfirmed}

@@ -894,30 +894,45 @@ export function ParticipantDashboard() {
     }
   }, [simulatedTime]);
 
-  // Periodic refetch to catch status transitions
+  // Periodic refetch to catch status transitions, with exponential backoff
+  // when fetchData throws so a backend outage doesn't get hammered at 5s/tick
+  // by every dashboard tab. Resets to 5s on a successful fetch.
   useEffect(() => {
     if (!token) return;
 
-    // Simple 5-second interval to catch all status transitions quickly
-    const interval = setInterval(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let consecutiveFailures = 0;
+    const BASE_INTERVAL = 5000;
+    const MAX_INTERVAL = 60000;
+
+    const tick = async () => {
       if (document.hidden) {
-        debugLog('⏰ Tab is hidden, skipping refetch');
+        // Skip — tab hidden. Don't count as failure; reschedule at base interval.
+        timer = setTimeout(tick, BASE_INTERVAL);
         return;
       }
-      
-      // Skip refetch if there was a very recent optimistic update (within last 5 seconds)
       const timeSinceLastUpdate = Date.now() - lastOptimisticUpdateRef.current;
       if (timeSinceLastUpdate < 5000) {
-        debugLog(`⏰ Skipping refetch - recent optimistic update (${Math.round(timeSinceLastUpdate/1000)}s ago, wait ${Math.round((5000-timeSinceLastUpdate)/1000)}s more)`);
+        debugLog(`⏰ Skipping refetch - recent optimistic update (${Math.round(timeSinceLastUpdate/1000)}s ago)`);
+        timer = setTimeout(tick, BASE_INTERVAL);
         return;
       }
-      
-      debugLog('⏰ Periodic refetch (5s)...');
-      fetchData();
-    }, 5000); // 5 seconds - fast enough to catch matching
+      debugLog('⏰ Periodic refetch...');
+      try {
+        await fetchData();
+        consecutiveFailures = 0;
+      } catch (err) {
+        consecutiveFailures++;
+        debugLog(`⚠️ Refetch failed (${consecutiveFailures}× in a row)`);
+      }
+      // Backoff: 5s → 10s → 20s → 40s → 60s (cap)
+      const delay = Math.min(BASE_INTERVAL * Math.pow(2, consecutiveFailures), MAX_INTERVAL);
+      timer = setTimeout(tick, delay);
+    };
+    timer = setTimeout(tick, BASE_INTERVAL);
 
     return () => {
-      clearInterval(interval);
+      if (timer) clearTimeout(timer);
     };
   }, [token]);
   

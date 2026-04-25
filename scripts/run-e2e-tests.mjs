@@ -53,6 +53,24 @@ if (!ANON_KEY) {
   process.exit(2);
 }
 
+// /test/e2e-matching now requires X-Test-Auth = service-role JWT.
+// Service role lives in .env (gitignored). We pick staging vs prod based on
+// the API_URL — stops you from accidentally hitting prod with the wrong key.
+function pickServiceRoleKey() {
+  if (process.env.TEST_AUTH) return process.env.TEST_AUTH;
+  if (API_URL.includes('tpsgnnrkwgvgnsktuicr')) return envBase.SUPABASE_SERVICE_ROLE_KEY_PROD || '';
+  if (API_URL.includes('dqoybysbooxngrsxaekd')) return envBase.SUPABASE_SERVICE_ROLE_KEY_STAGING || '';
+  // Local Docker uses a single key
+  return envBase.SUPABASE_SERVICE_ROLE_KEY || envBase.SUPABASE_SERVICE_KEY || '';
+}
+const TEST_AUTH = pickServiceRoleKey();
+
+if (!TEST_AUTH) {
+  console.warn('⚠️  No TEST_AUTH/SUPABASE_SERVICE_ROLE_KEY found — /test/e2e-matching will return 401.');
+  console.warn('   For staging/prod: set TEST_AUTH env or SUPABASE_SERVICE_ROLE_KEY in .env');
+  console.warn('   For local Docker: use `supabase status` to read the local service-role key.');
+}
+
 // ---- ANSI helpers ----
 const c = {
   reset: '\x1b[0m', dim: '\x1b[2m', bold: '\x1b[1m',
@@ -72,7 +90,12 @@ async function api(path, options = {}) {
     const res = await fetch(`${API_URL}${path}`, {
       ...options,
       signal: ctrl.signal,
-      headers: { Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
+      headers: {
+        Authorization: `Bearer ${ANON_KEY}`,
+        'Content-Type': 'application/json',
+        ...(TEST_AUTH ? { 'X-Test-Auth': TEST_AUTH } : {}),
+        ...(options.headers || {}),
+      },
     });
     const text = await res.text();
     let data;
