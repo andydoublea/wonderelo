@@ -660,6 +660,33 @@ defineScenario({
 });
 
 defineScenario({
+  id: 'stress-1000-group3', name: '1000 participants in groups of 3', category: 'Stress',
+  description: 'Verifies the optimized groupSize=3 path scales like the pairwise one',
+  run: async (step, ctx) => {
+    const { supabase } = ctx;
+    const { organizerId } = await getOrganizerId(supabase);
+    const { sessionId, roundId } = await step('setup', () => createTestSession(supabase, organizerId, { groupSize: 3 }));
+    const { ids } = await step('bulk_register_1000', () => registerParticipantsBulk(supabase, 1000, sessionId, roundId, organizerId, { confirmed: true }));
+    await step('matching', async () => {
+      const t0 = Date.now();
+      const r = await createMatchesForRound(sessionId, roundId);
+      const elapsedMs = Date.now() - t0;
+      // 1000 / 3 = 333 groups + 1 odd participant absorbed → 333 groups
+      assert(r.success === true, 'matching should succeed');
+      assert((r.matchCount ?? 0) >= 332 && (r.matchCount ?? 0) <= 334, `expected ~333 matches, got ${r.matchCount}`);
+      assert(elapsedMs < 10000, `matching took ${elapsedMs}ms (>10s — algorithm regression at groupSize=3)`);
+      return { matchCount: r.matchCount, matchingMs: elapsedMs };
+    });
+    await step('verify_all_matched', async () => {
+      const counts = await countStatuses(supabase, sessionId, roundId);
+      assert((counts['matched'] || 0) === 1000, `expected 1000 matched, got ${counts['matched']}`);
+      return { ...counts };
+    });
+    await step('cleanup', () => cleanupBulk(supabase, sessionId, ids));
+  }
+});
+
+defineScenario({
   id: 'stress-200-mixed', name: '200 participants, half unconfirmed', category: 'Stress',
   description: '200 registered but only 100 confirmed → 50 matches + 100 unconfirmed',
   run: async (step, ctx) => {

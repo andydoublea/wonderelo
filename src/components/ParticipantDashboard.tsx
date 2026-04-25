@@ -868,6 +868,11 @@ export function ParticipantDashboard() {
       // Save token to localStorage so it persists across navigation
       localStorage.setItem('participant_token', token);
       debugLog('✅ Participant token saved to localStorage:', token);
+
+      // Sweep stale dashboard caches (>7d old). Cheap O(localStorage.length) scan
+      // that runs once on mount; keeps localStorage from growing unbounded as
+      // users switch events.
+      import('../utils/participantTokenStorage').then(m => m.purgeStaleDashboardCaches());
       
       // Check if there's a continue parameter for registration flow
       const searchParams = new URLSearchParams(window.location.search);
@@ -1122,7 +1127,11 @@ export function ParticipantDashboard() {
         registrationStatusMap: s.registrationStatusMap ? Array.from(s.registrationStatusMap.entries()) : []
       }));
       
+      // _cachedAt is read by purgeStaleDashboardCaches (in
+      // utils/participantTokenStorage) — entries without it or older than 7d
+      // are reaped on token rotation / dashboard mount.
       localStorage.setItem(`participant_dashboard_${token}`, JSON.stringify({
+        _cachedAt: Date.now(),
         sessions: serializableSessions,
         registrations: regs,
         email: data.email,

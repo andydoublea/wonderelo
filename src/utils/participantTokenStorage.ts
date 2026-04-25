@@ -56,7 +56,45 @@ export function setParticipantToken(newToken: string) {
       clearParticipantTokenAndDerivedData(previous);
     }
     localStorage.setItem(TOKEN_KEY, newToken);
+    purgeStaleDashboardCaches();
   } catch {
     // localStorage unavailable — non-fatal for the registration flow.
+  }
+}
+
+/**
+ * Sweep `participant_dashboard_<token>` entries that are older than 7 days.
+ * Without this, every token a user has ever held leaves a JSON blob behind
+ * forever (a few KB per token, but adds up for users who switch events).
+ *
+ * Call sites: setParticipantToken (above) and on the dashboard mount path —
+ * both happen rarely enough that the O(localStorage.length) scan is fine.
+ */
+const DASHBOARD_CACHE_PREFIX = 'participant_dashboard_';
+const DASHBOARD_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+export function purgeStaleDashboardCaches(now: number = Date.now()) {
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(DASHBOARD_CACHE_PREFIX)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        const writtenAt = parsed?._cachedAt;
+        // No timestamp = old format; treat as expired (will be rewritten on next dashboard load).
+        if (typeof writtenAt !== 'number' || now - writtenAt > DASHBOARD_CACHE_TTL_MS) {
+          toRemove.push(key);
+        }
+      } catch {
+        // Malformed JSON — drop it
+        toRemove.push(key);
+      }
+    }
+    for (const k of toRemove) localStorage.removeItem(k);
+  } catch {
+    // localStorage unavailable
   }
 }

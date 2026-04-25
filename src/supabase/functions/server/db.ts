@@ -341,13 +341,25 @@ export async function createSession(session: any) {
     });
   if (error) throw error;
 
-  // Insert rounds if provided
+  // Insert rounds if provided. We propagate session-level groupSize (and a
+  // few other fields) to each round when the round doesn't override them —
+  // SessionForm in the UI builds rounds without explicit groupSize, expecting
+  // session-level to apply. Without this propagation, rounds get DB default
+  // group_size=2 even when session.groupSize=3, silently making all
+  // groups-of-3 events behave like pairs.
   if (rounds && rounds.length > 0) {
     for (let i = 0; i < rounds.length; i++) {
       const roundId = rounds[i].id && rounds[i].id.startsWith('round-') && rounds[i].id.length > 10
         ? rounds[i].id
         : `round-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${i}`;
-      await createRound({ ...rounds[i], id: roundId, sessionId: sessionData.id, sortOrder: i });
+      await createRound({
+        ...rounds[i],
+        // Round-level override wins; otherwise inherit session-level value
+        groupSize: rounds[i].groupSize ?? sessionData.groupSize,
+        id: roundId,
+        sessionId: sessionData.id,
+        sortOrder: i,
+      });
     }
   }
 }
@@ -376,9 +388,16 @@ export async function updateSession(sessionId: string, updates: any) {
     .eq('id', sessionId);
   if (error) throw error;
 
-  // If rounds are provided, sync them
+  // If rounds are provided, sync them. Pass session.groupSize so syncRounds
+  // can propagate it to rounds that don't override (matches createSession behavior).
   if (updates.rounds !== undefined) {
-    await syncRounds(sessionId, updates.rounds);
+    // Resolve effective session groupSize: prefer the update payload, else fetch from DB
+    let sessionGroupSize: number | undefined = updates.groupSize;
+    if (sessionGroupSize === undefined) {
+      const existing = await getSessionById(sessionId);
+      sessionGroupSize = existing?.groupSize;
+    }
+    await syncRounds(sessionId, updates.rounds, sessionGroupSize);
   }
 }
 
@@ -486,7 +505,7 @@ export async function updateRound(roundId: string, updates: any) {
   if (error) throw error;
 }
 
-async function syncRounds(sessionId: string, rounds: any[]) {
+async function syncRounds(sessionId: string, rounds: any[], sessionGroupSize?: number) {
   // Get existing rounds
   const existing = await getRoundsBySession(sessionId);
   const existingIds = new Set(existing.map(r => r.id));
@@ -499,13 +518,16 @@ async function syncRounds(sessionId: string, rounds: any[]) {
     }
   }
 
-  // Upsert rounds
+  // Upsert rounds — inherit session.groupSize when round doesn't specify its own,
+  // matching the createSession path so admins setting only session-level groupSize
+  // get groups of that size on every round (was silently defaulting to 2).
   for (let i = 0; i < rounds.length; i++) {
     const round = rounds[i];
+    const effectiveGroupSize = round.groupSize ?? sessionGroupSize;
     if (existingIds.has(round.id)) {
-      await updateRound(round.id, { ...round, sortOrder: i });
+      await updateRound(round.id, { ...round, groupSize: effectiveGroupSize, sortOrder: i });
     } else {
-      await createRound({ ...round, sessionId, sortOrder: i });
+      await createRound({ ...round, groupSize: effectiveGroupSize, sessionId, sortOrder: i });
     }
   }
 }

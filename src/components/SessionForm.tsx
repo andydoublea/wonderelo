@@ -865,7 +865,12 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
             name: roundStartTime,
             startTime: roundStartTime,
             date: roundDateString,
-            duration: formData.roundDuration
+            duration: formData.roundDuration,
+            // Inherit session-level groupSize so backend doesn't fall back to
+            // its DB default of 2 when admin actually picked 3+. (Backend
+            // also propagates this defensively, but setting it here keeps the
+            // UI payload self-consistent.)
+            groupSize: formData.groupSize,
           });
 
           // Add NEW round duration and gap for next round
