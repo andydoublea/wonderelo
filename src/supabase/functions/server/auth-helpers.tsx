@@ -49,6 +49,40 @@ export async function requireAdmin(c: any, next: any) {
   }
 }
 
+/**
+ * Organizer middleware — requires authenticated user with an organizer_profiles
+ * row. Sets c.user (auth user), c.userProfile (organizer profile), c.organizerId
+ * (string id) for downstream handlers.
+ *
+ * Use on all per-organizer endpoints (CRM, session edit, billing) to prevent
+ * anonymous access. For admin-only endpoints, use requireAdmin instead.
+ */
+export async function requireOrganizer(c: any, next: any) {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+    const token = authHeader.split(' ')[1];
+    const supabase = getClient();
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+    const userProfile = await getOrganizerById(user.id);
+    if (!userProfile) {
+      return c.json({ error: 'Organizer profile required' }, 403);
+    }
+    c.set('user', user);
+    c.set('userProfile', userProfile);
+    c.set('organizerId', user.id);
+    await next();
+  } catch (error) {
+    errorLog('Error in requireOrganizer middleware:', error);
+    return c.json({ error: 'Authorization failed' }, 500);
+  }
+}
+
 // Get authenticated user from request
 export async function getAuthenticatedUser(c: any) {
   try {

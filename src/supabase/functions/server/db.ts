@@ -1056,12 +1056,36 @@ export async function createMatchesBatch(matches: Array<{
     round_id: m.roundId,
     meeting_point: m.meetingPoint || null,
   }));
-  // Insert in chunks of 500 to stay under PostgREST request size limits
+  // Insert in chunks of 500 to stay under PostgREST request size limits.
+  // If a chunk fails partway, the rows from previously-completed chunks would
+  // otherwise remain orphaned in the matches table while createMatchesForRound
+  // marks the lock as failed — leading to the next attempt seeing existing
+  // matches AND the lock saying "retry me", which is confusing. To get
+  // best-effort all-or-nothing semantics without real transactions, on error
+  // we delete every match row we've inserted in this call.
   const CHUNK = 500;
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const slice = rows.slice(i, i + CHUNK);
-    const { error } = await db().from('matches').insert(slice);
-    if (error) throw error;
+  const insertedIds: string[] = [];
+  try {
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const slice = rows.slice(i, i + CHUNK);
+      const { error } = await db().from('matches').insert(slice);
+      if (error) throw error;
+      for (const r of slice) insertedIds.push(r.id);
+    }
+  } catch (err) {
+    // Roll back already-persisted rows so the table is back to its pre-call state.
+    if (insertedIds.length > 0) {
+      try {
+        await db().from('matches').delete().in('id', insertedIds);
+      } catch (rollbackErr) {
+        // If rollback itself fails we surface that too — caller (matching.tsx
+        // catch block) marks the lock as failed (-2) so a future invocation
+        // can retry. We intentionally re-throw the ORIGINAL error.
+        // eslint-disable-next-line no-console
+        console.error('💥 createMatchesBatch rollback failed:', rollbackErr);
+      }
+    }
+    throw err;
   }
 }
 

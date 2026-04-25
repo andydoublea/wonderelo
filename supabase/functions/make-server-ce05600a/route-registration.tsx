@@ -7,7 +7,7 @@ import { Context } from 'npm:hono';
 import * as db from './db.ts';
 import { debugLog, errorLog } from './debug.tsx';
 import { sendEmail, buildRegistrationEmail, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
-// Note: Capacity check + credit consumption moved to session publish flow (index.ts)
+import { checkCapacity, consumeEventCredit } from './route-stripe.tsx';
 
 export async function registerParticipant(c: Context) {
   try {
@@ -49,6 +49,30 @@ export async function registerParticipant(c: Context) {
     const userId = organizerProfile.userId;
     const organizerName = organizerProfile.organizerName || 'Organizer';
     const organizerUrlSlug = organizerProfile.urlSlug || userSlug;
+
+    // ── Capacity check (Phase 5F) ──────────────────────────
+    // Get max participant count from the sessions being registered for
+    for (const sessionData of sessions) {
+      const session = await db.getSessionById(sessionData.sessionId);
+      if (session) {
+        const maxParticipants = session.maxParticipants || session.rounds?.[0]?.maxParticipants || 10;
+        try {
+          const capacityResult = await checkCapacity(userId, maxParticipants);
+          if (!capacityResult.allowed) {
+            console.log(`❌ Capacity limit reached: ${capacityResult.reason}`);
+            return c.json({
+              error: 'capacity_exceeded',
+              message: capacityResult.reason,
+              suggestion: capacityResult.suggestion,
+              currentTier: capacityResult.currentTier,
+            }, 403);
+          }
+        } catch (capErr) {
+          // If capacity check fails (e.g., tables don't exist yet), allow registration
+          debugLog('⚠️ Capacity check failed, allowing registration:', capErr);
+        }
+      }
+    }
 
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -141,41 +165,53 @@ export async function registerParticipant(c: Context) {
       console.log(`✅ Saved ${newRegistrations.length} new registrations`);
       debugLog(`✅ Added ${newRegistrations.length} new registrations`);
 
-      // Send "first participant" onboarding email to the organizer (non-blocking)
+      // ── Credit consumption (Phase 5D) ──────────────────
+      // When first participant registers for a session, consume one event credit
+      // (only for non-subscription, non-free tier organizers)
       for (const sessionData of sessions) {
         const sessionId = sessionData.sessionId;
         try {
-          const allRegs = await db.getRegistrationsForSession(sessionId);
-          const isFirstParticipant = allRegs.length <= newRegistrations.filter(r => r.sessionId === sessionId).length;
-          if (isFirstParticipant) {
-            const session = await db.getSessionById(sessionId);
-            try {
-              const organizerProfile = await db.getOrganizerById(userId);
-              if (organizerProfile) {
-                const sentEmails: Record<string, string[]> = await db.getAdminSetting('onboarding_emails_sent') || {};
-                const organizerSent = sentEmails[organizerProfile.userId] || [];
-                if (!organizerSent.includes('onboarding_4')) {
-                  const appUrl = 'https://wonderelo.com';
-                  const emailContent = buildOnboardingEmail4_FirstParticipant({
-                    firstName: (organizerProfile.organizerName || 'there').split(' ')[0],
-                    dashboardUrl: `${appUrl}/dashboard`,
-                    participantName: `${firstName} ${lastName}`,
-                    sessionName: session?.name || 'your round',
-                  });
-                  sendEmail({ to: organizerProfile.email, subject: emailContent.subject, html: emailContent.html })
-                    .then(r => r.success && debugLog('📧 First-participant email sent to organizer'))
-                    .catch(() => {});
-                  organizerSent.push('onboarding_4');
-                  sentEmails[organizerProfile.userId] = organizerSent;
-                  await db.setAdminSetting('onboarding_emails_sent', sentEmails);
+          // Count existing registrations for this session (excluding current)
+          const session = await db.getSessionById(sessionId);
+          const maxP = session?.maxParticipants || session?.rounds?.[0]?.maxParticipants || 10;
+          if (maxP > 10) {
+            // Check if this is the first participant for this session
+            const allRegs = await db.getRegistrationsForSession(sessionId);
+            const isFirstParticipant = allRegs.length <= newRegistrations.filter(r => r.sessionId === sessionId).length;
+            if (isFirstParticipant) {
+              await consumeEventCredit(userId, sessionId);
+              debugLog('💳 Event credit consumed for session:', sessionId);
+
+              // Send "first participant" onboarding email to the organizer (non-blocking)
+              try {
+                const organizerProfile = await db.getOrganizerById(userId);
+                if (organizerProfile) {
+                  const sentEmails: Record<string, string[]> = await db.getAdminSetting('onboarding_emails_sent') || {};
+                  const organizerSent = sentEmails[organizerProfile.userId] || [];
+                  if (!organizerSent.includes('onboarding_4')) {
+                    const appUrl = 'https://wonderelo.com';
+                    const emailContent = buildOnboardingEmail4_FirstParticipant({
+                      firstName: (organizerProfile.organizerName || 'there').split(' ')[0],
+                      dashboardUrl: `${appUrl}/dashboard`,
+                      participantName: `${firstName} ${lastName}`,
+                      sessionName: session?.name || 'your round',
+                    });
+                    sendEmail({ to: organizerProfile.email, subject: emailContent.subject, html: emailContent.html })
+                      .then(r => r.success && debugLog('📧 First-participant email sent to organizer'))
+                      .catch(err => errorLog('First-participant onboarding email failed:', err));
+                    organizerSent.push('onboarding_4');
+                    sentEmails[organizerProfile.userId] = organizerSent;
+                    await db.setAdminSetting('onboarding_emails_sent', sentEmails);
+                  }
                 }
+              } catch (onboardingErr) {
+                debugLog('⚠️ First-participant onboarding email failed (non-blocking):', onboardingErr);
               }
-            } catch (onboardingErr) {
-              debugLog('⚠️ First-participant onboarding email failed (non-blocking):', onboardingErr);
             }
           }
-        } catch (err) {
-          debugLog('⚠️ First-participant check failed (non-blocking):', err);
+        } catch (creditErr) {
+          // Non-critical: don't block registration if credit system has issues
+          debugLog('⚠️ Credit consumption failed (non-blocking):', creditErr);
         }
       }
     }

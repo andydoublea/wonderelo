@@ -5,6 +5,29 @@
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
+/**
+ * HTML-escape user-supplied data before interpolating it into an email
+ * template. Without this, an organizer-controlled field (firstName,
+ * organizerName, eventName) can inject `<a href="phishing">` or even style
+ * blocks into a participant-facing transactional email — phishing vector
+ * when participants trust emails coming "from Wonderelo".
+ *
+ * Most modern email clients strip <script>, but <a>, <img onerror>, and
+ * style-based content overlays render fine. Escape on input.
+ *
+ * Use for ANY user-controlled string interpolated as HTML body content.
+ * Don't use for href values — for URLs, use encodeURI / encodeURIComponent.
+ */
+export function escapeHtml(input: unknown): string {
+  if (input == null) return '';
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // When domain is not verified, Resend only allows sending from onboarding@resend.dev
 // and only delivers to the account owner's email. Good enough for dev.
 const FROM_EMAIL_DEV = 'Wonderelo <onboarding@resend.dev>';
@@ -33,6 +56,12 @@ interface SendEmailResult {
   devMode?: boolean;
 }
 
+/**
+ * Send via Resend with retry on 429 (rate limit) and 5xx. Mirrors the
+ * pattern already used by sendSms() — 3 attempts, 200/600ms backoff.
+ * Permanent failures (4xx other than 429) are NOT retried since Resend
+ * usually means bad recipient or auth.
+ */
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const apiKey = getResendApiKey();
 
@@ -43,34 +72,56 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
     return { success: false, error: 'RESEND_API_KEY not configured', devMode: true };
   }
 
-  try {
-    const response = await fetch(RESEND_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: getFromEmail(),
-        to: [params.to],
-        subject: params.subject,
-        html: params.html,
-      }),
-    });
+  const MAX_ATTEMPTS = 3;
+  let lastError = 'unknown';
 
-    const data = await response.json();
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(RESEND_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: getFromEmail(),
+          to: [params.to],
+          subject: params.subject,
+          html: params.html,
+        }),
+      });
 
-    if (!response.ok) {
-      console.error('❌ Resend API error:', data);
-      return { success: false, error: data.message || 'Failed to send email' };
+      const data = await response.json();
+
+      if (response.ok) {
+        if (attempt > 1) console.log(`✅ Email sent via Resend (after ${attempt} attempts):`, data.id);
+        return { success: true, id: data.id };
+      }
+
+      const isRetriable = response.status === 429 || response.status >= 500;
+      lastError = data.message || `Resend error ${data.name || response.status}`;
+
+      if (!isRetriable || attempt === MAX_ATTEMPTS) {
+        if (response.status === 429) console.error(`⚠️ Resend 429 rate limit (gave up after ${attempt}):`, lastError);
+        else console.error('❌ Resend API error:', data);
+        return { success: false, error: lastError };
+      }
+
+      const backoff = 200 * Math.pow(3, attempt - 1);
+      console.log(`⏳ Resend ${response.status} on attempt ${attempt}, retrying in ${backoff}ms`);
+      await new Promise(r => setTimeout(r, backoff));
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      if (attempt === MAX_ATTEMPTS) {
+        console.error('💥 Email sending exception (gave up):', error);
+        return { success: false, error: lastError };
+      }
+      const backoff = 200 * Math.pow(3, attempt - 1);
+      await new Promise(r => setTimeout(r, backoff));
     }
-
-    console.log('✅ Email sent via Resend:', data.id);
-    return { success: true, id: data.id };
-  } catch (error) {
-    console.error('💥 Email sending exception:', error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
+
+  return { success: false, error: lastError };
 }
 
 /**
@@ -86,10 +137,11 @@ export function buildRegistrationEmail(params: {
 }): { subject: string; html: string } {
   const { firstName, lastName, eventName, myRoundsUrl, eventUrl, sessions } = params;
 
+  // HTML-escape every organizer-controlled field. Subject is plain text → safe.
   const sessionsList = sessions && sessions.length > 0
     ? sessions.map(s => {
-        const rounds = s.rounds?.map((r: any) => `${r.roundName || r.startTime}`).join(', ') || '';
-        return `<li><strong>${s.sessionName || 'Round'}</strong>${rounds ? ` – ${rounds}` : ''}</li>`;
+        const rounds = s.rounds?.map((r: any) => escapeHtml(r.roundName || r.startTime)).join(', ') || '';
+        return `<li><strong>${escapeHtml(s.sessionName || 'Round')}</strong>${rounds ? ` – ${rounds}` : ''}</li>`;
       }).join('')
     : '<li>Your selected rounds</li>';
 
@@ -105,10 +157,10 @@ export function buildRegistrationEmail(params: {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;">
   <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
     <h1 style="font-size: 24px; margin: 0 0 8px 0;">You're in! 🎉</h1>
-    <p style="color: #666; margin: 0 0 24px 0;">Hi ${firstName}, your registration is confirmed.</p>
+    <p style="color: #666; margin: 0 0 24px 0;">Hi ${escapeHtml(firstName)}, your registration is confirmed.</p>
 
     <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-      <p style="margin: 0 0 4px 0; font-weight: 600;">${eventName || 'Networking Event'}</p>
+      <p style="margin: 0 0 4px 0; font-weight: 600;">${escapeHtml(eventName || 'Networking Event')}</p>
       <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #555;">
         ${sessionsList}
       </ul>
@@ -120,7 +172,7 @@ export function buildRegistrationEmail(params: {
 
     <p style="margin: 24px 0 0 0; color: #888; font-size: 13px;">
       Bookmark this link – it's your personal access to the event.<br>
-      Event page: <a href="${eventUrl}" style="color: #666;">${eventUrl}</a>
+      Event page: <a href="${eventUrl}" style="color: #666;">${escapeHtml(eventUrl)}</a>
     </p>
   </div>
 
@@ -160,9 +212,9 @@ export function buildContactSharedEmail(params: {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;">
   <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
     <h1 style="font-size: 24px; margin: 0 0 8px 0;">You have a new contact! 🎉</h1>
-    <p style="color: #666; margin: 0 0 24px 0;">Hi ${recipientFirstName},</p>
+    <p style="color: #666; margin: 0 0 24px 0;">Hi ${escapeHtml(recipientFirstName)},</p>
 
-    <p style="margin: 0 0 16px 0;">You and <strong>${partnerFirstName} ${partnerLastName}</strong> both agreed to share contacts after your conversation at <strong>${eventName || 'the networking event'}</strong>.</p>
+    <p style="margin: 0 0 16px 0;">You and <strong>${escapeHtml(partnerFirstName)} ${escapeHtml(partnerLastName)}</strong> both agreed to share contacts after your conversation at <strong>${escapeHtml(eventName || 'the networking event')}</strong>.</p>
 
     <p style="margin: 0 0 24px 0;">Their contact details are now in your Wonderelo address book.</p>
 
@@ -188,7 +240,7 @@ export function buildMagicLinkEmail(params: {
   eventName?: string;
 }): { subject: string; html: string } {
   const { firstName, magicLink, eventName } = params;
-  const greeting = firstName ? `Hi ${firstName}` : 'Hi there';
+  const greeting = firstName ? `Hi ${escapeHtml(firstName)}` : 'Hi there';
 
   const subject = `Your access link for ${eventName || 'the networking event'}`;
 

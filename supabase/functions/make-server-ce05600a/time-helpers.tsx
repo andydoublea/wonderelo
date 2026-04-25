@@ -29,14 +29,31 @@ export function parseRoundStartTime(date: string, startTime: string): Date {
   return new Date(Date.UTC(year, month - 1, day, hours - offset, minutes, 0, 0));
 }
 
-// Get current time (can be overridden for testing)
+/**
+ * Get current time. Tests can override via X-Test-Time header, but ONLY if
+ * the caller proves they have the service-role key (X-Test-Auth header).
+ *
+ * Without this gate, anyone with the public anon key could send
+ * `X-Test-Time: 2099-01-01` to manipulate matching/round-end logic in prod —
+ * e.g. trigger early matching, mark participants as 'unconfirmed', or fast-
+ * forward the round-end timer.
+ */
 export function getCurrentTime(c: any): Date {
-  // Check if there's a test time override
   const testTime = c.req.header('X-Test-Time');
-  if (testTime) {
-    return new Date(testTime);
+  if (!testTime) return new Date();
+
+  // Authenticated test override required
+  const provided = c.req.header('X-Test-Auth') || '';
+  const expected = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  if (!expected || !provided || provided.length !== expected.length) {
+    return new Date();
   }
-  return new Date();
+  let diff = 0;
+  for (let i = 0; i < provided.length; i++) diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
+  if (diff !== 0) return new Date();
+
+  // Authenticated test caller — honor the override
+  return new Date(testTime);
 }
 
 // Format date to YYYY-MM-DD

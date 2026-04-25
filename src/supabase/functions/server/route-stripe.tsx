@@ -318,7 +318,31 @@ export function registerStripeRoutes(app: Hono) {
         return c.json({ error: 'Invalid signature' }, 400);
       }
 
-      debugLog('📩 Stripe webhook event:', event.type);
+      debugLog('📩 Stripe webhook event:', event.type, event.id);
+
+      // Idempotency guard. Stripe delivers webhooks at-least-once (retries on
+      // 5xx, network timeouts, etc.) — without this check we could credit a
+      // user twice or create a second subscription for the same checkout. We
+      // claim the event ID up front; if INSERT hits the PK conflict, we've
+      // already processed it and bail with 200.
+      try {
+        const supabase = getGlobalSupabaseClient();
+        const { error: dupErr } = await supabase
+          .from('stripe_processed_events')
+          .insert({ event_id: event.id, event_type: event.type });
+        if (dupErr) {
+          // 23505 = unique violation (already processed)
+          if ((dupErr as any).code === '23505') {
+            debugLog(`↩️ Stripe webhook ${event.id} already processed — skipping`);
+            return c.json({ received: true, idempotent: true });
+          }
+          // Don't block on other DB errors; log and proceed (better to risk
+          // double-process than to drop the webhook entirely)
+          errorLog('Failed to record stripe event id (proceeding anyway):', dupErr);
+        }
+      } catch (idemErr) {
+        errorLog('Idempotency table check failed (proceeding anyway):', idemErr);
+      }
 
       switch (event.type) {
         case 'checkout.session.completed': {

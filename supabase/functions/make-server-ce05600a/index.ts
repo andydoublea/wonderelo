@@ -131,7 +131,7 @@ app.post('/make-server-ce05600a/signup', async (c) => {
     await db.createOrganizerProfile({ userId, email, organizerName, urlSlug: finalSlug, eventType: resolvedEventType });
 
     // Delete registration draft (non-blocking)
-    db.deleteRegistrationDraft(email).catch(() => {});
+    db.deleteRegistrationDraft(email).catch(err => errorLog('deleteRegistrationDraft post-signup failed:', err));
 
     // Send welcome email (non-blocking)
     const appUrl = Deno.env.get('APP_URL') || 'https://wonderelo.com';

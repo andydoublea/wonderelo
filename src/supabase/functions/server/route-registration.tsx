@@ -198,7 +198,7 @@ export async function registerParticipant(c: Context) {
                     });
                     sendEmail({ to: organizerProfile.email, subject: emailContent.subject, html: emailContent.html })
                       .then(r => r.success && debugLog('📧 First-participant email sent to organizer'))
-                      .catch(() => {});
+                      .catch(err => errorLog('First-participant onboarding email failed:', err));
                     organizerSent.push('onboarding_4');
                     sentEmails[organizerProfile.userId] = organizerSent;
                     await db.setAdminSetting('onboarding_emails_sent', sentEmails);

@@ -377,6 +377,12 @@ export async function bulkUpsertOutboxAttempting(
   }
 
   // 3a) Bulk INSERT new rows. Postgres returns the inserted rows including UUIDs.
+  // Race tolerance: if a concurrent caller inserted a row for one of our
+  // participants between our SELECT and INSERT, the unique constraint
+  // (kind, participant_id, round_id) fires and the entire chunk fails with
+  // 23505. Recovery: re-fetch existing rows for the affected participants
+  // and continue. Real-world frequency is low (we only see this when a late
+  // registration arrives during dispatch fan-out).
   if (toInsert.length > 0) {
     const CHUNK = 500;
     for (let i = 0; i < toInsert.length; i += CHUNK) {
@@ -385,8 +391,23 @@ export async function bulkUpsertOutboxAttempting(
         .from('sms_outbox')
         .insert(slice)
         .select('*');
-      if (error) throw error;
-      for (const r of data || []) out.set(r.participant_id, mapOutbox(r));
+      if (!error) {
+        for (const r of data || []) out.set(r.participant_id, mapOutbox(r));
+        continue;
+      }
+      const code = (error as any).code;
+      if (code !== '23505') throw error;
+      // Race: someone (probably another dispatch invocation) inserted rows
+      // for participants we wanted. Re-fetch them per-row and merge.
+      const slicePids = slice.map((r: any) => r.participant_id);
+      const { data: refetched, error: refetchErr } = await sb()
+        .from('sms_outbox')
+        .select('*')
+        .eq('kind', kind)
+        .eq('round_id', roundId)
+        .in('participant_id', slicePids);
+      if (refetchErr) throw refetchErr;
+      for (const r of refetched || []) out.set(r.participant_id, mapOutbox(r));
     }
   }
 
