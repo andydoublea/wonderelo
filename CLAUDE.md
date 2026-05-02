@@ -4,6 +4,8 @@ Speed networking event management platform. Vite + React SPA with Supabase (auth
 
 GitHub: `https://github.com/andydoublea/wonderelo.git`
 
+**Communicate with the user in Slovak.** Code, commit messages, PR titles/descriptions, and any user-facing strings stay in their original language (English by default for this codebase). Only the chat replies are Slovak.
+
 ---
 
 ## Multi-project machine
