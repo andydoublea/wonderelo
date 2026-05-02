@@ -10,3 +10,9 @@ dist/
 .vscode/
 .idea/
 .vercel
+
+# Claude Code per-session worktrees and scratch files. Previous sessions
+# accidentally committed these as submodule gitlinks; the 20260426 cleanup
+# removed the index entries. Keep this so `git add -A` doesn't re-add them.
+.claude/worktrees/
+.claude/tmp-*
