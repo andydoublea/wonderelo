@@ -1209,6 +1209,55 @@ app.put('/make-server-ce05600a/profile', async (c) => {
   }
 });
 
+// Change password (verifies current password, then updates to new one)
+app.post('/make-server-ce05600a/change-password', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token);
+
+    if (authError || !user || !user.email) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const { currentPassword, newPassword } = await c.req.json();
+
+    if (!currentPassword || !newPassword) {
+      return c.json({ error: 'Current and new password are required' }, 400);
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return c.json({ error: 'New password must be at least 6 characters' }, 400);
+    }
+
+    const { error: signInError } = await getSupabase().auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      return c.json({ error: 'Current password is incorrect' }, 400);
+    }
+
+    const { error: updateError } = await getSupabase().auth.admin.updateUserById(user.id, {
+      password: newPassword,
+    });
+
+    if (updateError) {
+      errorLog('Failed to update password:', updateError);
+      return c.json({ error: 'Failed to change password' }, 500);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error changing password:', error);
+    return c.json({ error: 'Failed to change password' }, 500);
+  }
+});
+
 // Admin: Update system parameters
 app.put('/make-server-ce05600a/admin/parameters', async (c) => {
   try {

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Save, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Loader2 } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
@@ -23,16 +23,18 @@ export interface AccountSettingsViewProps {
   userEmail: string;
   organizerName: string;
   isLoading: boolean;
-  isSaving: boolean;
+  isSavingName: boolean;
   isChangingPassword: boolean;
   isChangingEmail: boolean;
   showEmailChangeForm: boolean;
+  showPasswordChangeForm: boolean;
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
   newEmail: string;
   emailChangePassword: string;
   onOrganizerNameChange: (value: string) => void;
+  onOrganizerNameBlur: () => void;
   onCurrentPasswordChange: (value: string) => void;
   onNewPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
@@ -40,7 +42,8 @@ export interface AccountSettingsViewProps {
   onEmailChangePasswordChange: (value: string) => void;
   onToggleEmailChangeForm: () => void;
   onCancelEmailChange: () => void;
-  onSave: () => void;
+  onTogglePasswordChangeForm: () => void;
+  onCancelPasswordChange: () => void;
   onPasswordChange: () => void;
   onEmailChange: () => void;
 }
@@ -49,16 +52,18 @@ export function AccountSettingsView({
   userEmail,
   organizerName,
   isLoading,
-  isSaving,
+  isSavingName,
   isChangingPassword,
   isChangingEmail,
   showEmailChangeForm,
+  showPasswordChangeForm,
   currentPassword,
   newPassword,
   confirmPassword,
   newEmail,
   emailChangePassword,
   onOrganizerNameChange,
+  onOrganizerNameBlur,
   onCurrentPasswordChange,
   onNewPasswordChange,
   onConfirmPasswordChange,
@@ -66,7 +71,8 @@ export function AccountSettingsView({
   onEmailChangePasswordChange,
   onToggleEmailChangeForm,
   onCancelEmailChange,
-  onSave,
+  onTogglePasswordChangeForm,
+  onCancelPasswordChange,
   onPasswordChange,
   onEmailChange,
 }: AccountSettingsViewProps) {
@@ -91,15 +97,20 @@ export function AccountSettingsView({
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="organizerName">Your name</Label>
-                <div className="max-w-sm">
+                <div className="max-w-sm relative">
                   <Input
                     id="organizerName"
                     value={organizerName}
                     onChange={(e) => onOrganizerNameChange(e.target.value)}
+                    onBlur={onOrganizerNameBlur}
                     placeholder="John Doe"
                     className="mt-2"
                   />
+                  {isSavingName && (
+                    <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 mt-1 text-muted-foreground" />
+                  )}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Saves automatically</p>
               </div>
 
               <div>
@@ -159,79 +170,76 @@ export function AccountSettingsView({
                   </div>
                 )}
               </div>
+
+              <div>
+                <Label>Password</Label>
+                <div className="max-w-sm">
+                  <Input value="••••••••" disabled className="mt-2 bg-muted" />
+                </div>
+                <button
+                  type="button"
+                  onClick={onTogglePasswordChangeForm}
+                  className="text-xs text-primary hover:underline mt-1 block"
+                >
+                  {showPasswordChangeForm ? 'Cancel' : 'Change password'}
+                </button>
+
+                {showPasswordChangeForm && (
+                  <div className="mt-4 p-4 border rounded-lg bg-muted/30 space-y-4">
+                    <div>
+                      <Label htmlFor="currentPassword">Current password</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => onCurrentPasswordChange(e.target.value)}
+                        placeholder="Enter current password"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="newPassword">New password</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => onNewPasswordChange(e.target.value)}
+                        placeholder="Enter new password"
+                        className="mt-2"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">At least 6 characters</p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="confirmPassword">Confirm new password</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => onConfirmPasswordChange(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button onClick={onPasswordChange} disabled={isChangingPassword} variant="outline" size="sm">
+                        {isChangingPassword ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing...</>
+                        ) : (
+                          'Change password'
+                        )}
+                      </Button>
+                      <Button onClick={onCancelPasswordChange} variant="ghost" size="sm">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Change password</CardTitle>
-              <CardDescription>Update your password to keep your account secure</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="currentPassword">Current password</Label>
-                <div className="max-w-sm">
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => onCurrentPasswordChange(e.target.value)}
-                    placeholder="Enter current password"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="newPassword">New password</Label>
-                <div className="max-w-sm">
-                  <Input
-                    id="newPassword"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => onNewPasswordChange(e.target.value)}
-                    placeholder="Enter new password"
-                    className="mt-2"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">At least 6 characters</p>
-              </div>
-
-              <div>
-                <Label htmlFor="confirmPassword">Confirm new password</Label>
-                <div className="max-w-sm">
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => onConfirmPasswordChange(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Button onClick={onPasswordChange} disabled={isChangingPassword} variant="outline" className="w-full sm:w-auto">
-                  {isChangingPassword ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing password...</>
-                  ) : (
-                    'Change password'
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end">
-            <Button onClick={onSave} disabled={isSaving} className="w-full sm:w-auto">
-              {isSaving ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
-              ) : (
-                <><Save className="h-4 w-4 mr-2" />Save changes</>
-              )}
-            </Button>
-          </div>
         </div>
         )}
       </div>
@@ -242,15 +250,17 @@ export function AccountSettingsView({
 export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdate }: AccountSettingsProps) {
   const [organizerName, setOrganizerName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [showEmailChangeForm, setShowEmailChangeForm] = useState(false);
+  const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [emailChangePassword, setEmailChangePassword] = useState('');
+  const lastSavedNameRef = useRef<string>('');
 
   // Load current settings
   useEffect(() => {
@@ -272,7 +282,9 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         const result = await response.json();
         debugLog('Profile data received:', result);
         debugLog('Organizer name:', result.profile?.organizerName);
-        setOrganizerName(result.profile?.organizerName || '');
+        const loadedName = result.profile?.organizerName || '';
+        setOrganizerName(loadedName);
+        lastSavedNameRef.current = loadedName;
       } else {
         const errorText = await response.text();
         errorLog('Failed to load settings:', response.status, errorText);
@@ -286,59 +298,51 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     }
   };
 
-  const handleSave = async () => {
-    // Validate before saving
-    if (!organizerName) {
-      toast.error('Organizer name is required');
+  const handleNameBlur = async () => {
+    const trimmed = organizerName.trim();
+    if (trimmed === lastSavedNameRef.current) return;
+    if (!trimmed) {
+      toast.error('Name is required');
+      setOrganizerName(lastSavedNameRef.current);
       return;
     }
 
-    setIsSaving(true);
+    setIsSavingName(true);
     try {
-      debugLog('Saving account settings...');
-      debugLog('Organizer name to save:', organizerName);
-      
       const { authenticatedFetch } = await import('../utils/supabase/apiClient');
       const response = await authenticatedFetch(
         '/profile',
         {
           method: 'PUT',
-          body: JSON.stringify({
-            organizerName,
-          }),
+          body: JSON.stringify({ organizerName: trimmed }),
         },
         accessToken
       );
 
-      debugLog('Save response status:', response.status);
-
       if (response.ok) {
-        const result = await response.json();
-        debugLog('Save successful:', result);
-        toast.success('Settings saved successfully');
-        
-        // Update current user in localStorage
+        lastSavedNameRef.current = trimmed;
+        if (trimmed !== organizerName) setOrganizerName(trimmed);
+        toast.success('Name saved');
+
         const currentUser = localStorage.getItem('oliwonder_current_user');
         if (currentUser) {
           const userData = JSON.parse(currentUser);
-          userData.organizerName = organizerName;
+          userData.organizerName = trimmed;
           localStorage.setItem('oliwonder_current_user', JSON.stringify(userData));
         }
-        
-        // Notify parent component of profile update
-        if (onProfileUpdate) {
-          onProfileUpdate({ organizerName });
-        }
+        if (onProfileUpdate) onProfileUpdate({ organizerName: trimmed });
       } else {
         const errorText = await response.text();
-        errorLog('Failed to save settings:', response.status, errorText);
-        toast.error(`Failed to save settings: ${response.status}`);
+        errorLog('Failed to save name:', response.status, errorText);
+        toast.error('Failed to save name');
+        setOrganizerName(lastSavedNameRef.current);
       }
     } catch (error) {
-      errorLog('Error saving settings:', error);
-      toast.error('Error saving settings. Please try again.');
+      errorLog('Error saving name:', error);
+      toast.error('Error saving name. Please try again.');
+      setOrganizerName(lastSavedNameRef.current);
     } finally {
-      setIsSaving(false);
+      setIsSavingName(false);
     }
   };
 
@@ -379,10 +383,11 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
 
       if (response.ok) {
         toast.success('Password changed successfully');
-        // Clear password fields
+        // Clear password fields and collapse the form
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        setShowPasswordChangeForm(false);
       } else {
         const errorData = await response.json();
         errorLog('Failed to change password:', errorData);
@@ -454,16 +459,18 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
       userEmail={userEmail}
       organizerName={organizerName}
       isLoading={isLoading}
-      isSaving={isSaving}
+      isSavingName={isSavingName}
       isChangingPassword={isChangingPassword}
       isChangingEmail={isChangingEmail}
       showEmailChangeForm={showEmailChangeForm}
+      showPasswordChangeForm={showPasswordChangeForm}
       currentPassword={currentPassword}
       newPassword={newPassword}
       confirmPassword={confirmPassword}
       newEmail={newEmail}
       emailChangePassword={emailChangePassword}
       onOrganizerNameChange={setOrganizerName}
+      onOrganizerNameBlur={handleNameBlur}
       onCurrentPasswordChange={setCurrentPassword}
       onNewPasswordChange={setNewPassword}
       onConfirmPasswordChange={setConfirmPassword}
@@ -475,7 +482,20 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         setNewEmail('');
         setEmailChangePassword('');
       }}
-      onSave={handleSave}
+      onTogglePasswordChangeForm={() => {
+        setShowPasswordChangeForm(!showPasswordChangeForm);
+        if (showPasswordChangeForm) {
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }
+      }}
+      onCancelPasswordChange={() => {
+        setShowPasswordChangeForm(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }}
       onPasswordChange={handlePasswordChange}
       onEmailChange={handleEmailChange}
     />
