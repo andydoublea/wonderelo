@@ -1298,6 +1298,7 @@ function PreviewAccountSettings() {
   const [newEmail, setNewEmail] = useState('');
   const [emailChangePassword, setEmailChangePassword] = useState('');
   const [showEmailChangeForm, setShowEmailChangeForm] = useState(false);
+  const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
   const noop = () => {};
   return (
     <div className="min-h-[600px] bg-background">
@@ -1306,16 +1307,18 @@ function PreviewAccountSettings() {
         userEmail="andy@example.com"
         organizerName={organizerName}
         isLoading={false}
-        isSaving={false}
+        isSavingName={false}
         isChangingPassword={false}
         isChangingEmail={false}
         showEmailChangeForm={showEmailChangeForm}
+        showPasswordChangeForm={showPasswordChangeForm}
         currentPassword={currentPassword}
         newPassword={newPassword}
         confirmPassword={confirmPassword}
         newEmail={newEmail}
         emailChangePassword={emailChangePassword}
         onOrganizerNameChange={setOrganizerName}
+        onOrganizerNameBlur={noop}
         onCurrentPasswordChange={setCurrentPassword}
         onNewPasswordChange={setNewPassword}
         onConfirmPasswordChange={setConfirmPassword}
@@ -1323,7 +1326,8 @@ function PreviewAccountSettings() {
         onEmailChangePasswordChange={setEmailChangePassword}
         onToggleEmailChangeForm={() => setShowEmailChangeForm(v => !v)}
         onCancelEmailChange={() => { setShowEmailChangeForm(false); setNewEmail(''); setEmailChangePassword(''); }}
-        onSave={noop}
+        onTogglePasswordChangeForm={() => setShowPasswordChangeForm(v => !v)}
+        onCancelPasswordChange={() => { setShowPasswordChangeForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
         onPasswordChange={noop}
         onEmailChange={noop}
       />
