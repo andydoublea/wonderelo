@@ -20,6 +20,7 @@ export function registerPublicRoutes(app: Hono) {
     return c.json({
       success: true,
       organizerName: profile.organizerName,
+      eventName: profile.eventName,
       urlSlug: profile.urlSlug,
       profileImageUrl: profile.profileImageUrl,
       website: profile.website,

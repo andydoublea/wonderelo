@@ -248,7 +248,8 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         debugLog('Profile data received:', result);
         // Backend returns result.profile, not result.user
         const profile = result.profile || result.user || {};
-        setEventName(profile.organizerName || profile.eventName || '');
+        // Fallback to organizerName for accounts that haven't set eventName yet
+        setEventName(profile.eventName || profile.organizerName || '');
         setUrlSlug(profile.urlSlug || '');
         setOriginalUrlSlug(profile.urlSlug || '');
         setProfileImageUrl(profile.profileImageUrl || '');
@@ -504,7 +505,7 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         {
           method: 'PUT',
           body: JSON.stringify({
-            organizerName: eventName,  // Renamed from eventName to organizerName to match backend
+            eventName,
             urlSlug,
             profileImageUrl,
           }),
