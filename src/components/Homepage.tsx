@@ -225,17 +225,26 @@ export function Homepage({ onGetStarted, onSignIn, onResetPassword, isOrganizerA
   // Check authentication and redirect logic
   useEffect(() => {
     const allowBrowsing = sessionStorage.getItem('allow_participant_browsing');
+    const allowAdminBrowsing = sessionStorage.getItem('allow_admin_browsing');
     const token = localStorage.getItem('participant_token');
-    
+
     debugLog('🔍 Homepage useEffect triggered');
     debugLog('  - isOrganizerAuthenticated:', isOrganizerAuthenticated);
     debugLog('  - allowBrowsing:', allowBrowsing);
+    debugLog('  - allowAdminBrowsing:', allowAdminBrowsing);
     debugLog('  - participantToken:', token);
-    
+
     // Priority 1: Redirect authenticated organizer to dashboard
-    if (isOrganizerAuthenticated) {
+    // — unless they explicitly opted in to view the public homepage
+    // (set via the "Homepage" item in the admin user-menu).
+    if (isOrganizerAuthenticated && allowAdminBrowsing !== 'true') {
       debugLog('🔄 Organizer authenticated, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
+      return;
+    }
+    if (allowAdminBrowsing === 'true') {
+      sessionStorage.removeItem('allow_admin_browsing');
+      debugLog('✅ Admin opted-in to browse public homepage - no redirect');
       return;
     }
     

@@ -3517,6 +3517,11 @@ app.post('/make-server-ce05600a/test/e2e-matching-legacy', async (c) => {
   }
 });
 
+// Register demo routes (/demo/setup) — registered FIRST so it survives the
+// per-isolate CPU soft limit during boot (registering large modules like
+// route-participants can occasionally exhaust CPU and silently skip the rest).
+registerDemoRoutes(app);
+
 // ============================================================
 // SMS scheduling via QStash (variant B: batched per round × kind)
 // ============================================================

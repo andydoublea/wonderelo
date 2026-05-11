@@ -1366,16 +1366,14 @@ function PreviewEventPageSettings() {
 
 function PreviewEventPromo() {
   return (
-    <EventPromoPageView
-      eventSlug="andyconf"
-      qrCodeUrl=""
-      displayName="Andyho konfera"
-      publishedSessions={[mockPublishedSession]}
-      organizerName="Andy"
-      eventName="Andyho konfera"
-      profileImageUrl=""
-      onBack={() => {}}
-    />
+    <div style={{ position: 'relative', width: '100%', height: '720px' }}>
+      <EventPromoPageView
+        eventSlug="andyconf"
+        qrCodeUrl=""
+        displaySlug="andyconf"
+        onBack={() => {}}
+      />
+    </div>
   );
 }
 

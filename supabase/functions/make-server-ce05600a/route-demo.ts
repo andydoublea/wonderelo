@@ -56,11 +56,15 @@ function generateFutureRounds(now: Date): Array<{
     const minutes = roundStart.getMinutes().toString().padStart(2, '0');
     const dateStr = `${roundStart.getFullYear()}-${(roundStart.getMonth() + 1).toString().padStart(2, '0')}-${roundStart.getDate().toString().padStart(2, '0')}`;
 
+    const startTimeStr = `${hours}:${minutes}`;
     rounds.push({
       id: `demo-round-${Date.now()}-${i}`,
-      name: `Round ${i + 1}`,
+      // Name rounds by their start time — matches how organizers typically
+      // label rounds in the real app ("10:00", "10:15", etc.) rather than
+      // generic ordinals.
+      name: startTimeStr,
       date: dateStr,
-      startTime: `${hours}:${minutes}`,
+      startTime: startTimeStr,
       duration: roundDuration,
       sortOrder: i,
     });
