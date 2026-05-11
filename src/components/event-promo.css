@@ -1,0 +1,409 @@
+/* EventPromoPage — Wonderelo Design System v1.0 (Slide layout)
+ *
+ * All selectors prefixed `.ep-` to avoid collisions with the rest of the app.
+ * The stage is a fixed 1920x1080 canvas auto-scaled to viewport via JS transform.
+ */
+
+.ep-stage-host {
+  --ep-purple: #5C2277;
+  --ep-purple-deep: #4B1D51;
+  --ep-purple-ink: #2D1133;
+  --ep-orange: #DD531C;
+  --ep-orange-bright: #FF6A2A;
+  --ep-cream: #F7F1E6;
+  --ep-paper: #FBF6EC;
+  --ep-paper-deep: #F1E9D8;
+  --ep-ink: #3A2E34;
+
+  --ep-font-display: "Bricolage Grotesque", sans-serif;
+  --ep-font-serif: "Instrument Serif", serif;
+  --ep-font-body: "Space Grotesk", system-ui, sans-serif;
+
+  --ep-hairline: rgba(76, 25, 77, 0.10);
+  --ep-hairline-strong: rgba(76, 25, 77, 0.18);
+  --ep-shadow-card: 0 20px 40px rgba(76, 25, 77, 0.18);
+  --ep-shadow-soft: 0 8px 24px rgba(76, 25, 77, 0.08);
+
+  --ep-r-md: 14px;
+  --ep-r-lg: 22px;
+  --ep-r-xl: 28px;
+
+  /* Caller is responsible for providing a positioned, sized container.
+     For full-screen use (e.g. /event-promo route), wrap in a div with
+     position: fixed; inset: 0;  For embedded use (preview, demo phase),
+     wrap in a div with position: relative and an explicit height. */
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ep-paper);
+  font-family: var(--ep-font-body);
+  color: var(--ep-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ep-stage-canvas {
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--ep-paper);
+  overflow: hidden;
+}
+
+.ep-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 60px 88px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+/* ---------- HEADER ---------- */
+.ep-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.ep-lockup {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.ep-lockup .ep-mark {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ep-lockup .ep-mark img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 84px;
+  height: 84px;
+  /* Override the global Tailwind reset `img { max-width: 100% }` so the
+     symbol can overflow its 56px parent (matches Slide_v02 design). */
+  max-width: none;
+  object-fit: contain;
+  transform: translate(-50%, -50%) rotate(-6deg);
+}
+.ep-lockup .ep-word {
+  font-family: var(--ep-font-display);
+  font-weight: 800;
+  font-size: 38px;
+  letter-spacing: -0.025em;
+  color: var(--ep-purple-deep);
+}
+
+.ep-header-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.ep-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ep-orange);
+  font-family: var(--ep-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.ep-eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--ep-orange);
+}
+
+.ep-header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--ep-font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ep-purple-deep);
+  opacity: 0.35;
+  text-decoration: none;
+  padding: 8px 0;
+  border-bottom: 1.5px solid transparent;
+  background: none;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, opacity 0.2s;
+}
+.ep-header-link:hover {
+  opacity: 1;
+  border-color: var(--ep-purple-deep);
+}
+.ep-header-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---------- MAIN GRID ---------- */
+.ep-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 0.95fr 1px 1.2fr;
+  gap: 72px;
+  align-items: stretch;
+  padding-top: 12px;
+  min-height: 0;
+}
+.ep-col-divider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--ep-hairline);
+}
+.ep-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  justify-content: flex-start;
+  min-height: 100%;
+}
+.ep-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 8px;
+}
+
+/* ---------- HEADLINE ----------
+ * Prefix with .ep-stage-host (specificity 0,2,0 + !important) so we beat
+ * the global `.vs-jasper h1 { ...!important }` rule (specificity 0,1,1).
+ * Without the parent prefix the vs-jasper rule wins on specificity even
+ * when both sides have !important. */
+.ep-stage-host .ep-heading {
+  font-family: var(--ep-font-display) !important;
+  font-weight: 800 !important;
+  font-size: 96px !important;
+  line-height: 0.96 !important;
+  letter-spacing: -0.04em !important;
+  margin: 0;
+  color: var(--ep-purple-deep) !important;
+  text-wrap: balance;
+}
+.ep-stage-host .ep-heading em {
+  font-family: var(--ep-font-serif) !important;
+  font-style: italic !important;
+  font-weight: 400 !important;
+  color: var(--ep-orange) !important;
+}
+
+/* ---------- QR BLOCK ---------- */
+.ep-qr-block {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 4px;
+}
+.ep-qr-title-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.ep-qr-title {
+  font-family: var(--ep-font-display);
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -0.015em;
+  color: var(--ep-purple-deep);
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.ep-qr-title::before {
+  content: none;
+}
+.ep-qr-hashtag {
+  background: rgba(221, 83, 28, 0.10);
+  color: var(--ep-orange);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 22px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  border: 1px solid rgba(221, 83, 28, 0.20);
+}
+.ep-qr-thumb {
+  width: 560px;
+  height: 560px;
+  background: var(--ep-purple-ink);
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: var(--ep-shadow-card);
+}
+.ep-qr-thumb img,
+.ep-qr-thumb svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---------- STEPS ---------- */
+.ep-right-eyebrow {
+  margin-bottom: 4px;
+}
+.ep-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ep-step {
+  position: relative;
+  padding: 26px 28px 26px 130px;
+  border-radius: var(--ep-r-xl);
+  cursor: pointer;
+  transition: background-color 0.35s ease, box-shadow 0.35s ease,
+    padding 0.35s ease, border-color 0.35s ease;
+  border: 1px solid transparent;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.ep-step:not(.ep-is-active) {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.ep-step .ep-num {
+  position: absolute;
+  left: 24px;
+  top: 22px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: var(--ep-paper-deep);
+  border: 2px solid var(--ep-hairline-strong);
+  color: var(--ep-purple-deep);
+  display: grid;
+  place-items: center;
+  font-family: var(--ep-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  transition: all 0.35s ease;
+}
+.ep-step:not(.ep-is-active) .ep-num {
+  top: 14px;
+  width: 64px;
+  height: 64px;
+  font-size: 22px;
+}
+
+.ep-step .ep-title {
+  font-family: var(--ep-font-display);
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  color: var(--ep-purple-deep);
+  opacity: 0.35;
+  transition: opacity 0.35s ease, font-size 0.35s ease;
+}
+.ep-step:not(.ep-is-active) .ep-title {
+  font-size: 40px;
+  margin-top: 6px;
+}
+
+.ep-step .ep-desc {
+  margin-top: 0;
+  font-family: var(--ep-font-body);
+  font-size: 22px;
+  line-height: 1.45;
+  color: var(--ep-ink);
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease, opacity 0.35s ease, margin-top 0.35s ease;
+}
+
+.ep-step.ep-is-done .ep-num {
+  background: rgba(221, 83, 28, 0.10);
+  border-color: rgba(221, 83, 28, 0.30);
+  color: var(--ep-orange);
+}
+.ep-step.ep-is-done .ep-title {
+  opacity: 0.55;
+}
+
+.ep-step.ep-is-active {
+  background: #fff;
+  box-shadow: var(--ep-shadow-card);
+  border-color: var(--ep-hairline);
+}
+.ep-step.ep-is-active .ep-num {
+  background: var(--ep-cream);
+  border-color: var(--ep-orange);
+  color: var(--ep-purple-deep);
+  box-shadow: 0 6px 16px rgba(221, 83, 28, 0.18);
+}
+.ep-step.ep-is-active .ep-title {
+  opacity: 1;
+}
+.ep-step.ep-is-active .ep-desc {
+  max-height: 220px;
+  opacity: 1;
+  margin-top: 12px;
+}
+
+/* Step illustration — only visible when active */
+.ep-step .ep-step-art {
+  width: 100%;
+  max-width: 660px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--ep-r-lg);
+  overflow: hidden;
+  border: 1px solid var(--ep-hairline);
+  background: var(--ep-paper-deep);
+  display: none;
+}
+.ep-step.ep-is-active .ep-step-art {
+  display: block;
+  margin-top: 22px;
+  animation: epStepArtIn 0.35s ease both;
+}
+@keyframes epStepArtIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ep-step .ep-step-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ep-step[data-art="meet"] .ep-step-art img {
+  object-position: 50% 40%;
+}

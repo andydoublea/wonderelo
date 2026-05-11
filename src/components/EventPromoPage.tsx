@@ -1,14 +1,9 @@
-import { useState, useEffect } from 'react';
-import { SessionRegistration } from './SessionRegistration';
-import { OrganizerHeader } from './OrganizerHeader';
-import { NetworkingSession } from '../App';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { errorLog } from '../utils/debug';
+import './event-promo.css';
+
 interface EventPromoPageProps {
   eventSlug: string;
-  sessions: NetworkingSession[];
-  organizerName?: string;
-  eventName?: string;
-  profileImageUrl?: string;
   displaySlug?: string;
   onBack?: () => void;
 }
@@ -20,96 +15,196 @@ interface EventPromoPageProps {
 export interface EventPromoPageViewProps {
   eventSlug: string;
   qrCodeUrl: string;
-  displayName: string;
-  publishedSessions: NetworkingSession[];
-  organizerName?: string;
-  eventName?: string;
-  profileImageUrl?: string;
   displaySlug?: string;
   onBack?: () => void;
 }
 
+interface PromoStep {
+  num: string;
+  title: string;
+  desc: string;
+  imgSrc: string;
+  imgAlt: string;
+  artKey?: string; // optional data-art for image positioning
+}
+
+const PROMO_STEPS: PromoStep[] = [
+  {
+    num: '01',
+    title: 'Pick a time to meet',
+    desc: 'SMS reminds you 5 minutes before start',
+    imgSrc: '/Hand-with-phone.png',
+    imgAlt: '',
+  },
+  {
+    num: '02',
+    title: 'Find your meeting match',
+    desc: 'A unique Wonderimage™ helps you spot each other in the crowd',
+    imgSrc: '/Wonderelo-step4.png',
+    imgAlt: '',
+    artKey: 'meet',
+  },
+  {
+    num: '03',
+    title: 'Talk & exchange contacts',
+    desc: 'Only if both parties agree',
+    imgSrc: '/Wonderelo-hero-section-networking-rounds.svg',
+    imgAlt: '',
+  },
+];
+
+const STEP_DURATION_MS = 5000;
+const STAGE_WIDTH = 1920;
+const STAGE_HEIGHT = 1080;
+
 export function EventPromoPageView({
-  eventSlug,
   qrCodeUrl,
-  displayName,
-  publishedSessions,
-  organizerName,
-  eventName,
-  profileImageUrl,
+  eventSlug,
   displaySlug,
   onBack,
 }: EventPromoPageViewProps) {
+  const [active, setActive] = useState(0);
+  const stageHostRef = useRef<HTMLDivElement | null>(null);
+  const stageCanvasRef = useRef<HTMLDivElement | null>(null);
+  const timerRef = useRef<number | null>(null);
+
+  // Cycling — restart timer whenever active changes (so manual click resets the clock)
+  useEffect(() => {
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current);
+    }
+    timerRef.current = window.setInterval(() => {
+      setActive(prev => (prev + 1) % PROMO_STEPS.length);
+    }, STEP_DURATION_MS);
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearInterval(timerRef.current);
+      }
+    };
+  }, [active]);
+
+  // Auto-scale 1920x1080 stage to fit its host container
+  useEffect(() => {
+    const host = stageHostRef.current;
+    const canvas = stageCanvasRef.current;
+    if (!host || !canvas) return;
+
+    const fit = () => {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      const sx = w / STAGE_WIDTH;
+      const sy = h / STAGE_HEIGHT;
+      const s = Math.min(sx, sy);
+      const tx = (w - STAGE_WIDTH * s) / 2;
+      const ty = (h - STAGE_HEIGHT * s) / 2;
+      canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(host);
+    window.addEventListener('resize', fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', fit);
+    };
+  }, []);
+
+  const handleStepClick = useCallback((idx: number) => {
+    setActive(idx);
+  }, []);
+
+  const hashtag = `wonderelo.com/${displaySlug || eventSlug}`;
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="container mx-auto max-w-7xl px-6 py-12 flex-1 flex items-center">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
-          <div className="flex flex-col items-center justify-center space-y-8">
-            <div className="bg-white p-8 rounded-2xl shadow-lg">
-              {qrCodeUrl ? (
-                <img src={qrCodeUrl} alt="Event QR Code" className="w-full h-full max-w-[400px]" />
-              ) : (
-                <div className="w-[400px] h-[400px] flex items-center justify-center bg-muted rounded">
-                  <p className="text-muted-foreground">Generating QR code...</p>
-                </div>
+    <div className="ep-stage-host" ref={stageHostRef}>
+      <div className="ep-stage-canvas" ref={stageCanvasRef}>
+        <div className="ep-page">
+          {/* HEADER */}
+          <header className="ep-header">
+            <div className="ep-lockup">
+              <div className="ep-mark">
+                <img src="/Wonderelo-logo-symbol.png" alt="" />
+              </div>
+              <div className="ep-word">wonderelo</div>
+            </div>
+            <div className="ep-header-right">
+              {onBack && (
+                <button type="button" className="ep-header-link" onClick={onBack}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M11 5l-7 7 7 7" />
+                  </svg>
+                  Back to dashboard
+                </button>
               )}
             </div>
+          </header>
 
-            <div className="text-center">
-              <h2 className="text-4xl font-semibold text-primary wonderelo-logo wonderelo-logo-large">Wonderelo</h2>
-            </div>
+          {/* MAIN */}
+          <main className="ep-main">
+            {/* LEFT: headline + QR */}
+            <section className="ep-left-col">
+              <h1 className="ep-heading" style={{ width: 750 }}>
+                Break your bubble,<br />
+                <em>meet</em> new people
+              </h1>
 
-            <div className="text-center space-y-2">
-              <div className="inline-flex items-center gap-2 px-8 py-4 bg-primary/10 rounded-full">
-                <span className="text-5xl font-mono font-semibold text-primary">
-                  #{displaySlug || eventSlug}
-                </span>
+              <div className="ep-qr-block">
+                <div className="ep-qr-title-row">
+                  <div className="ep-qr-title">Scan to join</div>
+                  <div className="ep-qr-hashtag">{hashtag}</div>
+                </div>
+                <div className="ep-qr-thumb" aria-label="Scan to join">
+                  {qrCodeUrl ? (
+                    <img src={qrCodeUrl} alt="Event QR Code" />
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          <div className="space-y-4">
-            <OrganizerHeader
-              profileImageUrl={profileImageUrl}
-              eventName={eventName}
-              organizerName={organizerName}
-              variant="boxed"
-            />
+            <div className="ep-col-divider" aria-hidden="true" />
 
-            {publishedSessions.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No upcoming sessions available</p>
-              </div>
-            ) : (
-              <SessionRegistration
-                sessions={publishedSessions}
-                userSlug={eventSlug}
-                eventName={displayName}
-                noWrapper={true}
-                hideStickyBar={true}
-              />
-            )}
-          </div>
+            {/* RIGHT: numbered steps */}
+            <section className="ep-right-col">
+              <ol className="ep-steps">
+                {PROMO_STEPS.map((step, idx) => {
+                  const isActive = idx === active;
+                  const isDone = idx < active;
+                  const classes = [
+                    'ep-step',
+                    isActive ? 'ep-is-active' : '',
+                    isDone ? 'ep-is-done' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
+                  return (
+                    <li key={idx}>
+                      <button
+                        type="button"
+                        className={classes}
+                        data-art={step.artKey}
+                        onClick={() => handleStepClick(idx)}
+                      >
+                        <div className="ep-num">{step.num}</div>
+                        <div className="ep-title">{step.title}</div>
+                        <div className="ep-desc">{step.desc}</div>
+                        <div className="ep-step-art" aria-hidden="true">
+                          <img src={step.imgSrc} alt={step.imgAlt} />
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          </main>
         </div>
       </div>
-
-      {onBack && (
-        <div className="pb-8">
-          <div className="text-center">
-            <button
-              onClick={onBack}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Back to dashboard
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, profileImageUrl, displaySlug, onBack }: EventPromoPageProps) {
+export function EventPromoPage({ eventSlug, displaySlug, onBack }: EventPromoPageProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   const publicUrl = `${window.location.origin}/${eventSlug}`;
@@ -121,12 +216,15 @@ export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, 
   const generateQRCode = async () => {
     try {
       const QRCode = (await import('qrcode')).default;
+      // Match the design: white modules on purple-ink background.
+      // The QR thumb container also has #2D1133 background, so the QR's
+      // light color blends with the surrounding "frame" naturally.
       const qrDataUrl = await QRCode.toDataURL(publicUrl, {
-        width: 400,
-        margin: 2,
+        width: 560,
+        margin: 1,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF',
+          dark: '#FFFFFF',
+          light: '#2D1133',
         },
       });
       setQrCodeUrl(qrDataUrl);
@@ -135,18 +233,10 @@ export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, 
     }
   };
 
-  const displayName = eventName || organizerName || eventSlug;
-  const publishedSessions = sessions.filter(s => s.status === 'published');
-
   return (
     <EventPromoPageView
       eventSlug={eventSlug}
       qrCodeUrl={qrCodeUrl}
-      displayName={displayName}
-      publishedSessions={publishedSessions}
-      organizerName={organizerName}
-      eventName={eventName}
-      profileImageUrl={profileImageUrl}
       displaySlug={displaySlug}
       onBack={onBack}
     />

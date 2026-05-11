@@ -537,7 +537,17 @@ export function RoundItem({
           }${isRegistered && !showUnregisterButton ? ' text-muted-foreground/60' : ''}${
             !isRegisterable && !isRegistered ? ' text-muted-foreground/50' : ''
           }`}>
-            {round.name}
+            {/* If the round name is a generic ordinal ("Round 1", "Round 2"…),
+                fall back to the start time — that's how organizers actually
+                think of rounds in real events. Custom names (e.g. "Lunch
+                break", "Speed dating") are preserved. */}
+            {(() => {
+              const isGenericName = /^Round\s+\d+$/i.test((round.name ?? '').trim());
+              if (isGenericName && round.startTime && round.startTime !== 'To be set' && round.startTime !== 'TBD') {
+                return round.startTime;
+              }
+              return round.name;
+            })()}
             {/* Show date if round is on a different day than the session */}
             {round.date && session?.date && round.date !== session.date && (
               <span className="ml-2 text-xs text-muted-foreground">

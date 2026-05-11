@@ -733,7 +733,7 @@ function EventPageSettingsRoute() {
 }
 
 function EventPromoPageRoute() {
-  const { eventSlug, sessions, currentUser, loadSessions } = useApp();
+  const { eventSlug, loadSessions } = useApp();
   const navigate = useNavigate();
 
   // The promo page is often left open on a big screen at the event — refresh
@@ -756,14 +756,12 @@ function EventPromoPageRoute() {
   }, [loadSessions]);
 
   return (
-    <EventPromoPage
-      eventSlug={eventSlug}
-      sessions={sessions}
-      organizerName={currentUser?.organizerName}
-      eventName={currentUser?.eventName}
-      profileImageUrl={currentUser?.profileImageUrl}
-      onBack={() => navigate('/dashboard')}
-    />
+    <div style={{ position: 'fixed', inset: 0 }}>
+      <EventPromoPage
+        eventSlug={eventSlug}
+        onBack={() => navigate('/dashboard')}
+      />
+    </div>
   );
 }
 
