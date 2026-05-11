@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Settings, CreditCard, LogOut, ChevronDown, FileText, Menu, X } from 'lucide-react';
+import { Settings, CreditCard, LogOut, ChevronDown, FileText, Menu, X, Home } from 'lucide-react';
 import { APP_VERSION } from '../utils/version';
 import { useNavigate } from 'react-router';
 
@@ -118,6 +118,18 @@ export function AuthenticatedNav({
                   <CreditCard className="mr-2 h-4 w-4" />
                   Billing
                 </DropdownMenuItem>
+                {isAdminUser && !isImpersonating && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Tell Homepage's redirect-effect not to bounce admin back to /dashboard
+                      sessionStorage.setItem('allow_admin_browsing', 'true');
+                      navigate('/');
+                    }}
+                  >
+                    <Home className="mr-2 h-4 w-4" />
+                    Homepage
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -189,6 +201,19 @@ export function AuthenticatedNav({
               <CreditCard className="h-4 w-4 text-muted-foreground" />
               Billing
             </button>
+            {isAdminUser && !isImpersonating && (
+              <button
+                className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-muted flex items-center gap-2"
+                onClick={() => {
+                  sessionStorage.setItem('allow_admin_browsing', 'true');
+                  navigate('/');
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <Home className="h-4 w-4 text-muted-foreground" />
+                Homepage
+              </button>
+            )}
 
             {isImpersonating && (
               <>

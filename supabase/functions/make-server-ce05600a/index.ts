@@ -3408,6 +3408,11 @@ app.post('/make-server-ce05600a/test/e2e-matching-legacy', async (c) => {
   }
 });
 
+// Register demo routes (/demo/setup) — registered FIRST so it survives the
+// per-isolate CPU soft limit during boot (registering large modules like
+// route-participants can occasionally exhaust CPU and silently skip the rest).
+registerDemoRoutes(app);
+
 // Register participant routes
 registerParticipantRoutes(app, getCurrentTime);
 
@@ -3419,8 +3424,5 @@ registerCrmRoutes(app);
 
 // Register i18n routes
 registerI18nRoutes(app);
-
-// Register demo routes (/demo/setup)
-registerDemoRoutes(app);
 
 Deno.serve(app.fetch);

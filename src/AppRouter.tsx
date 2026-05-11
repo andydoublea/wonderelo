@@ -732,18 +732,16 @@ function EventPageSettingsRoute() {
 }
 
 function EventPromoPageRoute() {
-  const { eventSlug, sessions, currentUser } = useApp();
+  const { eventSlug } = useApp();
   const navigate = useNavigate();
 
   return (
-    <EventPromoPage
-      eventSlug={eventSlug}
-      sessions={sessions}
-      organizerName={currentUser?.organizerName}
-      eventName={currentUser?.eventName}
-      profileImageUrl={currentUser?.profileImageUrl}
-      onBack={() => navigate('/dashboard')}
-    />
+    <div style={{ position: 'fixed', inset: 0 }}>
+      <EventPromoPage
+        eventSlug={eventSlug}
+        onBack={() => navigate('/dashboard')}
+      />
+    </div>
   );
 }
 

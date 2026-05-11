@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { User, LogOut, ChevronDown, Mic, HandHeart, Music, Heart, Coffee, BookOpen, GitBranch, Menu } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { User, LogOut, ChevronDown, Mic, HandHeart, Music, Heart, Coffee, BookOpen, GitBranch, Menu, LayoutDashboard, Settings, FileText, CreditCard } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 import { toast } from 'sonner@2.0.3';
 import { useTranslation } from '../hooks/useTranslation';
 import { LanguageSwitcher } from './i18n/LanguageSwitcher';
+import { useApp } from '../AppRouter';
 
 const whoIsItForItems = [
   { key: 'nav.for.conferences', fallback: 'Conferences & barcamps', path: '/for/conferences', icon: Mic },
@@ -26,6 +27,7 @@ interface NavigationProps {
 export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isAuthenticated, currentUser, handleSignOut } = useApp();
   const [participantToken, setParticipantToken] = useState<string | null>(null);
   const [whoIsItForOpen, setWhoIsItForOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -35,6 +37,17 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
     const token = localStorage.getItem('participant_token');
     setParticipantToken(token);
   }, []);
+
+  // Authenticated organizer takes precedence over participant token
+  // (an admin who is also browsing as a participant should see organizer UI here).
+  const isOrganizer = isAuthenticated && !!currentUser;
+  const organizerDisplayName = currentUser?.organizerName || currentUser?.email || 'Account';
+
+  const handleOrganizerSignOut = async () => {
+    await handleSignOut();
+    toast.success('Signed out');
+    navigate('/');
+  };
 
   return (
     <nav className="border-b border-border sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -127,7 +140,39 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
 
             {/* Desktop-only auth buttons */}
             <div className="hidden md:flex items-center space-x-4">
-              {participantToken ? (
+              {isOrganizer ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="gap-2">
+                      {organizerDisplayName}
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/account-settings')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Account
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/event-page-settings')}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Event page
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/billing')}>
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Billing
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleOrganizerSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : participantToken ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline">
@@ -255,8 +300,30 @@ export function Navigation({ onGetStarted, onSignIn }: NavigationProps) {
             </button>
           </div>
 
-          {/* Login / Sign up */}
-          {!participantToken && (
+          {/* Auth section: organizer dropdown / participant card / login + signup */}
+          {isOrganizer ? (
+            <div style={{ marginTop: 'auto', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', paddingBottom: '0.25rem' }}>
+                Signed in as <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>{organizerDisplayName}</span>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }}
+              >
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                Dashboard
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={async () => { setMobileMenuOpen(false); await handleOrganizerSignOut(); }}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign out
+              </Button>
+            </div>
+          ) : !participantToken && (
             <div style={{ marginTop: 'auto', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {onSignIn && (
                 <Button variant="outline" className="w-full" onClick={() => { onSignIn(); setMobileMenuOpen(false); }}>
