@@ -76,7 +76,7 @@ export const getRoundStatus = (session: NetworkingSession, round: Round): RoundS
   const walkingEnd = new Date(roundStart.getTime() + walkingTimeMs);
   const findingEnd = new Date(roundStart.getTime() + walkingTimeMs + findingTimeMs);
   const maxRoundEnd = new Date(roundStart.getTime() + walkingTimeMs + findingTimeMs + networkingDurationMs);
-  const safetyWindowStart = new Date(roundStart.getTime() - (params.safetyWindowMinutes || 6) * 60 * 1000);
+  const confirmationStart = new Date(roundStart.getTime() - (params.confirmationWindowMinutes || 5) * 60 * 1000);
 
   // Completed: round has ended
   if (now >= maxRoundEnd) return 'completed';
@@ -90,11 +90,12 @@ export const getRoundStatus = (session: NetworkingSession, round: Round): RoundS
   // Walking: matching done, heading to meeting points
   if (now >= roundStart) return 'walking';
 
-  // Confirmation window: no new registrations, participants confirming attendance
-  if (now >= safetyWindowStart) return 'confirmation-window';
+  // Confirmation window: participants confirming attendance
+  // (registration may still be open until T-safetyWindowMinutes; late registrations auto-confirm)
+  if (now >= confirmationStart) return 'confirmation-window';
 
-  // Open to registration: session is published and before safety window
-  if (session.status === 'published' && now < safetyWindowStart) return 'registration-open';
+  // Open to registration: session is published and before confirmation window
+  if (session.status === 'published' && now < confirmationStart) return 'registration-open';
 
   // Scheduled: session is published or scheduled but registration not open yet
   if (session.status === 'scheduled' || session.status === 'published') return 'scheduled';
