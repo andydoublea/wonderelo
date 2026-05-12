@@ -319,10 +319,11 @@ export function AdminStatusesGuide() {
                 </Badge>
               }
               title="No match"
-              description="No suitable pair/group found by matching algorithm"
+              description="No successful meeting happened for this round"
               details={[
-                "Set by: matching algorithm (matching.tsx)",
-                "Trigger: participant confirmed but was left over (odd count, no compatible match)",
+                "Set by: matching algorithm (matching.tsx) OR dashboard auto-detection",
+                "Trigger A: participant confirmed but was left over (odd count, no compatible match) — confirmed → no-match",
+                "Trigger B: participant arrived (checked-in) but every other matched participant ended in a terminal failure status by the time the round ended — checked-in → no-match",
                 "Terminal status — no transitions out"
               ]}
             />
@@ -465,6 +466,12 @@ export function AdminStatusesGuide() {
                   <Badge variant="destructive">Missed</Badge>
                   <span className="text-gray-500 text-sm ml-2">(walking deadline expired, no check-in)</span>
                 </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-indigo-100 text-indigo-700 border-indigo-300">Checked-in</Badge>
+                  <span className="text-gray-400">→</span>
+                  <Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">No match</Badge>
+                  <span className="text-gray-500 text-sm ml-2">(came to meeting point but every other partner missed/unconfirmed by round end)</span>
+                </div>
               </div>
             </div>
           </div>
@@ -503,7 +510,7 @@ export function AdminStatusesGuide() {
                 </tr>
                 <tr>
                   <td className="py-2 pr-4"><Badge className="bg-indigo-100 text-indigo-700 border-indigo-300">checked-in</Badge></td>
-                  <td className="py-2">→ met</td>
+                  <td className="py-2">→ met, no-match</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4"><Badge className="bg-blue-100 text-blue-700 border-blue-300">met</Badge></td>
@@ -560,6 +567,11 @@ export function AdminStatusesGuide() {
                   <td className="py-2 pr-4">now &ge; matchedAt + walkingTimeMinutes</td>
                   <td className="py-2 pr-4">matched</td>
                   <td className="py-2 pr-4">missed</td>
+                </tr>
+                <tr>
+                  <td className="py-2 pr-4">round over &amp; every other matched participant in terminal failure state</td>
+                  <td className="py-2 pr-4">checked-in</td>
+                  <td className="py-2 pr-4">no-match</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4">now &ge; round end time</td>
