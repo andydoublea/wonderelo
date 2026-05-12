@@ -744,20 +744,20 @@ export async function getRegistration(participantId: string, sessionId: string, 
 }
 
 export async function createRegistration(reg: any) {
-  const { error } = await db()
-    .from('registrations')
-    .insert({
-      participant_id: reg.participantId,
-      session_id: reg.sessionId,
-      round_id: reg.roundId,
-      organizer_id: reg.organizerId,
-      status: reg.status || 'registered',
-      team: reg.team || null,
-      topics: reg.topics || [],
-      meeting_point: reg.meetingPoint || null,
-      notifications_enabled: reg.notificationsEnabled !== false,
-      registered_at: reg.registeredAt || new Date().toISOString(),
-    });
+  const insertRow: Record<string, any> = {
+    participant_id: reg.participantId,
+    session_id: reg.sessionId,
+    round_id: reg.roundId,
+    organizer_id: reg.organizerId,
+    status: reg.status || 'registered',
+    team: reg.team || null,
+    topics: reg.topics || [],
+    meeting_point: reg.meetingPoint || null,
+    notifications_enabled: reg.notificationsEnabled !== false,
+    registered_at: reg.registeredAt || new Date().toISOString(),
+  };
+  if (reg.confirmedAt) insertRow.confirmed_at = reg.confirmedAt;
+  const { error } = await db().from('registrations').insert(insertRow);
   if (error) throw error;
 }
 
