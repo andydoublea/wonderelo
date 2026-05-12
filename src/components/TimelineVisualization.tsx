@@ -29,6 +29,33 @@ interface NotificationEvent {
 }
 
 function buildSteps(p: SystemParameters, validations: Record<string, boolean>): TimelineStep[] {
+  const safetyCloseStep: TimelineStep = {
+    id: 'safety-close',
+    time: `T\u2212${p.safetyWindowMinutes}`,
+    title: 'Registration closes',
+    description: 'No new registrations accepted',
+    bgColor: 'bg-orange-500',
+    icon: <Lock className="h-4 w-4" />,
+    durationLabel: `${p.safetyWindowMinutes} min before matching`,
+  };
+  const confirmationStep: TimelineStep = {
+    id: 'confirmation',
+    time: `T\u2212${p.confirmationWindowMinutes}`,
+    title: 'Confirmation window opens',
+    description:
+      p.safetyWindowMinutes < p.confirmationWindowMinutes
+        ? 'Participants confirm attendance. Late registrations auto-confirm.'
+        : 'Participants must confirm attendance',
+    bgColor: 'bg-yellow-500',
+    icon: <CheckCircle className="h-4 w-4" />,
+    durationLabel: `${p.confirmationWindowMinutes} min`,
+  };
+  // Order chronologically: earlier time (= larger T-x value) comes first
+  const orderedMiddle =
+    p.safetyWindowMinutes >= p.confirmationWindowMinutes
+      ? [safetyCloseStep, confirmationStep]
+      : [confirmationStep, safetyCloseStep];
+
   return [
     {
       id: 'registration',
@@ -38,25 +65,7 @@ function buildSteps(p: SystemParameters, validations: Record<string, boolean>): 
       bgColor: 'bg-green-500',
       icon: <Calendar className="h-4 w-4" />,
     },
-    {
-      id: 'safety-close',
-      time: `T\u2212${p.safetyWindowMinutes}`,
-      title: 'Registration closes',
-      description: 'No new registrations accepted',
-      bgColor: validations.safetyWindowConflict ? 'bg-red-500' : 'bg-orange-500',
-      icon: <Lock className="h-4 w-4" />,
-      durationLabel: `${p.safetyWindowMinutes - p.confirmationWindowMinutes} min`,
-      warning: validations.safetyWindowConflict ? 'Safety window must be \u2265 confirmation window' : undefined,
-    },
-    {
-      id: 'confirmation',
-      time: `T\u2212${p.confirmationWindowMinutes}`,
-      title: 'Confirmation window',
-      description: 'Participants must confirm attendance',
-      bgColor: 'bg-yellow-500',
-      icon: <CheckCircle className="h-4 w-4" />,
-      durationLabel: `${p.confirmationWindowMinutes} min`,
-    },
+    ...orderedMiddle,
     {
       id: 'matching',
       time: 'T\u22120',
@@ -148,19 +157,19 @@ function getValidations(p: SystemParameters) {
     // Strict less than: notification at same time as confirmation is OK
     lateNotificationConflict: p.notificationLateEnabled && p.notificationLateMinutes < p.confirmationWindowMinutes,
     earlyNotificationConflict: p.notificationEarlyEnabled && p.notificationEarlyMinutes < p.confirmationWindowMinutes,
-    safetyWindowConflict: p.safetyWindowMinutes < p.confirmationWindowMinutes,
     lateNotificationTooEarly: p.notificationLateEnabled && p.notificationLateMinutes <= 0,
-    minimalTimeConflict: p.minimalTimeToFirstRound < p.safetyWindowMinutes,
+    minimalTimeConflict: p.minimalTimeToFirstRound < Math.max(p.safetyWindowMinutes, p.confirmationWindowMinutes),
   };
 }
 
-// Determine where a notification should be inserted in the timeline
+// Determine where a notification should be inserted in the timeline.
+// Steps are: [registration(0), first-middle(1), second-middle(2), matching(3), ...]
+// where the two middle steps are ordered chronologically (earlier time first).
 function getNotificationInsertIndex(minutesBefore: number, p: SystemParameters): number {
-  // Before safety window close
-  if (minutesBefore > p.safetyWindowMinutes) return 1;
-  // Between safety and confirmation (or at confirmation boundary)
-  if (minutesBefore >= p.confirmationWindowMinutes) return 2;
-  // After confirmation (conflict)
+  const firstT = Math.max(p.safetyWindowMinutes, p.confirmationWindowMinutes);
+  const secondT = Math.min(p.safetyWindowMinutes, p.confirmationWindowMinutes);
+  if (minutesBefore > firstT) return 1;
+  if (minutesBefore > secondT) return 2;
   return 3;
 }
 
@@ -198,7 +207,7 @@ export function TimelineVisualization({ parameters }: TimelineVisualizationProps
     items.push({ type: 'step', step: steps[i] });
   }
 
-  const totalBefore = parameters.safetyWindowMinutes;
+  const totalBefore = Math.max(parameters.safetyWindowMinutes, parameters.confirmationWindowMinutes);
   const totalAfter = parameters.walkingTimeMinutes + parameters.findingTimeMinutes + parameters.defaultRoundDuration;
 
   return (
@@ -320,7 +329,7 @@ export function TimelineVisualization({ parameters }: TimelineVisualizationProps
           <div className="mt-3 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
             <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
             <span>
-              <strong>Min time to first round</strong> ({parameters.minimalTimeToFirstRound} min) must be ≥ registration close window ({parameters.safetyWindowMinutes} min)
+              <strong>Min time to first round</strong> ({parameters.minimalTimeToFirstRound} min) must be ≥ pre-round window ({Math.max(parameters.safetyWindowMinutes, parameters.confirmationWindowMinutes)} min)
             </span>
           </div>
         )}

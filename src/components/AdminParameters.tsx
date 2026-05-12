@@ -73,7 +73,7 @@ const PARAM_SECTIONS: { id: string; label: string }[] = [
 const PARAM_DEFS: ParamDef[] = [
   // Round timing
   { key: 'confirmationWindowMinutes', label: 'Confirmation window', section: 'timing', type: 'number', min: 1, max: 30, unit: 'min' },
-  { key: 'safetyWindowMinutes', label: 'Reg. closes before confirmation', section: 'timing', type: 'number', min: 0, max: 30, unit: 'min', relativeToKey: 'confirmationWindowMinutes' },
+  { key: 'safetyWindowMinutes', label: 'Reg. closes before matching', section: 'timing', type: 'number', min: 0, max: 30, unit: 'min' },
   { key: 'walkingTimeMinutes', label: 'Walking time', section: 'timing', type: 'number', min: 1, max: 10, unit: 'min' },
   { key: 'findingTimeMinutes', label: 'Finding time', section: 'timing', type: 'number', min: 1, max: 10, unit: 'min' },
   { key: 'contactSharingDelayMinutes', label: 'Contact sharing delay', section: 'timing', type: 'number', min: 0, max: 60, unit: 'min' },

@@ -110,20 +110,21 @@ export function AdminStatusesGuide() {
               title="Registration open"
               description="Participants can register for this round"
               details={[
-                "Time: from session publication until T-safetyWindowMinutes",
+                "Time: from session publication until T-confirmationWindowMinutes",
                 "Participants can join during this window on event page",
-                "Changes to 'confirmation-window' at T-safetyWindowMinutes"
+                "Changes to 'confirmation-window' at T-confirmationWindowMinutes"
               ]}
             />
 
             <StatusItem
               badge={<Badge className="bg-yellow-600">Confirmation window</Badge>}
               title="Confirmation window"
-              description="No new registrations; participants must confirm attendance"
+              description="Participants must confirm attendance; late registrations auto-confirm"
               details={[
-                "Time: T-safetyWindowMinutes to T-0",
-                "New registrations are blocked",
-                "Participants must click 'Confirm attendance' to be included in matching",
+                "Time: T-confirmationWindowMinutes to T-0",
+                "Registration remains open until T-safetyWindowMinutes",
+                "Participants registering during this window are auto-confirmed",
+                "Existing registrations must click 'Confirm attendance' to be included in matching",
                 "Non-confirmed participants become 'unconfirmed' at T-0"
               ]}
             />
@@ -596,7 +597,7 @@ export function AdminStatusesGuide() {
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>
-              <span>Registration closes at T-safetyWindowMinutes. Confirmation window runs from T-safetyWindowMinutes to T-0</span>
+              <span>Confirmation window runs from T-confirmationWindowMinutes to T-0. Registration closes at T-safetyWindowMinutes; registrations arriving during the confirmation window are auto-confirmed</span>
             </li>
             <li className="flex gap-2">
               <span className="text-blue-600">•</span>

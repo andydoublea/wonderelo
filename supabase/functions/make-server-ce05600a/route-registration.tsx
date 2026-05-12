@@ -8,6 +8,8 @@ import * as db from './db.ts';
 import { debugLog, errorLog } from './debug.tsx';
 import { sendEmail, buildRegistrationEmail, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
 import { checkCapacity, consumeEventCredit } from './route-stripe.tsx';
+import { parseRoundStartTime } from './time-helpers.tsx';
+import { decideRegistrationStatus } from './registration-helpers.ts';
 
 export async function registerParticipant(c: Context) {
   try {
@@ -119,6 +121,11 @@ export async function registerParticipant(c: Context) {
     const newRegistrations = [];
     let alreadyRegisteredCount = 0;
 
+    // Load system parameters once for auto-confirm logic (registrations that
+    // arrive during the confirmation window are auto-confirmed).
+    const sysParams = (await db.getAdminSetting('system_parameters')) || {};
+    const confirmationWindowMinutes = Number(sysParams.confirmationWindowMinutes) || 5;
+
     for (const sessionData of sessions) {
       const { sessionId, rounds } = sessionData;
 
@@ -145,13 +152,32 @@ export async function registerParticipant(c: Context) {
         // Get round details from session
         const round = session.rounds?.find((r: any) => r.id === roundId);
 
+        // Auto-confirm if registration arrives during the confirmation window
+        // (after T-confirmationWindowMinutes, before round start).
+        let status: 'registered' | 'confirmed' = 'registered';
+        let confirmedAt: string | undefined;
+        if (round && session.date && round.startTime) {
+          try {
+            const roundStartUtc = parseRoundStartTime(session.date, round.startTime);
+            const decision = decideRegistrationStatus(roundStartUtc, new Date(), confirmationWindowMinutes);
+            status = decision.status;
+            confirmedAt = decision.confirmedAt;
+            if (status === 'confirmed') {
+              debugLog(`✅ Auto-confirming late registration for round ${roundId}`);
+            }
+          } catch (timeErr) {
+            debugLog('⚠️ Failed to compute confirmation window for auto-confirm:', timeErr);
+          }
+        }
+
         // Create registration in registrations table
         await db.createRegistration({
           participantId,
           sessionId,
           roundId,
           organizerId: userId,
-          status: 'registered',
+          status,
+          confirmedAt,
           team: selectedTeam,
           topics: selectedTopics || [],
           meetingPoint: selectedMeetingPoint,
