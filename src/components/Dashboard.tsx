@@ -291,32 +291,14 @@ export function Dashboard({
       })
     : sessions;
 
-  // Helper: Check if session has any rounds that haven't ended yet
-  const hasActiveRounds = (session: any) => {
-    if (!session.rounds || session.rounds.length === 0) return false;
-    if (!session.date) return false;
-    
-    const now = new Date();
-    return session.rounds.some((round: any) => {
-      if (!round.startTime) return false;
-      const [hours, minutes] = round.startTime.split(':').map(Number);
-      const roundStart = new Date(round.date || session.date);
-      roundStart.setHours(hours, minutes, 0, 0);
-      // Calculate round end time (start + duration)
-      const duration = round.duration || session.roundDuration || 0;
-      const roundEnd = new Date(roundStart.getTime() + duration * 60 * 1000);
-      // Round is active if it hasn't ended yet
-      return now < roundEnd;
-    });
-  };
-
-  // Calculate statistics
+  // Calculate statistics — use the persisted session.status as the single source
+  // of truth, consistent with the Rounds page badge logic. Server auto-completes
+  // sessions whose rounds have all ended (see updateSessionStatusBasedOnRounds),
+  // so a stale 'published' state only exists briefly until the next dashboard
+  // fetch persists the transition.
   const draftSessions = filteredSessions.filter(session => session.status === 'draft');
   const scheduledSessions = filteredSessions.filter(session => session.status === 'scheduled');
-  // Only count published sessions that have active rounds (visible on event page)
-  const publishedSessions = filteredSessions.filter(session => 
-    session.status === 'published' && hasActiveRounds(session)
-  );
+  const publishedSessions = filteredSessions.filter(session => session.status === 'published');
   const completedSessions = filteredSessions.filter(session => session.status === 'completed');
 
   const publicUrl = `${window.location.origin}/${eventSlug}`;

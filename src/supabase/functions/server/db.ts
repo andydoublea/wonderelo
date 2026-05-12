@@ -1159,7 +1159,7 @@ export async function setContactSharing(matchId: string, participantId: string, 
       participant_id: participantId,
       preferences,
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'match_id,participant_id' });
   if (error) throw error;
 }
 

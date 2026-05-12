@@ -60,7 +60,7 @@ export function MatchPartnerView({
       <WondereloHeader />
       <div className="max-w-2xl mx-auto px-6 py-12 text-center">
         <h1 className="text-4xl font-bold mb-12">
-          {matchData.findingDeadline ? 'Show this to your match!' : 'Now wait for the others'}
+          Show this to your match!
         </h1>
 
         {/* Own identification image (full-width, no box) */}
@@ -85,6 +85,14 @@ export function MatchPartnerView({
         {matchData.partners.map((partner) => {
           const options = getOptionsForPartner(partner);
           const isWrongGuess = wrongGuessPartnerId === partner.id;
+          // Partner missed: walking deadline passed AND they never checked in.
+          // The countdown next to their name is to findingDeadline (when
+          // networking begins regardless of arrivals), not to "still on the way",
+          // so showing it implies the partner is still coming when they're not.
+          const partnerMissed =
+            !partner.isCheckedIn &&
+            !!matchData.walkingDeadline &&
+            Date.now() > new Date(matchData.walkingDeadline).getTime();
           return (
             <fieldset
               key={partner.id}
@@ -102,12 +110,18 @@ export function MatchPartnerView({
 
               <p
                 className={`mt-0 ${
-                  partner.isCheckedIn ? 'text-green-600 font-medium' : 'text-muted-foreground'
+                  partner.isCheckedIn
+                    ? 'text-green-600 font-medium'
+                    : partnerMissed
+                    ? 'text-red-600 font-medium'
+                    : 'text-muted-foreground'
                 }`}
                 style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.125rem)' }}
               >
                 {partner.isCheckedIn ? (
                   `is already at the meeting point ✓`
+                ) : partnerMissed ? (
+                  `didn't make it in time`
                 ) : (
                   <>
                     is on the way...
