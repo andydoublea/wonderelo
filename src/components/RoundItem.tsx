@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { NetworkingSession, Round } from '../App';
 import { useTime } from '../contexts/TimeContext';
 import { getParticipantStatusBadge } from '../utils/statusBadge';
-import { getParametersOrDefault } from '../utils/systemParameters';
+import { getParametersOrDefault, getCachedParameters } from '../utils/systemParameters';
 import { computeInitialRoundPhase } from '../utils/roundPhase';
 import { useParams, useNavigate } from 'react-router';
 import { debugLog, errorLog } from '../utils/debug';
@@ -226,10 +226,15 @@ export function RoundItem({
       const [hours, minutes] = round.startTime.split(':').map(Number);
       const roundStart = new Date(round.date || session.date); // Use round.date, fallback to session.date for backwards compatibility
       roundStart.setHours(hours, minutes, 0, 0);
-      
+
       // Get system parameters to use correct timing
       const params = getParametersOrDefault();
-      
+      // Track whether params are actually loaded — if not, the default
+      // confirmationWindowMinutes (5) may differ from admin's configured value,
+      // and trusting it would briefly flash the Confirm button when the real
+      // window hasn't opened yet.
+      const paramsLoaded = getCachedParameters() != null;
+
       // Time points
       const confirmationStart = new Date(roundStart.getTime() - params.confirmationWindowMinutes * 60 * 1000); // T-confirmationWindowMinutes
       const matchingTime = roundStart; // T-0
@@ -264,12 +269,21 @@ export function RoundItem({
         }
       } else if (now >= confirmationStart && now < matchingTime) {
         // Phase 2: Confirmation window (T-5 to T-0)
+        // GUARD: only enter this phase when system parameters are actually loaded.
+        // While defaults are in effect, the admin's real confirmationWindowMinutes
+        // may be smaller — entering this phase based on defaults flashes the
+        // Confirm button when we're not really in the window yet.
+        if (!paramsLoaded) {
+          setCountdownPhase('before-confirmation');
+          setCountdown('');
+          return;
+        }
         setCountdownPhase('confirmation-window');
         const secondsLeft = Math.floor((matchingTime.getTime() - now.getTime()) / 1000);
         setConfirmCountdown(secondsLeft);
-        
+
         setCountdown('');
-        
+
         // Trigger callback when confirmation window expires
         if (secondsLeft <= 0 && onConfirmationWindowExpired) {
           onConfirmationWindowExpired();
@@ -645,7 +659,7 @@ export function RoundItem({
                   
                   {/* For other rounds, show nothing in before-confirmation or confirmation-window phase */}
                   
-                  {countdownPhase === 'matching' && (
+                  {countdownPhase === 'matching' && participantStatus !== 'checked-in' && participantStatus !== 'met' && (
                     <div className="text-xs text-muted-foreground">
                       Matching{'.'.repeat(matchingDots)}
                     </div>
