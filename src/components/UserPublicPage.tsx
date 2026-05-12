@@ -6,6 +6,7 @@ import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
 import { APP_VERSION } from '../utils/version';
 import { getParametersOrDefault } from '../utils/systemParameters';
+import { isSessionLiveOnEventPage } from '../utils/sessionStatus';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -556,37 +557,9 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
     }
   };
 
-  const isSessionVisible = (session: NetworkingSession): boolean => {
-    if (session.status !== 'published') {
-      debugLog(`❌ Session "${session.name}" not published (status: ${session.status})`);
-      return false;
-    }
-
-    const now = new Date();
-
-    if (!session.registrationStart) {
-      debugLog(`⚠️ Session "${session.name}" has no registrationStart - showing it anyway`);
-      return true;
-    }
-
-    const registrationStartTime = new Date(session.registrationStart);
-
-    const isOpen = now >= registrationStartTime;
-    debugLog(`🕐 Session "${session.name}" visibility check:`, {
-      status: session.status,
-      registrationStart: session.registrationStart,
-      now: now.toISOString(),
-      registrationStartTime: registrationStartTime.toISOString(),
-      isOpen
-    });
-
-    return isOpen;
-  };
-
-  const availableForRegistration = sessions.filter(s =>
-    s.status === 'published' &&
-    isSessionVisible(s)
-  );
+  // Single source of truth: shared with the Dashboard's "Published" bucket so the
+  // organizer-facing counts mirror what participants actually see here.
+  const availableForRegistration = sessions.filter(isSessionLiveOnEventPage);
   
   debugLog('📊 AVAILABLE SESSIONS FOR REGISTRATION:', {
     totalSessions: sessions.length,

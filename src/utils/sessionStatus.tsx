@@ -6,6 +6,21 @@ import { getParametersOrDefault } from './systemParameters';
  */
 
 /**
+ * Is this session actually visible to participants on the public event page right now?
+ *
+ * A session with persisted status='published' but registrationStart in the future
+ * is "queued for publication" — the public event page filters it out (see
+ * UserPublicPage.isSessionVisible). Use this helper anywhere the organizer-facing
+ * UI claims to mirror what participants see (e.g. the Dashboard "Published"
+ * count and "Published on event page" list).
+ */
+export const isSessionLiveOnEventPage = (session: NetworkingSession): boolean => {
+  if (session.status !== 'published') return false;
+  if (!session.registrationStart) return true;
+  return new Date() >= new Date(session.registrationStart);
+};
+
+/**
  * Checks if session has at least one round currently running
  */
 export const hasRunningRounds = (session: NetworkingSession): boolean => {

@@ -15,6 +15,7 @@ import { toast } from 'sonner@2.0.3';
 import { debugLog } from '../utils/debug';
 import { useApp } from '../AppRouter';
 import { authenticatedFetch } from '../utils/supabase/apiClient';
+import { isSessionLiveOnEventPage } from '../utils/sessionStatus';
 
 interface DashboardProps {
   eventSlug: string;
@@ -291,14 +292,19 @@ export function Dashboard({
       })
     : sessions;
 
-  // Calculate statistics — use the persisted session.status as the single source
-  // of truth, consistent with the Rounds page badge logic. Server auto-completes
-  // sessions whose rounds have all ended (see updateSessionStatusBasedOnRounds),
-  // so a stale 'published' state only exists briefly until the next dashboard
-  // fetch persists the transition.
+  // Calculate statistics — the "Published" bucket must mirror what participants
+  // actually see on the public event page. A session with persisted status='published'
+  // but registrationStart in the future is "queued for publication" — the event page
+  // hides it (UserPublicPage.isSessionVisible), so we surface it as 'scheduled' here.
+  // Totals still sum to the full session count.
   const draftSessions = filteredSessions.filter(session => session.status === 'draft');
-  const scheduledSessions = filteredSessions.filter(session => session.status === 'scheduled');
-  const publishedSessions = filteredSessions.filter(session => session.status === 'published');
+  const scheduledSessions = filteredSessions.filter(session =>
+    session.status === 'scheduled' ||
+    (session.status === 'published' && !isSessionLiveOnEventPage(session))
+  );
+  const publishedSessions = filteredSessions.filter(session =>
+    session.status === 'published' && isSessionLiveOnEventPage(session)
+  );
   const completedSessions = filteredSessions.filter(session => session.status === 'completed');
 
   const publicUrl = `${window.location.origin}/${eventSlug}`;
