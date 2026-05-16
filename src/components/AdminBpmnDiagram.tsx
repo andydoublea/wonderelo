@@ -418,6 +418,9 @@ function buildParticipantModel(t: ParticipantTimes): {
     // Late-registration alternative START (auto-confirm), above `confirmed`.
     lateStart: { id: 'lateStart', x: center(x.confirmed, BW) - 18, y: 50, w: 36, h: 36, kind: 'start', label: 'late reg.' },
 
+    // When can a participant even START registering?
+    regWindow: { id: 'regWindow', x: 4, y: 6, w: 180, h: 36, kind: 'info', label: `Registration open until\nT−${S}m (reg close)` },
+
     // Post-`met` informational chain — NOT status changes (dashed grey).
     networking: { id: 'networking', x: x.networking, y: ROW, w: BW, h: BH, kind: 'info', label: `networking\n(${D}m round)` },
     feedback: { id: 'feedback', x: x.feedback, y: ROW, w: BW, h: BH, kind: 'info', label: 'feedback /\ncontact-sharing' },
@@ -649,6 +652,14 @@ export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
             <div className="mt-3 text-sm text-muted-foreground space-y-1">
               <p>
                 <strong>Forward:</strong> registered → confirmed → matched → checked-in → met
+              </p>
+              <p>
+                <strong>When can registration start?</strong> A participant can sign up from when the
+                session goes live on the event page (<code>registrationStart</code>, set per session)
+                up until it closes at <code>T−{params.safetyWindowMinutes}m</code> (
+                <code>safetyWindowMinutes</code> before the round). After{' '}
+                <code>T−{params.safetyWindowMinutes}m</code> the Register button disappears — no new
+                sign-ups.
               </p>
               <p>
                 <strong>"registers early"</strong> = signs up <em>before</em> the confirmation window
