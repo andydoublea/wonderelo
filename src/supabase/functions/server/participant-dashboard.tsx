@@ -257,36 +257,6 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
           debugLog(`✅ [${reg.roundName}] Round completed for participant ${reg.participantId}`);
         }
 
-        // AUTO-DETECTION 4: "checked-in" → "no-match"
-        // Participant arrived at the meeting point but every other matched participant
-        // ended in a terminal failure status (missed / unconfirmed / no-match / cancelled).
-        // The persisted 'checked-in' alone is misleading on the dashboard once the round
-        // is over — there was no successful meeting, so semantically it's no-match.
-        const roundIsOver = !!reg.roundCompletedAt || now >= roundEndTime;
-        if (roundIsOver && currentStatus === 'checked-in' && reg.matchId) {
-          try {
-            const partnerStatuses = await db.getMatchParticipantStatuses(reg.matchId);
-            const TERMINAL_FAILURE = new Set(['missed', 'unconfirmed', 'no-match', 'cancelled']);
-            let hasOtherParticipant = false;
-            let allOthersFailed = true;
-            for (const p of partnerStatuses) {
-              if (p.participantId === reg.participantId) continue;
-              hasOtherParticipant = true;
-              if (!TERMINAL_FAILURE.has(p.status)) {
-                allOthersFailed = false;
-                break;
-              }
-            }
-            if (hasOtherParticipant && allOthersFailed) {
-              currentStatus = 'no-match';
-              statusChanged = true;
-              debugLog(`🔄 [${reg.roundName}] Status: "checked-in" → "no-match" (round over, all partners failed to meet)`);
-            }
-          } catch (e) {
-            errorLog('Error checking partner statuses for no-match auto-transition:', e);
-          }
-        }
-
         // NOTE: Matching is triggered ONLY from GET /participant/:token/match endpoint
         // to avoid race conditions from multiple simultaneous triggers.
         // Dashboard no longer fires matching (was causing double-trigger issues).
@@ -294,7 +264,7 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
 
       // Persist status changes (only safe auto-transitions)
       if (statusChanged) {
-        const allowedAutoStatuses = ['unconfirmed', 'missed', 'no-match'];
+        const allowedAutoStatuses = ['unconfirmed', 'missed'];
         const terminalStatuses = ['unconfirmed', 'no-match', 'missed', 'cancelled'];
 
         if (allowedAutoStatuses.includes(currentStatus) && !terminalStatuses.includes(reg.status)) {

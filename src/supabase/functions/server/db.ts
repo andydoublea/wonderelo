@@ -885,10 +885,7 @@ export const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   'registered': ['confirmed', 'unconfirmed', 'cancelled'],
   'confirmed': ['matched', 'no-match', 'cancelled'],
   'matched': ['checked-in', 'missed'],
-  // 'checked-in' → 'no-match' is auto-applied after round_completed_at when every
-  // other matched participant ended in a terminal failure status (missed, no-match,
-  // unconfirmed, cancelled). The participant arrived but nobody showed up to meet.
-  'checked-in': ['met', 'no-match'],
+  'checked-in': ['met'],
   // Terminal statuses — no transitions out
   'met': [],
   'unconfirmed': [],
@@ -896,23 +893,6 @@ export const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   'missed': [],
   'cancelled': [],
 };
-
-/**
- * Get status for every participant in a match (used for the post-round
- * 'checked-in → no-match' auto-transition: if I came but nobody else did,
- * I'm effectively no-match).
- */
-export async function getMatchParticipantStatuses(matchId: string): Promise<Array<{ participantId: string; status: string }>> {
-  const { data, error } = await db()
-    .from('registrations')
-    .select('participant_id, status')
-    .eq('match_id', matchId);
-  if (error) throw error;
-  return (data || []).map(r => ({
-    participantId: r.participant_id,
-    status: r.status,
-  }));
-}
 
 // ============================================================
 // MATCHES
