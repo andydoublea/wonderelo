@@ -25,7 +25,7 @@ interface AdminBpmnDiagramProps {
  * Keep this diagram in sync with AdminStatusesGuide.tsx.
  */
 
-type NodeKind = 'start' | 'end' | 'state' | 'gateway';
+type NodeKind = 'start' | 'end' | 'state' | 'gateway' | 'note' | 'info';
 
 interface DiagramNode {
   id: string;
@@ -130,8 +130,47 @@ function NodeShape({ n }: { n: DiagramNode }) {
       <g>
         <circle cx={cx} cy={cy} r={r} fill={fill} stroke={stroke} strokeWidth={n.kind === 'end' ? 4 : 2} />
         {n.kind === 'end' && <circle cx={cx} cy={cy} r={r - 5} fill="none" stroke={stroke} strokeWidth={1.5} />}
-        <text x={cx} y={cy + r + 16} textAnchor="middle" fontSize={11} fontWeight={600} fill="#475569">
-          {n.label}
+        <text x={cx} textAnchor="middle" fontSize={11} fontWeight={600} fill="#475569">
+          {n.label.split('\n').map((line, i) => (
+            <tspan key={i} x={cx} y={cy + r + 16 + i * 13}>
+              {line}
+            </tspan>
+          ))}
+        </text>
+      </g>
+    );
+  }
+
+  if (n.kind === 'note' || n.kind === 'info') {
+    // SMS annotation (amber) or post-status informational box (slate) —
+    // dashed border signals "this is not a persisted status transition".
+    const isNote = n.kind === 'note';
+    return (
+      <g>
+        <rect
+          x={n.x}
+          y={n.y}
+          width={n.w}
+          height={n.h}
+          rx={8}
+          fill={n.fill || (isNote ? '#fffbeb' : '#f8fafc')}
+          stroke={n.stroke || (isNote ? '#d97706' : '#94a3b8')}
+          strokeWidth={1.5}
+          strokeDasharray="5 4"
+        />
+        <text
+          x={cx}
+          textAnchor="middle"
+          fontSize={11}
+          fontWeight={500}
+          fill={n.textColor || (isNote ? '#92400e' : '#475569')}
+          style={{ pointerEvents: 'none' }}
+        >
+          {labelLines.map((line, i) => (
+            <tspan key={i} x={cx} y={cy + (i - (labelLines.length - 1) / 2) * 14 + 4}>
+              {line}
+            </tspan>
+          ))}
         </text>
       </g>
     );
@@ -317,6 +356,8 @@ interface ParticipantTimes {
   safetyWindowMinutes: number;
   walkingTimeMinutes: number;
   findingTimeMinutes: number;
+  networkingDurationMinutes: number;
+  contactSharingDelayMinutes: number;
 }
 
 function buildParticipantModel(t: ParticipantTimes): {
@@ -327,11 +368,15 @@ function buildParticipantModel(t: ParticipantTimes): {
 } {
   const BW = 156;
   const BH = 58;
-  const ROW = 92; // box top of the happy path
-  const CY = ROW + BH / 2; // 121 — vertical centre of the happy row
+  // Tall header band so the stacked top annotations never collide:
+  //   y 4..40   SMS pills
+  //   y 46..96  late-registration start event + caption
+  //   y ~140    happy-path edge labels (sit just above the row)
+  const ROW = 178; // box top of the happy path
+  const CY = ROW + BH / 2; // vertical centre of the happy row
   const GS = 50; // gateway size
   const GY = CY - GS / 2;
-  const TERM = 380; // box top of the terminal lane
+  const TERM = 450; // box top of the terminal lane
 
   // Happy-path X (left edges) — generous so multi-line labels fit above.
   const x = {
@@ -345,12 +390,21 @@ function buildParticipantModel(t: ParticipantTimes): {
     checkedin: 1060,
     g4: 1275,
     met: 1390,
-    endok: 1600,
+    networking: 1610,
+    feedback: 1830,
+    endok: 2055,
   };
   const center = (lx: number, w: number) => lx + w / 2;
 
+  const C = t.confirmationWindowMinutes;
+  const S = t.safetyWindowMinutes;
+  const W = t.walkingTimeMinutes;
+  const F = t.findingTimeMinutes;
+  const D = t.networkingDurationMinutes;
+  const SH = t.contactSharingDelayMinutes;
+
   const nodes: Record<string, DiagramNode> = {
-    start: { id: 'start', x: x.start, y: CY - 18, w: 36, h: 36, kind: 'start', label: 'registers' },
+    start: { id: 'start', x: x.start, y: CY - 18, w: 36, h: 36, kind: 'start', label: 'registers\n(early)' },
     registered: { id: 'registered', x: x.registered, y: ROW, w: BW, h: BH, kind: 'state', label: 'registered', fill: '#f1f5f9', stroke: '#94a3b8' },
     g1: { id: 'g1', x: x.g1, y: GY, w: GS, h: GS, kind: 'gateway', label: 'confirmed\nbefore T-0?' },
     confirmed: { id: 'confirmed', x: x.confirmed, y: ROW, w: BW, h: BH, kind: 'state', label: 'confirmed', fill: '#dcfce7', stroke: '#16a34a' },
@@ -360,7 +414,18 @@ function buildParticipantModel(t: ParticipantTimes): {
     checkedin: { id: 'checkedin', x: x.checkedin, y: ROW, w: BW, h: BH, kind: 'state', label: 'checked-in', fill: '#e0e7ff', stroke: '#6366f1' },
     g4: { id: 'g4', x: x.g4, y: GY, w: GS, h: GS, kind: 'gateway', label: 'partner #\nconfirmed?' },
     met: { id: 'met', x: x.met, y: ROW, w: BW, h: BH, kind: 'state', label: 'met', fill: '#dbeafe', stroke: '#2563eb' },
-    endok: { id: 'endok', x: x.endok, y: CY - 20, w: 40, h: 40, kind: 'end', label: 'success' },
+
+    // Late-registration alternative START (auto-confirm), above `confirmed`.
+    lateStart: { id: 'lateStart', x: center(x.confirmed, BW) - 18, y: 50, w: 36, h: 36, kind: 'start', label: 'late reg.' },
+
+    // Post-`met` informational chain — NOT status changes (dashed grey).
+    networking: { id: 'networking', x: x.networking, y: ROW, w: BW, h: BH, kind: 'info', label: `networking\n(${D}m round)` },
+    feedback: { id: 'feedback', x: x.feedback, y: ROW, w: BW, h: BH, kind: 'info', label: 'feedback /\ncontact-sharing' },
+    endok: { id: 'endok', x: x.endok, y: CY - 20, w: 40, h: 40, kind: 'end', label: 'round done' },
+
+    // SMS annotations (amber, dashed) — when each SMS goes out.
+    sms1: { id: 'sms1', x: center(x.g1, GS) - 110, y: 6, w: 220, h: 36, kind: 'note', label: `📱 "Confirm attendance" SMS\n@ T−${C}m → registered & confirmed` },
+    sms2: { id: 'sms2', x: center(x.networking, BW) - 115, y: 6, w: 230, h: 36, kind: 'note', label: `📱 "Round ended" SMS\n@ T+${D}m → links to feedback page` },
 
     // Terminal lane — each centred under its source.
     cancelled: { id: 'cancelled', x: center(x.registered, BW) - BW / 2, y: TERM, w: BW, h: BH, kind: 'state', label: 'cancelled', fill: '#fee2e2', stroke: '#dc2626', textColor: '#991b1b' },
@@ -370,14 +435,13 @@ function buildParticipantModel(t: ParticipantTimes): {
     staysci: { id: 'staysci', x: center(x.g4, GS) - BW / 2, y: TERM, w: BW, h: BH, kind: 'state', label: "stays\n'checked-in'", fill: '#e0e7ff', stroke: '#6366f1' },
   };
 
-  const C = t.confirmationWindowMinutes;
-  const W = t.walkingTimeMinutes;
-  const F = t.findingTimeMinutes;
-
   const edges: DiagramEdge[] = [
     { from: 'start', fromSide: 'right', to: 'registered', toSide: 'left' },
     { from: 'registered', fromSide: 'right', to: 'g1', toSide: 'left' },
     { from: 'g1', fromSide: 'right', to: 'confirmed', toSide: 'left', color: EDGE_OK, label: `clicks "Confirm"\n(T−${C}m … T-0)`, labelDy: -56 },
+    // Late registration during the confirmation window → auto-confirmed,
+    // skipping the manual Confirm step entirely.
+    { from: 'lateStart', fromSide: 'bottom', to: 'confirmed', toSide: 'top', color: EDGE_OK, label: `auto-confirmed (late reg:\nT−${C}m … reg-close T−${S}m)`, labelDy: 6 },
     // Drop-offs: each a clean straight drop directly under its source.
     { from: 'g1', fromSide: 'bottom', to: 'unconfirmed', toSide: 'top', color: EDGE_BAD, label: 'not confirmed\nby T-0 (auto)' },
     { from: 'registered', fromSide: 'bottom', to: 'cancelled', toSide: 'top', color: EDGE_BAD, label: 'unregisters\n(while registered)', labelDy: -92 },
@@ -391,10 +455,13 @@ function buildParticipantModel(t: ParticipantTimes): {
     { from: 'checkedin', fromSide: 'right', to: 'g4', toSide: 'left' },
     { from: 'g4', fromSide: 'right', to: 'met', toSide: 'left', color: EDGE_OK, label: `confirms partner #\n(≤ ${F}m, bilateral)`, labelDy: -56 },
     { from: 'g4', fromSide: 'bottom', to: 'staysci', toSide: 'top', label: 'nobody confirms\nby round end' },
-    { from: 'met', fromSide: 'right', to: 'endok', toSide: 'left' },
+    // Post-met informational chain (dashed grey — status stays `met`).
+    { from: 'met', fromSide: 'right', to: 'networking', toSide: 'left', dashed: true, label: "status stays\n'met'", labelDy: -54 },
+    { from: 'networking', fromSide: 'right', to: 'feedback', toSide: 'left', dashed: true, label: `after ${D}m`, labelDy: -54 },
+    { from: 'feedback', fromSide: 'right', to: 'endok', toSide: 'left', dashed: true, label: `contacts shared\n+${SH}m`, labelDy: -54 },
   ];
 
-  return { nodes, edges, width: 1700, height: 480 };
+  return { nodes, edges, width: 2150, height: 560 };
 }
 
 function LegendItem({ swatch, label }: { swatch: React.ReactNode; label: string }) {
@@ -408,11 +475,17 @@ function LegendItem({ swatch, label }: { swatch: React.ReactNode; label: string 
 
 export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
   const params = getParametersOrDefault();
+  // networkingDurationMinutes is the per-round duration; fall back to the
+  // documented default (15) when the param isn't configured/loaded.
+  const netDur = (params as { networkingDurationMinutes?: number }).networkingDurationMinutes ?? 15;
+  const contactDelay = params.contactSharingDelayMinutes ?? 5;
   const participant = buildParticipantModel({
     confirmationWindowMinutes: params.confirmationWindowMinutes,
     safetyWindowMinutes: params.safetyWindowMinutes,
     walkingTimeMinutes: params.walkingTimeMinutes,
     findingTimeMinutes: params.findingTimeMinutes,
+    networkingDurationMinutes: netDur,
+    contactSharingDelayMinutes: contactDelay,
   });
   return (
     <div className="min-h-screen bg-background">
@@ -500,6 +573,22 @@ export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
                 }
                 label="Drop-off / failure flow"
               />
+              <LegendItem
+                swatch={
+                  <svg width="34" height="24">
+                    <rect x="3" y="4" width="28" height="16" rx="3" fill="#fffbeb" stroke="#d97706" strokeWidth="1.5" strokeDasharray="4 3" />
+                  </svg>
+                }
+                label="📱 SMS annotation"
+              />
+              <LegendItem
+                swatch={
+                  <svg width="34" height="24">
+                    <rect x="3" y="4" width="28" height="16" rx="3" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" />
+                  </svg>
+                }
+                label="Informational (no status change)"
+              />
             </div>
           </CardContent>
         </Card>
@@ -533,17 +622,47 @@ export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
                 <strong>Finding time:</strong> <code>{params.findingTimeMinutes}m</code> to confirm the
                 partner's number (bilateral — one confirm sets both to <code>met</code>).
               </p>
+              <p>
+                <strong>Networking:</strong> <code>{netDur}m</code> (the round
+                duration). Then the feedback / contact-sharing page; contacts are shared{' '}
+                <code>+{contactDelay}m</code> after networking starts.
+              </p>
+            </div>
+            <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900 space-y-1">
+              <p className="font-medium">📱 SMS schedule</p>
+              <p>
+                <strong>"Confirm attendance" SMS</strong> — sent exactly at{' '}
+                <code>T−{params.confirmationWindowMinutes}m</code> (the moment the Confirm button appears),
+                to every <code>registered</code> &amp; <code>confirmed</code> participant with a phone &amp;
+                notifications on; the link opens their confirm page. One SMS per participant (deduplicated).
+              </p>
+              <p>
+                <strong>"Round ended" SMS</strong> — sent at <code>T+{netDur}m</code>{' '}
+                (networking countdown hits 0); links to the feedback / contact-sharing page. Controlled by
+                the <code>smsRoundEnded</code> toggle.
+              </p>
+              <p className="text-xs">
+                A pg_cron job fires every minute; per-participant deduplication means a missed tick is
+                retried on the next one (still only once).
+              </p>
             </div>
             <div className="mt-3 text-sm text-muted-foreground space-y-1">
               <p>
                 <strong>Forward:</strong> registered → confirmed → matched → checked-in → met
               </p>
               <p>
+                <strong>Late registration:</strong> registering during the confirmation window
+                (<code>T−{params.confirmationWindowMinutes}m</code> … registration close{' '}
+                <code>T−{params.safetyWindowMinutes}m</code>) skips <code>registered</code> and is{' '}
+                <strong>auto-confirmed</strong> straight to <code>confirmed</code>.
+              </p>
+              <p>
                 <strong>Terminal (no transitions out):</strong> met, unconfirmed, no-match, missed, cancelled
               </p>
               <p>
                 If neither partner confirms by round end the participant simply stays{' '}
-                <code>checked-in</code> (no auto-transition).
+                <code>checked-in</code> (no auto-transition). The networking &amp; feedback steps after{' '}
+                <code>met</code> are informational — the status stays <code>met</code>.
               </p>
             </div>
           </CardContent>
