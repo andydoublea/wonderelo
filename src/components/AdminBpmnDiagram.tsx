@@ -404,7 +404,7 @@ function buildParticipantModel(t: ParticipantTimes): {
   const SH = t.contactSharingDelayMinutes;
 
   const nodes: Record<string, DiagramNode> = {
-    start: { id: 'start', x: x.start, y: CY - 18, w: 36, h: 36, kind: 'start', label: 'registers\n(early)' },
+    start: { id: 'start', x: x.start, y: CY - 18, w: 36, h: 36, kind: 'start', label: `registers early\n(before T−${C}m)` },
     registered: { id: 'registered', x: x.registered, y: ROW, w: BW, h: BH, kind: 'state', label: 'registered', fill: '#f1f5f9', stroke: '#94a3b8' },
     g1: { id: 'g1', x: x.g1, y: GY, w: GS, h: GS, kind: 'gateway', label: 'confirmed\nbefore T-0?' },
     confirmed: { id: 'confirmed', x: x.confirmed, y: ROW, w: BW, h: BH, kind: 'state', label: 'confirmed', fill: '#dcfce7', stroke: '#16a34a' },
@@ -441,7 +441,7 @@ function buildParticipantModel(t: ParticipantTimes): {
     { from: 'g1', fromSide: 'right', to: 'confirmed', toSide: 'left', color: EDGE_OK, label: `clicks "Confirm"\n(T−${C}m … T-0)`, labelDy: -56 },
     // Late registration during the confirmation window → auto-confirmed,
     // skipping the manual Confirm step entirely.
-    { from: 'lateStart', fromSide: 'bottom', to: 'confirmed', toSide: 'top', color: EDGE_OK, label: `auto-confirmed (late reg:\nT−${C}m … reg-close T−${S}m)`, labelDy: 6 },
+    { from: 'lateStart', fromSide: 'bottom', to: 'confirmed', toSide: 'top', color: EDGE_OK, label: `registers in [T−${C}m … T−${S}m]\n→ auto-confirmed (no manual Confirm)`, labelDy: 6 },
     // Drop-offs: each a clean straight drop directly under its source.
     { from: 'g1', fromSide: 'bottom', to: 'unconfirmed', toSide: 'top', color: EDGE_BAD, label: 'not confirmed\nby T-0 (auto)' },
     { from: 'registered', fromSide: 'bottom', to: 'cancelled', toSide: 'top', color: EDGE_BAD, label: 'unregisters\n(while registered)', labelDy: -92 },
@@ -651,10 +651,34 @@ export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
                 <strong>Forward:</strong> registered → confirmed → matched → checked-in → met
               </p>
               <p>
-                <strong>Late registration:</strong> registering during the confirmation window
-                (<code>T−{params.confirmationWindowMinutes}m</code> … registration close{' '}
-                <code>T−{params.safetyWindowMinutes}m</code>) skips <code>registered</code> and is{' '}
-                <strong>auto-confirmed</strong> straight to <code>confirmed</code>.
+                <strong>"registers early"</strong> = signs up <em>before</em> the confirmation window
+                opens, i.e. before <code>T−{params.confirmationWindowMinutes}m</code> → lands in{' '}
+                <code>registered</code> and must press <em>Confirm</em> (or use the SMS link) during the
+                window, else → <code>unconfirmed</code> at T-0.
+              </p>
+              <p>
+                <strong>"late reg."</strong> = signs up <em>after</em> the confirmation window has
+                opened but while registration is still open — in{' '}
+                <code>[T−{params.confirmationWindowMinutes}m … T−{params.safetyWindowMinutes}m]</code>{' '}
+                → skips <code>registered</code> and is <strong>auto-confirmed</strong> straight to{' '}
+                <code>confirmed</code> (no manual Confirm needed).
+              </p>
+              <p className="text-xs">
+                ⚠️ With the current values this late window is{' '}
+                {params.safetyWindowMinutes < params.confirmationWindowMinutes ? (
+                  <>
+                    open: registration closes <code>T−{params.safetyWindowMinutes}m</code>, after the
+                    window opens at <code>T−{params.confirmationWindowMinutes}m</code>.
+                  </>
+                ) : (
+                  <>
+                    <strong>empty / unreachable</strong>: registration closes{' '}
+                    <code>T−{params.safetyWindowMinutes}m</code> <em>before</em> the confirmation window
+                    even opens (<code>T−{params.confirmationWindowMinutes}m</code>). Late auto-confirm
+                    only happens when <code>safetyWindowMinutes</code> &lt;{' '}
+                    <code>confirmationWindowMinutes</code> (registration stays open into the window).
+                  </>
+                )}
               </p>
               <p>
                 <strong>Terminal (no transitions out):</strong> met, unconfirmed, no-match, missed, cancelled
