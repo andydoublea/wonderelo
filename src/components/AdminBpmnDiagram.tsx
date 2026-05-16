@@ -1,6 +1,7 @@
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ArrowLeft } from 'lucide-react';
+import { getParametersOrDefault } from '../utils/systemParameters';
 
 interface AdminBpmnDiagramProps {
   onBack: () => void;
@@ -50,6 +51,8 @@ interface DiagramEdge {
   label?: string;
   dashed?: boolean;
   color?: string;
+  /** Vertical nudge for the label so it sits clear of arrows / boxes. */
+  labelDy?: number;
 }
 
 const EDGE_COLOR = '#64748b'; // slate-500
@@ -212,37 +215,35 @@ function Diagram({
                 strokeDasharray={e.dashed ? '6 5' : undefined}
                 markerEnd={marker}
               />
-              {e.label && (
-                <g>
-                  {e.label.split('\n').map((line, li, arr) => (
-                    <text
-                      key={li}
-                      x={m.x}
-                      y={m.y - 6 + (li - (arr.length - 1) / 2) * 13}
-                      textAnchor="middle"
-                      fontSize={11}
-                      fill={color}
-                      style={{ paintOrder: 'stroke' }}
-                      stroke="#ffffff"
-                      strokeWidth={3}
-                    >
-                      {line}
+              {e.label && (() => {
+                const lines = e.label.split('\n');
+                const cy = m.y + (e.labelDy ?? 0);
+                const lh = 14;
+                const maxChars = Math.max(...lines.map((l) => l.length));
+                const rectW = maxChars * 6.3 + 12;
+                const rectH = lines.length * lh + 8;
+                return (
+                  <g>
+                    <rect
+                      x={m.x - rectW / 2}
+                      y={cy - rectH / 2}
+                      width={rectW}
+                      height={rectH}
+                      rx={4}
+                      fill="#ffffff"
+                      stroke="#e2e8f0"
+                      strokeWidth={1}
+                    />
+                    <text textAnchor="middle" fontSize={11} fontWeight={500} fill={color}>
+                      {lines.map((line, li) => (
+                        <tspan key={li} x={m.x} y={cy - (lines.length - 1) * lh / 2 + li * lh + 4}>
+                          {line}
+                        </tspan>
+                      ))}
                     </text>
-                  ))}
-                  {e.label.split('\n').map((line, li, arr) => (
-                    <text
-                      key={`t${li}`}
-                      x={m.x}
-                      y={m.y - 6 + (li - (arr.length - 1) / 2) * 13}
-                      textAnchor="middle"
-                      fontSize={11}
-                      fill={color}
-                    >
-                      {line}
-                    </text>
-                  ))}
-                </g>
-              )}
+                  </g>
+                );
+              })()}
             </g>
           );
         })}
@@ -307,47 +308,94 @@ const ROUND_EDGES: DiagramEdge[] = [
 // ============================================================
 // PARTICIPANT lifecycle (9 DB-stored statuses)
 // ============================================================
-const PB = { w: 132, h: 56 };
-const TOP = 70;
-const BOT = 320;
-const PARTICIPANT_NODES: Record<string, DiagramNode> = {
-  start: { id: 'start', x: 16, y: TOP + 12, w: 34, h: 34, kind: 'start', label: 'registers' },
-  registered: { id: 'registered', x: 78, y: TOP, w: PB.w, h: PB.h, kind: 'state', label: 'registered', fill: '#f1f5f9', stroke: '#94a3b8' },
-  g1: { id: 'g1', x: 270, y: TOP + 6, w: 44, h: 44, kind: 'gateway', label: 'before T-0?' },
-  confirmed: { id: 'confirmed', x: 360, y: TOP, w: PB.w, h: PB.h, kind: 'state', label: 'confirmed', fill: '#dcfce7', stroke: '#16a34a' },
-  g2: { id: 'g2', x: 552, y: TOP + 6, w: 44, h: 44, kind: 'gateway', label: 'matching\n@ T-0' },
-  matched: { id: 'matched', x: 642, y: TOP, w: PB.w, h: PB.h, kind: 'state', label: 'matched', fill: '#f3e8ff', stroke: '#9333ea' },
-  g3: { id: 'g3', x: 834, y: TOP + 6, w: 44, h: 44, kind: 'gateway', label: 'arrived in\nwalk time?' },
-  checkedin: { id: 'checkedin', x: 924, y: TOP, w: PB.w, h: PB.h, kind: 'state', label: 'checked-in', fill: '#e0e7ff', stroke: '#6366f1' },
-  g4: { id: 'g4', x: 1116, y: TOP + 6, w: 44, h: 44, kind: 'gateway', label: 'partner #\nconfirmed?' },
-  met: { id: 'met', x: 1206, y: TOP, w: PB.w, h: PB.h, kind: 'state', label: 'met', fill: '#dbeafe', stroke: '#2563eb' },
-  endok: { id: 'endok', x: 1390, y: TOP + 11, w: 38, h: 38, kind: 'end', label: 'success' },
+// Layout rule that fixes the "line passes through a box" confusion:
+// every drop-off terminal sits DIRECTLY BELOW its own source (gateway or
+// state) so its red edge is a clean straight drop and never crosses an
+// unrelated status box.
+interface ParticipantTimes {
+  confirmationWindowMinutes: number;
+  safetyWindowMinutes: number;
+  walkingTimeMinutes: number;
+  findingTimeMinutes: number;
+}
 
-  // Drop-off / terminal lane
-  unconfirmed: { id: 'unconfirmed', x: 78, y: BOT, w: PB.w, h: PB.h, kind: 'state', label: 'unconfirmed', fill: '#feffb3', stroke: '#ca8a04', textColor: '#854d0e' },
-  cancelled: { id: 'cancelled', x: 360, y: BOT, w: PB.w, h: PB.h, kind: 'state', label: 'cancelled', fill: '#fee2e2', stroke: '#dc2626', textColor: '#991b1b' },
-  nomatch: { id: 'nomatch', x: 642, y: BOT, w: PB.w, h: PB.h, kind: 'state', label: 'no-match', fill: '#f1f5f9', stroke: '#64748b' },
-  missed: { id: 'missed', x: 924, y: BOT, w: PB.w, h: PB.h, kind: 'state', label: 'missed', fill: '#fee2e2', stroke: '#dc2626', textColor: '#991b1b' },
-  staysci: { id: 'staysci', x: 1206, y: BOT, w: PB.w, h: PB.h, kind: 'state', label: "stays\n'checked-in'", fill: '#e0e7ff', stroke: '#6366f1' },
-};
-const PARTICIPANT_EDGES: DiagramEdge[] = [
-  { from: 'start', fromSide: 'right', to: 'registered', toSide: 'left' },
-  { from: 'registered', fromSide: 'right', to: 'g1', toSide: 'left' },
-  { from: 'g1', fromSide: 'right', to: 'confirmed', toSide: 'left', label: 'clicks Confirm', color: EDGE_OK },
-  { from: 'g1', fromSide: 'bottom', to: 'unconfirmed', toSide: 'top', label: 'T-0 passed,\nnever confirmed (auto)', color: EDGE_BAD },
-  { from: 'registered', fromSide: 'bottom', to: 'cancelled', toSide: 'left', label: 'unregisters', color: EDGE_BAD },
-  { from: 'confirmed', fromSide: 'right', to: 'g2', toSide: 'left' },
-  { from: 'g2', fromSide: 'right', to: 'matched', toSide: 'left', label: 'paired', color: EDGE_OK },
-  { from: 'g2', fromSide: 'bottom', to: 'nomatch', toSide: 'top', label: 'odd one out /\nno compatible match', color: EDGE_BAD },
-  { from: 'confirmed', fromSide: 'bottom', to: 'cancelled', toSide: 'top', label: 'unregisters\nbefore matching', color: EDGE_BAD },
-  { from: 'matched', fromSide: 'right', to: 'g3', toSide: 'left' },
-  { from: 'g3', fromSide: 'right', to: 'checkedin', toSide: 'left', label: "clicks\n'I am here'", color: EDGE_OK },
-  { from: 'g3', fromSide: 'bottom', to: 'missed', toSide: 'top', label: 'walking deadline\nexpired (auto)', color: EDGE_BAD },
-  { from: 'checkedin', fromSide: 'right', to: 'g4', toSide: 'left' },
-  { from: 'g4', fromSide: 'right', to: 'met', toSide: 'left', label: 'confirms partner #\n(bilateral)', color: EDGE_OK },
-  { from: 'g4', fromSide: 'bottom', to: 'staysci', toSide: 'top', label: 'nobody confirms\nby round end' },
-  { from: 'met', fromSide: 'right', to: 'endok', toSide: 'left' },
-];
+function buildParticipantModel(t: ParticipantTimes): {
+  nodes: Record<string, DiagramNode>;
+  edges: DiagramEdge[];
+  width: number;
+  height: number;
+} {
+  const BW = 156;
+  const BH = 58;
+  const ROW = 92; // box top of the happy path
+  const CY = ROW + BH / 2; // 121 — vertical centre of the happy row
+  const GS = 50; // gateway size
+  const GY = CY - GS / 2;
+  const TERM = 380; // box top of the terminal lane
+
+  // Happy-path X (left edges) — generous so multi-line labels fit above.
+  const x = {
+    start: 22,
+    registered: 80,
+    g1: 285,
+    confirmed: 400,
+    g2: 615,
+    matched: 730,
+    g3: 945,
+    checkedin: 1060,
+    g4: 1275,
+    met: 1390,
+    endok: 1600,
+  };
+  const center = (lx: number, w: number) => lx + w / 2;
+
+  const nodes: Record<string, DiagramNode> = {
+    start: { id: 'start', x: x.start, y: CY - 18, w: 36, h: 36, kind: 'start', label: 'registers' },
+    registered: { id: 'registered', x: x.registered, y: ROW, w: BW, h: BH, kind: 'state', label: 'registered', fill: '#f1f5f9', stroke: '#94a3b8' },
+    g1: { id: 'g1', x: x.g1, y: GY, w: GS, h: GS, kind: 'gateway', label: 'confirmed\nbefore T-0?' },
+    confirmed: { id: 'confirmed', x: x.confirmed, y: ROW, w: BW, h: BH, kind: 'state', label: 'confirmed', fill: '#dcfce7', stroke: '#16a34a' },
+    g2: { id: 'g2', x: x.g2, y: GY, w: GS, h: GS, kind: 'gateway', label: 'matching\n@ T-0' },
+    matched: { id: 'matched', x: x.matched, y: ROW, w: BW, h: BH, kind: 'state', label: 'matched', fill: '#f3e8ff', stroke: '#9333ea' },
+    g3: { id: 'g3', x: x.g3, y: GY, w: GS, h: GS, kind: 'gateway', label: 'at meeting\npoint?' },
+    checkedin: { id: 'checkedin', x: x.checkedin, y: ROW, w: BW, h: BH, kind: 'state', label: 'checked-in', fill: '#e0e7ff', stroke: '#6366f1' },
+    g4: { id: 'g4', x: x.g4, y: GY, w: GS, h: GS, kind: 'gateway', label: 'partner #\nconfirmed?' },
+    met: { id: 'met', x: x.met, y: ROW, w: BW, h: BH, kind: 'state', label: 'met', fill: '#dbeafe', stroke: '#2563eb' },
+    endok: { id: 'endok', x: x.endok, y: CY - 20, w: 40, h: 40, kind: 'end', label: 'success' },
+
+    // Terminal lane — each centred under its source.
+    cancelled: { id: 'cancelled', x: center(x.registered, BW) - BW / 2, y: TERM, w: BW, h: BH, kind: 'state', label: 'cancelled', fill: '#fee2e2', stroke: '#dc2626', textColor: '#991b1b' },
+    unconfirmed: { id: 'unconfirmed', x: center(x.g1, GS) - BW / 2, y: TERM, w: BW, h: BH, kind: 'state', label: 'unconfirmed', fill: '#fef9c3', stroke: '#ca8a04', textColor: '#854d0e' },
+    nomatch: { id: 'nomatch', x: center(x.g2, GS) - BW / 2, y: TERM, w: BW, h: BH, kind: 'state', label: 'no-match', fill: '#f1f5f9', stroke: '#64748b' },
+    missed: { id: 'missed', x: center(x.g3, GS) - BW / 2, y: TERM, w: BW, h: BH, kind: 'state', label: 'missed', fill: '#fee2e2', stroke: '#dc2626', textColor: '#991b1b' },
+    staysci: { id: 'staysci', x: center(x.g4, GS) - BW / 2, y: TERM, w: BW, h: BH, kind: 'state', label: "stays\n'checked-in'", fill: '#e0e7ff', stroke: '#6366f1' },
+  };
+
+  const C = t.confirmationWindowMinutes;
+  const W = t.walkingTimeMinutes;
+  const F = t.findingTimeMinutes;
+
+  const edges: DiagramEdge[] = [
+    { from: 'start', fromSide: 'right', to: 'registered', toSide: 'left' },
+    { from: 'registered', fromSide: 'right', to: 'g1', toSide: 'left' },
+    { from: 'g1', fromSide: 'right', to: 'confirmed', toSide: 'left', color: EDGE_OK, label: `clicks "Confirm"\n(T−${C}m … T-0)`, labelDy: -56 },
+    // Drop-offs: each a clean straight drop directly under its source.
+    { from: 'g1', fromSide: 'bottom', to: 'unconfirmed', toSide: 'top', color: EDGE_BAD, label: 'not confirmed\nby T-0 (auto)' },
+    { from: 'registered', fromSide: 'bottom', to: 'cancelled', toSide: 'top', color: EDGE_BAD, label: 'unregisters\n(while registered)', labelDy: -92 },
+    { from: 'confirmed', fromSide: 'right', to: 'g2', toSide: 'left' },
+    { from: 'g2', fromSide: 'right', to: 'matched', toSide: 'left', color: EDGE_OK, label: 'paired by\nalgorithm', labelDy: -56 },
+    { from: 'g2', fromSide: 'bottom', to: 'nomatch', toSide: 'top', color: EDGE_BAD, label: 'no compatible match\n/ odd one out' },
+    { from: 'confirmed', fromSide: 'bottom', to: 'cancelled', toSide: 'top', color: EDGE_BAD, label: 'unregisters\n(before matching)', labelDy: 70 },
+    { from: 'matched', fromSide: 'right', to: 'g3', toSide: 'left' },
+    { from: 'g3', fromSide: 'right', to: 'checkedin', toSide: 'left', color: EDGE_OK, label: `clicks "I am here"\n(≤ ${W}m after T-0)`, labelDy: -56 },
+    { from: 'g3', fromSide: 'bottom', to: 'missed', toSide: 'top', color: EDGE_BAD, label: `no check-in within\n${W}m of T-0 (auto)` },
+    { from: 'checkedin', fromSide: 'right', to: 'g4', toSide: 'left' },
+    { from: 'g4', fromSide: 'right', to: 'met', toSide: 'left', color: EDGE_OK, label: `confirms partner #\n(≤ ${F}m, bilateral)`, labelDy: -56 },
+    { from: 'g4', fromSide: 'bottom', to: 'staysci', toSide: 'top', label: 'nobody confirms\nby round end' },
+    { from: 'met', fromSide: 'right', to: 'endok', toSide: 'left' },
+  ];
+
+  return { nodes, edges, width: 1700, height: 480 };
+}
 
 function LegendItem({ swatch, label }: { swatch: React.ReactNode; label: string }) {
   return (
@@ -359,6 +407,13 @@ function LegendItem({ swatch, label }: { swatch: React.ReactNode; label: string 
 }
 
 export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
+  const params = getParametersOrDefault();
+  const participant = buildParticipantModel({
+    confirmationWindowMinutes: params.confirmationWindowMinutes,
+    safetyWindowMinutes: params.safetyWindowMinutes,
+    walkingTimeMinutes: params.walkingTimeMinutes,
+    findingTimeMinutes: params.findingTimeMinutes,
+  });
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-white sticky top-0 z-10">
@@ -459,8 +514,27 @@ export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
             </p>
           </CardHeader>
           <CardContent>
-            <Diagram nodes={PARTICIPANT_NODES} edges={PARTICIPANT_EDGES} width={1450} height={420} />
-            <div className="mt-4 text-sm text-muted-foreground space-y-1">
+            <Diagram nodes={participant.nodes} edges={participant.edges} width={participant.width} height={participant.height} />
+            <div className="mt-4 rounded-lg bg-slate-50 border p-4 text-sm text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Timing (current configured values)</p>
+              <p>
+                <strong>T-0</strong> = round start (matching runs). Registration closes{' '}
+                <code>{params.safetyWindowMinutes}m</code> before T-0.
+              </p>
+              <p>
+                <strong>Confirmation window:</strong> <code>{params.confirmationWindowMinutes}m</code> before T-0
+                — existing registrations must press <em>Confirm</em>; late sign-ups in this window auto-confirm.
+              </p>
+              <p>
+                <strong>Walking time:</strong> <code>{params.walkingTimeMinutes}m</code> after T-0 to reach the
+                meeting point and press <em>"I am here"</em> (else → <code>missed</code>).
+              </p>
+              <p>
+                <strong>Finding time:</strong> <code>{params.findingTimeMinutes}m</code> to confirm the
+                partner's number (bilateral — one confirm sets both to <code>met</code>).
+              </p>
+            </div>
+            <div className="mt-3 text-sm text-muted-foreground space-y-1">
               <p>
                 <strong>Forward:</strong> registered → confirmed → matched → checked-in → met
               </p>
@@ -468,11 +542,7 @@ export function AdminBpmnDiagram({ onBack }: AdminBpmnDiagramProps) {
                 <strong>Terminal (no transitions out):</strong> met, unconfirmed, no-match, missed, cancelled
               </p>
               <p>
-                <strong>checked-in → met is bilateral</strong> — only one of the pair must confirm the
-                partner's number; the backend sets both to <code>met</code>.
-              </p>
-              <p>
-                If neither confirms by round end the participant simply stays{' '}
+                If neither partner confirms by round end the participant simply stays{' '}
                 <code>checked-in</code> (no auto-transition).
               </p>
             </div>
