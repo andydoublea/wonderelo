@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact, Languages, Zap, Bell } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact, Languages, Zap, Bell, Workflow } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -200,6 +200,14 @@ const adminTools = [
     description: 'Status transition documentation',
     icon: UserCheck,
     route: '/admin/participant-flow',
+    category: 'documentation',
+  },
+  {
+    id: 'bpmn-diagram',
+    title: 'Process diagram (BPMN)',
+    description: 'Visual session, round & participant lifecycles',
+    icon: Workflow,
+    route: '/admin/bpmn-diagram',
     category: 'documentation',
   },
   {
