@@ -12,6 +12,7 @@ import type { NetworkingSession, SignUpData, ServiceType } from './App';
 import { debugLog, errorLog, infoLog } from './utils/debug';
 import { apiBaseUrl } from './utils/supabase/info';
 import { fetchSystemParameters } from './utils/systemParameters';
+import { clearParticipantSession } from './utils/sessionExclusivity';
 
 // Component imports
 import { Homepage } from './components/Homepage';
@@ -313,6 +314,10 @@ function SignInRoute() {
     debugLog('User data:', userData);
     debugLog('Session data present:', !!sessionData);
     debugLog('Access token present:', !!sessionData?.access_token);
+
+    // Organizer and participant are mutually exclusive: signing in as an
+    // organizer logs the user out of any active participant session.
+    clearParticipantSession();
 
     // Store access token for admin tools and API calls
     if (sessionData && sessionData.access_token) {
@@ -1820,6 +1825,7 @@ function AppProviderWithRouter() {
     // Clear any stored state (Supabase session is already cleared by signOut())
     localStorage.removeItem('oliwonder_authenticated');
     localStorage.removeItem('oliwonder_current_user');
+    localStorage.removeItem('supabase_access_token');
     localStorage.removeItem('oliwonder_reset_access_token');
     localStorage.removeItem('oliwonder_reset_token_timestamp');
 
@@ -1983,7 +1989,17 @@ function AppProviderWithRouter() {
                       setAccessToken('');
                       localStorage.removeItem('oliwonder_authenticated');
                       localStorage.removeItem('oliwonder_current_user');
-                      navigate('/');
+                      localStorage.removeItem('supabase_access_token');
+                      const recoveryPath = window.location.pathname;
+                      const stayOnPage = recoveryPath !== '/' &&
+                                         !recoveryPath.startsWith('/signin') &&
+                                         !recoveryPath.startsWith('/signup') &&
+                                         !recoveryPath.startsWith('/dashboard') &&
+                                         !recoveryPath.startsWith('/reset-password') &&
+                                         !recoveryPath.startsWith('/admin');
+                      if (!stayOnPage) {
+                        navigate('/');
+                      }
                     } else {
                       debugLog('✅ Session recovered successfully');
                     }
@@ -2001,7 +2017,21 @@ function AppProviderWithRouter() {
             // Supabase session is already cleared
             localStorage.removeItem('oliwonder_authenticated');
             localStorage.removeItem('oliwonder_current_user');
-            navigate('/');
+            localStorage.removeItem('supabase_access_token');
+
+            // Stay put on event (/:slug) and participant (/p/:token) pages —
+            // signing out the organizer there (e.g. a participant just logged
+            // in) must not bounce the visitor to the homepage.
+            const signedOutPath = window.location.pathname;
+            const stayOnPage = signedOutPath !== '/' &&
+                               !signedOutPath.startsWith('/signin') &&
+                               !signedOutPath.startsWith('/signup') &&
+                               !signedOutPath.startsWith('/dashboard') &&
+                               !signedOutPath.startsWith('/reset-password') &&
+                               !signedOutPath.startsWith('/admin');
+            if (!stayOnPage) {
+              navigate('/');
+            }
           }
         });
 
@@ -2045,6 +2075,17 @@ function AppProviderWithRouter() {
       });
     }
   }, [location.pathname, accessToken, isAuthenticated]);
+
+  // Organizer and participant are mutually exclusive: opening a participant
+  // route (/p/:token) while an organizer session is active logs the organizer
+  // out. handleSignOut keeps the user on the participant page.
+  useEffect(() => {
+    const isParticipantRoute = location.pathname.startsWith('/p/');
+    if (isParticipantRoute && isAuthenticated) {
+      debugLog('🔄 Participant route with active organizer session — signing out organizer');
+      handleSignOut();
+    }
+  }, [location.pathname, isAuthenticated]);
 
   const contextValue: AppContextType = {
     isAuthenticated,
