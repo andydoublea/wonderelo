@@ -188,15 +188,18 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
       { id: 'email-waiting', label: 'Email waiting', description: 'Waiting for email verification link click' },
       { id: 'email-verification', label: 'Email verification', description: 'Email verification landing page' },
       { id: 'registration-success', label: 'Registration success', description: 'Organizer finished signup' },
-      { id: 'participant-profile', label: 'Profile', description: 'Participant edits their profile' },
     ],
   },
   {
-    name: 'Dashboard',
+    // Pages a logged-in participant reaches from the header dropdown menu
+    // (Wonderelo logo → name button → Dashboard / Profile / Address Book).
+    // Homepage is also in this dropdown but lives under "Public" below.
+    name: 'Participant menu',
     pages: [
       { id: 'participant-dashboard', label: 'Dashboard', description: 'Participant\'s main dashboard with upcoming rounds' },
-      { id: 'round-detail', label: 'Round detail', description: 'Detail page for a single registered round' },
+      { id: 'participant-profile', label: 'Profile', description: 'Participant edits their contact info and social links' },
       { id: 'address-book', label: 'Address Book', description: 'Contacts shared after networking rounds' },
+      { id: 'round-detail', label: 'Round detail', description: 'Detail page for a single registered round' },
     ],
   },
   {
