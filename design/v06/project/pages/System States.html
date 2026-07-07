@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — System states (net-new in this redesign)
+  Loading · Empty · Error · Offline · 404 · Form validation/error/success.
+  Built on wonderelo-public.css tokens so these map 1:1 onto the app shells.
+  Mapping notes live in the caption bar of each panel.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — System states</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  body { background: var(--w-paper-deep); }
+  :root { --ss-error: #c0392b; --ss-error-bg: rgba(192,57,43,.08); --ss-ok: #1f8a4d; --ss-ok-bg: rgba(31,138,77,.10); }
+
+  .ss-shell { max-width: 1180px; margin: 0 auto; padding: 64px 40px 110px; }
+
+  /* Masthead */
+  .ss-mast { position: relative; padding-bottom: 34px; border-bottom: 1px solid var(--w-hairline); }
+  .ss-mast .deco { position: absolute; right: 2px; top: 8px; width: 13px; height: 13px; background: var(--w-orange); transform: rotate(45deg); }
+  .ss-mast h1 { margin-top: 14px; }
+  .ss-mast p { margin-top: 18px; max-width: 620px; font-size: 16.5px; line-height: 1.55; color: var(--w-ink); opacity: .85; }
+
+  /* Panel = caption bar + framed stage */
+  .ss-grid { margin-top: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .ss-panel { display: flex; flex-direction: column; gap: 12px; }
+  .ss-panel.is-wide { grid-column: 1 / -1; }
+  .ss-cap { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .ss-cap .n {
+    font-family: var(--w-font-mono); font-size: 11px; font-weight: 600;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--w-orange);
+  }
+  .ss-cap .t { font-family: var(--w-font-display); font-weight: 700; font-size: 17px; color: var(--w-purple-deep); letter-spacing: -0.01em; }
+  .ss-cap .map { font-family: var(--w-font-mono); font-size: 11px; color: var(--w-ink); opacity: .55; }
+
+  .ss-stage {
+    position: relative; overflow: hidden;
+    background: var(--w-paper); border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-lg); min-height: 340px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px 34px;
+  }
+  .ss-stage.is-page { min-height: 420px; }
+  /* faux mini top-bar for full-page states */
+  .ss-topbar { position: absolute; left: 0; right: 0; top: 0; height: 52px; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--w-hairline); }
+  .ss-logo { display: flex; align-items: center; gap: 9px; }
+  .ss-logo .m { width: 22px; height: 22px; border-radius: 6px; background: var(--w-purple-deep); position: relative; transform: rotate(-6deg); }
+  .ss-logo .m::after { content: ""; position: absolute; inset: 6px; border-radius: 3px; background: var(--w-orange); }
+  .ss-logo .w { font-family: var(--w-font-display); font-weight: 800; font-size: 16px; letter-spacing: -0.03em; color: var(--w-purple-deep); }
+
+  /* Centered page-state content */
+  .ss-center { text-align: center; max-width: 420px; }
+  .ss-center .glyph {
+    width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--w-cream); border: 1px solid var(--w-hairline-strong); color: var(--w-purple-deep);
+  }
+  .ss-center .glyph.is-error { background: var(--ss-error-bg); border-color: rgba(192,57,43,.25); color: var(--ss-error); }
+  .ss-center .big {
+    font-family: var(--w-font-display); font-weight: 800; letter-spacing: -0.04em;
+    font-size: 88px; line-height: .9; color: var(--w-purple-deep);
+  }
+  .ss-center .big em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .ss-center h3 { margin: 14px 0 0; font-family: var(--w-font-display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; color: var(--w-purple-deep); }
+  .ss-center h3 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .ss-center p { margin: 10px auto 0; max-width: 340px; font-size: 14.5px; line-height: 1.55; color: var(--w-ink); opacity: .78; }
+  .ss-center .actions { margin-top: 24px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .ss-center .code { margin-top: 16px; font-family: var(--w-font-mono); font-size: 11px; color: var(--w-ink); opacity: .5; }
+
+  /* scattered diamonds for the 404 */
+  .ss-dia { position: absolute; background: var(--w-orange); transform: rotate(45deg); pointer-events: none; }
+
+  /* Loading skeleton */
+  .ss-skel-wrap { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
+  .ss-skel-card { display: flex; gap: 14px; align-items: center; padding: 16px; border: 1px solid var(--w-hairline); border-radius: var(--w-r-md); background: var(--w-paper); }
+  .ss-sk { background: linear-gradient(90deg, rgba(76,25,77,.06) 25%, rgba(76,25,77,.12) 37%, rgba(76,25,77,.06) 63%); background-size: 400% 100%; border-radius: 6px; animation: ss-shimmer 1.4s ease infinite; }
+  .ss-sk.dot { width: 44px; height: 44px; border-radius: 50%; flex: none; }
+  .ss-sk.l1 { height: 12px; width: 70%; }
+  .ss-sk.l2 { height: 10px; width: 45%; margin-top: 8px; }
+  .ss-skel-lines { flex: 1; }
+  .ss-spin-row { display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 6px; font-family: var(--w-font-mono); font-size: 11.5px; color: var(--w-ink); opacity: .6; }
+  .ss-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(76,25,77,.15); border-top-color: var(--w-orange); animation: ss-rot .8s linear infinite; }
+  @keyframes ss-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  @keyframes ss-rot { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .ss-sk, .ss-spin { animation: none; } }
+
+  /* Empty state */
+  .ss-empty { text-align: center; max-width: 360px; }
+  .ss-empty .art { width: 96px; height: 96px; margin: 0 auto 18px; position: relative; }
+  .ss-empty .art .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px dashed var(--w-hairline-strong); }
+  .ss-empty .art .d { position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; background: var(--w-orange); transform: translate(-50%,-50%) rotate(45deg); }
+  .ss-empty h3 { margin: 0; font-family: var(--w-font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; color: var(--w-purple-deep); }
+  .ss-empty h3 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .ss-empty p { margin: 10px auto 0; max-width: 300px; font-size: 14px; line-height: 1.55; color: var(--w-ink); opacity: .78; }
+  .ss-empty .actions { margin-top: 20px; display: flex; justify-content: center; }
+
+  /* Form states */
+  .ss-form { width: 100%; max-width: 420px; }
+  .ss-banner {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--w-r-md);
+    background: var(--ss-error-bg); border: 1px solid rgba(192,57,43,.28); margin-bottom: 20px;
+  }
+  .ss-banner .ico { color: var(--ss-error); flex: none; margin-top: 1px; }
+  .ss-banner .txt { font-size: 13px; line-height: 1.5; color: #7a241b; }
+  .ss-banner .txt strong { color: var(--ss-error); font-weight: 700; }
+  .ss-field { margin-bottom: 18px; }
+  .ss-label { display: block; font-family: var(--w-font-mono); font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--w-purple); opacity: .8; margin-bottom: 7px; }
+  .ss-input {
+    width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: var(--w-r-md);
+    border: 1.5px solid var(--w-hairline-strong); background: #fff;
+    font-family: var(--w-font-body); font-size: 15px; color: var(--w-ink);
+  }
+  .ss-input.is-ok { border-color: var(--ss-ok); }
+  .ss-input.is-err { border-color: var(--ss-error); background: var(--ss-error-bg); }
+  .ss-hint { margin-top: 7px; display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+  .ss-hint.err { color: var(--ss-error); }
+  .ss-hint.ok { color: var(--ss-ok); }
+  .ss-success {
+    text-align: center; padding: 8px 0;
+  }
+  .ss-success .tick { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%; background: var(--ss-ok-bg); color: var(--ss-ok); display: inline-flex; align-items: center; justify-content: center; }
+  .ss-success h3 { margin: 0; font-family: var(--w-font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; color: var(--w-purple-deep); }
+  .ss-success h3 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .ss-success p { margin: 8px auto 0; max-width: 300px; font-size: 14px; color: var(--w-ink); opacity: .78; }
+
+  .ss-note { margin-top: 46px; padding: 22px 26px; background: var(--w-cream); border: 1px solid var(--w-hairline); border-radius: var(--w-r-lg); }
+  .ss-note h4 { margin: 0 0 10px; font-family: var(--w-font-display); font-weight: 700; font-size: 15px; color: var(--w-purple-deep); }
+  .ss-note ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.7; color: var(--w-ink); opacity: .82; }
+  .ss-note code { font-family: var(--w-font-mono); font-size: 12.5px; color: var(--w-purple-deep); background: var(--w-paper); padding: 1px 6px; border-radius: 5px; }
+
+  @media (max-width: 860px) {
+    .ss-grid { grid-template-columns: 1fr; }
+    .ss-shell { padding: 48px 22px 80px; }
+  }
+</style>
+</head>
+<body data-screen-label="System states">
+
+<div class="ss-shell">
+
+  <header class="ss-mast" data-screen-label="Masthead">
+    <span class="deco"></span>
+    <span class="w-eyebrow">Wonderelo · Design library</span>
+    <h1 class="w-display" style="font-size: clamp(38px,5vw,60px);">System <span class="w-italic">states</span></h1>
+    <p>The states every screen falls into but the happy-path mocks skip: loading, empty, error, offline, 404, and the three form conditions. Built on the same tokens — drop them into any shell (public, participant, studio) as the shared fallbacks.</p>
+  </header>
+
+  <main class="ss-grid">
+
+    <!-- 404 -->
+    <section class="ss-panel is-wide" data-screen-label="404">
+      <div class="ss-cap"><span class="n">01</span><span class="t">Page not found · 404</span><span class="map">→ NotFound.tsx (route catch-all)</span></div>
+      <div class="ss-stage is-page">
+        <div class="ss-topbar"><span class="ss-logo"><span class="m"></span><span class="w">wonderelo</span></span></div>
+        <span class="ss-dia" style="left:12%; top:96px; width:12px; height:12px; opacity:.5;"></span>
+        <span class="ss-dia" style="right:16%; top:120px; width:16px; height:16px; background:var(--w-purple-deep); opacity:.35;"></span>
+        <span class="ss-dia" style="left:22%; bottom:60px; width:9px; height:9px; opacity:.6;"></span>
+        <span class="ss-dia" style="right:24%; bottom:90px; width:11px; height:11px; background:var(--w-purple-deep); opacity:.3;"></span>
+        <div class="ss-center">
+          <div class="big">4<em>0</em>4</div>
+          <h3>This page took a <span class="w-italic">wrong turn</span></h3>
+          <p>This link is broken, or the organizer closed their Wonderelo account. Let's get you back to something that exists.</p>
+          <div class="actions">
+            <a class="w-btn w-btn-primary" href="#"><svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg> Back to home</a>
+            <a class="w-btn w-btn-ghost" href="#">Contact support</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Error -->
+    <section class="ss-panel" data-screen-label="Error">
+      <div class="ss-cap"><span class="n">02</span><span class="t">Something went wrong</span><span class="map">→ ErrorBoundary.tsx</span></div>
+      <div class="ss-stage">
+        <div class="ss-center">
+          <span class="glyph is-error"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <h3>Something <span class="w-italic">broke</span></h3>
+          <p>We hit an unexpected error and couldn't finish that. It's on us — try again in a moment.</p>
+          <div class="actions">
+            <button class="w-btn w-btn-primary" type="button"><svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Try again</button>
+            <button class="w-btn w-btn-ghost" type="button">Contact support</button>
+          </div>
+          <div class="code">error id · 8f3c-a19b</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Offline -->
+    <section class="ss-panel" data-screen-label="Offline">
+      <div class="ss-cap"><span class="n">03</span><span class="t">Connection lost</span><span class="map">→ useOnlineStatus() banner + view</span></div>
+      <div class="ss-stage">
+        <div class="ss-center">
+          <span class="glyph"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+          <h3>You're <span class="w-italic">offline</span></h3>
+          <p>We can't reach Wonderelo right now. Check your connection — your place in the round is saved.</p>
+          <div class="actions">
+            <button class="w-btn w-btn-primary" type="button"><svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Retry</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <section class="ss-panel" data-screen-label="Loading">
+      <div class="ss-cap"><span class="n">04</span><span class="t">Loading · skeleton</span><span class="map">→ &lt;Skeleton /&gt; + spinner</span></div>
+      <div class="ss-stage">
+        <div class="ss-skel-wrap">
+          <div class="ss-skel-card"><span class="ss-sk dot"></span><span class="ss-skel-lines"><span class="ss-sk l1" style="display:block;"></span><span class="ss-sk l2" style="display:block;"></span></span></div>
+          <div class="ss-skel-card"><span class="ss-sk dot"></span><span class="ss-skel-lines"><span class="ss-sk l1" style="display:block;"></span><span class="ss-sk l2" style="display:block;"></span></span></div>
+          <div class="ss-skel-card"><span class="ss-sk dot"></span><span class="ss-skel-lines"><span class="ss-sk l1" style="display:block;"></span><span class="ss-sk l2" style="display:block;"></span></span></div>
+          <div class="ss-spin-row"><span class="ss-spin"></span> Loading rounds…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Empty -->
+    <section class="ss-panel" data-screen-label="Empty">
+      <div class="ss-cap"><span class="n">05</span><span class="t">Empty · no data yet</span><span class="map">→ list empty state</span></div>
+      <div class="ss-stage">
+        <div class="ss-empty">
+          <div class="art"><span class="ring"></span><span class="d"></span></div>
+          <h3>No rounds <span class="w-italic">yet</span></h3>
+          <p>When you create your first networking round, it'll show up here with its live status.</p>
+          <div class="actions"><button class="w-btn w-btn-primary" type="button"><svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Create a round</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Form: validation error -->
+    <section class="ss-panel" data-screen-label="Form errors">
+      <div class="ss-cap"><span class="n">06</span><span class="t">Form · validation &amp; error</span><span class="map">→ field + form-level errors</span></div>
+      <div class="ss-stage" style="align-items: stretch;">
+        <div class="ss-form">
+          <div class="ss-banner">
+            <span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+            <span class="txt"><strong>Couldn't save the round.</strong> Fix the highlighted fields and try again.</span>
+          </div>
+          <div class="ss-field">
+            <label class="ss-label">Event name</label>
+            <input class="ss-input is-ok" value="Founder Summit 2026" readonly />
+            <div class="ss-hint ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Looks good</div>
+          </div>
+          <div class="ss-field">
+            <label class="ss-label">Round capacity</label>
+            <input class="ss-input is-err" value="0" readonly />
+            <div class="ss-hint err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Enter a number between 2 and 5000.</div>
+          </div>
+          <button class="w-btn w-btn-primary" type="button" style="width:100%; justify-content:center;">Save round</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Form: success -->
+    <section class="ss-panel" data-screen-label="Success">
+      <div class="ss-cap"><span class="n">07</span><span class="t">Form · success</span><span class="map">→ post-submit confirmation</span></div>
+      <div class="ss-stage">
+        <div class="ss-success">
+          <span class="tick"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <h3>Round <span class="w-italic">created</span></h3>
+          <p>Your networking round is live. Share the join link and watch people pair up.</p>
+          <div style="margin-top:20px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <button class="w-btn w-btn-primary" type="button">Copy join link</button>
+            <button class="w-btn w-btn-ghost" type="button">View round</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="ss-note">
+    <h4>Notes for implementation</h4>
+    <ul>
+      <li>All seven states use only <code>--w-*</code> tokens; the two extra colors — <code>--ss-error #c0392b</code> and <code>--ss-ok #1f8a4d</code> — are the only additions. Promote them to <code>--destructive</code> / <code>--success</code> in <code>globals.css</code>.</li>
+      <li><strong>Loading</strong>: reuse the <code>&lt;Skeleton /&gt;</code> card shape per list; the inline spinner is for buttons and small async regions.</li>
+      <li><strong>Empty / Error / Offline / 404</strong>: one shared <code>&lt;StatePlaceholder glyph title body actions /&gt;</code> component covers all four — only glyph, copy and buttons change.</li>
+      <li><strong>Form</strong>: field-level hint (<code>.ss-hint</code>) + a form-level banner (<code>.ss-banner</code>) + a success view. Wire to the existing validation state; no new endpoints.</li>
+    </ul>
+  </div>
+
+</div>
+
+</body>
+</html>

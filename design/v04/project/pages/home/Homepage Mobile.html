@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --purple:#5C2277; --purpleDeep:#4b1d51; --purpleInk:#2d1133;
+    --orange:#dd531c; --orangeBright:#ff6a2a;
+    --cream:#f7f1e6; --paper:#fbf6ec; --paperDeep:#f1e9d8; --ink:#3a2e34;
+    --disp:"Bricolage Grotesque",system-ui,sans-serif;
+    --serif:"Instrument Serif",Georgia,serif;
+    --body:"Space Grotesk",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  button,[role="button"],[style*="cursor: pointer"],[style*="cursor:pointer"]{transition:filter .14s ease,transform .12s ease,box-shadow .15s ease;}
+  button:not(:disabled):hover,[role="button"]:hover{filter:brightness(.95);transform:translateY(-1px);box-shadow:0 6px 18px rgba(76,25,77,.18);}
+  button:not(:disabled):active,[role="button"]:active{transform:translateY(0);filter:brightness(.92);}
+  [style*="cursor: pointer"]:not(button):hover,[style*="cursor:pointer"]:not(button):hover{filter:brightness(.95);}
+  .learn:hover{filter:brightness(.92);}
+  html,body{margin:0;padding:0;}
+  body{font-family:var(--body);background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  img{display:block;max-width:100%;}
+  .it{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--orange);}
+  .wrap{padding:0 22px;}
+  section{position:relative;overflow:hidden;}
+
+  /* eyebrow */
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--purple);}
+  .eyebrow .ln{width:22px;height:1px;background:currentColor;}
+
+  h2.title{margin:14px 0 0;font-family:var(--disp);font-weight:800;font-size:32px;line-height:1.02;letter-spacing:-.03em;color:var(--purpleDeep);text-wrap:balance;}
+  .lede{margin:14px 0 0;font-size:15px;line-height:1.55;color:var(--ink);}
+
+  /* diamonds */
+  .dia{display:inline-block;background:var(--orange);transform:rotate(45deg);}
+
+  /* ───────── Header ───────── */
+  header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;
+    padding:12px 18px;background:rgba(247,241,230,.86);backdrop-filter:blur(10px);border-bottom:1px solid rgba(76,25,77,.08);}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;}
+  .brand .mark{position:relative;width:30px;height:30px;flex-shrink:0;overflow:visible;}
+  .brand .mark .inner{display:block;width:60px;height:60px;background:url("assets/Wonderelo-logo-symbol.png") center/contain no-repeat;position:absolute;left:50%;top:50%;transform:translate(calc(-50% + 8px),-50%) rotate(-6deg);pointer-events:none;}
+  .brand b{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:-.03em;color:var(--purpleDeep);}
+  .nav-toggle{display:none;}
+  .burger{display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;width:42px;height:42px;border-radius:11px;cursor:pointer;border:1px solid rgba(76,25,77,.16);background:rgba(255,255,255,.6);}
+  .burger span{display:block;width:18px;height:2px;background:var(--purpleDeep);border-radius:2px;transition:transform .25s ease,opacity .2s ease;}
+  .nav-toggle:checked ~ .burger span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+  .nav-toggle:checked ~ .burger span:nth-child(2){opacity:0;}
+  .nav-toggle:checked ~ .burger span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+  .mobnav{position:absolute;top:100%;left:0;right:0;background:var(--paper);border-bottom:1px solid rgba(76,25,77,.1);box-shadow:0 20px 44px rgba(76,25,77,.16);display:flex;flex-direction:column;padding:8px 18px 18px;transform:translateY(-10px);opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease;}
+  .nav-toggle:checked ~ .mobnav{opacity:1;transform:none;pointer-events:auto;}
+  .mobnav a.m-link{padding:14px 4px;font-family:var(--disp);font-weight:600;font-size:17px;color:var(--purpleDeep);text-decoration:none;border-bottom:1px solid rgba(76,25,77,.08);}
+  .mobnav a.m-link.is-active{color:var(--orange);}
+  .m-actions{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+  .m-actions .btn{display:block;text-align:center;text-decoration:none;padding:13px;font-size:15px;}
+  .btn-ghost2{background:rgba(76,25,77,.06);color:var(--purpleDeep);}
+  .btn{font-family:var(--body);font-weight:600;border:none;cursor:pointer;border-radius:999px;}
+  .btn-cta{background:var(--orange);color:#fff;padding:9px 16px;font-size:13px;box-shadow:0 8px 18px rgba(221,83,28,.28);}
+
+  /* ───────── Hero ───────── */
+  .hero{padding:34px 22px 8px;background:
+      radial-gradient(circle at 85% 8%, rgba(255,255,255,.7), transparent 40%),
+      var(--cream);}
+  .pill{display:inline-flex;align-items:center;gap:8px;background:var(--orange);color:#fff;font-size:12px;font-weight:600;padding:7px 14px;border-radius:999px;}
+  .hero h1{margin:18px 0 0;font-family:var(--disp);font-weight:800;font-size:44px;line-height:.96;letter-spacing:-.04em;color:var(--purpleDeep);}
+  .hero p.sub{margin:18px 0 0;font-size:15.5px;line-height:1.5;color:var(--ink);}
+  .hero-cta{margin-top:24px;display:flex;flex-direction:column;gap:12px;}
+  .btn-primary{background:var(--orange);color:#fff;padding:16px 20px;font-size:16px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 14px 26px rgba(221,83,28,.32);border-radius:14px;}
+  .btn-ghost{background:none;border:none;color:var(--purpleDeep);font-family:var(--body);font-weight:600;font-size:15px;cursor:pointer;}
+  .badges{margin-top:22px;display:flex;flex-direction:column;gap:11px;}
+  .badge{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;color:var(--purpleDeep);}
+  .hero-img{margin:26px -10px 0;position:relative;}
+  .hero-img::before{content:"";position:absolute;inset:8% 12%;background:radial-gradient(ellipse 60% 55% at 50% 50%,#fff 0%,#fff 35%,transparent 70%);opacity:.55;}
+  .hero-img img{position:relative;width:100%;filter:drop-shadow(0 24px 44px rgba(76,25,77,.20));}
+
+  /* ───────── As seen in ───────── */
+  .seen{background:var(--paper);border-top:1px solid rgba(76,25,77,.1);border-bottom:1px solid rgba(76,25,77,.1);padding:22px 0;}
+  .seen .lbl{text-align:center;font-size:10px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--purpleDeep);opacity:.7;}
+  .seen .row{margin-top:14px;display:flex;gap:30px;overflow-x:auto;padding:0 22px;scrollbar-width:none;align-items:center;}
+  .seen .row::-webkit-scrollbar{display:none;}
+  .seen .row img{height:22px;width:auto;flex-shrink:0;filter:grayscale(100%);opacity:.8;}
+
+  /* ───────── Problem ───────── */
+  .problem{background:var(--paperDeep);padding:64px 0;}
+  .pcard{background:var(--paper);border:1px solid rgba(76,25,77,.1);border-radius:22px;padding:20px;margin-top:16px;}
+  .pcard .ph{width:100%;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.6);}
+  .pcard .ph img{width:100%;height:100%;object-fit:cover;}
+  .pcard h3{margin:16px 0 6px;font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:-.02em;color:var(--purpleDeep);}
+  .pcard p{margin:0;font-size:14px;line-height:1.5;color:var(--ink);}
+  .closing{margin:44px 0 0;display:flex;align-items:center;gap:14px;justify-content:center;}
+  .closing p{margin:0;font-family:var(--disp);font-weight:800;font-size:23px;line-height:1.12;letter-spacing:-.02em;color:var(--purpleDeep);text-align:center;text-wrap:balance;}
+
+  /* ───────── How it works ───────── */
+  .how{background:var(--cream);padding:64px 0;}
+  .how .head{text-align:center;}
+  .steps{margin-top:40px;display:flex;flex-direction:column;gap:44px;}
+  .step .img{aspect-ratio:16/11;background:var(--paperDeep);border:1px solid rgba(76,25,77,.1);border-radius:22px;overflow:hidden;box-shadow:0 22px 44px rgba(76,25,77,.1);display:flex;align-items:center;justify-content:center;}
+  .step .img img{width:100%;height:100%;}
+  .step .lab{margin-top:16px;font-family:var(--serif);font-style:italic;font-size:19px;color:var(--orange);}
+  .step h3{margin:6px 0 8px;font-family:var(--disp);font-weight:800;font-size:25px;line-height:1.05;letter-spacing:-.025em;color:var(--purpleDeep);}
+  .step p{margin:0;font-size:15px;line-height:1.55;color:var(--ink);}
+  .center-cta{display:flex;justify-content:center;margin-top:44px;}
+
+  /* ───────── Who is it for ───────── */
+  .who{background:var(--purpleDeep);color:#fff;padding:64px 0;}
+  .who h2.title{color:#fff;}
+  .who .lede{color:rgba(255,255,255,.72);}
+  .tiles{margin-top:34px;display:flex;flex-direction:column;gap:14px;}
+  .tile{border-radius:22px;padding:24px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);}
+  .tile .num{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--orangeBright);}
+  .tile h4{margin:8px 0 8px;font-family:var(--disp);font-weight:700;font-size:21px;line-height:1.1;letter-spacing:-.02em;color:#fff;}
+  .tile p{margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.72);}
+  .tile.feat{background:var(--orange);border:none;}
+  .tile.feat .num{color:rgba(255,255,255,.85);}
+  .tile.feat h4{font-size:30px;}
+  .tile.feat p{color:rgba(255,255,255,.92);}
+  .tile.light{background:var(--cream);border:none;}
+  .tile.light .num{color:var(--orange);}
+  .tile.light h4{color:var(--purpleDeep);}
+  .tile.light p{color:var(--ink);}
+  .learn{display:inline-flex;align-items:center;gap:7px;margin-top:14px;font-size:13px;font-weight:600;color:var(--orangeBright);}
+  .tile.feat .learn,.tile.light .learn{color:#fff;}
+  .tile.light .learn{color:var(--orange);}
+
+  /* ───────── Features ───────── */
+  .feat-sec{background:var(--cream);padding:64px 0;}
+  .feat-img{position:relative;margin:0 auto 30px;max-width:300px;}
+  .feat-img img{width:100%;object-fit:contain;}
+  .flist{margin-top:24px;display:flex;flex-direction:column;gap:18px;}
+  .fitem{display:flex;gap:13px;align-items:flex-start;}
+  .fck{flex-shrink:0;width:28px;height:28px;border-radius:8px;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .fitem .fn{font-family:var(--disp);font-weight:700;font-size:16px;color:var(--purpleDeep);letter-spacing:-.01em;}
+  .fitem .fd{font-size:13.5px;line-height:1.5;color:var(--ink);margin-top:3px;}
+
+  /* ───────── Testimonials ───────── */
+  .tst{background:var(--paperDeep);padding:64px 0;}
+  .tst .head{text-align:center;}
+  .tcards{margin-top:30px;display:flex;flex-direction:column;gap:16px;}
+  .tcard{background:var(--paper);border:1px solid rgba(76,25,77,.1);border-radius:22px;padding:24px;}
+  .stars{display:flex;gap:4px;}
+  .tcard q{display:block;margin:14px 0 0;font-family:var(--disp);font-weight:600;font-size:17px;line-height:1.42;letter-spacing:-.01em;color:var(--purpleDeep);quotes:none;}
+  .tmeta{margin-top:18px;padding-top:14px;border-top:1px solid rgba(76,25,77,.1);display:flex;align-items:center;gap:12px;}
+  .avt{width:42px;height:42px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:800;font-size:14px;flex-shrink:0;}
+  .avt.p{background:var(--purpleDeep);}
+  .tmeta .nm{font-size:14px;font-weight:700;color:var(--purpleDeep);}
+  .tmeta .ev{font-size:12.5px;color:var(--ink);opacity:.7;font-family:var(--serif);font-style:italic;}
+
+  /* ───────── CTA banner ───────── */
+  .cta{margin:0;background:var(--orange);color:#fff;padding:56px 22px;text-align:center;position:relative;}
+  .cta h2{margin:0;font-family:var(--disp);font-weight:800;font-size:34px;line-height:1.0;letter-spacing:-.03em;}
+  .cta p{margin:14px auto 0;max-width:300px;font-size:15px;line-height:1.5;color:rgba(255,255,255,.9);}
+  .cta .btn-white{margin-top:24px;background:#fff;color:var(--orange);padding:16px 24px;font-weight:700;font-size:16px;border-radius:14px;width:100%;}
+  .join{margin-top:16px;display:flex;gap:8px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:6px;}
+  .join input{flex:1;background:none;border:none;color:#fff;font-family:var(--body);font-size:15px;padding:10px 12px;outline:none;}
+  .join input::placeholder{color:rgba(255,255,255,.7);}
+  .join button{background:var(--purpleInk);color:#fff;border:none;border-radius:10px;padding:0 18px;font-family:var(--body);font-weight:600;font-size:14px;cursor:pointer;}
+
+  /* ───────── Footer ───────── */
+  footer{background:var(--purpleInk);color:rgba(255,255,255,.7);padding:48px 22px 36px;}
+  .f-brand{display:flex;align-items:center;gap:10px;margin-bottom:26px;}
+  .f-brand img{width:48px;height:48px;transform:rotate(-6deg);}
+  .f-brand b{font-family:var(--disp);font-weight:800;font-size:24px;letter-spacing:-.03em;color:#fff;}
+  .f-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px 18px;}
+  .f-col h5{margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;}
+  .f-col a{display:block;font-size:14px;color:rgba(255,255,255,.6);text-decoration:none;margin-bottom:9px;}
+  .f-bottom{margin-top:34px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1);font-size:12.5px;color:rgba(255,255,255,.5);}
+</style>
+</head>
+<body>
+
+<wonderelo-nav data-screen-label="Public / Nav"></wonderelo-nav>
+
+<!-- ───────── Hero ───────── -->
+<section class="hero">
+  <span class="pill">◆ Networking rounds</span>
+  <h1>Enrich <span class="it">your event</span> by bringing <span class="it">people together</span></h1>
+  <p class="sub">Easily turn socializing from a side effect into a program highlight. Networking rounds perfect for conferences, meet-ups, festivals, internal meetings, weddings and parties.</p>
+  <div class="hero-cta">
+    <button class="btn btn-primary" type="button">Organize networking rounds
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    </button>
+    <button class="btn-ghost" type="button">Try the demo →</button>
+  </div>
+  <div class="badges">
+    <div class="badge"><svg width="14" height="14" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg> Ready in five minutes</div>
+    <div class="badge"><svg width="14" height="14" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg> No attendee list needed</div>
+    <div class="badge"><svg width="14" height="14" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg> Organize networking rounds</div>
+  </div>
+  <div class="hero-img"><img src="assets/Wonderelo-hero-section-networking-rounds.svg" alt="Wonderelo networking" /></div>
+</section>
+
+<!-- ───────── As seen in ───────── -->
+<section class="seen">
+  <div class="lbl">As seen in</div>
+  <div class="row">
+    <img src="assets/logos/business-insider.svg" alt="Business Insider" />
+    <img src="assets/logos/digital-journal.svg" alt="Digital Journal" />
+    <img src="assets/logos/big-news-network.svg" alt="Big News Network" />
+    <img src="assets/logos/techbullion.svg" alt="TechBullion" />
+    <img src="assets/logos/ips.svg" alt="IPS" />
+    <img src="assets/logos/starkville.svg" alt="Starkville Daily News" />
+  </div>
+</section>
+
+<!-- ───────── Problem ───────── -->
+<section class="problem">
+  <div class="wrap" style="text-align:center;">
+    <h2 class="title"><span class="it">9 out of 10</span> people go to events to meet someone new</h2>
+    <p class="lede">But here's what actually happens at most events:</p>
+  </div>
+  <div class="wrap">
+    <div class="pcard">
+      <div class="ph"><img src="assets/reality-closed-circles.png" alt="Groups stay closed" style="transform:scale(1.2);object-position:center 55%;" /></div>
+      <h3>Groups stay closed</h3>
+      <p>People arrive with their team and rarely break out.</p>
+    </div>
+    <div class="pcard">
+      <div class="ph"><img src="assets/reality-solo.png" alt="Solo attendees stuck on the sidelines" /></div>
+      <h3>Solo attendees stuck on the sidelines</h3>
+      <p>Solo-goers end up scrolling their phone instead of meeting anyone.</p>
+    </div>
+    <div class="pcard">
+      <div class="ph"><img src="assets/reality-waiting.png" alt="Socializing happens by chance" /></div>
+      <h3>Socializing happens by chance</h3>
+      <p>A connection usually sparks only if you happen to queue for schnitzel.</p>
+    </div>
+  </div>
+  <div class="wrap closing">
+    <span class="dia" style="width:12px;height:12px;flex-shrink:0;"></span>
+    <p>Too many attendees leave <span class="it">without new connections</span><span style="color:var(--orange);">.</span></p>
+    <span class="dia" style="width:12px;height:12px;flex-shrink:0;"></span>
+  </div>
+</section>
+
+<!-- ───────── How it works ───────── -->
+<section class="how">
+  <div class="wrap head">
+    <div class="eyebrow"><span class="ln"></span> Stop leaving socializing to chance <span class="ln"></span></div>
+    <h2 class="title">Organize <span class="it">networking rounds!</span></h2>
+    <p class="lede">Give your attendees what they came for — new connections.</p>
+  </div>
+  <div class="wrap steps">
+    <div class="step">
+      <div class="img"><img src="assets/how-it-works-1.png" alt="" style="object-fit:cover;" /></div>
+      <div class="lab">Step 01</div>
+      <h3>Organizer promotes their Wonderelo event page</h3>
+      <p>Share your Event page link — show it on slides, screens, or roll-ups using a QR code or the event hashtag.</p>
+    </div>
+    <div class="step">
+      <div class="img"><img src="assets/Hand-with-phone.png" alt="" style="object-fit:contain;" /></div>
+      <div class="lab">Step 02</div>
+      <h3>Participants register to rounds</h3>
+      <p>People choose their time and optionally topic or group. Zero attendee setup for the organizer.</p>
+    </div>
+    <div class="step">
+      <div class="img"><img src="assets/how-it-works-3.png" alt="" style="object-fit:cover;object-position:calc(50% + 40px) center;" /></div>
+      <div class="lab">Step 03</div>
+      <h3>Then they confirm attendance</h3>
+      <p>An SMS notification sent 5 minutes before the round reminds them to do so.</p>
+    </div>
+    <div class="step">
+      <div class="img"><img src="assets/Wonderelo-step4.png" alt="" style="object-fit:cover;" /></div>
+      <div class="lab">Step 04</div>
+      <h3>Participants meet &amp; network</h3>
+      <p>Wonderelo shows each participant their designated meeting point and match partners. They find each other using a unique Wonderimage™. Ice breakers handle the smooth start.</p>
+    </div>
+    <div class="step">
+      <div class="img"><img src="assets/how-it-works-5.png" alt="" style="object-fit:contain;" /></div>
+      <div class="lab">Step 05</div>
+      <h3>Finally they decide whether to exchange contacts</h3>
+      <p>If both parties agree, contacts are exchanged 15 minutes after the round. New contacts are made, new worlds emerge.</p>
+    </div>
+  </div>
+  <div class="wrap center-cta">
+    <button class="btn btn-primary" type="button">Let's make your event better!
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- ───────── Who is it for ───────── -->
+<section class="who">
+  <div class="wrap head" style="text-align:center;">
+    <div class="eyebrow" style="color:var(--orangeBright);justify-content:center;">Who is it for</div>
+    <h2 class="title">Every gathering becomes unforgettable when <span class="it" style="color:var(--orangeBright);">people connect</span></h2>
+    <p class="lede">Make yours one of them!</p>
+  </div>
+  <div class="wrap tiles">
+    <div class="tile feat">
+      <div class="num">01</div>
+      <h4>Conferences &amp; barcamps</h4>
+      <p>Ensure everyone leaves with new contacts — even introverts and solo attendees.</p>
+      <span class="learn">Learn more →</span>
+    </div>
+    <div class="tile light">
+      <div class="num">02</div>
+      <h4>Meetups</h4>
+      <p>Mix people beyond their usual circles and create fresh conversations every time.</p>
+      <span class="learn">Learn more →</span>
+    </div>
+    <div class="tile">
+      <div class="num">03</div>
+      <h4>Festivals &amp; parties</h4>
+      <p>Break the ice between groups, make solo guests feel included — make your event more fun!</p>
+      <span class="learn">Learn more →</span>
+    </div>
+    <div class="tile">
+      <div class="num">04</div>
+      <h4>Weddings</h4>
+      <p>Mix Team Bride and Team Groom so the two sides finally get to know each other.</p>
+      <span class="learn">Learn more →</span>
+    </div>
+    <div class="tile">
+      <div class="num">05</div>
+      <h4>Bars &amp; cafés</h4>
+      <p>Host speed datings, quiz nights, board game evenings — give regulars a reason to come back.</p>
+      <span class="learn">Learn more →</span>
+    </div>
+    <div class="tile">
+      <div class="num">06</div>
+      <h4>Schools &amp; universities</h4>
+      <p>Help students get to know each other, form project teams, or break the ice at the start of a new semester.</p>
+      <span class="learn">Learn more →</span>
+    </div>
+    <div class="tile">
+      <div class="num">07</div>
+      <h4>Company teams</h4>
+      <p>Build deeper relationships across departments and help remote colleagues connect face-to-face.</p>
+      <span class="learn">Learn more →</span>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── Features ───────── -->
+<section class="feat-sec">
+  <div class="wrap">
+    <div class="feat-img"><img src="assets/Wonderelo-magic-by-networking.png" alt="Magic by networking" /></div>
+    <div class="eyebrow">Features</div>
+    <h2 class="title">Tailor each round to <span class="it">fit your event</span></h2>
+    <p class="lede">Every event is different. Configure each networking round to match your audience, format, and goals.</p>
+    <div class="flist">
+      <div class="fitem"><div class="fck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="fn">Flexible duration</div><div class="fd">Choose the right length for each session — from 3-minute speed chats to hour-long deep dives.</div></div></div>
+      <div class="fitem"><div class="fck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="fn">Group size</div><div class="fd">Set anything from intimate one-on-ones to larger group brainstorms — whatever the moment calls for.</div></div></div>
+      <div class="fitem"><div class="fck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="fn">Discussion topics</div><div class="fd">Match people who share the same interests so every conversation starts on common ground.</div></div></div>
+      <div class="fitem"><div class="fck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="fn">Group matching</div><div class="fd">Great for companies. Matching within groups builds the teams. Matching across groups sparks cross-department collaboration.</div></div></div>
+      <div class="fitem"><div class="fck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="fn">Meeting points</div><div class="fd">You can use distinctive spots already in your venue — so people always know exactly where to go, no extra signage required.</div></div></div>
+      <div class="fitem"><div class="fck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="fn">Ice breakers</div><div class="fd">Optional starter questions help even the shyest attendees begin a real conversation.</div></div></div>
+      <div class="fitem"><div class="fck"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="fn">Matching memory</div><div class="fd">Rounds remember past pairings — people always meet someone new.</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── Testimonials ───────── -->
+<section class="tst">
+  <div class="wrap head">
+    <h2 class="title">Here's what happened when organizers <span class="it">used Wonderelo</span></h2>
+    <p class="lede">New friendships, deeper connections and lots of fun.</p>
+  </div>
+  <div class="wrap tcards">
+    <div class="tcard">
+      <div class="stars"><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg></div>
+      <q>It was the first event where we felt confident nobody was left out of networking.</q>
+      <div class="tmeta"><div class="avt">AM</div><div><div class="nm">Anna Müller</div><div class="ev">TechFuture Conference</div></div></div>
+    </div>
+    <div class="tcard">
+      <div class="stars"><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg></div>
+      <q>Our attendees used to stick to their own groups. Wonderelo changed that in one evening.</q>
+      <div class="tmeta"><div class="avt p">DN</div><div><div class="nm">David Novak</div><div class="ev">CreativeMinds Meetup</div></div></div>
+    </div>
+    <div class="tcard">
+      <div class="stars"><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg></div>
+      <q>At our company offsite, the sales and manufacturing departments finally found their way to each other.</q>
+      <div class="tmeta"><div class="avt">SL</div><div><div class="nm">Sophie Laurent</div><div class="ev">BrightPath Consulting</div></div></div>
+    </div>
+    <div class="tcard">
+      <div class="stars"><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg></div>
+      <q>Mixing the bride's team and the groom's team led to a massive party.</q>
+      <div class="tmeta"><div class="avt p">ME</div><div><div class="nm">Marko &amp; Elena</div><div class="ev">Wedding in Vienna</div></div></div>
+    </div>
+    <div class="tcard">
+      <div class="stars"><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg></div>
+      <q>People laughed, made new friends, and kept asking when the next quiz night would be.</q>
+      <div class="tmeta"><div class="avt">LR</div><div><div class="nm">Lucia Rossi</div><div class="ev">Caffè Centrale</div></div></div>
+    </div>
+    <div class="tcard">
+      <div class="stars"><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg></div>
+      <q>Setup took 5 minutes and participants figured it out on their own. Zero stress.</q>
+      <div class="tmeta"><div class="avt p">JH</div><div><div class="nm">Jan Horváth</div><div class="ev">EuroSummit Bratislava</div></div></div>
+    </div>
+    <div class="tcard" style="background:var(--purpleDeep);border:none;color:#fff;">
+      <div class="stars"><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg><svg width="16" height="16" viewBox="0 0 16 16" fill="#dd531c"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg></div>
+      <q style="color:#fff;font-size:19px;">We organized a 200-person company offsite — by the second round, the office was buzzing like a festival. Wonderelo turned awkward small talk into the highlight of our year.</q>
+      <div class="tmeta" style="border-top-color:rgba(255,255,255,.12);"><div class="avt">KP</div><div><div class="nm" style="color:#fff;">Klára Petrová</div><div class="ev" style="color:rgba(255,255,255,.65);">Head of People · Bright Holding</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── CTA banner ───────── -->
+<section class="cta">
+  <h2>Ready to make your event <span class="it" style="color:var(--purpleDeep);">unforgettable?</span></h2>
+  <p>Set up your first networking round in 5 minutes. No credit card required.</p>
+  <button class="btn btn-white" type="button">Start for free</button>
+  <div class="join">
+    <input type="text" placeholder="Have a code? Enter it here" />
+    <button type="button">Join</button>
+  </div>
+</section>
+
+<!-- ───────── Footer ───────── -->
+<footer>
+  <div class="f-brand">
+    <img src="assets/Wonderelo-logo-symbol.png" alt="" />
+    <b>wonderelo</b>
+  </div>
+  <div class="f-cols">
+    <div class="f-col"><h5>Product</h5><a href="#">Features</a><a href="#">How it works</a><a href="#">Pricing</a></div>
+    <div class="f-col"><h5>Company</h5><a href="#">Our story</a><a href="#">Newsroom</a><a href="#">Contact us</a></div>
+    <div class="f-col"><h5>Support</h5><a href="#">Help center</a></div>
+    <div class="f-col"><h5>Legal</h5><a href="#">Terms of use</a><a href="#">Privacy policy</a></div>
+  </div>
+  <div class="f-bottom">© 2026 Wonderelo. All rights reserved.</div>
+</footer>
+
+<script src="../wonderelo-nav.js"></script>
+<script>
+(function(){
+  document.querySelectorAll('input[placeholder^="Have a code"]').forEach(function(inp){
+    function fix(){ inp.value = '#' + inp.value.replace(/#/g, ''); }
+    inp.addEventListener('focus', function(){ if(!inp.value || inp.value.charAt(0) !== '#') fix(); });
+    inp.addEventListener('input', fix);
+    inp.addEventListener('blur', function(){ if(inp.value === '#') inp.value = ''; });
+  });
+})();
+</script>
+</body>
+</html>

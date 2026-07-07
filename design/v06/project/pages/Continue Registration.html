@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Continue your registration (mobile-first)
+  Follows from clicking "Continue" on the Public Event Page.
+
+  Maps to: src/components/SessionRegistration.tsx
+            currentStep === 'auth-choice'      (guest path)
+            currentStep === 'meeting-points'   (signed-in path → Finalise)
+
+  Part of the public-registration flow. The floating "Screen" panel switches
+  between the three steps of that flow:
+    1. Round selection      — lives on Event Page.html (link out)
+    2. Contact information  — auth-choice form (this page, default). The SMS
+                              reminder hint always shows here.
+    3. Meeting points       — signed-in user sees meeting points per registered
+                              session, with a Finalise button (data-state="confirm").
+
+  Submitting the magic-link form flips that card to its "sent" sub-state
+  (data-state="auth-sent") — still part of the Contact information screen.
+
+  "View as" still flips the top-nav between Guest and Andy K.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Continue your registration</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  body { background: var(--w-paper); }
+
+  .cr-shell {
+    max-width: 432px; margin: 0 auto;
+    padding: 0 20px 140px;
+    min-height: 100vh;
+  }
+
+  /* ───── Top nav (same vocab as Event Page) ───── */
+  .cr-nav {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(251,246,236,.94); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--w-hairline);
+    margin: 0 -20px;
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    overflow: visible;
+  }
+  .cr-brand {
+    display: inline-flex; align-items: center; gap: 52px; cursor: pointer;
+    text-decoration: none;
+  }
+  .cr-brand .mark {
+    position: relative;
+    width: 26px; height: 26px;
+    background: transparent;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  .cr-brand .mark .inner {
+    display: block;
+    width: 92px; height: 92px;
+    background: url("assets/Wonderelo-logo-symbol.png") center / contain no-repeat;
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(calc(-50% + 16px), -50%) rotate(-6deg);
+    pointer-events: none;
+  }
+  .cr-brand .word {
+    font-family: var(--w-font-display); font-weight: 800; font-size: 17px;
+    letter-spacing: -0.025em; color: var(--w-purple-deep); line-height: 1;
+  }
+  .cr-brand .word em { font: inherit; color: inherit; font-style: normal; }
+
+  .cr-nav-cta {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong); background: rgba(255,255,255,.6);
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12.5px;
+    color: var(--w-purple-deep); cursor: pointer; text-decoration: none;
+    white-space: nowrap;
+  }
+  .cr-nav-cta svg { width: 13px; height: 13px; }
+  body.is-signed-in .cr-nav-guest { display: none; }
+  body:not(.is-signed-in) .cr-nav-trigger,
+  body:not(.is-signed-in) .cr-nav-menu { display: none; }
+  .cr-nav-trigger {
+    padding: 4px 12px 4px 4px; gap: 8px; background: #fff;
+    cursor: pointer; user-select: none;
+  }
+  .cr-nav-cta .av-mini {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 10.5px;
+    letter-spacing: 0;
+  }
+  .cr-nav-caret { transition: transform .15s ease; opacity: .55; }
+  .cr-nav-trigger.is-open .cr-nav-caret { transform: rotate(180deg); opacity: .85; }
+  .cr-nav-menu {
+    position: absolute; top: calc(100% + 8px); right: 20px;
+    min-width: 200px; background: #fff;
+    border: 1px solid var(--w-hairline-strong); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(76,25,77,.18);
+    padding: 6px; display: none; z-index: 100;
+  }
+  .cr-nav-menu.is-open { display: block; }
+  .cr-nav-menu-item {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; background: transparent; border: none; border-radius: 8px;
+    font-family: var(--w-font-body); font-weight: 500; font-size: 13.5px;
+    color: var(--w-ink); cursor: pointer; text-align: left;
+    transition: background .12s, color .12s;
+  }
+  .cr-nav-menu-item:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .cr-nav-menu-item svg { width: 14px; height: 14px; color: var(--w-purple); opacity: .65; flex-shrink: 0; }
+  .cr-nav-menu-item:hover svg { opacity: 1; color: var(--w-orange); }
+  .cr-nav-menu-divider { height: 1px; background: var(--w-hairline); margin: 4px 2px; }
+  .cr-nav-menu-item.is-danger { color: rgb(180, 50, 50); }
+  .cr-nav-menu-item.is-danger svg { color: rgb(180, 50, 50); }
+  .cr-nav-menu-item.is-danger:hover { background: rgba(180, 50, 50, 0.06); color: rgb(180, 50, 50); }
+
+  /* ───── Back + selected-rounds recap (sticky-ish chip row) ───── */
+  .cr-topbar {
+    margin: 20px 0 4px;
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .cr-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; border: none; cursor: pointer; padding: 0;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12.5px;
+    color: var(--w-purple-deep); text-decoration: none;
+  }
+  .cr-back svg { width: 14px; height: 14px; }
+  .cr-back:hover { color: var(--w-orange); }
+  .cr-recap {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-left: auto;
+    padding: 5px 12px;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: 999px;
+    font-size: 11.5px; color: var(--w-ink); line-height: 1.2;
+    font-family: var(--w-font-body);
+  }
+  .cr-recap strong {
+    font-family: var(--w-font-display); font-weight: 700;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+  }
+  .cr-recap em {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400;
+    color: var(--w-orange); margin: 0 1px;
+  }
+  .cr-recap .dot { color: var(--w-ink); opacity: .35; }
+
+  /* ───── Headline ───── */
+  .cr-head {
+    margin: 26px 0 22px;
+  }
+  .cr-head h1 {
+    margin: 0;
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 32px; line-height: 1.05; letter-spacing: -0.025em;
+    color: var(--w-purple-deep);
+    text-wrap: balance;
+  }
+  .cr-head h1 em {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400;
+    color: var(--w-orange);
+  }
+  .cr-head .lede {
+    margin: 10px 0 0;
+    font-size: 14px; color: var(--w-ink); opacity: .75; line-height: 1.5;
+  }
+
+  /* ───── Cards (Create account + Magic link) ───── */
+  .cr-cards { display: flex; flex-direction: column; gap: 18px; }
+  .cr-card {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: 18px;
+    padding: 20px 20px 22px;
+    box-shadow: 0 4px 12px rgba(76,25,77,.04);
+  }
+  .cr-card header {
+    display: flex; flex-direction: column; gap: 4px;
+    margin-bottom: 16px;
+  }
+  .cr-card-eyebrow {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--w-orange);
+    font-family: var(--w-font-body);
+  }
+  .cr-card-title {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 19px;
+    color: var(--w-purple-deep); letter-spacing: -.02em; line-height: 1.15;
+  }
+  .cr-card-sub {
+    margin-top: 4px;
+    font-size: 12.5px; color: var(--w-ink); opacity: .7; line-height: 1.4;
+  }
+
+  /* ───── Form bits ───── */
+  .cr-form { display: flex; flex-direction: column; gap: 14px; }
+  .cr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .cr-field { display: flex; flex-direction: column; gap: 6px; }
+  .cr-label {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--w-purple); opacity: .75;
+    font-family: var(--w-font-body);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .cr-label .req { color: var(--w-orange); margin-left: 1px; }
+  .cr-input {
+    appearance: none; -webkit-appearance: none;
+    width: 100%; padding: 12px 14px;
+    background: #fff;
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 10px;
+    font-family: var(--w-font-body); font-size: 14px;
+    color: var(--w-ink); line-height: 1.2;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .cr-input::placeholder { color: var(--w-ink); opacity: .35; }
+  .cr-input:focus {
+    outline: none;
+    border-color: var(--w-orange);
+    box-shadow: 0 0 0 3px rgba(221,83,28,.15);
+  }
+
+  .cr-phone {
+    display: grid; grid-template-columns: 110px 1fr; gap: 8px;
+  }
+
+  /* Custom country-prefix combobox (searchable, with flags) */
+  .cr-country {
+    position: relative;
+  }
+  .cr-country-trigger {
+    appearance: none; -webkit-appearance: none;
+    width: 100%; padding: 12px 30px 12px 12px;
+    background: #fff
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234b1d51' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")
+      no-repeat right 10px center / 12px 12px;
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 10px;
+    font-family: var(--w-font-mono); font-size: 13px;
+    color: var(--w-ink); letter-spacing: .02em;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    text-align: left;
+  }
+  .cr-country-trigger .flag { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 15px; line-height: 1; }
+  .cr-country-trigger:focus { outline: none; border-color: var(--w-orange); box-shadow: 0 0 0 3px rgba(221,83,28,.15); }
+
+  .cr-country-panel {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    width: max(260px, 100%);
+    background: #fff;
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 14px;
+    box-shadow: 0 18px 42px rgba(76,25,77,.18);
+    z-index: 30;
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    max-height: 320px;
+  }
+  .cr-country.is-open .cr-country-panel { display: flex; }
+  .cr-country-search {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--w-hairline);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .cr-country-search svg { width: 14px; height: 14px; color: var(--w-ink); opacity: .5; flex-shrink: 0; }
+  .cr-country-search input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-family: var(--w-font-body); font-size: 13px; color: var(--w-ink);
+    padding: 4px 0;
+  }
+  .cr-country-search input::placeholder { color: var(--w-ink); opacity: .4; }
+  .cr-country-list {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 6px;
+  }
+  .cr-country-opt {
+    width: 100%; text-align: left;
+    background: transparent; border: none; cursor: pointer;
+    padding: 8px 10px; border-radius: 8px;
+    font-family: var(--w-font-body); font-size: 13px; color: var(--w-ink);
+    display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px;
+  }
+  .cr-country-opt:hover, .cr-country-opt.is-active {
+    background: var(--w-cream); color: var(--w-purple-deep);
+  }
+  .cr-country-opt .flag { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 16px; line-height: 1; }
+  .cr-country-opt .name { font-weight: 500; }
+  .cr-country-opt .code {
+    font-family: var(--w-font-mono); font-size: 12px;
+    color: var(--w-ink); opacity: .55; letter-spacing: .02em;
+  }
+  .cr-country-empty {
+    padding: 18px 14px; text-align: center;
+    font-size: 12.5px; color: var(--w-ink); opacity: .55;
+  }
+
+  /* Helper text under fields */
+  .cr-help {
+    margin-top: 4px;
+    font-size: 11.5px; color: var(--w-ink); opacity: .65;
+    line-height: 1.45;
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .cr-help svg { width: 12px; height: 12px; flex-shrink: 0; margin-top: 2px; color: var(--w-orange); opacity: .85; }
+
+  /* Checkbox row */
+  .cr-check { display: flex; align-items: flex-start; gap: 10px; }
+  .cr-check input { display: none; }
+  .cr-check .box {
+    width: 18px; height: 18px; border-radius: 5px;
+    border: 1.5px solid var(--w-hairline-strong); background: #fff;
+    flex-shrink: 0; margin-top: 1px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; transition: background .12s, border-color .12s;
+  }
+  .cr-check .box svg { width: 11px; height: 11px; opacity: 0; }
+  .cr-check input:checked + .box {
+    background: var(--w-orange); border-color: var(--w-orange);
+  }
+  .cr-check input:checked + .box svg { opacity: 1; }
+  .cr-check .text {
+    font-size: 12.5px; color: var(--w-ink); line-height: 1.45; cursor: pointer;
+  }
+  .cr-check .text a {
+    color: var(--w-purple-deep); text-decoration: underline; text-underline-offset: 2px;
+  }
+  .cr-check .text a:hover { color: var(--w-orange); }
+  .cr-check .req { color: var(--w-orange); }
+
+  /* Primary submit */
+  .cr-submit {
+    width: 100%; padding: 14px 18px; margin-top: 4px;
+    background: var(--w-orange); color: #fff;
+    border: none; border-radius: 12px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 14.5px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 6px 16px rgba(221,83,28,.22);
+    transition: transform .12s, box-shadow .12s, background .15s, color .15s;
+    text-decoration: none;
+  }
+  .cr-submit:disabled,
+  .cr-submit[aria-disabled="true"] {
+    background: var(--w-paper-deep); color: var(--w-ink);
+    opacity: .55; box-shadow: none; cursor: not-allowed;
+    transform: none;
+  }
+  .cr-submit:disabled:hover,
+  .cr-submit[aria-disabled="true"]:hover { transform: none; box-shadow: none; }
+  .cr-submit:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(221,83,28,.30); }
+  .cr-submit.is-ghost {
+    background: var(--w-purple-deep); color: #fff;
+    box-shadow: 0 6px 14px rgba(76,25,77,.18);
+  }
+  .cr-submit.is-ghost:hover { box-shadow: 0 10px 20px rgba(76,25,77,.24); }
+
+  /* Magic-link sent confirmation */
+  .cr-magic-sent { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 14px 8px 4px; }
+  .cr-magic-sent .icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(221,83,28,.10);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-orange);
+    margin-bottom: 14px;
+  }
+  .cr-magic-sent .icon svg { width: 26px; height: 26px; }
+  .cr-magic-sent .lede {
+    font-size: 13px; color: var(--w-ink); opacity: .7; margin: 0 0 4px;
+  }
+  .cr-magic-sent .email {
+    font-family: var(--w-font-mono); font-weight: 600; font-size: 13.5px;
+    color: var(--w-purple-deep); letter-spacing: .02em;
+    margin: 0 0 18px;
+    word-break: break-all;
+  }
+  .cr-magic-sent .cr-magic-open {
+    width: 100%; margin: 0 0 14px;
+    background: var(--w-purple-deep); color: #fff;
+    box-shadow: 0 6px 14px rgba(76,25,77,.18);
+  }
+  .cr-magic-sent .cr-magic-open:hover { box-shadow: 0 10px 20px rgba(76,25,77,.24); }
+  .cr-magic-sent .retry-line {
+    font-size: 12px; color: var(--w-ink); opacity: .65;
+  }
+  .cr-magic-sent .retry {
+    display: inline-block; margin-left: 4px;
+    background: transparent; border: none; padding: 0;
+    color: var(--w-purple-deep); font: inherit; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 2px; font-weight: 600;
+  }
+  .cr-magic-sent .retry:hover { color: var(--w-orange); }
+
+  /* Divider between two cards */
+  .cr-or {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
+    margin: 4px 0;
+  }
+  .cr-or::before, .cr-or::after {
+    content: ""; height: 1px; background: var(--w-hairline);
+  }
+  .cr-or span {
+    font-size: 10px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--w-ink); opacity: .5;
+    font-family: var(--w-font-body);
+  }
+
+  /* ───── Signed-in confirm view (meeting-points step) ───── */
+  .cr-confirm-head h1 em {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange);
+  }
+  .cr-mp-session-block + .cr-mp-session-block { margin-top: 24px; }
+  .cr-mp-session {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 15px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+    margin: 0 0 10px;
+  }
+  .cr-mp-list { display: flex; flex-direction: column; gap: 10px; }
+  .cr-mp-card {
+    background: #fff;
+    border: 1px solid var(--w-hairline);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .cr-mp-img {
+    aspect-ratio: 1 / 1; width: 100%;
+    background:
+      repeating-linear-gradient(45deg, rgba(76,25,77,.06) 0 6px, transparent 6px 14px),
+      var(--w-cream);
+    border-bottom: 1px solid var(--w-hairline);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cr-mp-img .lbl {
+    font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .18em;
+    color: var(--w-ink); opacity: .35; text-transform: uppercase;
+  }
+  .cr-mp-row {
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .cr-mp-row svg {
+    width: 16px; height: 16px; color: var(--w-orange); flex-shrink: 0;
+  }
+  .cr-mp-name {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 14.5px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+  }
+
+  /* Sticky finalise CTA */
+  .cr-sticky {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: rgba(251,246,236,.92); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--w-hairline);
+    padding: 14px 20px 20px;
+  }
+  .cr-sticky-inner {
+    max-width: 432px; margin: 0 auto;
+    display: flex; gap: 10px;
+  }
+  .cr-sticky-back {
+    width: 46px; flex-shrink: 0;
+    background: #fff; border: 1px solid var(--w-hairline-strong);
+    border-radius: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-purple-deep);
+  }
+  .cr-sticky-back:hover { background: var(--w-cream); }
+  .cr-sticky-cta {
+    flex: 1; padding: 14px 18px;
+    background: var(--w-orange); color: #fff;
+    border: none; border-radius: 12px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 15px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 6px 16px rgba(221,83,28,.25);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .cr-sticky-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(221,83,28,.32); }
+
+  /* When magic-link is sent, soften the (no-longer-relevant) Create account card */
+  body[data-state="auth-sent"] .cr-cards > .cr-card:not(.cr-magic-card) {
+    opacity: .35; pointer-events: none; transition: opacity .35s ease;
+  }
+  body[data-state="auth-sent"] .cr-or {
+    opacity: .35; transition: opacity .35s ease;
+  }
+  body[data-state="auth-idle"] .cr-cards > .cr-card:not(.cr-magic-card),
+  body[data-state="auth-idle"] .cr-or {
+    opacity: 1; transition: opacity .35s ease;
+  }
+
+  /* Show / hide views based on body state */
+  body[data-state="auth-idle"]   [data-view="confirm"],
+  body[data-state="auth-sent"]   [data-view="confirm"],
+  body[data-state="confirm"]     [data-view="auth"] { display: none !important; }
+
+  body[data-state="auth-idle"]   .cr-magic-card[data-magic-state="sent"]  > .cr-magic-sent,
+  body[data-state="auth-sent"]   .cr-magic-card[data-magic-state="idle"]  > .cr-magic-form { display: none !important; }
+  body[data-state="auth-idle"]   .cr-magic-card .cr-magic-sent { display: none !important; }
+  body[data-state="auth-sent"]   .cr-magic-card .cr-magic-form { display: none !important; }
+
+  body[data-state="confirm"]     .cr-sticky { display: block; }
+  body:not([data-state="confirm"]) .cr-sticky { display: none; }
+  body[data-state="confirm"] .cr-shell { padding-bottom: 120px; }
+
+  /* ───── Footer (contact view only; mirrors dashboard) ───── */
+  body[data-state="confirm"] .cr-footer { display: none !important; }
+  .cr-footer {
+    margin: 40px -20px -140px;
+    padding: 40px 20px calc(40px + env(safe-area-inset-bottom));
+    background: #2d1133; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .cr-footer .cr-brand { cursor: default; gap: 20px; }
+  .cr-footer .cr-brand .mark .inner { width: 50px; height: 50px; transform: translate(-50%, -50%) rotate(-6deg); }
+  .cr-footer .cr-brand .word { color: #fff; }
+  .cr-footer .tagline { margin: 2px 0 0; font-family: var(--w-font-display); font-weight: 500; font-size: 15px; color: rgba(255,255,255,.85); }
+  .cr-footer .copy { margin: 0; font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .04em; color: rgba(255,255,255,.4); }
+
+  /* ───── Preview control panel: screen switcher + view-as ───── */
+  .pv-panel {
+    position: fixed; left: 14px; bottom: 22px; z-index: 61;
+    width: 198px;
+    background: rgba(255,255,255,.95); backdrop-filter: blur(10px);
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 16px; padding: 9px;
+    font-family: var(--w-font-mono); color: var(--w-ink);
+    box-shadow: 0 14px 38px rgba(76,25,77,.18);
+    transition: bottom .28s ease;
+  }
+  body[data-state="confirm"] .pv-panel { bottom: 100px; }
+  .pv-group + .pv-group { margin-top: 7px; padding-top: 9px; border-top: 1px solid var(--w-hairline); }
+  .pv-glabel { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; padding: 1px 8px 7px; }
+  .pv-screens { display: flex; flex-direction: column; gap: 2px; }
+  .pv-screens button {
+    border: none; background: transparent; text-align: left;
+    padding: 8px 10px; border-radius: 10px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12px;
+    cursor: pointer; color: var(--w-ink); opacity: .7;
+    display: flex; align-items: center; gap: 8px;
+    transition: background .14s, opacity .14s, color .14s;
+  }
+  .pv-screens button .idx {
+    width: 17px; height: 17px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid currentColor; opacity: .45;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-mono); font-size: 9px; font-weight: 700;
+  }
+  .pv-screens button:not(.is-active):hover { background: var(--w-cream); opacity: 1; }
+  .pv-screens button.is-active { background: var(--w-purple-deep); color: #fff; opacity: 1; }
+  .pv-screens button.is-active .idx { border-color: var(--w-orange-bright); color: var(--w-orange-bright); opacity: 1; }
+  .pv-seg { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
+  .pv-seg + .pv-seg { margin-top: 5px; }
+  .pv-seg .seglbl { font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; margin-right: auto; }
+  .pv-seg button {
+    border: none; background: transparent;
+    padding: 4px 11px; border-radius: 999px;
+    font-family: var(--w-font-mono); font-size: 9.5px; letter-spacing: .06em;
+    cursor: pointer; color: var(--w-ink); opacity: .55;
+  }
+  .pv-seg button.is-active { background: var(--w-purple-deep); color: #fff; opacity: 1; }
+
+  /* Desktop framing — frame the 432px column when viewed on wide screens */
+  @media (min-width: 640px) {
+    body {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(221,83,28,.06), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(76,25,77,.06), transparent 40%),
+        var(--w-cream);
+    }
+    .cr-shell {
+      margin: 24px auto 80px;
+      background: var(--w-paper);
+      border: 1px solid var(--w-hairline);
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(76,25,77,.10);
+      min-height: 0;
+      overflow: hidden;
+      padding-bottom: 24px;
+    }
+    .cr-nav { margin: 0 -20px; border-radius: 24px 24px 0 0; }
+    .cr-sticky {
+      position: sticky; bottom: 24px;
+      margin: 24px -20px -24px;
+      border-radius: 0 0 24px 24px;
+    }
+    .cr-footer { margin-bottom: -24px; }
+    body[data-state="confirm"] .cr-shell { padding-bottom: 24px; }
+  }
+</style>
+</head>
+<body data-screen-label="01 Continue your registration" data-state="auth-idle">
+
+<div class="cr-shell">
+
+  <nav class="cr-nav" data-screen-label="Continue / Nav">
+    <a class="cr-brand" href="#">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <button class="cr-nav-cta cr-nav-guest" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Manage my rounds
+    </button>
+    <div class="cr-nav-cta cr-nav-trigger" id="cr-nav-trigger" role="button" tabindex="0">
+      <span class="av-mini">AA</span>
+      <span>Andy</span>
+      <svg class="cr-nav-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <div class="cr-nav-menu" id="cr-nav-menu" role="menu">
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Dashboard
+      </button>
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+        Profile
+      </button>
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M9 15.5a3 3 0 0 1 6 0"/></svg>
+        Address book
+      </button>
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+        Wonderelo home
+      </button>
+      <div class="cr-nav-menu-divider"></div>
+      <button class="cr-nav-menu-item is-danger" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <div class="cr-topbar">
+    <a class="cr-back" id="cr-back" href="Event Page.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <span data-back-label>Round selection</span>
+    </a>
+    <div class="cr-recap">
+      <strong>2 rounds</strong>
+      <span class="dot">·</span>
+      <span>Founder Summit 2026</span>
+    </div>
+  </div>
+
+  <!-- ──────── Auth-choice view (guest path) ──────── -->
+  <section data-view="auth" data-screen-label="Continue / Auth choice">
+    <div class="cr-head">
+      <h1>Tell us <em>who</em> you are</h1>
+    </div>
+
+    <div class="cr-cards">
+
+      <article class="cr-card">
+        <header>
+          <span class="cr-card-eyebrow">First time here?</span>
+          <div class="cr-card-title">Create your account</div>
+        </header>
+
+        <form class="cr-form" onsubmit="event.preventDefault();">
+          <div class="cr-row">
+            <div class="cr-field">
+              <label class="cr-label" for="cr-first">First name <span class="req">*</span></label>
+              <input class="cr-input" id="cr-first" type="text" placeholder="Andy" />
+            </div>
+            <div class="cr-field">
+              <label class="cr-label" for="cr-last">Last name <span class="req">*</span></label>
+              <input class="cr-input" id="cr-last" type="text" placeholder="Abel" />
+            </div>
+          </div>
+
+          <div class="cr-field">
+            <label class="cr-label" for="cr-email">Email <span class="req">*</span></label>
+            <input class="cr-input" id="cr-email" type="email" placeholder="you@gmail.com" />
+            <div class="cr-help">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <span>You'll get shared contacts from your rounds here.</span>
+            </div>
+          </div>
+
+          <div class="cr-field">
+            <label class="cr-label" for="cr-phone">Phone <span class="req">*</span></label>
+            <div class="cr-phone">
+              <div class="cr-country" data-country>
+                <button class="cr-country-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="flag" data-country-flag>🇸🇰</span>
+                  <span data-country-code>+421</span>
+                </button>
+                <div class="cr-country-panel" role="listbox">
+                  <div class="cr-country-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" placeholder="Search country or code…" autocomplete="off" />
+                  </div>
+                  <div class="cr-country-list" data-country-list></div>
+                </div>
+              </div>
+              <input class="cr-input" id="cr-phone" type="tel" placeholder="902 123 456" />
+            </div>
+            <div class="cr-help cr-sms-help">
+              <!-- Claude Code: hide this helper entirely when the user registers
+                   later than (round.startTime - SMS_REMINDER_LEAD_MINUTES). The
+                   reminder won't fire in time, so claiming we'll send it is wrong. -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>We send SMS reminder 5 minutes before each round.</span>
+            </div>
+          </div>
+
+          <label class="cr-check">
+            <input type="checkbox" id="cr-terms" />
+            <span class="box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="text">I accept the <a href="#">Terms of service</a> <span class="req">*</span></span>
+          </label>
+
+          <button class="cr-submit" type="submit" id="cr-create-btn" disabled>
+            Create account &amp; continue
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        </form>
+      </article>
+
+      <div class="cr-or"><span>or</span></div>
+
+      <article class="cr-card cr-magic-card" data-magic-state="idle">
+        <header>
+          <span class="cr-card-eyebrow">Already on Wonderelo?</span>
+          <div class="cr-card-title">Sign in by email</div>
+          <div class="cr-card-sub">We'll send a one-tap magic link — no password needed.</div>
+        </header>
+
+        <form class="cr-magic-form" onsubmit="event.preventDefault(); document.body.dataset.state = 'auth-sent'; syncScreenNav();">
+          <div class="cr-field">
+            <label class="cr-label" for="cr-magic-email">Email</label>
+            <input class="cr-input" id="cr-magic-email" type="email" placeholder="you@gmail.com" />
+          </div>
+          <button class="cr-submit is-ghost" type="submit" id="cr-magic-btn" style="margin-top: 8px;" disabled>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Send magic link
+          </button>
+        </form>
+
+        <div class="cr-magic-sent">
+          <div class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <p class="lede">Magic link sent to</p>
+          <p class="email">andy.abel@klimas.io</p>
+          <a class="cr-submit cr-magic-open" href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span data-provider-label>Open Gmail</span>
+          </a>
+          <p class="retry-line">
+            Didn't get it?<button class="retry" type="button" onclick="document.body.dataset.state = 'auth-idle'; syncScreenNav();">Try again</button>
+          </p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <footer class="cr-footer" data-screen-label="Continue / Footer">
+    <a class="cr-brand">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <p class="tagline">Break your bubble, meet new people</p>
+    <p class="copy">© 2026 Wonderelo</p>
+  </footer>
+
+  <!-- ──────── Signed-in confirmation view (meeting-points step) ──────── -->
+  <section data-view="confirm" data-screen-label="Continue / Confirm meeting points">
+    <div class="cr-head cr-confirm-head">
+      <h1>Know your <em>meeting points</em></h1>
+      <p class="lede">Take a moment to find these spots now — when your round goes live, you'll head straight there, no searching.</p>
+    </div>
+
+    <div class="cr-mp-session-block">
+      <div class="cr-mp-list">
+        <div class="cr-mp-card">
+          <div class="cr-mp-img"><span class="lbl">photo</span></div>
+          <div class="cr-mp-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span class="cr-mp-name">Coffee bar</span>
+          </div>
+        </div>
+        <div class="cr-mp-card">
+          <div class="cr-mp-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span class="cr-mp-name">Lobby fireplace</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Sticky finalise CTA (only for confirm state) -->
+<div class="cr-sticky" data-screen-label="Continue / Finalise sticky">
+  <div class="cr-sticky-inner">
+    <button class="cr-sticky-back" type="button" aria-label="Back" onclick="history.back()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <button class="cr-sticky-cta" type="button" onclick="window.location.href='Participant Dashboard.html?just-registered=1'">
+      Finalise my registration!
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  // ── Public-flow screen switcher (relayed from the Overview chip)
+  const screenNav = document.querySelector('.pv-screens');
+  const modeToggle = document.querySelector('.pv-mode');
+
+  // View-as switch, exposed for the Overview "View as" chip toggle.
+  window.setViewAs = function (mode) {
+    document.body.dataset.state = mode === 'signed' ? 'confirm' : 'auth-idle';
+    syncScreenNav();
+    window.scrollTo({ top: 0 });
+  };
+
+  // syncScreenNav is also called from inline handlers (magic-link submit / retry),
+  // so it must stay a top-level (global) function declaration.
+  function syncScreenNav() {
+    const st = document.body.dataset.state;
+    // 'confirm' renders Meeting points; everything else (auth-idle / auth-sent) is Contact information.
+    const current = st === 'confirm' ? 'meeting' : 'contact';
+    if (screenNav) {
+      screenNav.querySelectorAll('button[data-screen]').forEach((b) => {
+        b.classList.toggle('is-active', b.dataset.screen === current);
+      });
+    }
+    // Back link shows the *previous* step's name (breadcrumb-style):
+    // Contact information → back to Round selection; Meeting points → back to Contact information.
+    const backLink = document.getElementById('cr-back');
+    const backLabel = backLink && backLink.querySelector('[data-back-label]');
+    if (backLink && backLabel) {
+      if (st === 'confirm') {
+        backLabel.textContent = 'Contact info';
+        backLink.setAttribute('href', '#');
+        backLink.onclick = (e) => { e.preventDefault(); document.body.dataset.state = 'auth-idle'; syncScreenNav(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+      } else {
+        backLabel.textContent = 'Round selection';
+        backLink.setAttribute('href', 'Event Page.html');
+        backLink.onclick = null;
+      }
+    }
+    // Meeting points implies the signed-in nav; Contact information is the guest path.
+    if (st === 'confirm') {
+      document.body.classList.add('is-signed-in');
+      if (modeToggle) modeToggle.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === 'signed'));
+    } else {
+      document.body.classList.remove('is-signed-in');
+      if (modeToggle) modeToggle.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === 'guest'));
+    }
+  }
+
+  if (screenNav) {
+    screenNav.querySelectorAll('button[data-screen]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const s = b.dataset.screen;
+        if (s === 'rounds') { window.location.href = 'Event Page.html'; return; }
+        document.body.dataset.state = s === 'meeting' ? 'confirm' : 'auth-idle';
+        syncScreenNav();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  }
+
+  // View-as: Guest → Contact information, Andy → Meeting points (the signed-in path).
+  if (modeToggle) {
+    modeToggle.querySelectorAll('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        document.body.dataset.state = b.dataset.mode === 'signed' ? 'confirm' : 'auth-idle';
+        syncScreenNav();
+      });
+    });
+  }
+
+  // Land on the screen named in ?screen= (set by the Event Page switcher); default = Contact.
+  const _scr = new URLSearchParams(location.search).get('screen');
+  if (_scr === 'meeting') document.body.dataset.state = 'confirm';
+  else if (_scr === 'contact') document.body.dataset.state = 'auth-idle';
+  syncScreenNav();
+
+  // ── Terms-of-service gate: Create account stays disabled until checked.
+  const termsCheck = document.getElementById('cr-terms');
+  const createBtn = document.getElementById('cr-create-btn');
+  if (termsCheck && createBtn) {
+    const syncTerms = () => { createBtn.disabled = !termsCheck.checked; };
+    termsCheck.addEventListener('change', syncTerms);
+    syncTerms();
+  }
+
+  // ── Country combobox (searchable, flags)
+  const COUNTRIES = [
+    { iso: 'SK', name: 'Slovakia',       code: '+421', flag: '🇸🇰' },
+    { iso: 'CZ', name: 'Czechia',        code: '+420', flag: '🇨🇿' },
+    { iso: 'AT', name: 'Austria',        code: '+43',  flag: '🇦🇹' },
+    { iso: 'DE', name: 'Germany',        code: '+49',  flag: '🇩🇪' },
+    { iso: 'CH', name: 'Switzerland',    code: '+41',  flag: '🇨🇭' },
+    { iso: 'PL', name: 'Poland',         code: '+48',  flag: '🇵🇱' },
+    { iso: 'HU', name: 'Hungary',        code: '+36',  flag: '🇭🇺' },
+    { iso: 'GB', name: 'United Kingdom', code: '+44',  flag: '🇬🇧' },
+    { iso: 'IE', name: 'Ireland',        code: '+353', flag: '🇮🇪' },
+    { iso: 'FR', name: 'France',         code: '+33',  flag: '🇫🇷' },
+    { iso: 'ES', name: 'Spain',          code: '+34',  flag: '🇪🇸' },
+    { iso: 'IT', name: 'Italy',          code: '+39',  flag: '🇮🇹' },
+    { iso: 'PT', name: 'Portugal',       code: '+351', flag: '🇵🇹' },
+    { iso: 'NL', name: 'Netherlands',    code: '+31',  flag: '🇳🇱' },
+    { iso: 'BE', name: 'Belgium',        code: '+32',  flag: '🇧🇪' },
+    { iso: 'LU', name: 'Luxembourg',     code: '+352', flag: '🇱🇺' },
+    { iso: 'DK', name: 'Denmark',        code: '+45',  flag: '🇩🇰' },
+    { iso: 'SE', name: 'Sweden',         code: '+46',  flag: '🇸🇪' },
+    { iso: 'NO', name: 'Norway',         code: '+47',  flag: '🇳🇴' },
+    { iso: 'FI', name: 'Finland',        code: '+358', flag: '🇫🇮' },
+    { iso: 'EE', name: 'Estonia',        code: '+372', flag: '🇪🇪' },
+    { iso: 'LV', name: 'Latvia',         code: '+371', flag: '🇱🇻' },
+    { iso: 'LT', name: 'Lithuania',      code: '+370', flag: '🇱🇹' },
+    { iso: 'RO', name: 'Romania',        code: '+40',  flag: '🇷🇴' },
+    { iso: 'BG', name: 'Bulgaria',       code: '+359', flag: '🇧🇬' },
+    { iso: 'HR', name: 'Croatia',        code: '+385', flag: '🇭🇷' },
+    { iso: 'SI', name: 'Slovenia',       code: '+386', flag: '🇸🇮' },
+    { iso: 'RS', name: 'Serbia',         code: '+381', flag: '🇷🇸' },
+    { iso: 'GR', name: 'Greece',         code: '+30',  flag: '🇬🇷' },
+    { iso: 'TR', name: 'Turkey',         code: '+90',  flag: '🇹🇷' },
+    { iso: 'IS', name: 'Iceland',        code: '+354', flag: '🇮🇸' },
+    { iso: 'US', name: 'United States',  code: '+1',   flag: '🇺🇸' },
+    { iso: 'CA', name: 'Canada',         code: '+1',   flag: '🇨🇦' },
+    { iso: 'MX', name: 'Mexico',         code: '+52',  flag: '🇲🇽' },
+    { iso: 'BR', name: 'Brazil',         code: '+55',  flag: '🇧🇷' },
+    { iso: 'AR', name: 'Argentina',      code: '+54',  flag: '🇦🇷' },
+    { iso: 'AU', name: 'Australia',      code: '+61',  flag: '🇦🇺' },
+    { iso: 'NZ', name: 'New Zealand',    code: '+64',  flag: '🇳🇿' },
+    { iso: 'JP', name: 'Japan',          code: '+81',  flag: '🇯🇵' },
+    { iso: 'KR', name: 'South Korea',    code: '+82',  flag: '🇰🇷' },
+    { iso: 'CN', name: 'China',          code: '+86',  flag: '🇨🇳' },
+    { iso: 'HK', name: 'Hong Kong',      code: '+852', flag: '🇭🇰' },
+    { iso: 'SG', name: 'Singapore',      code: '+65',  flag: '🇸🇬' },
+    { iso: 'IN', name: 'India',          code: '+91',  flag: '🇮🇳' },
+    { iso: 'AE', name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
+    { iso: 'IL', name: 'Israel',         code: '+972', flag: '🇮🇱' },
+    { iso: 'ZA', name: 'South Africa',   code: '+27',  flag: '🇿🇦' },
+    { iso: 'EG', name: 'Egypt',          code: '+20',  flag: '🇪🇬' },
+    { iso: 'UA', name: 'Ukraine',        code: '+380', flag: '🇺🇦' },
+  ];
+
+  document.querySelectorAll('[data-country]').forEach((root) => {
+    const trigger = root.querySelector('.cr-country-trigger');
+    const panel   = root.querySelector('.cr-country-panel');
+    const search  = root.querySelector('.cr-country-search input');
+    const listEl  = root.querySelector('[data-country-list]');
+    const flagEl  = root.querySelector('[data-country-flag]');
+    const codeEl  = root.querySelector('[data-country-code]');
+
+    let selectedIso = 'SK';
+
+    function renderList(q) {
+      const query = (q || '').toLowerCase().trim().replace(/^\+/, '');
+      const items = COUNTRIES.filter((c) => {
+        if (!query) return true;
+        return c.name.toLowerCase().includes(query)
+            || c.iso.toLowerCase().includes(query)
+            || c.code.replace('+', '').startsWith(query);
+      });
+      if (items.length === 0) {
+        listEl.innerHTML = '<div class="cr-country-empty">No country matches that.</div>';
+        return;
+      }
+      listEl.innerHTML = items.map((c) => `
+        <button class="cr-country-opt ${c.iso === selectedIso ? 'is-active' : ''}" type="button" data-iso="${c.iso}">
+          <span class="flag">${c.flag}</span>
+          <span class="name">${c.name}</span>
+          <span class="code">${c.code}</span>
+        </button>
+      `).join('');
+    }
+
+    function select(iso) {
+      const c = COUNTRIES.find((x) => x.iso === iso);
+      if (!c) return;
+      selectedIso = iso;
+      flagEl.textContent = c.flag;
+      codeEl.textContent = c.code;
+      close();
+    }
+
+    function open() {
+      root.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      renderList(search.value);
+      setTimeout(() => search.focus(), 30);
+    }
+    function close() {
+      root.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      search.value = '';
+    }
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (root.classList.contains('is-open')) close(); else open();
+    });
+    search.addEventListener('input', () => renderList(search.value));
+    listEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.cr-country-opt');
+      if (btn) select(btn.dataset.iso);
+    });
+    document.addEventListener('click', (e) => {
+      if (!root.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && root.classList.contains('is-open')) close();
+    });
+
+    renderList('');
+  });
+
+  // ── Email provider detection (drives "Open Gmail / Outlook / Yahoo / Mail" CTA)
+  const EMAIL_PROVIDERS = [
+    { match: /@(gmail|googlemail)\.com$/i,                name: 'Gmail',     url: 'https://mail.google.com/mail/u/0/#inbox' },
+    { match: /@(outlook|hotmail|live|msn)\.(com|cz|sk|de|co\.uk)$/i, name: 'Outlook',   url: 'https://outlook.live.com/mail' },
+    { match: /@(yahoo|ymail|rocketmail)\.com$/i,          name: 'Yahoo Mail',url: 'https://mail.yahoo.com' },
+    { match: /@(icloud|me|mac)\.com$/i,                   name: 'Mail',      url: 'message://' },
+    { match: /@(proton|protonmail)\.(me|ch|com)$/i,       name: 'Proton Mail', url: 'https://mail.proton.me' },
+    { match: /@(gmx)\.(com|net|de|at)$/i,                 name: 'GMX Mail',  url: 'https://www.gmx.com/mail' },
+    { match: /@(zoho|zohomail)\.(com|eu)$/i,              name: 'Zoho Mail', url: 'https://mail.zoho.com' },
+    { match: /@(aol)\.com$/i,                             name: 'AOL Mail',  url: 'https://mail.aol.com' },
+    { match: /@(fastmail)\.(com|fm)$/i,                   name: 'Fastmail',  url: 'https://app.fastmail.com' },
+  ];
+
+  function detectProvider(email) {
+    const e = (email || '').trim();
+    for (const p of EMAIL_PROVIDERS) {
+      if (p.match.test(e)) return p;
+    }
+    return { name: 'email app', url: 'mailto:' };
+  }
+
+  function applyProviderCta(email) {
+    const cta = document.querySelector('.cr-magic-open');
+    const emailDisplay = document.querySelector('.cr-magic-sent .email');
+    if (!cta) return;
+    const provider = detectProvider(email);
+    cta.href = provider.url;
+    // Open Gmail / Outlook / Mail — keep label compact.
+    const label = cta.querySelector('[data-provider-label]');
+    if (label) {
+      label.textContent = 'Open ' + provider.name;
+    } else {
+      // Fallback: rewrite trailing text node.
+      const svg = cta.querySelector('svg');
+      cta.innerHTML = '';
+      if (svg) cta.appendChild(svg);
+      cta.append(' Open ' + provider.name);
+    }
+    if (emailDisplay) emailDisplay.textContent = email;
+  }
+
+  // Sync provider button when the magic-link form is submitted.
+  const magicForm = document.querySelector('.cr-magic-form');
+  const magicEmailInput = document.getElementById('cr-magic-email');
+  if (magicForm && magicEmailInput) {
+    magicForm.addEventListener('submit', () => {
+      applyProviderCta(magicEmailInput.value);
+    });
+    // Also update live as you type for the demo's responsiveness.
+    magicEmailInput.addEventListener('input', () => applyProviderCta(magicEmailInput.value));
+    applyProviderCta(magicEmailInput.value);
+  }
+  // ── Magic-link email gate: Send button disabled until non-empty email.
+  const magicBtn = document.getElementById('cr-magic-btn');
+  if (magicEmailInput && magicBtn) {
+    const syncMagic = () => { magicBtn.disabled = !magicEmailInput.value.trim(); };
+    magicEmailInput.addEventListener('input', syncMagic);
+    syncMagic();
+  }
+
+  // ── Profile dropdown menu (matches Participant dashboard), shown in the signed-in (Meeting points) view.
+  (function () {
+    var navTrigger = document.getElementById('cr-nav-trigger');
+    var navMenu = document.getElementById('cr-nav-menu');
+    if (!navTrigger || !navMenu) return;
+    navTrigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      navTrigger.classList.toggle('is-open');
+      navMenu.classList.toggle('is-open');
+    });
+    document.addEventListener('click', function (e) {
+      if (navTrigger.contains(e.target) || navMenu.contains(e.target)) return;
+      navTrigger.classList.remove('is-open');
+      navMenu.classList.remove('is-open');
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { navTrigger.classList.remove('is-open'); navMenu.classList.remove('is-open'); }
+    });
+  })();
+</script>
+
+</body>
+</html>

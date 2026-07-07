@@ -1,9 +1,13 @@
-import { Mail, ExternalLink } from 'lucide-react';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
+import { useEffect, useState } from 'react';
 
 interface EmailVerificationWaitingProps {
   email?: string;
+  /* Registration-flow chrome (optional — omitted in standalone/admin-preview usage). */
+  eventName?: string;
+  selectedCount?: number;
+  onBack?: () => void;
+  /* Re-send the verification email. Container adds a cooldown around it. */
+  onResend?: () => void | Promise<void>;
 }
 
 // Detect email provider and return a link to open it
@@ -27,8 +31,15 @@ export function getEmailProviderLink(email?: string): { name: string; url: strin
   if (domain === 'protonmail.com' || domain === 'proton.me' || domain === 'pm.me') {
     return { name: 'Open Proton Mail', url: 'https://mail.proton.me' };
   }
-  return null;
+  // Fallback so the "Open …" button always shows (matches the design, which never hides it).
+  return { name: 'Open email app', url: 'mailto:' };
 }
+
+const Icon = {
+  back: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+  mail: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>,
+  mailBold: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>,
+};
 
 // ============================================================
 // Pure view (shared with AdminPagePreview)
@@ -38,57 +49,77 @@ export interface EmailVerificationWaitingViewProps {
   email?: string;
   emailProvider: { name: string; url: string } | null;
   onOpenProvider: () => void;
+  eventName?: string;
+  selectedCount?: number;
+  onBack?: () => void;
+  onResend?: () => void;
+  resendCooldown?: number;
 }
 
 export function EmailVerificationWaitingView({
   email,
   emailProvider,
   onOpenProvider,
+  eventName,
+  selectedCount,
+  onBack,
+  onResend,
+  resendCooldown = 0,
 }: EmailVerificationWaitingViewProps) {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6 max-w-md">
-        <div className="mb-8">
-          <div className="mb-6">
-            <h1 className="text-center mb-2">Check your email</h1>
-            <p className="text-center text-muted-foreground">
-              Click the link in your email to verify and continue
-            </p>
+    <div className="wonderelo cr-page cev">
+      <div className="cr-shell">
+      {onBack && (
+        <div className="cr-topbar">
+          <a className="cr-back" role="button" tabIndex={0} onClick={onBack}>{Icon.back}<span>Meeting points</span></a>
+          {selectedCount != null && (
+            <div className="cr-recap">
+              <strong>{selectedCount} {selectedCount === 1 ? 'round' : 'rounds'}</strong>
+              <span className="dot">·</span>
+              <span>{eventName}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="cr-head">
+        <h1>Check your <em className="w-italic">email</em></h1>
+        <p className="lede">Click the link in your email to verify and continue.</p>
+      </div>
+
+      <div className="cr-card">
+        <div className="cr-mailicon">
+          <span className="dmd" />
+          {Icon.mail}
+        </div>
+        <p className="sent">We sent the email to</p>
+        <p className="email">{email}</p>
+
+        {emailProvider && (
+          <a className="cr-open" role="button" tabIndex={0} onClick={onOpenProvider}>
+            {Icon.mailBold}
+            <span>{emailProvider.name}</span>
+          </a>
+        )}
+
+        {onResend ? (
+          <div className="cr-resend">
+            <strong>Don't see it?</strong> Check your spam folder, or{' '}
+            <button className="retry" type="button" onClick={onResend} disabled={resendCooldown > 0}>resend the link</button>.
+            {resendCooldown > 0 && <span> Available in {Math.floor(resendCooldown / 60)}:{String(resendCooldown % 60).padStart(2, '0')}.</span>}
           </div>
-        </div>
+        ) : (
+          <div className="cr-resend">
+            <strong>Don't see it?</strong> Check your spam folder.
+          </div>
+        )}
+      </div>
 
-        <div>
-          <Card>
-            <CardContent className="pt-6 pb-6">
-              <div className="flex flex-col items-center justify-center py-8 gap-4">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Mail className="h-8 w-8 text-primary" />
-                </div>
-
-                {email && (
-                  <p className="text-sm text-center text-muted-foreground">
-                    We sent the email to <span className="font-medium text-foreground">{email}</span>
-                  </p>
-                )}
-
-                {emailProvider && (
-                  <Button
-                    variant="default"
-                    className="mt-2"
-                    onClick={onOpenProvider}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    {emailProvider.name}
-                  </Button>
-                )}
-
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Don't see it? Check your spam folder.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <footer className="cr-footer">
+        <a className="cr-brand"><span className="mark"><span className="inner" /></span><span className="word">wond<em>e</em>relo</span></a>
+        <p className="tagline">Break your bubble, meet new people</p>
+        <p className="copy">© 2026 Wonderelo</p>
+      </footer>
       </div>
     </div>
   );
@@ -98,8 +129,23 @@ export function EmailVerificationWaitingView({
 // Container
 // ============================================================
 
-export function EmailVerificationWaiting({ email }: EmailVerificationWaitingProps) {
+export function EmailVerificationWaiting({ email, eventName, selectedCount, onBack, onResend }: EmailVerificationWaitingProps) {
   const emailProvider = getEmailProviderLink(email);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown > 0]);
+
+  const handleResend = onResend
+    ? () => {
+        if (cooldown > 0) return;
+        onResend();
+        setCooldown(24);
+      }
+    : undefined;
 
   return (
     <EmailVerificationWaitingView
@@ -108,6 +154,11 @@ export function EmailVerificationWaiting({ email }: EmailVerificationWaitingProp
       onOpenProvider={() => {
         if (emailProvider) window.open(emailProvider.url, '_blank');
       }}
+      eventName={eventName}
+      selectedCount={selectedCount}
+      onBack={onBack}
+      onResend={handleResend}
+      resendCooldown={cooldown}
     />
   );
 }

@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wonderelo — Event</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Brand palette — Wonderelo Design System v1.0 */
+    --purple: #5C2277;
+    --purple-deep: #4B1D51;
+    --purple-ink: #2D1133;
+    --orange: #DD531C;
+    --orange-bright: #FF6A2A;
+    --cream: #F7F1E6;
+    --paper: #FBF6EC;
+    --paper-deep: #F1E9D8;
+    --ink: #3A2E34;
+
+    --font-display: "Bricolage Grotesque", sans-serif;
+    --font-serif: "Instrument Serif", serif;
+    --font-body: "Space Grotesk", system-ui, sans-serif;
+
+    --hairline: rgba(76,25,77,.10);
+    --hairline-strong: rgba(76,25,77,.18);
+    --shadow-card: 0 20px 40px rgba(76,25,77,.18);
+    --shadow-soft: 0 8px 24px rgba(76,25,77,.08);
+
+    --r-md: 14px;
+    --r-lg: 22px;
+    --r-xl: 28px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden;
+  }
+
+  /* ---------- STAGE (fixed-size canvas, auto-scaled to viewport) ---------- */
+  .stage-host { position: fixed; inset: 0; overflow: hidden; }
+  .stage-canvas {
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left;
+    position: absolute;
+    top: 0; left: 0;
+    background: var(--paper);
+    overflow: hidden;
+  }
+
+  /* Decorative diamonds bleeding into corners — design-system pattern */
+  /* Big italic backdrop word — bleeds off bottom-left, very faint */
+  .backdrop-word {
+    position: absolute;
+    left: -1.5%;
+    bottom: -110px;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 360px;
+    color: rgba(76,25,77,.045);
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 60px 88px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    box-sizing: border-box;
+    z-index: 1;
+  }
+
+  /* ---------- HEADER ---------- */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  /* Logo lockup — design system primitive */
+  .lockup { display: flex; align-items: center; gap: 20px; }
+  .lockup .mark { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .lockup .mark img { position: absolute; left: 50%; top: 50%; width: 84px; height: 84px; object-fit: contain; transform: translate(-50%, -50%) rotate(-6deg); }
+  .lockup .word { font-family: var(--font-display); font-weight: 800; font-size: 38px; letter-spacing: -0.025em; color: var(--purple-deep); }
+
+  .header-right {
+    display: flex; align-items: center; gap: 18px;
+  }
+  .ds-eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    color: var(--orange);
+    font-family: var(--font-body);
+    font-size: 14px; font-weight: 700;
+    letter-spacing: .22em; text-transform: uppercase;
+  }
+  .ds-eyebrow::before {
+    content: ""; width: 28px; height: 1px; background: var(--orange);
+  }
+  .header-link {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--font-body); font-size: 16px; font-weight: 600;
+    color: var(--purple-deep); opacity: .35;
+    text-decoration: none;
+    padding: 8px 0;
+    border-bottom: 1.5px solid transparent;
+    transition: color .2s, border-color .2s, opacity .2s;
+  }
+  .header-link:hover { opacity: 1; border-color: var(--purple-deep); }
+  .header-link svg { width: 18px; height: 18px; }
+
+  /* ---------- MAIN GRID ---------- */
+  .main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 0.95fr 1px 1.2fr;
+    gap: 72px;
+    align-items: stretch;
+    padding-top: 12px;
+    min-height: 0;
+  }
+  .col-divider {
+    align-self: stretch;
+    width: 1px;
+    background: var(--hairline);
+  }
+  .left-col {
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+    justify-content: flex-start;
+    min-height: 100%;
+  }
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-top: 8px;
+  }
+
+  /* ---------- HEADLINE ---------- */
+  .heading {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 96px;
+    line-height: 0.96;
+    letter-spacing: -0.04em;
+    margin: 0;
+    color: var(--purple-deep);
+    text-wrap: balance;
+  }
+  .heading em {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--orange);
+  }
+
+  /* ---------- QR BLOCK ---------- */
+  .qr-block {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-top: 4px;
+  }
+  .qr-title-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .qr-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    color: var(--purple-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .qr-title::before {
+    content: none;
+  }
+  .qr-hashtag {
+    background: rgba(221,83,28,.10);
+    color: var(--orange);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 22px;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: 999px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    border: 1px solid rgba(221,83,28,.20);
+  }
+  .qr-thumb {
+    width: 560px; height: 560px;
+    background: var(--purple-ink);
+    border-radius: 28px;
+    padding: 24px;
+    box-shadow: var(--shadow-card);
+  }
+  .qr-thumb svg { width: 100%; height: 100%; display: block; }
+
+  /* ---------- STEPS ---------- */
+  .right-eyebrow {
+    margin-bottom: 4px;
+  }
+  .steps {
+    list-style: none;
+    margin: 0; padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .step {
+    position: relative;
+    padding: 26px 28px 26px 130px;
+    border-radius: var(--r-xl);
+    cursor: pointer;
+    transition: background-color .35s ease, box-shadow .35s ease, padding .35s ease, border-color .35s ease;
+    border: 1px solid transparent;
+  }
+  .step:not(.is-active) {
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .step .num {
+    position: absolute;
+    left: 24px; top: 22px;
+    width: 78px; height: 78px;
+    border-radius: 50%;
+    background: var(--paper-deep);
+    border: 2px solid var(--hairline-strong);
+    color: var(--purple-deep);
+    display: grid; place-items: center;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    transition: all .35s ease;
+  }
+  .step:not(.is-active) .num {
+    top: 14px;
+    width: 64px; height: 64px;
+    font-size: 22px;
+  }
+
+  .step .step-eyebrow {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--orange);
+    margin-bottom: 4px;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity .35s ease, max-height .35s ease, margin-bottom .35s ease;
+  }
+  .step.is-active .step-eyebrow {
+    opacity: 1;
+    max-height: 40px;
+  }
+
+  .step .title {
+    font-family: var(--font-display);
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.0;
+    color: var(--purple-deep);
+    opacity: .35;
+    transition: opacity .35s ease, font-size .35s ease;
+  }
+  .step:not(.is-active) .title {
+    font-size: 40px;
+    margin-top: 6px;
+  }
+
+  .step .desc {
+    margin-top: 0;
+    font-family: var(--font-body);
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink);
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .4s ease, opacity .35s ease, margin-top .35s ease;
+  }
+
+  .step.is-done .num {
+    background: rgba(221,83,28,.10);
+    border-color: rgba(221,83,28,.30);
+    color: var(--orange);
+  }
+  .step.is-done .title { opacity: .55; }
+
+  .step.is-active {
+    background: #fff;
+    box-shadow: var(--shadow-card);
+    border-color: var(--hairline);
+  }
+  .step.is-active .num {
+    background: var(--cream);
+    border-color: var(--orange);
+    color: var(--purple-deep);
+    box-shadow: 0 6px 16px rgba(221,83,28,.18);
+  }
+  .step.is-active .title { opacity: 1; }
+  .step.is-active .desc {
+    max-height: 220px !important;
+    opacity: 1 !important;
+    margin-top: 12px;
+  }
+
+  /* Step illustration — only visible when active */
+  .step-img .step-art {
+    width: 100%;
+    max-width: 660px;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 1px solid var(--hairline);
+    background: var(--paper-deep);
+    display: none;
+  }
+  .step.step-img.is-active .step-art {
+    display: block;
+    margin-top: 22px;
+    animation: stepArtIn .35s ease both;
+  }
+  @keyframes stepArtIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .step-img .step-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .step-img[data-art="meet"] .step-art img {
+    object-position: 50% 40%;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="stage-host">
+  <div class="stage-canvas" id="stageCanvas">
+
+    <div class="page">
+
+      <!-- HEADER -->
+      <header class="header">
+        <div class="lockup">
+          <div class="mark"><img src="assets/Wonderelo-logo-symbol.png" alt="" /></div>
+          <div class="word">wonderelo</div>
+        </div>
+        <div class="header-right">
+          <a class="header-link" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 5l-7 7 7 7"/></svg>
+            Back to dashboard
+          </a>
+        </div>
+      </header>
+
+      <!-- MAIN -->
+      <main class="main">
+
+        <!-- LEFT: headline + QR -->
+        <section class="left-col">
+          <h1 class="heading" style="width: 750px">Break your bubble,<br/><em>meet</em> new people</h1>
+
+          <div class="qr-block">
+            <div class="qr-title-row">
+              <div class="qr-title">Scan to join</div>
+              <div class="qr-hashtag">wonderelo.com/andy-admin</div>
+            </div>
+            <div class="qr-thumb" aria-label="Scan to join">
+              <svg viewBox="0 0 29 29" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+                <rect width="29" height="29" fill="#2D1133"/>
+                <g fill="#fff">
+                  <rect x="1" y="1" width="7" height="7"/>
+                  <rect x="21" y="1" width="7" height="7"/>
+                  <rect x="1" y="21" width="7" height="7"/>
+                  <rect x="2" y="2" width="5" height="5" fill="#2D1133"/>
+                  <rect x="22" y="2" width="5" height="5" fill="#2D1133"/>
+                  <rect x="2" y="22" width="5" height="5" fill="#2D1133"/>
+                  <rect x="3" y="3" width="3" height="3"/>
+                  <rect x="23" y="3" width="3" height="3"/>
+                  <rect x="3" y="23" width="3" height="3"/>
+                  <rect x="9" y="1" width="1" height="1"/><rect x="11" y="1" width="2" height="1"/><rect x="14" y="1" width="1" height="1"/><rect x="16" y="1" width="1" height="1"/><rect x="18" y="1" width="2" height="1"/>
+                  <rect x="9" y="2" width="2" height="1"/><rect x="13" y="2" width="1" height="1"/><rect x="15" y="2" width="2" height="1"/><rect x="19" y="2" width="1" height="1"/>
+                  <rect x="10" y="3" width="1" height="1"/><rect x="12" y="3" width="2" height="1"/><rect x="16" y="3" width="1" height="1"/><rect x="18" y="3" width="2" height="1"/>
+                  <rect x="9" y="4" width="1" height="2"/><rect x="11" y="4" width="1" height="1"/><rect x="13" y="4" width="2" height="1"/><rect x="17" y="4" width="2" height="1"/>
+                  <rect x="11" y="5" width="2" height="1"/><rect x="14" y="5" width="1" height="1"/><rect x="16" y="5" width="1" height="1"/><rect x="19" y="5" width="1" height="1"/>
+                  <rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="15" y="6" width="2" height="1"/><rect x="18" y="6" width="1" height="1"/>
+                  <rect x="1" y="9" width="1" height="1"/><rect x="3" y="9" width="2" height="1"/><rect x="6" y="9" width="1" height="1"/><rect x="8" y="9" width="2" height="1"/><rect x="11" y="9" width="1" height="1"/><rect x="13" y="9" width="2" height="1"/><rect x="16" y="9" width="1" height="1"/><rect x="18" y="9" width="1" height="1"/><rect x="20" y="9" width="2" height="1"/><rect x="23" y="9" width="1" height="1"/><rect x="25" y="9" width="2" height="1"/>
+                  <rect x="2" y="10" width="2" height="1"/><rect x="5" y="10" width="1" height="1"/><rect x="7" y="10" width="1" height="1"/><rect x="10" y="10" width="2" height="1"/><rect x="14" y="10" width="1" height="1"/><rect x="17" y="10" width="1" height="1"/><rect x="19" y="10" width="2" height="1"/><rect x="22" y="10" width="1" height="1"/><rect x="24" y="10" width="2" height="1"/><rect x="27" y="10" width="1" height="1"/>
+                  <rect x="1" y="11" width="2" height="1"/><rect x="4" y="11" width="1" height="1"/><rect x="6" y="11" width="2" height="1"/><rect x="9" y="11" width="1" height="1"/><rect x="11" y="11" width="2" height="1"/><rect x="15" y="11" width="2" height="1"/><rect x="18" y="11" width="1" height="1"/><rect x="20" y="11" width="1" height="1"/><rect x="23" y="11" width="2" height="1"/><rect x="26" y="11" width="2" height="1"/>
+                  <rect x="3" y="12" width="1" height="1"/><rect x="5" y="12" width="2" height="1"/><rect x="8" y="12" width="1" height="1"/><rect x="10" y="12" width="1" height="1"/><rect x="12" y="12" width="2" height="1"/><rect x="15" y="12" width="1" height="1"/><rect x="17" y="12" width="2" height="1"/><rect x="21" y="12" width="1" height="1"/><rect x="23" y="12" width="1" height="1"/><rect x="25" y="12" width="2" height="1"/>
+                  <rect x="2" y="13" width="2" height="1"/><rect x="6" y="13" width="1" height="1"/><rect x="8" y="13" width="2" height="1"/><rect x="11" y="13" width="1" height="1"/><rect x="14" y="13" width="2" height="1"/><rect x="18" y="13" width="2" height="1"/><rect x="22" y="13" width="2" height="1"/><rect x="26" y="13" width="1" height="1"/>
+                  <rect x="1" y="14" width="1" height="1"/><rect x="4" y="14" width="2" height="1"/><rect x="9" y="14" width="2" height="1"/><rect x="12" y="14" width="1" height="1"/><rect x="14" y="14" width="1" height="1"/><rect x="16" y="14" width="1" height="1"/><rect x="19" y="14" width="2" height="1"/><rect x="23" y="14" width="2" height="1"/><rect x="27" y="14" width="1" height="1"/>
+                  <rect x="3" y="15" width="2" height="1"/><rect x="6" y="15" width="1" height="1"/><rect x="8" y="15" width="1" height="1"/><rect x="10" y="15" width="2" height="1"/><rect x="13" y="15" width="2" height="1"/><rect x="17" y="15" width="2" height="1"/><rect x="20" y="15" width="1" height="1"/><rect x="22" y="15" width="2" height="1"/><rect x="25" y="15" width="1" height="1"/><rect x="27" y="15" width="1" height="1"/>
+                  <rect x="2" y="16" width="1" height="1"/><rect x="5" y="16" width="2" height="1"/><rect x="9" y="16" width="1" height="1"/><rect x="11" y="16" width="1" height="1"/><rect x="14" y="16" width="2" height="1"/><rect x="18" y="16" width="1" height="1"/><rect x="20" y="16" width="2" height="1"/><rect x="24" y="16" width="2" height="1"/><rect x="27" y="16" width="1" height="1"/>
+                  <rect x="1" y="17" width="2" height="1"/><rect x="4" y="17" width="1" height="1"/><rect x="6" y="17" width="2" height="1"/><rect x="10" y="17" width="2" height="1"/><rect x="13" y="17" width="1" height="1"/><rect x="15" y="17" width="2" height="1"/><rect x="19" y="17" width="1" height="1"/><rect x="21" y="17" width="2" height="1"/><rect x="25" y="17" width="2" height="1"/>
+                  <rect x="3" y="18" width="1" height="1"/><rect x="5" y="18" width="1" height="1"/><rect x="7" y="18" width="2" height="1"/><rect x="11" y="18" width="2" height="1"/><rect x="14" y="18" width="1" height="1"/><rect x="16" y="18" width="2" height="1"/><rect x="20" y="18" width="2" height="1"/><rect x="23" y="18" width="1" height="1"/><rect x="26" y="18" width="2" height="1"/>
+                  <rect x="9" y="20" width="1" height="1"/><rect x="11" y="20" width="2" height="1"/><rect x="14" y="20" width="2" height="1"/><rect x="17" y="20" width="1" height="1"/><rect x="19" y="20" width="2" height="1"/><rect x="22" y="20" width="1" height="1"/><rect x="24" y="20" width="2" height="1"/><rect x="27" y="20" width="1" height="1"/>
+                  <rect x="9" y="22" width="2" height="1"/><rect x="13" y="22" width="2" height="1"/><rect x="16" y="22" width="1" height="1"/><rect x="18" y="22" width="2" height="1"/><rect x="21" y="22" width="1" height="1"/><rect x="23" y="22" width="2" height="1"/><rect x="26" y="22" width="2" height="1"/>
+                  <rect x="10" y="23" width="1" height="1"/><rect x="12" y="23" width="1" height="1"/><rect x="15" y="23" width="2" height="1"/><rect x="18" y="23" width="1" height="1"/><rect x="20" y="23" width="2" height="1"/><rect x="24" y="23" width="1" height="1"/><rect x="26" y="23" width="1" height="1"/>
+                  <rect x="9" y="24" width="2" height="1"/><rect x="13" y="24" width="1" height="1"/><rect x="15" y="24" width="1" height="1"/><rect x="17" y="24" width="2" height="1"/><rect x="20" y="24" width="1" height="1"/><rect x="22" y="24" width="2" height="1"/><rect x="25" y="24" width="2" height="1"/>
+                  <rect x="10" y="25" width="1" height="1"/><rect x="12" y="25" width="2" height="1"/><rect x="15" y="25" width="2" height="1"/><rect x="18" y="25" width="1" height="1"/><rect x="20" y="25" width="2" height="1"/><rect x="23" y="25" width="1" height="1"/><rect x="25" y="25" width="1" height="1"/><rect x="27" y="25" width="1" height="1"/>
+                  <rect x="9" y="26" width="1" height="1"/><rect x="11" y="26" width="1" height="1"/><rect x="13" y="26" width="2" height="1"/><rect x="16" y="26" width="2" height="1"/><rect x="19" y="26" width="2" height="1"/><rect x="22" y="26" width="1" height="1"/><rect x="24" y="26" width="1" height="1"/><rect x="26" y="26" width="2" height="1"/>
+                  <rect x="10" y="27" width="2" height="1"/><rect x="13" y="27" width="1" height="1"/><rect x="15" y="27" width="1" height="1"/><rect x="17" y="27" width="2" height="1"/><rect x="20" y="27" width="1" height="1"/><rect x="22" y="27" width="2" height="1"/><rect x="25" y="27" width="2" height="1"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <div class="col-divider" aria-hidden="true"></div>
+
+        <!-- RIGHT: Numbered steps 01–03 -->
+        <section class="right-col">
+          <ol class="steps" id="steps-right">
+            <li class="step step-img is-active" data-i="0">
+              <div class="num">01</div>
+              <div class="title">Pick a time to meet</div>
+              <div class="desc">SMS reminds you 5 minutes before start</div>
+              <div class="step-art" aria-hidden="true">
+                <img src="assets/Hand-with-phone.png" alt="" />
+              </div>
+            </li>
+            <li class="step step-img" data-i="1" data-art="meet">
+              <div class="num">02</div>
+              <div class="title">Find your meeting match</div>
+              <div class="desc">A unique Wonderimage™ helps you spot each other in the crowd</div>
+              <div class="step-art" aria-hidden="true">
+                <img src="assets/Wonderelo-step4.png" alt="" />
+              </div>
+            </li>
+            <li class="step step-img" data-i="2">
+              <div class="num">03</div>
+              <div class="title">Talk &amp; exchange contacts</div>
+              <div class="desc">Only if both parties agree</div>
+              <div class="step-art" aria-hidden="true">
+                <img src="assets/Wonderelo-hero-section-networking-rounds.svg" alt="" />
+              </div>
+            </li>
+          </ol>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STEP_DURATION = 5000;
+  const steps = Array.from(document.querySelectorAll('.step'));
+  let active = 0;
+  let timer = null;
+
+  function setActive(i) {
+    active = i;
+    steps.forEach((s, idx) => {
+      s.classList.toggle('is-active', idx === i);
+      s.classList.toggle('is-done', idx < i);
+    });
+  }
+  function tick() { setActive((active + 1) % steps.length); }
+  function start() {
+    setActive(0);
+    clearInterval(timer);
+    timer = setInterval(tick, STEP_DURATION);
+  }
+  steps.forEach((s) => {
+    s.addEventListener('click', () => {
+      const i = parseInt(s.dataset.i, 10);
+      setActive(i);
+      clearInterval(timer);
+      timer = setInterval(tick, STEP_DURATION);
+    });
+  });
+  start();
+
+  // ---------- Auto-scale 1920x1080 canvas to fit viewport ----------
+  const canvas = document.getElementById('stageCanvas');
+  function fit() {
+    const sx = window.innerWidth / 1920;
+    const sy = window.innerHeight / 1080;
+    const s = Math.min(sx, sy);
+    const tx = (window.innerWidth  - 1920 * s) / 2;
+    const ty = (window.innerHeight - 1080 * s) / 2;
+    canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+</body>
+</html>

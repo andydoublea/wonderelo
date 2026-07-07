@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Public Event Landing Page (mobile-first)
+  wonderelo.com/<event-slug>
+
+  Maps to: src/components/UserPublicPage.tsx → UserPublicPageView
+  Inner content: src/components/SessionRegistration.tsx
+                 → SessionRegistrationSelectRoundsView
+  Organizer block: src/components/OrganizerHeader.tsx (variant="banner")
+  Round rows: src/components/RoundItem.tsx
+  Modals (not rendered inline): MeetingPointsDialog, RoundRulesDialog, magic-link
+
+  Design rule: keep ONLY what already lives in the existing component tree.
+  No hero banners, no marketing copy, no stats. The participant has 30
+  seconds and one job — pick a round time.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Founder Summit 2026</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  body { background: var(--w-paper); }
+  /* Universal hover/active feedback — every button & clickable element responds */
+  button, .ev-nav-cta, [role="button"], [style*="cursor: pointer"], [style*="cursor:pointer"] {
+    transition: filter .14s ease, transform .12s ease, box-shadow .15s ease, border-color .14s ease, background-color .14s ease;
+  }
+  button:not(:disabled):hover, .ev-nav-cta:hover, [role="button"]:hover {
+    filter: brightness(0.95); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(76,25,77,.18);
+  }
+  button:not(:disabled):active, .ev-nav-cta:active, [role="button"]:active { transform: translateY(0); filter: brightness(0.92); }
+  [style*="cursor: pointer"]:not(button):not([role="button"]):hover,
+  [style*="cursor:pointer"]:not(button):not([role="button"]):hover { filter: brightness(0.95); box-shadow: 0 2px 10px rgba(76,25,77,.12); }
+
+  .ev-shell {
+    max-width: 432px; margin: 0 auto;
+    padding: 0 20px 140px;
+    min-height: 100vh;
+  }
+
+  /* ───── Top nav (mirrors UserPublicPage's inline <nav>) ───── */
+  .ev-nav {
+    position: sticky; top: 0; z-index: 40;
+    background: var(--w-paper);
+    border-bottom: 1px solid var(--w-hairline);
+    margin: 0 -20px;
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .ev-brand {
+    display: inline-flex; align-items: center; gap: 52px; cursor: pointer;
+    text-decoration: none;
+  }
+  .ev-brand .mark {
+    position: relative;
+    width: 26px; height: 26px;
+    background: transparent;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  .ev-brand .mark .inner {
+    display: block;
+    width: 92px; height: 92px;
+    background: url("assets/Wonderelo-logo-symbol.png") center / contain no-repeat;
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(calc(-50% + 16px), -50%) rotate(-6deg);
+    pointer-events: none;
+  }
+  .ev-brand .word {
+    font-family: var(--w-font-display); font-weight: 800; font-size: 17px;
+    letter-spacing: -0.025em; color: var(--w-purple-deep); line-height: 1;
+  }
+  .ev-brand .word em { font: inherit; color: inherit; font-style: normal; }
+
+  .ev-nav-cta {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong); background: rgba(255,255,255,.6);
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12.5px;
+    color: var(--w-purple-deep); cursor: pointer; text-decoration: none;
+    white-space: nowrap;
+  }
+  .ev-nav-cta svg { width: 13px; height: 13px; }
+
+  /* ───── Organizer banner (OrganizerHeader variant=banner) ───── */
+  .ev-org {
+    margin: 0 -20px;
+    padding: 36px 20px 32px;
+    background:
+      radial-gradient(circle at 18% 18%, rgba(221,83,28,.35), transparent 50%),
+      radial-gradient(circle at 82% 82%, rgba(255,106,42,.30), transparent 55%),
+      linear-gradient(135deg, var(--w-purple-deep) 0%, var(--w-purple) 65%, var(--w-purple-deep) 100%);
+    color: #fff;
+    border-bottom: 1px solid var(--w-hairline);
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .ev-org::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 22px);
+    pointer-events: none;
+  }
+  .ev-org .av {
+    width: 64px; height: 64px; border-radius: 50%;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.10) 0 4px, transparent 4px 10px),
+      rgba(255,255,255,.08);
+    border: 3px solid rgba(255,255,255,.55);
+    display: inline-flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative; z-index: 1;
+    box-shadow: 0 10px 24px rgba(0,0,0,.20);
+  }
+  .ev-org .av .lbl {
+    font-family: var(--w-font-mono); font-size: 8.5px; letter-spacing: .18em;
+    color: rgba(255,255,255,.55); text-transform: uppercase;
+  }
+  .ev-event-name {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 22px;
+    color: #fff; letter-spacing: -0.02em; line-height: 1.15;
+    position: relative; z-index: 1;
+    text-wrap: balance;
+  }
+
+  /* ───── How rounds work — quieter, ghost link in hero ───── */
+  .ev-how-link {
+    margin-top: 2px;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: .02em;
+    color: rgba(255,255,255,.55);
+    text-decoration: none;
+    background: transparent; border: none; cursor: pointer;
+    font-family: var(--w-font-body);
+    position: relative; z-index: 1;
+    padding: 0;
+  }
+  .ev-how-link svg { opacity: .7; }
+  .ev-how-link:hover { color: rgba(255,255,255,.85); }
+
+  /* ───── H1 ───── */
+  .ev-title {
+    margin: 28px 0 24px; text-align: center;
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 38px; line-height: 1.05; letter-spacing: -0.03em;
+    color: var(--w-purple-deep);
+    text-wrap: balance;
+  }
+  .ev-title em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+
+  /* ───── Session cards ───── */
+  .ev-sessions { display: flex; flex-direction: column; gap: 16px; }
+
+  .ev-session {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: 16px;
+    padding: 16px 16px 18px;
+  }
+  .ev-session-date {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin: 0 auto 8px; width: max-content;
+    padding: 4px 10px 4px 8px;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: 999px;
+    font-family: var(--w-font-mono); font-weight: 500; font-size: 11px;
+    letter-spacing: .04em; color: var(--w-ink); opacity: .85;
+  }
+  .ev-session-date svg { width: 12px; height: 12px; opacity: .7; }
+  .ev-session-date-wrap { text-align: center; }
+
+  .ev-session h3 {
+    margin: 0; font-family: var(--w-font-display); font-weight: 700;
+    font-size: 22px; line-height: 1.2; letter-spacing: -0.02em; color: var(--w-purple-deep);
+    text-align: center;
+  }
+
+  .ev-session-meta {
+    margin-top: 10px;
+    display: flex; flex-wrap: wrap;
+    column-gap: 14px; row-gap: 6px;
+    font-size: 12.5px; color: var(--w-ink); opacity: .68;
+    align-items: center;
+    justify-content: center;
+  }
+  .ev-session-meta span { display: inline-flex; align-items: center; gap: 5px; }
+  .ev-session-meta svg { width: 13px; height: 13px; opacity: .8; }
+
+  .ev-session-meta button {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--w-ink); text-decoration: underline; text-underline-offset: 3px;
+    cursor: pointer; background: transparent; border: none; padding: 0;
+    font-family: var(--w-font-body); font-size: 12.5px; opacity: 1;
+  }
+  /* Text-link buttons: quiet hover — colour only, no lift/shadow from the global button rule */
+  .ev-session-meta button:hover { color: var(--w-orange); transform: none; box-shadow: none; filter: none; }
+  .ev-session-meta button:active { transform: none; }
+
+  .ev-session-cap {
+    margin-top: 6px;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 13px; color: var(--w-ink); opacity: .68;
+  }
+  .ev-session-cap svg { width: 13px; height: 13px; opacity: .8; }
+
+  .ev-session-links {
+    margin-top: 8px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .ev-session-links button {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--w-ink); text-decoration: underline; text-underline-offset: 3px;
+    cursor: pointer; background: transparent; border: none; padding: 0;
+    font-family: var(--w-font-body); font-size: 13px;
+  }
+  .ev-session-links button:hover { color: var(--w-orange); transform: none; box-shadow: none; filter: none; }
+  .ev-session-links button:active { transform: none; }
+  .ev-session-links svg { width: 13px; height: 13px; opacity: .8; }
+
+  /* ───── Empty state: no rounds published ───── */
+  .ev-empty {
+    margin-top: 8px;
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: 20px;
+    padding: 40px 26px 30px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    position: relative; overflow: hidden;
+  }
+  .ev-empty::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 50% 6%, rgba(221,83,28,.06), transparent 46%);
+    pointer-events: none;
+  }
+  .ev-empty-art {
+    position: relative; width: 96px; height: 96px; margin-bottom: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ev-empty-art .ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1.5px dashed var(--w-hairline-strong); opacity: .8;
+  }
+  .ev-empty-art .ev-empty-cal {
+    width: 40px; height: 40px; color: var(--w-purple-deep);
+    position: relative; z-index: 1;
+  }
+  .ev-empty-art .d {
+    position: absolute; width: 11px; height: 11px;
+    background: var(--w-orange); transform: rotate(45deg);
+    border-radius: 2px;
+  }
+  .ev-empty-art .d1 { top: -3px; left: 50%; margin-left: -5px; }
+  .ev-empty-art .d2 { bottom: 6px; left: 2px; background: var(--w-purple-deep); width: 8px; height: 8px; }
+  .ev-empty-art .d3 { bottom: 12px; right: 4px; background: var(--w-purple); width: 7px; height: 7px; opacity: .8; }
+  .ev-empty-title {
+    margin: 0 0 10px;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 26px;
+    line-height: 1.1; letter-spacing: -0.025em; color: var(--w-purple-deep);
+    text-wrap: balance;
+  }
+  .ev-empty-title em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .ev-empty-sub {
+    margin: 0 0 22px; max-width: 320px;
+    font-family: var(--w-font-body); font-size: 14.5px; line-height: 1.55;
+    color: var(--w-ink); opacity: .78;
+  }
+  .ev-empty-sub strong { color: var(--w-purple-deep); font-weight: 600; }
+  .ev-empty-notify {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 20px; border-radius: 999px;
+    background: var(--w-purple-deep); color: #fff; border: none; cursor: pointer;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 14px;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .ev-empty-notify:hover { box-shadow: 0 10px 24px rgba(76,25,77,.22); }
+  .ev-empty-notify.is-set { background: var(--w-cream); color: var(--w-purple-deep); border: 1px solid var(--w-hairline-strong); }
+  .ev-empty-foot {
+    display: flex; align-items: center; gap: 8px; margin-top: 18px;
+    font-family: var(--w-font-mono); font-size: 11px; letter-spacing: .01em;
+    color: var(--w-ink); opacity: .6; max-width: 300px; line-height: 1.5;
+  }
+  .ev-empty-foot .ev-empty-dot { width: 6px; height: 6px; flex: none; background: var(--w-orange); transform: rotate(45deg); }
+
+  /* When empty state is active, hide the sticky selection bar */
+  body.is-no-rounds .ev-sticky { display: none; }
+  /* Empty state also hides the "mix you in?" title — only hero + placeholder remain */
+  body.is-no-rounds .ev-title { display: none; }
+  /* ...and since the title's spacing is gone, give the placeholder breathing room below the hero */
+  body.is-no-rounds .ev-empty { margin-top: 36px; }
+  /* [hidden] can't win over display rules — force both list + placeholder off when hidden */
+  .ev-sessions[hidden] { display: none !important; }
+  .ev-empty[hidden] { display: none !important; }
+
+  /* nav must allow dog overflow */
+  .ev-nav { overflow: visible; }
+  .ev-shell { overflow: visible !important; }
+
+  /* ───── Round items (RoundItem.tsx) ───── */
+  .ev-rounds { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+
+  .ev-round {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 14px;
+    align-items: center;
+    padding: 14px 14px;
+    background: #fff;
+    border: 1px solid var(--w-hairline);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color .12s, background .12s;
+  }
+  .ev-round:hover { border-color: var(--w-hairline-strong); }
+
+  .ev-cb {
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 1.5px solid var(--w-hairline-strong); background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: #fff;
+    transition: transform .28s cubic-bezier(.5,.05,.3,1), background .15s, border-color .15s;
+  }
+  .ev-cb svg { transition: transform .28s cubic-bezier(.5,.05,.3,1); }
+  .ev-round.is-selected { border-color: var(--w-orange); background: rgba(221,83,28,.04); }
+  .ev-round.is-selected .ev-cb { background: var(--w-orange); border-color: var(--w-orange); transform: rotate(45deg); }
+  .ev-round.is-selected .ev-cb svg { transform: rotate(-45deg); }
+  .ev-round.is-registered { border-color: var(--w-purple-deep); background: rgba(76,25,77,.03); }
+  .ev-round.is-registered .ev-cb { background: var(--w-purple-deep); border-color: var(--w-purple-deep); transform: rotate(45deg); }
+  .ev-round.is-registered .ev-cb svg { transform: rotate(-45deg); }
+
+  .ev-rt {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 17px;
+    color: var(--w-purple-deep); letter-spacing: -0.015em; line-height: 1;
+  }
+
+  .ev-state {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+    background: var(--w-cream); color: var(--w-purple-deep);
+    border: 1px solid var(--w-hairline);
+    white-space: nowrap;
+  }
+  .ev-round.is-registered .ev-state {
+    background: rgba(76,25,77,.06); border-color: rgba(76,25,77,.20); color: var(--w-purple-deep);
+  }
+  .ev-state.is-live {
+    background: rgba(221,83,28,.10); border-color: rgba(221,83,28,.25); color: var(--w-orange);
+  }
+  .ev-state.is-live .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: ev-pulse 1.6s infinite; }
+  @keyframes ev-pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+
+  /* duration-box style countdown — eyebrow + flip clock, inline */
+  .ev-countdown {
+    display: flex; flex-direction: row; align-items: center; gap: 8px;
+    white-space: nowrap;
+  }
+  .ev-countdown .lbl {
+    font-size: 9px; font-weight: 700; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--w-purple); opacity: .7;
+    font-family: var(--w-font-body); line-height: 1.1;
+    text-align: right;
+    max-width: 50px;
+    white-space: normal;
+  }
+
+  /* ── Flip-clock (flipclock.us style, ported from homepage) ── */
+  .fc-clock {
+    display: inline-flex; align-items: center; gap: 2px;
+    font-family: var(--w-font-display);
+  }
+  .fc-colon {
+    color: var(--w-purple-deep);
+    font-weight: 800; font-size: 20px;
+    padding: 0 2px; line-height: 1;
+    transform: translateY(-2px);
+  }
+  .fc-cell {
+    position: relative;
+    width: 22px; height: 32px;
+    line-height: 32px;
+    perspective: 220px;
+    color: #fff;
+    font-weight: 800; font-size: 21px;
+    text-align: center;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #1a0822;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.06),
+      0 1px 2px rgba(0,0,0,.25);
+  }
+  .fc-cell .fc-half {
+    position: absolute; left: 0; right: 0;
+    height: 50%; overflow: hidden;
+    backface-visibility: hidden;
+  }
+  .fc-cell .fc-half.fc-top {
+    top: 0; border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, #3a1547 0%, #260b30 100%);
+  }
+  .fc-cell .fc-half.fc-bot {
+    bottom: 0; border-radius: 0 0 4px 4px;
+    background: linear-gradient(180deg, #1f0828 0%, #311240 100%);
+  }
+  .fc-cell .fc-half span {
+    display: block; height: 32px; line-height: 32px; text-align: center;
+  }
+  .fc-cell .fc-half.fc-bot span { margin-top: -16px; }
+  .fc-cell .fc-hinge {
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: 1px; background: rgba(0,0,0,.6);
+    box-shadow: 0 1px 0 rgba(255,255,255,.04);
+    z-index: 4; pointer-events: none;
+  }
+  .fc-cell .fc-flap {
+    position: absolute; left: 0; right: 0; height: 50%;
+    overflow: hidden; backface-visibility: hidden; z-index: 3;
+  }
+  .fc-cell .fc-flap span {
+    display: block; height: 32px; line-height: 32px; text-align: center;
+    color: #fff; font-weight: 800; font-size: 21px;
+    font-family: var(--w-font-display);
+  }
+  .fc-cell .fc-flap.fc-flap-top {
+    top: 0; border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, #3a1547 0%, #260b30 100%);
+    transform-origin: 50% 100%;
+    animation: fc-flap-down .58s cubic-bezier(.45,.05,.55,.95) forwards;
+  }
+  .fc-cell .fc-flap.fc-flap-bot {
+    bottom: 0; border-radius: 0 0 4px 4px;
+    background: linear-gradient(180deg, #1f0828 0%, #311240 100%);
+    transform-origin: 50% 0%;
+    transform: rotateX(90deg);
+    animation: fc-flap-up .58s cubic-bezier(.45,.05,.55,.95) forwards;
+    animation-delay: .28s;
+  }
+  .fc-cell .fc-flap.fc-flap-bot span { margin-top: -16px; }
+  @keyframes fc-flap-down {
+    0%   { transform: rotateX(0deg);   }
+    100% { transform: rotateX(-90deg); }
+  }
+  @keyframes fc-flap-up {
+    0%   { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg);  }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fc-cell .fc-flap { display: none; }
+  }
+
+  .ev-round.is-disabled { opacity: .45; cursor: default; }
+  .ev-round.is-disabled:hover { border-color: var(--w-hairline); }
+  .ev-round.is-disabled .ev-cb { border-style: dashed; }
+
+  /* ───── Round expansion: Topic / Group / Matching note ───── */
+  .ev-expand {
+    grid-column: 1 / -1;
+    display: none;
+    margin-top: 10px; padding-top: 12px;
+    border-top: 1px dashed var(--w-hairline-strong);
+    align-self: stretch;
+  }
+  /* Options + the matching-explanation box stay visible for any round that has them,
+     so the guest can read the setup before selecting / picking a chip. */
+  .ev-round.has-options .ev-expand { display: block; }
+
+  .ev-expand-section + .ev-expand-section { margin-top: 12px; }
+  .ev-expand-label {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 7px;
+  }
+  .ev-expand-label > .l {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 12.5px;
+    color: var(--w-purple-deep);
+  }
+  .ev-expand-label > .l em {
+    font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400;
+  }
+  .ev-expand-label > .hint {
+    font-family: var(--w-font-mono); font-size: 10px;
+    color: var(--w-ink); opacity: .55; letter-spacing: .02em;
+  }
+  .ev-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ev-chip {
+    padding: 6px 11px; border-radius: 999px;
+    font-family: var(--w-font-body); font-size: 12.5px; font-weight: 500;
+    border: 1px solid var(--w-hairline-strong); background: #fff;
+    color: var(--w-purple-deep); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+    line-height: 1.3;
+    transition: border-color .12s, background .12s, color .12s;
+  }
+  .ev-chip:hover { border-color: var(--w-orange); }
+  .ev-chip.is-active.is-topic {
+    border-color: var(--w-orange); background: rgba(221,83,28,.10);
+    color: var(--w-orange); font-weight: 700;
+  }
+  .ev-chip.is-active.is-topic::before {
+    content: ""; width: 5px; height: 5px; background: var(--w-orange); transform: rotate(45deg);
+  }
+  .ev-chip.is-active.is-group {
+    border-color: var(--w-purple-deep); background: var(--w-purple-deep);
+    color: #fff; font-weight: 700;
+  }
+  .ev-chip.is-active.is-group::before {
+    content: ""; width: 5px; height: 5px; background: #fff; transform: rotate(45deg);
+  }
+
+  /* Matching mode note */
+  .ev-match-note {
+    margin-top: 10px; padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+    border-radius: 12px;
+    background: rgba(221,83,28,.08);
+    border: 1px solid rgba(221,83,28,.25);
+  }
+  .ev-match-note.is-within {
+    background: rgba(76,25,77,.06);
+    border-color: var(--w-hairline-strong);
+  }
+  .ev-match-note .ev-mn-icon { flex-shrink: 0; }
+  .ev-match-note .ev-mn-body { flex: 1; min-width: 0; }
+  .ev-match-note .ev-mn-eyebrow {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--w-orange); opacity: .9;
+  }
+  .ev-match-note.is-within .ev-mn-eyebrow { color: var(--w-purple-deep); }
+  .ev-match-note .ev-mn-text {
+    margin-top: 3px; font-size: 12.5px; line-height: 1.4;
+    color: var(--w-ink); opacity: .9;
+    font-family: var(--w-font-body);
+  }
+  .ev-match-note .ev-mn-text strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* ───── Sticky continue ───── */
+  .ev-sticky {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: var(--w-paper);
+    border-top: 1px solid var(--w-hairline);
+    padding: 14px 20px 20px;
+    box-shadow: 0 -8px 24px rgba(76,25,77,.06);
+  }
+  .ev-sticky-inner {
+    max-width: 432px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .ev-continue {
+    width: 100%; padding: 14px 18px;
+    background: var(--w-orange); color: #fff;
+    border: none; border-radius: 12px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 15px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 6px 16px rgba(221,83,28,.25);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .ev-continue:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(221,83,28,.32); }
+  .ev-continue:disabled {
+    background: var(--w-paper-deep); color: var(--w-ink); opacity: .55;
+    box-shadow: none; cursor: not-allowed;
+  }
+  .ev-count {
+    text-align: center; font-size: 12.5px; color: var(--w-purple-deep); font-weight: 600;
+  }
+  .ev-count em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .ev-count.is-empty { color: var(--w-ink); opacity: .55; font-weight: 500; }
+
+  /* ── Preview dock: page-name chip + control panel, parked outside the page in the gutter ── */
+  .pv-dock {
+    position: fixed; left: 14px; top: 14px; z-index: 61;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  }
+  .pv-pagechip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px 6px 10px; border-radius: 999px;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .09em; text-transform: uppercase;
+    box-shadow: 0 8px 22px rgba(76,25,77,.22);
+  }
+  .pv-pagechip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--w-orange-bright); }
+  /* ── Preview control panel: screen switcher + page states ── */
+  .pv-panel {
+    width: 198px;
+    background: rgba(255,255,255,.95); backdrop-filter: blur(10px);
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 16px; padding: 9px;
+    font-family: var(--w-font-mono); color: var(--w-ink);
+    box-shadow: 0 14px 38px rgba(76,25,77,.18);
+  }
+  .pv-group + .pv-group { margin-top: 7px; padding-top: 9px; border-top: 1px solid var(--w-hairline); }
+  .pv-glabel { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; padding: 1px 8px 7px; }
+  .pv-screens { display: flex; flex-direction: column; gap: 2px; }
+  .pv-screens button {
+    border: none; background: transparent; text-align: left;
+    padding: 8px 10px; border-radius: 10px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12px;
+    cursor: pointer; color: var(--w-ink); opacity: .7;
+    display: flex; align-items: center; gap: 8px;
+    transition: background .14s, opacity .14s, color .14s;
+  }
+  .pv-screens button .idx {
+    width: 17px; height: 17px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid currentColor; opacity: .45;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-mono); font-size: 9px; font-weight: 700;
+  }
+  .pv-screens button:not(.is-active):hover { background: var(--w-cream); opacity: 1; }
+  .pv-screens button.is-active { background: var(--w-purple-deep); color: #fff; opacity: 1; }
+  .pv-screens button.is-active .idx { border-color: var(--w-orange-bright); color: var(--w-orange-bright); opacity: 1; }
+  .pv-seg { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
+  .pv-seg + .pv-seg { margin-top: 5px; }
+  .pv-seg .seglbl { font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; margin-right: auto; }
+  .pv-seg button {
+    border: none; background: transparent;
+    padding: 4px 11px; border-radius: 999px;
+    font-family: var(--w-font-mono); font-size: 9.5px; letter-spacing: .06em;
+    cursor: pointer; color: var(--w-ink); opacity: .55;
+  }
+  .pv-seg button.is-active { background: var(--w-purple-deep); color: #fff; opacity: 1; }
+
+  /* Signed-in nav: guest CTA hides, profile dropdown shows */
+  body.is-signed-in .ev-nav-guest { display: none; }
+  body:not(.is-signed-in) .ev-nav-trigger,
+  body:not(.is-signed-in) .ev-nav-menu { display: none; }
+  .ev-nav-trigger {
+    padding: 4px 12px 4px 4px; gap: 8px; background: #fff;
+    cursor: pointer; user-select: none;
+  }
+  .av-mini {
+    display: none;
+    align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 10.5px;
+    letter-spacing: 0;
+  }
+  .ev-nav-trigger .av-mini { display: inline-flex; }
+  .ev-nav-caret { width: 10px !important; height: 10px !important; transition: transform .15s ease; opacity: .55; }
+  .ev-nav-trigger.is-open .ev-nav-caret { transform: rotate(180deg); opacity: .85; }
+  .ev-nav-menu {
+    position: absolute; top: calc(100% + 8px); right: 20px; min-width: 200px;
+    background: #fff; border: 1px solid var(--w-hairline-strong); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(76,25,77,.18); padding: 6px; display: none; z-index: 100;
+  }
+  .ev-nav-menu.is-open { display: block; }
+  .ev-nav-menu-item {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    background: transparent; border: none; border-radius: 8px;
+    font-family: var(--w-font-body); font-weight: 500; font-size: 13.5px;
+    color: var(--w-ink); cursor: pointer; text-align: left; transition: background .12s, color .12s;
+  }
+  .ev-nav-menu-item:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .ev-nav-menu-item svg { width: 14px !important; height: 14px !important; color: var(--w-purple); opacity: .65; flex-shrink: 0; }
+  .ev-nav-menu-item:hover svg { opacity: 1; color: var(--w-orange); }
+  .ev-nav-menu-divider { height: 1px; background: var(--w-hairline); margin: 4px 2px; }
+  .ev-nav-menu-item.is-danger { color: rgb(180, 50, 50); }
+  .ev-nav-menu-item.is-danger svg { color: rgb(180, 50, 50); }
+  .ev-nav-menu-item.is-danger:hover { background: rgba(180, 50, 50, 0.06); color: rgb(180, 50, 50); }
+
+  /* H1 prefix toggles with state */
+  body.is-signed-in .ev-title .name { display: inline; }
+  body:not(.is-signed-in) .ev-title .name { display: none; }
+  /* Guest variant: capitalize the first visible letter of the H1 */
+  body:not(.is-signed-in) .ev-title::first-letter { text-transform: uppercase; }
+
+  /* ── Modal: meeting points / round rules (bottom-sheet on mobile) ── */
+  .ev-modal-backdrop {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(76,25,77,.55);
+    backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  .ev-modal-backdrop.is-open { opacity: 1; pointer-events: auto; }
+
+  .ev-modal {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 101;
+    max-width: 432px; margin: 0 auto;
+    background: var(--w-paper);
+    border-radius: 24px 24px 0 0;
+    transform: translateY(100%);
+    transition: transform .32s cubic-bezier(.32,.72,0,1);
+    max-height: 86vh;
+    display: flex; flex-direction: column;
+    pointer-events: none;
+  }
+  .ev-modal.is-open { transform: translateY(0); pointer-events: auto; box-shadow: 0 -20px 60px rgba(76,25,77,.30); }
+
+  .ev-modal-handle {
+    width: 36px; height: 4px; border-radius: 999px;
+    background: var(--w-hairline-strong); opacity: .45;
+    margin: 10px auto 4px;
+    flex-shrink: 0;
+  }
+  .ev-modal-head {
+    padding: 12px 22px 18px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+    border-bottom: 1px solid var(--w-hairline);
+    flex-shrink: 0;
+  }
+  .ev-modal-head .eyebrow {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--w-orange);
+    font-family: var(--w-font-body);
+  }
+  .ev-modal-head .title {
+    margin-top: 8px;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 24px;
+    letter-spacing: -.025em; color: var(--w-purple-deep); line-height: 1.1;
+  }
+  .ev-modal-head .title em {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange);
+  }
+  .ev-modal-head .sub {
+    margin-top: 8px; font-size: 12.5px; color: var(--w-ink); opacity: .7;
+    line-height: 1.5; max-width: 28ch;
+  }
+  .ev-modal-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    color: var(--w-purple-deep);
+  }
+  .ev-modal-close:hover { background: var(--w-paper-deep); }
+  .ev-modal-body {
+    padding: 20px 22px 32px;
+    overflow-y: auto; flex: 1; min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Modal context chip — surfaces "who set this + for which session" */
+  .ev-modal-context {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: 999px;
+    margin-bottom: 18px;
+    max-width: 100%;
+  }
+  .ev-modal-context .text {
+    font-size: 12px; color: var(--w-ink);
+    line-height: 1.25; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ev-modal-context .text strong {
+    font-family: var(--w-font-display); font-weight: 700; color: var(--w-purple-deep);
+    letter-spacing: -.01em;
+  }
+  .ev-modal-context .text .sep { color: var(--w-ink); opacity: .35; margin: 0 6px; }
+  .ev-modal-context .text .session { opacity: .75; }
+
+  /* Meeting Points list */
+  .ev-mp-session-block + .ev-mp-session-block { margin-top: 26px; }
+  .ev-mp-session {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 15px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+    margin: 0 0 12px;
+    line-height: 1.25;
+  }
+  .ev-mp-list { display: flex; flex-direction: column; gap: 10px; }
+  .ev-mp-card {
+    background: #fff;
+    border: 1px solid var(--w-hairline);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .ev-mp-img {
+    aspect-ratio: 16 / 9; width: 100%;
+    background:
+      repeating-linear-gradient(45deg, rgba(76,25,77,.06) 0 6px, transparent 6px 14px),
+      var(--w-cream);
+    border-bottom: 1px solid var(--w-hairline);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ev-mp-img .lbl {
+    font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .18em;
+    color: var(--w-ink); opacity: .35; text-transform: uppercase;
+  }
+  .ev-mp-name {
+    padding: 13px 16px;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 15px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+  }
+
+  /* Round Rules list */
+  .ev-rules-list { display: flex; flex-direction: column; gap: 18px; counter-reset: rule; }
+  .ev-rules-item {
+    display: grid; grid-template-columns: 30px 1fr; gap: 14px;
+    counter-increment: rule;
+  }
+  .ev-rules-item::before {
+    content: "0" counter(rule);
+    font-family: var(--w-font-mono); font-weight: 700; font-size: 12.5px;
+    color: var(--w-orange); letter-spacing: 0;
+    padding-top: 3px;
+  }
+  .ev-rules-title {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 15px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+  }
+  .ev-rules-desc {
+    margin-top: 4px; font-size: 12.5px; color: var(--w-ink); opacity: .75;
+    line-height: 1.5;
+  }
+
+  /* Desktop framing — the page is mobile-only in practice, but if someone
+     opens it on a laptop, frame the column so it doesn't look stranded. */
+  @media (min-width: 640px) {
+    body {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(221,83,28,.06), transparent 40%),
+        var(--w-cream);
+    }
+    .ev-shell {
+      margin: 24px auto;
+      background: var(--w-paper);
+      border: 1px solid var(--w-hairline);
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(76,25,77,.10);
+      min-height: 0;
+      padding-bottom: 0;
+    }
+    .ev-nav { margin: 0 -20px; border-radius: 24px 24px 0 0; }
+    .ev-org { margin: 0 -20px; }
+    .ev-sticky {
+      position: static;
+      margin: 24px -20px 0;
+      border-radius: 0 0 24px 24px;
+      border-top: 1px solid var(--w-hairline);
+    }
+
+    /* Standalone (opened full-screen, not inside the page viewer): turn the card into a
+       fixed-height frame so the middle scrolls and clips — content never shows past the
+       pinned header/footer. When embedded, the card flows at natural height so the viewer
+       can size it and show everything. */
+    html.is-standalone .ev-shell {
+      height: calc(100vh - 48px);
+      display: flex; flex-direction: column;
+    }
+    html.is-standalone .ev-nav { flex: 0 0 auto; }
+    html.is-standalone .ev-scroll {
+      flex: 1 1 auto; min-height: 0;
+      overflow-y: auto; overflow-x: hidden;
+      margin: 0 -20px; padding: 0 20px 18px;
+    }
+    html.is-standalone .ev-sticky { margin: 0 -20px; flex: 0 0 auto; }
+  }
+</style>
+</head>
+<body data-screen-label="00 Public event landing">
+<script>if (window.self === window.top) document.documentElement.classList.add('is-standalone');</script>
+
+<div class="ev-shell">
+
+  <nav class="ev-nav" data-screen-label="Event / Nav">
+    <a class="ev-brand" href="#">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <button class="ev-nav-cta ev-nav-guest" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Manage my rounds
+    </button>
+    <div class="ev-nav-cta ev-nav-trigger" id="ev-nav-trigger" role="button" tabindex="0">
+      <span class="av-mini">AA</span>
+      <span>Andy</span>
+      <svg class="ev-nav-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <div class="ev-nav-menu" id="ev-nav-menu" role="menu">
+      <button class="ev-nav-menu-item" type="button" role="menuitem" onclick="window.location.href='Participant Dashboard.html'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Dashboard
+      </button>
+      <button class="ev-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+        Profile
+      </button>
+      <button class="ev-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M9 15.5a3 3 0 0 1 6 0"/></svg>
+        Address book
+      </button>
+      <button class="ev-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+        Wonderelo home
+      </button>
+      <div class="ev-nav-menu-divider"></div>
+      <button class="ev-nav-menu-item is-danger" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <div class="ev-scroll">
+  <section class="ev-org" data-screen-label="Event / Organizer banner">
+    <div class="av" aria-label="Organizer photo"><span class="lbl">photo</span></div>
+    <div class="ev-event-name">Founder Summit 2026</div>
+    <button class="ev-how-link" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      How rounds work
+    </button>
+  </section>
+
+  <h1 class="ev-title"><span class="name">Andy, </span>when can we <span class="w-italic">mix</span> you in?</h1>
+
+  <section class="ev-sessions" data-screen-label="Event / Sessions">
+
+    <article class="ev-session">
+      <div class="ev-session-date-wrap">
+        <span class="ev-session-date">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Tue 12 May
+        </span>
+      </div>
+      <h3>Welcome mixer — investors &amp; founders</h3>
+      <div class="ev-session-meta">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          5 min rounds
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Pairs of 2
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Topic
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Group
+        </span>
+        <button type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Meeting points
+        </button>
+        <button type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Round rules
+        </button>
+      </div>
+
+      <div class="ev-rounds">
+        <div class="ev-round is-disabled" aria-disabled="true">
+          <span class="ev-cb"></span>
+          <div class="ev-rt"><span>19:00</span></div>
+          <span class="ev-state">Wrapped</span>
+        </div>
+
+        <div class="ev-round is-disabled" aria-disabled="true">
+          <span class="ev-cb"></span>
+          <div class="ev-rt"><span>19:15</span></div>
+          <span class="ev-state is-live"><span class="dot"></span> Live</span>
+        </div>
+
+        <div class="ev-round is-selected has-options">
+          <span class="ev-cb">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          <div class="ev-rt"><span>19:30</span></div>
+          <div class="ev-countdown">
+            <span class="lbl">Closes in</span>
+            <div class="fc-clock" data-flip-clock data-start="872">
+              <div class="fc-cell"><div class="fc-half fc-top"><span>1</span></div><div class="fc-half fc-bot"><span>1</span></div><div class="fc-hinge"></div></div>
+              <div class="fc-cell"><div class="fc-half fc-top"><span>4</span></div><div class="fc-half fc-bot"><span>4</span></div><div class="fc-hinge"></div></div>
+              <span class="fc-colon">:</span>
+              <div class="fc-cell"><div class="fc-half fc-top"><span>3</span></div><div class="fc-half fc-bot"><span>3</span></div><div class="fc-hinge"></div></div>
+              <div class="fc-cell"><div class="fc-half fc-top"><span>2</span></div><div class="fc-half fc-bot"><span>2</span></div><div class="fc-hinge"></div></div>
+            </div>
+          </div>
+          <div class="ev-expand">
+            <div class="ev-expand-section" data-field="topic">
+              <div class="ev-expand-label">
+                <span class="l">I want to <em>talk about</em></span>
+              </div>
+              <div class="ev-chips" role="group">
+                <button type="button" class="ev-chip is-topic is-active">Raising a seed</button>
+                <button type="button" class="ev-chip is-topic">Hiring my first 5</button>
+                <button type="button" class="ev-chip is-topic is-active">Pricing &amp; packaging</button>
+                <button type="button" class="ev-chip is-topic">PMF stories</button>
+                <button type="button" class="ev-chip is-topic">Cold outbound</button>
+              </div>
+            </div>
+
+            <div class="ev-expand-section" data-field="group">
+              <div class="ev-expand-label">
+                <span class="l">I belong to <em>the group</em></span>
+              </div>
+              <div class="ev-chips" role="radiogroup">
+                <button type="button" class="ev-chip is-group is-active">Founder</button>
+                <button type="button" class="ev-chip is-group">Investor</button>
+              </div>
+              <div class="ev-match-note">
+                <svg class="ev-mn-icon" width="40" height="40" viewBox="0 0 40 40">
+                  <circle cx="11" cy="20" r="8.5" fill="none" stroke="#4b1d51" stroke-width="1.4" stroke-dasharray="2 2.5" opacity=".55"/>
+                  <circle cx="29" cy="20" r="8.5" fill="none" stroke="#dd531c" stroke-width="1.4" stroke-dasharray="2 2.5" opacity=".75"/>
+                  <line x1="14" y1="20" x2="26" y2="20" stroke="#dd531c" stroke-width="1.4"/>
+                  <circle cx="11" cy="20" r="3.2" fill="#4b1d51"/>
+                  <circle cx="29" cy="20" r="3.2" fill="#dd531c"/>
+                </svg>
+                <div class="ev-mn-body">
+                  <div class="ev-mn-eyebrow">Matching across groups</div>
+                  <div class="ev-mn-text">You'll be paired with <strong>Investors</strong> — not other Founders.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="ev-session">
+      <div class="ev-session-date-wrap">
+        <span class="ev-session-date">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Tue 12 May
+        </span>
+      </div>
+      <h3>Late-night portfolio jam</h3>
+      <div class="ev-session-meta">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          6 min rounds
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Groups of 4
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Topic
+        </span>
+        <button type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Meeting points
+        </button>
+        <button type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Round rules
+        </button>
+      </div>
+
+      <div class="ev-rounds">
+        <div class="ev-round">
+          <span class="ev-cb"></span>
+          <div class="ev-rt"><span>21:30</span></div>
+          <span class="ev-state">Open</span>
+        </div>
+        <div class="ev-round">
+          <span class="ev-cb"></span>
+          <div class="ev-rt"><span>21:50</span></div>
+          <span class="ev-state">Open</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="ev-session">
+      <div class="ev-session-date-wrap">
+        <span class="ev-session-date">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Wed 13 May
+        </span>
+      </div>
+      <h3>Morning coffee</h3>
+      <div class="ev-session-meta">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          4 min rounds
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Pairs of 2
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Group
+        </span>
+        <button type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Meeting points
+        </button>
+        <button type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Round rules
+        </button>
+      </div>
+
+      <div class="ev-rounds">
+        <div class="ev-round is-registered has-options">
+          <span class="ev-cb">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          <div class="ev-rt"><span>09:00</span></div>
+          <span class="ev-state">Registered</span>
+          <div class="ev-expand">
+            <div class="ev-expand-section" data-field="group">
+              <div class="ev-expand-label">
+                <span class="l">I belong to <em>the group</em></span>
+              </div>
+              <div class="ev-chips" role="radiogroup">
+                <button type="button" class="ev-chip is-group">Pre-seed</button>
+                <button type="button" class="ev-chip is-group is-active">Seed</button>
+                <button type="button" class="ev-chip is-group">Series A+</button>
+              </div>
+              <div class="ev-match-note is-within">
+                <svg class="ev-mn-icon" width="40" height="40" viewBox="0 0 40 40">
+                  <circle cx="20" cy="20" r="15" fill="none" stroke="#4b1d51" stroke-width="1.4" stroke-dasharray="2 2.5" opacity=".55"/>
+                  <line x1="13" y1="20" x2="27" y2="20" stroke="#4b1d51" stroke-width="1.4"/>
+                  <circle cx="13" cy="20" r="3.5" fill="#4b1d51"/>
+                  <circle cx="27" cy="20" r="3.5" fill="#4b1d51"/>
+                </svg>
+                <div class="ev-mn-body">
+                  <div class="ev-mn-eyebrow">Matching within your group</div>
+                  <div class="ev-mn-text">You'll be paired with other <strong>Seed</strong> founders.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ev-round">
+          <span class="ev-cb"></span>
+          <div class="ev-rt"><span>09:15</span></div>
+          <span class="ev-state">Open</span>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- Empty state: organizer hasn't published any rounds yet (toggled via setRoundsState('empty')) -->
+  <section class="ev-empty" data-screen-label="Event / No rounds published" hidden>
+    <div class="ev-empty-art" aria-hidden="true">
+      <span class="d d1"></span>
+      <span class="d d2"></span>
+      <span class="d d3"></span>
+      <span class="ring"></span>
+      <svg class="ev-empty-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/><circle cx="12" cy="15" r="0.6" fill="currentColor"/><circle cx="8" cy="15" r="0.6" fill="currentColor"/><circle cx="16" cy="15" r="0.6" fill="currentColor"/></svg>
+    </div>
+    <h2 class="ev-empty-title">No rounds <em>published yet</em></h2>
+    <p class="ev-empty-sub">The organizer hasn't opened any networking rounds for <strong>Founder Summit 2026</strong> yet. As soon as they do, you'll pick your rounds right here.</p>
+  </section>
+  </div>
+
+  <div class="ev-sticky" data-screen-label="Event / Sticky">
+    <div class="ev-sticky-inner">
+      <button class="ev-continue" type="button" onclick="if(!this.disabled) window.location.href='Continue Registration.html'">
+        Continue
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+      <div class="ev-count"><em>2 rounds</em> selected</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="ev-modal-backdrop" data-backdrop></div>
+
+<aside class="ev-modal" data-modal="mp" role="dialog" aria-modal="true" aria-labelledby="mp-title" data-screen-label="Event / Meeting points dialog">
+  <div class="ev-modal-handle"></div>
+  <header class="ev-modal-head">
+    <div>
+      <div class="title" id="mp-title">Meeting <em>points</em></div>
+      <div class="sub">Stay close to these spots before your round to be on time. Each round may use a different point.</div>
+    </div>
+    <button class="ev-modal-close" type="button" data-close aria-label="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </header>
+  <div class="ev-modal-body">
+    <div class="ev-modal-context">
+      <span class="text"><strong>Founder Summit 2026</strong><span class="sep" data-context-sep>·</span><span class="session" data-context-session>Founder Summit 2026</span></span>
+    </div>
+    <div class="ev-mp-session-block">
+      <div class="ev-mp-session">Welcome mixer — investors &amp; founders</div>
+      <div class="ev-mp-list">
+        <div class="ev-mp-card">
+          <div class="ev-mp-img"><span class="lbl">photo</span></div>
+          <div class="ev-mp-name">Coffee bar</div>
+        </div>
+        <div class="ev-mp-card">
+          <div class="ev-mp-name">Lobby fireplace</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev-mp-session-block">
+      <div class="ev-mp-session">Late-night portfolio jam</div>
+      <div class="ev-mp-list">
+        <div class="ev-mp-card">
+          <div class="ev-mp-img"><span class="lbl">photo</span></div>
+          <div class="ev-mp-name">Mezzanine sofas</div>
+        </div>
+        <div class="ev-mp-card">
+          <div class="ev-mp-name">Garden patio</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev-mp-session-block">
+      <div class="ev-mp-session">Morning coffee</div>
+      <div class="ev-mp-list">
+        <div class="ev-mp-card">
+          <div class="ev-mp-name">Atrium tree</div>
+        </div>
+        <div class="ev-mp-card">
+          <div class="ev-mp-img"><span class="lbl">photo</span></div>
+          <div class="ev-mp-name">Terrace bench</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<aside class="ev-modal" data-modal="rules" role="dialog" aria-modal="true" aria-labelledby="rules-title" data-screen-label="Event / Round rules dialog">
+  <div class="ev-modal-handle"></div>
+  <header class="ev-modal-head">
+    <div>
+      <div class="title" id="rules-title">Round <em>rules</em></div>
+    </div>
+    <button class="ev-modal-close" type="button" data-close aria-label="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </header>
+  <div class="ev-modal-body">
+    <div class="ev-modal-context">
+      <span class="text"><strong>Founder Summit 2026</strong><span class="sep" data-context-sep>·</span><span class="session" data-context-session>Founder Summit 2026</span></span>
+    </div>
+    <div class="ev-rules-list">
+      <div class="ev-rules-item">
+        <div>
+          <div class="ev-rules-title">Initiate deep talks</div>
+          <div class="ev-rules-desc">Skip the weather talk — meaningful relationships emerge when you share views, values, and stories. Use our ice breakers if you want to.</div>
+        </div>
+      </div>
+      <div class="ev-rules-item">
+        <div>
+          <div class="ev-rules-title">End round on time</div>
+          <div class="ev-rules-desc">It prevents you from getting stuck in one conversation and helps you reach your next round without delay.</div>
+        </div>
+      </div>
+      <div class="ev-rules-item">
+        <div>
+          <div class="ev-rules-title">Do not ask for contacts</div>
+          <div class="ev-rules-desc">After the round, you’ll be asked if you want to exchange contacts. Sharing happens 10 minutes later, only if both parties agree.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+
+<script>
+  (function () {
+    document.querySelectorAll('[data-flip-clock]').forEach((clock) => {
+      let s = parseInt(clock.dataset.start, 10) || 0;
+      const cells = clock.querySelectorAll('.fc-cell');
+      const digitsOf = (secs) => {
+        const m = Math.max(0, Math.floor(secs / 60));
+        const sec = Math.max(0, secs % 60);
+        return (String(m).padStart(2, '0') + String(sec).padStart(2, '0')).split('');
+      };
+      let prev = digitsOf(s);
+
+      const flipCell = (cell, oldD, newD) => {
+        if (oldD === newD) return;
+        const topSpan = cell.querySelector('.fc-half.fc-top span');
+        const botSpan = cell.querySelector('.fc-half.fc-bot span');
+        // Top static immediately shows NEW; bottom static stays as OLD until flip ends.
+        topSpan.textContent = newD;
+        botSpan.textContent = oldD;
+
+        cell.querySelectorAll('.fc-flap').forEach((n) => n.remove());
+
+        const flapTop = document.createElement('div');
+        flapTop.className = 'fc-flap fc-flap-top';
+        flapTop.innerHTML = '<span>' + oldD + '</span>';
+
+        const flapBot = document.createElement('div');
+        flapBot.className = 'fc-flap fc-flap-bot';
+        flapBot.innerHTML = '<span>' + newD + '</span>';
+
+        cell.appendChild(flapTop);
+        cell.appendChild(flapBot);
+
+        setTimeout(() => {
+          botSpan.textContent = newD;
+          flapTop.remove();
+          flapBot.remove();
+        }, 580);
+      };
+
+      setInterval(() => {
+        if (s <= 0) return;
+        s -= 1;
+        const next = digitsOf(s);
+        for (let i = 0; i < 4 && i < cells.length; i++) {
+          flipCell(cells[i], prev[i], next[i]);
+        }
+        prev = next;
+      }, 1000);
+    });
+
+    // Preview-as toggle: switches between guest and signed-in user state.
+    const toggle = document.querySelector('.pv-mode');
+    if (toggle) {
+      const btns = toggle.querySelectorAll('button');
+      btns.forEach((b) => {
+        b.addEventListener('click', () => {
+          btns.forEach((x) => x.classList.remove('is-active'));
+          b.classList.add('is-active');
+          document.body.classList.toggle('is-signed-in', /andy|sign/i.test(b.textContent));
+        });
+      });
+    }
+
+    // View-as switch, exposed for the Overview "View as" chip (Guest / Andy).
+    window.setViewAs = function (mode) {
+      document.body.classList.toggle('is-signed-in', mode === 'signed');
+    };
+
+    // Profile dropdown menu (signed-in state) — matches participant journey nav.
+    (function () {
+      var navTrigger = document.getElementById('ev-nav-trigger');
+      var navMenu = document.getElementById('ev-nav-menu');
+      if (!navTrigger || !navMenu) return;
+      navTrigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        navTrigger.classList.toggle('is-open');
+        navMenu.classList.toggle('is-open');
+      });
+      document.addEventListener('click', function (e) {
+        if (navTrigger.contains(e.target) || navMenu.contains(e.target)) return;
+        navTrigger.classList.remove('is-open'); navMenu.classList.remove('is-open');
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { navTrigger.classList.remove('is-open'); navMenu.classList.remove('is-open'); }
+      });
+    })();
+
+    // Public-flow screen switcher: Round selection is this page; the other two
+    // open the Continue Registration page on the matching screen.
+    const screenNav = document.querySelector('.pv-screens');
+    if (screenNav) {
+      screenNav.querySelectorAll('button[data-screen]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const s = b.dataset.screen;
+          if (s === 'rounds') return;
+          if (s === 'contact') window.location.href = 'Continue Registration.html?screen=contact';
+          else if (s === 'meeting') window.location.href = 'Continue Registration.html?screen=meeting';
+        });
+      });
+    }
+    // Round selection: clicking a (non-disabled, non-registered) round toggles is-selected,
+    // then the sticky CTA + hint update. With 0 selected the CTA is disabled and the
+    // hint switches to 'Select at least one round'.
+    const continueBtn = document.querySelector('.ev-continue');
+    const countEl = document.querySelector('.ev-count');
+    const checkSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+    function updateSelectionState() {
+      const selectedRounds = document.querySelectorAll('.ev-round.is-selected, .ev-round.is-registered');
+      const total = selectedRounds.length;
+      if (total === 0) {
+        continueBtn.disabled = true;
+        countEl.textContent = 'Select at least one round';
+        countEl.classList.add('is-empty');
+        return;
+      }
+
+      // Validate that any selected has-options round has the required chips picked.
+      let missing = 0;
+      selectedRounds.forEach((r) => {
+        if (!r.classList.contains('has-options')) return;
+        r.querySelectorAll('.ev-expand-section').forEach((sec) => {
+          const hasActive = sec.querySelector('.ev-chip.is-active');
+          if (!hasActive) missing += 1;
+        });
+      });
+
+      if (missing > 0) {
+        continueBtn.disabled = true;
+        countEl.textContent = 'Finish your selection in the round above';
+        countEl.classList.add('is-empty');
+      } else {
+        continueBtn.disabled = false;
+        const label = total === 1 ? '1 round' : total + ' rounds';
+        countEl.innerHTML = '<em>' + label + '</em> selected';
+        countEl.classList.remove('is-empty');
+      }
+    }
+
+    // Chip toggle: topic chips are multi-select, group chips are single-select.
+    document.querySelectorAll('.ev-chips').forEach((group) => {
+      group.querySelectorAll('.ev-chip').forEach((chip) => {
+        chip.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (chip.classList.contains('is-topic')) {
+            chip.classList.toggle('is-active');
+          } else {
+            group.querySelectorAll('.ev-chip').forEach((c) => c.classList.remove('is-active'));
+            chip.classList.add('is-active');
+          }
+          updateSelectionState();
+        });
+      });
+    });
+
+    document.querySelectorAll('.ev-round').forEach((r) => {
+      if (r.classList.contains('is-disabled')) return;
+      r.addEventListener('click', () => {
+        if (r.classList.contains('is-registered')) return; // already booked; locked
+        const selected = r.classList.toggle('is-selected');
+        const cb = r.querySelector('.ev-cb');
+        if (cb) cb.innerHTML = selected ? checkSvg : '';
+        updateSelectionState();
+      });
+    });
+
+    updateSelectionState();
+    // Snapshot original round state so the Selection toggle can flip
+    // between the populated default and a fully-empty (disabled CTA) variant.
+    const allRounds = document.querySelectorAll('.ev-round');
+    allRounds.forEach((r) => {
+      r.dataset.origClasses = r.className;
+      const cb = r.querySelector('.ev-cb');
+      r.dataset.origCb = cb ? cb.innerHTML : '';
+      const stateEl = r.querySelector('.ev-state');
+      r.dataset.origState = stateEl ? stateEl.outerHTML : '';
+    });
+
+    function applyEmptyState() {
+      // "No rounds published" state: hide the sessions list + sticky bar, show placeholder.
+      const sessions = document.querySelector('.ev-sessions');
+      const empty = document.querySelector('.ev-empty');
+      if (sessions) sessions.hidden = true;
+      if (empty) empty.hidden = false;
+      document.body.classList.add('is-no-rounds');
+    }
+
+    function applyWithState() {
+      const sessions = document.querySelector('.ev-sessions');
+      const empty = document.querySelector('.ev-empty');
+      if (sessions) sessions.hidden = false;
+      if (empty) empty.hidden = true;
+      document.body.classList.remove('is-no-rounds');
+      allRounds.forEach((r) => {
+        r.className = r.dataset.origClasses;
+        const cb = r.querySelector('.ev-cb');
+        if (cb) cb.innerHTML = r.dataset.origCb || '';
+        const stateEl = r.querySelector('.ev-state');
+        if (stateEl && r.dataset.origState) {
+          stateEl.outerHTML = r.dataset.origState;
+        }
+      });
+      updateSelectionState();
+    }
+
+    const stateToggle = document.querySelector('.pv-sel');
+    if (stateToggle) {
+      const sBtns = stateToggle.querySelectorAll('button');
+      sBtns.forEach((b) => {
+        b.addEventListener('click', () => {
+          sBtns.forEach((x) => x.classList.remove('is-active'));
+          b.classList.add('is-active');
+          if (/empty/i.test(b.textContent)) applyEmptyState();
+          else applyWithState();
+        });
+      });
+    }
+
+    // Rounds state, exposed for the Overview "Rounds" chip (With / Empty).
+    window.setRoundsState = function (state) {
+      if (state === 'empty') applyEmptyState();
+      else applyWithState();
+    };
+
+    // Modals: bottom-sheet dialogs for Meeting Points + Round Rules.
+    const backdrop = document.querySelector('.ev-modal-backdrop');
+    function openModal(id, filter) {
+      const panel = document.querySelector('[data-modal="' + id + '"]');
+      if (!panel || !backdrop) return;
+
+      // Context chip: show session name when known, hide it when event-wide.
+      const ctx = panel.querySelector('[data-context-session]');
+      const ctxSep = panel.querySelector('[data-context-sep]');
+      if (ctx) {
+        if (filter) {
+          ctx.textContent = filter;
+          ctx.style.display = '';
+          if (ctxSep) ctxSep.style.display = '';
+        } else {
+          ctx.style.display = 'none';
+          if (ctxSep) ctxSep.style.display = 'none';
+        }
+      }
+
+      // Meeting Points: filter session blocks to the one the user clicked from.
+      if (id === 'mp') {
+        const blocks = panel.querySelectorAll('.ev-mp-session-block');
+        const visible = [];
+        blocks.forEach((block) => {
+          const name = (block.querySelector('.ev-mp-session') || {}).textContent || '';
+          const show = !filter || name.trim() === filter;
+          block.style.display = show ? '' : 'none';
+          if (show) visible.push(block);
+        });
+        // Match codebase: hide the session header when only one session is visible.
+        blocks.forEach((b) => {
+          const h = b.querySelector('.ev-mp-session');
+          if (h) h.style.display = (visible.length === 1) ? 'none' : '';
+        });
+      }
+
+      backdrop.classList.add('is-open');
+      panel.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeAllModals() {
+      document.querySelectorAll('.ev-modal.is-open').forEach((m) => m.classList.remove('is-open'));
+      if (backdrop) backdrop.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('.ev-session-meta button').forEach((b) => {
+      const txt = (b.textContent || '').trim();
+      const article = b.closest('.ev-session');
+      const h3 = article ? article.querySelector('h3') : null;
+      const sessionName = h3 ? h3.textContent.trim() : null;
+      if (/meeting\s+points/i.test(txt)) {
+        b.addEventListener('click', () => openModal('mp', sessionName));
+      } else if (/round\s+rules/i.test(txt)) {
+        b.addEventListener('click', () => openModal('rules', sessionName));
+      }
+    });
+    const howLink = document.querySelector('.ev-how-link');
+    if (howLink) howLink.addEventListener('click', () => openModal('rules'));
+
+    document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeAllModals));
+    if (backdrop) backdrop.addEventListener('click', closeAllModals);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllModals(); });
+  })();
+</script>
+
+</body>
+</html>

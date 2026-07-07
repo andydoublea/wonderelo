@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — single-page artboard viewer.
+  ?id=<registry id> → desktop + mobile artboards, switchable widths, zoom (incl. 1:1), dev toggles.
+  Data lives in pages-registry.js (window.WPAGES).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — View</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  html, body { margin: 0; }
+  body { background: var(--w-paper-deep); color: var(--w-ink); }
+
+  /* ── Sticky toolbar ── */
+  .vw-bar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 22px;
+    background: rgba(251,246,236,.94); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--w-hairline);
+  }
+  .vw-bar .back {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    color: var(--w-ink); opacity: .7; text-decoration: none;
+    padding: 7px 12px; border-radius: 10px; border: 1px solid var(--w-hairline);
+    background: var(--w-paper); transition: opacity .15s, border-color .15s;
+  }
+  .vw-bar .back:hover { opacity: 1; border-color: var(--w-hairline-strong); }
+  .vw-bar .back svg { transition: transform .15s; }
+  .vw-bar .back:hover svg { transform: translateX(-2px); }
+
+  .vw-bar .title {
+    font-family: var(--w-font-display); font-weight: 800; font-size: 19px;
+    letter-spacing: -0.02em; color: var(--w-purple-deep);
+  }
+  .vw-bar .title em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+
+  /* segmented control (shared) */
+  .vw-tgroup { display: inline-flex; align-items: center; gap: 8px; }
+  .vw-tgroup > .lab {
+    font-family: var(--w-font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--w-ink); opacity: .5;
+  }
+  .vw-seg { display: inline-flex; background: var(--w-cream); border: 1px solid var(--w-hairline); border-radius: 999px; padding: 2px; }
+  .vw-seg button {
+    border: 0; background: transparent; cursor: pointer;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12px;
+    color: var(--w-ink); opacity: .68; padding: 5px 11px; border-radius: 999px;
+    transition: background .15s, color .15s, opacity .15s; white-space: nowrap;
+  }
+  .vw-seg button:hover { opacity: 1; }
+  .vw-seg button.on { background: var(--w-purple-deep); color: #fff; opacity: 1; }
+  .vw-seg.is-orange button.on { background: var(--w-orange); }
+
+  .vw-zoom { margin-left: auto; }
+  .vw-toggles { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .vw-sep { width: 1px; height: 24px; background: var(--w-hairline-strong); }
+
+  /* ── Stage ── */
+  .vw-stage {
+    display: flex; align-items: flex-start; gap: 44px; flex-wrap: wrap;
+    padding: 44px; justify-content: center; min-height: 60vh;
+  }
+  .vw-frame { display: flex; flex-direction: column; gap: 12px; }
+  .vw-frame .head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .vw-frame .head .meta { display: inline-flex; align-items: center; gap: 9px; }
+  .vw-frame .head .dot { width: 8px; height: 8px; background: var(--w-orange); transform: rotate(45deg); }
+  .vw-frame .head .nm {
+    font-family: var(--w-font-mono); font-size: 11px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--w-purple-deep);
+  }
+  .vw-frame .head .nm b { color: var(--w-orange); font-weight: 600; }
+  .vw-frame .head .right { display: inline-flex; align-items: center; gap: 12px; }
+  .vw-frame .head .open {
+    font-family: var(--w-font-mono); font-size: 11px; color: var(--w-ink); opacity: .55;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+    transition: opacity .15s, color .15s;
+  }
+  .vw-frame .head .open:hover { opacity: 1; color: var(--w-orange); }
+  .vw-frame .head .vw-seg button { padding: 4px 9px; font-size: 11px; }
+
+  .vw-scaler {
+    position: relative; overflow: hidden;
+    background: #fff; border: 1px solid var(--w-hairline-strong); border-radius: 14px;
+    box-shadow: 0 30px 70px rgba(76,25,77,.16);
+  }
+  .vw-mobile .vw-scaler { border-radius: 28px; }
+  .vw-scaler iframe { border: 0; display: block; background: #fff; }
+  .vw-scaler .ld {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-mono); font-size: 13px; color: var(--w-ink); opacity: .35; letter-spacing: .1em;
+  }
+
+  .vw-missing { padding: 80px 44px; text-align: center; font-family: var(--w-font-mono); color: var(--w-ink); opacity: .7; }
+  .vw-missing a { color: var(--w-orange); }
+
+  @media (max-width: 900px) {
+    .vw-stage { padding: 24px; gap: 28px; }
+    .vw-zoom { margin-left: 0; }
+  }
+
+  /* ── Hero-image tweak dialog ── */
+  .hp-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12px;
+    color: var(--w-purple-deep); cursor: pointer;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong); background: var(--w-paper);
+    transition: border-color .15s, background .15s;
+  }
+  .hp-btn:hover { background: var(--w-cream); }
+  .hp-btn.on { background: var(--w-purple-deep); color: #fff; border-color: var(--w-purple-deep); }
+  .hp-btn .dia { width: 8px; height: 8px; background: var(--w-orange); transform: rotate(45deg); }
+  .hp-btn.on .dia { background: #fff; }
+
+  .hp-panel {
+    position: fixed; right: 18px; bottom: 18px; z-index: 60;
+    width: 288px; max-height: calc(100vh - 36px); overflow-y: auto;
+    background: var(--w-paper); border: 1px solid var(--w-hairline-strong);
+    border-radius: 16px; box-shadow: 0 26px 60px rgba(76,25,77,.24);
+    font-family: var(--w-font-body); display: none;
+  }
+  .hp-panel.open { display: block; }
+  .hp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--w-hairline);
+    position: sticky; top: 0; background: var(--w-paper); border-radius: 16px 16px 0 0;
+  }
+  .hp-head .ttl { font-family: var(--w-font-display); font-weight: 800; font-size: 15px; letter-spacing: -0.01em; color: var(--w-purple-deep); }
+  .hp-head .x { cursor: pointer; border: 0; background: transparent; color: var(--w-ink); opacity: .6; font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 8px; }
+  .hp-head .x:hover { opacity: 1; background: var(--w-cream); }
+  .hp-body { padding: 6px 16px 16px; }
+  .hp-sec {
+    margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--w-hairline);
+    font-family: var(--w-font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--w-orange);
+  }
+  .hp-sec:first-child { border-top: 0; margin-top: 4px; }
+  .hp-row { display: grid; grid-template-columns: 58px 1fr 46px; align-items: center; gap: 10px; margin-top: 9px; }
+  .hp-row .l { font-size: 12px; color: var(--w-ink); opacity: .8; }
+  .hp-row .v { font-family: var(--w-font-mono); font-size: 11px; color: var(--w-purple-deep); text-align: right; }
+  .hp-row input[type=range] { width: 100%; accent-color: var(--w-orange); }
+  .hp-foot { display: flex; justify-content: flex-end; margin-top: 16px; }
+  .hp-reset {
+    cursor: pointer; border: 1px solid var(--w-hairline-strong); background: var(--w-paper);
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12px; color: var(--w-ink);
+    padding: 7px 14px; border-radius: 999px; transition: background .15s;
+  }
+  .hp-reset:hover { background: var(--w-cream); }
+</style>
+</head>
+<body data-screen-label="Page viewer">
+
+<div class="vw-bar">
+  <a class="back" id="back" href="Pages.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 19l-7-7 7-7"/></svg> <span id="backlabel">Back</span></a>
+  <span class="title" id="title">Page</span>
+  <div class="vw-tgroup vw-zoom">
+    <span class="lab">Zoom</span>
+    <div class="vw-seg is-orange" id="zoom"></div>
+  </div>
+  <span class="vw-sep" id="sep" style="display:none;"></span>
+  <div class="vw-toggles" id="toggles"></div>
+</div>
+
+<div class="vw-stage" id="stage"></div>
+
+<script src="pages-registry.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  const page = (window.WPAGES || {})[id];
+  const stage = document.getElementById('stage');
+
+  if (!page) {
+    document.getElementById('title').textContent = 'Page not found';
+    stage.innerHTML = '<div class="vw-missing">No page with id \u201c' + (id || '') + '\u201d.<br><a href="Pages.html">\u2190 Back to all pages</a></div>';
+    return;
+  }
+
+  document.getElementById('title').innerHTML = page.title;
+  document.title = 'Wonderelo — ' + page.title.replace(/<[^>]+>/g, '');
+  const back = document.getElementById('back');
+  if (page.group) { back.href = 'Group.html?group=' + page.group; document.getElementById('backlabel').textContent = 'Group'; }
+  else { document.getElementById('backlabel').textContent = 'All pages'; }
+
+  // On-screen "fit" target widths (zoom = Fit scales the frame down to roughly this).
+  const FIT = { desktop: 760, mobile: 330 };
+  // Common widths offered per frame kind.
+  const PRESETS = { desktop: [1440, 1280, 1024, 768], mobile: [430, 390, 375] };
+
+  let zoom = 'fit'; // 'fit' | 0.5 | 0.75 | 1
+  const frames = {};
+
+  function withParams(src, extra) {
+    if (!extra) return src;
+    const [path, q = ''] = src.split('?');
+    const usp = new URLSearchParams(q);
+    Object.entries(extra).forEach(([k, v]) => usp.set(k, v));
+    const s = usp.toString();
+    return s ? path + '?' + s : path;
+  }
+
+  function frameScale(rec) {
+    if (zoom === 'fit') return Math.min(1, FIT[rec.kind] / rec.curW);
+    return zoom;
+  }
+
+  function applyFrame(rec) {
+    const scale = frameScale(rec);
+    rec.iframe.style.width = rec.curW + 'px';
+    rec.iframe.style.transform = 'scale(' + scale + ')';
+    const dispW = Math.round(rec.curW * scale);
+    rec.wrap.style.width = dispW + 'px';
+    rec.scaler.style.width = dispW + 'px';
+    measure(rec);
+  }
+
+  function measure(rec) {
+    try {
+      const d = rec.iframe.contentDocument;
+      const h = d.body.scrollHeight || d.documentElement.scrollHeight || 0;
+      if (h > 120) {
+        rec.iframe.style.height = h + 'px';
+        rec.scaler.style.height = Math.round(h * frameScale(rec)) + 'px';
+      }
+    } catch (e) {}
+  }
+
+  function setWidth(rec, w) {
+    rec.curW = w;
+    rec.nmW.textContent = w;
+    applyFrame(rec);
+    // content reflows asynchronously after width change — re-measure shortly after
+    setTimeout(() => measure(rec), 60);
+    setTimeout(() => measure(rec), 240);
+  }
+
+  function buildFrame(kind, def) {
+    const wrap = document.createElement('div');
+    wrap.className = 'vw-frame vw-' + kind;
+
+    const rawSrc = withParams(def.src, def.baseParams);
+    const presets = PRESETS[kind].includes(def.w) ? PRESETS[kind] : [def.w].concat(PRESETS[kind]);
+
+    wrap.innerHTML =
+      '<div class="head">' +
+        '<span class="meta"><span class="dot"></span><span class="nm">' + (kind === 'mobile' ? 'Mobile' : 'Desktop') + ' \u00b7 <b class="nmW"></b>px</span></span>' +
+        '<span class="right">' +
+          '<span class="vw-seg vw-width"></span>' +
+          '<a class="open" href="' + rawSrc + '">open \u2197</a>' +
+        '</span>' +
+      '</div>' +
+      '<div class="vw-scaler"><div class="ld">loading\u2026</div></div>';
+
+    const scaler = wrap.querySelector('.vw-scaler');
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('scrolling', 'no');
+    iframe.style.transformOrigin = 'top left';
+    iframe.style.height = Math.round(def.w * 1.3) + 'px';
+    iframe.src = rawSrc;
+    scaler.appendChild(iframe);
+
+    const rec = { kind, wrap, iframe, scaler, def, curW: def.w, params: Object.assign({}, def.baseParams || {}) };
+    rec.nmW = wrap.querySelector('.nmW');
+
+    // width presets
+    const wseg = wrap.querySelector('.vw-width');
+    presets.forEach((w) => {
+      const b = document.createElement('button');
+      b.textContent = w;
+      if (w === def.w) b.classList.add('on');
+      b.addEventListener('click', () => {
+        wseg.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        setWidth(rec, w);
+      });
+      wseg.appendChild(b);
+    });
+
+    iframe.addEventListener('load', () => {
+      const ld = scaler.querySelector('.ld'); if (ld) ld.remove();
+      applyFrame(rec);
+      try {
+        const d = iframe.contentDocument;
+        if (window.ResizeObserver) { const ro = new ResizeObserver(() => measure(rec)); ro.observe(d.body); }
+        d.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', () => measure(rec), { once: true }); });
+      } catch (e) {}
+    });
+
+    frames[kind] = rec;
+    applyFrame(rec);
+    return wrap;
+  }
+
+  if (page.desktop) stage.appendChild(buildFrame('desktop', page.desktop));
+  if (page.mobile)  stage.appendChild(buildFrame('mobile',  page.mobile));
+
+  // ── Zoom control ──
+  const zoomEl = document.getElementById('zoom');
+  const ZOOMS = [['Fit', 'fit'], ['50%', 0.5], ['75%', 0.75], ['1:1', 1]];
+  ZOOMS.forEach(([label, val]) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (val === 'fit') b.classList.add('on');
+    b.addEventListener('click', () => {
+      zoomEl.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      zoom = val;
+      Object.values(frames).forEach(applyFrame);
+    });
+    zoomEl.appendChild(b);
+  });
+
+  // ── Dev toggles ──
+  const togWrap = document.getElementById('toggles');
+  if ((page.toggles || []).length) document.getElementById('sep').style.display = '';
+  (page.toggles || []).forEach((t) => {
+    const targets = t.target === 'desktop' ? ['desktop'] : t.target === 'mobile' ? ['mobile'] : ['desktop', 'mobile'];
+    const grp = document.createElement('div'); grp.className = 'vw-tgroup';
+    const seg = document.createElement('div'); seg.className = 'vw-seg';
+
+    let activeIdx = 0;
+    if (t.param) {
+      const cur = frames[targets[0]] && frames[targets[0]].params[t.param];
+      const i = t.options.findIndex(o => o.v === cur);
+      if (i >= 0) activeIdx = i;
+    }
+    t.options.forEach((o, i) => {
+      const b = document.createElement('button');
+      b.textContent = o.l;
+      if (i === activeIdx) b.classList.add('on');
+      b.addEventListener('click', () => {
+        seg.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        apply(t, o.v, targets);
+      });
+      seg.appendChild(b);
+    });
+    grp.innerHTML = '<span class="lab">' + t.label + '</span>';
+    grp.appendChild(seg);
+    togWrap.appendChild(grp);
+  });
+
+  function apply(t, value, targets) {
+    targets.forEach((k) => {
+      const rec = frames[k]; if (!rec) return;
+      if (t.fn) {
+        try { const w = rec.iframe.contentWindow; if (typeof w[t.fn] === 'function') w[t.fn](value); } catch (e) {}
+      } else if (t.attr) {
+        try { rec.iframe.contentDocument.querySelector('.pd-variant-toggle [data-' + t.attr + '="' + value + '"]')?.click(); } catch (e) {}
+      } else if (t.param) {
+        rec.params[t.param] = value;
+        const newSrc = withParams(rec.def.src, rec.params);
+        const ld = document.createElement('div'); ld.className = 'ld'; ld.textContent = 'loading\u2026';
+        rec.scaler.appendChild(ld);
+        rec.iframe.src = newSrc;
+        const open = rec.wrap.querySelector('.open'); if (open) open.href = newSrc;
+      }
+    });
+  }
+
+  // ── Hero-image tweak dialog (homepage only) ──
+  if (id === 'homepage') {
+    const HK = 'wonderelo:heroTweaks';
+    const HD = { lg:{scale:1.24,x:0,y:0}, md:{scale:1.30,x:0,y:0}, tb:{scale:1.00,x:0,y:0}, mb:{scale:1.00,x:0,y:0} };
+    const clone = (o) => JSON.parse(JSON.stringify(o));
+    function hLoad() {
+      try {
+        const v = JSON.parse(localStorage.getItem(HK) || '{}');
+        return { lg:Object.assign({},HD.lg,v.lg), md:Object.assign({},HD.md,v.md), tb:Object.assign({},HD.tb,v.tb), mb:Object.assign({},HD.mb,v.mb) };
+      } catch (e) { return clone(HD); }
+    }
+    let hv = hLoad();
+    function hPost() {
+      Object.values(frames).forEach((rec) => {
+        try { rec.iframe.contentWindow.postMessage({ type:'wonderelo-hero-tweak', values: hv }, '*'); } catch (e) {}
+      });
+    }
+    function hSave() { localStorage.setItem(HK, JSON.stringify(hv)); hPost(); }
+
+    // Re-push values whenever a frame (re)loads
+    Object.values(frames).forEach((rec) => {
+      rec.iframe.addEventListener('load', () => setTimeout(hPost, 40));
+    });
+
+    const SECTIONS = [
+      ['lg', 'Large desktop · >1366px'],
+      ['md', 'Desktop · 1025–1366px'],
+      ['tb', 'Tablet · ≤1024px'],
+      ['mb', 'Mobile'],
+    ];
+    const FIELDS = [
+      ['scale', 'Scale', 0.5, 2, 0.02, (n) => n.toFixed(2)],
+      ['x', 'Offset X', -320, 320, 2, (n) => n + 'px'],
+      ['y', 'Offset Y', -320, 320, 2, (n) => n + 'px'],
+    ];
+
+    const panel = document.createElement('div');
+    panel.className = 'hp-panel';
+    panel.innerHTML =
+      '<div class="hp-head"><span class="ttl">Hero image</span><button class="x" type="button" aria-label="Close">\u00d7</button></div>' +
+      '<div class="hp-body"></div>';
+    const body = panel.querySelector('.hp-body');
+
+    SECTIONS.forEach(([key, label]) => {
+      const sec = document.createElement('div'); sec.className = 'hp-sec'; sec.textContent = label;
+      body.appendChild(sec);
+      FIELDS.forEach(([f, flabel, min, max, step, fmt]) => {
+        const row = document.createElement('div'); row.className = 'hp-row';
+        const l = document.createElement('span'); l.className = 'l'; l.textContent = flabel;
+        const inp = document.createElement('input');
+        inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = hv[key][f];
+        const val = document.createElement('span'); val.className = 'v'; val.textContent = fmt(hv[key][f]);
+        inp.addEventListener('input', () => {
+          const n = Number(inp.value);
+          hv[key][f] = n; val.textContent = fmt(n); hSave();
+        });
+        row.appendChild(l); row.appendChild(inp); row.appendChild(val);
+        body.appendChild(row);
+      });
+    });
+
+    const foot = document.createElement('div'); foot.className = 'hp-foot';
+    const reset = document.createElement('button'); reset.className = 'hp-reset'; reset.type = 'button'; reset.textContent = 'Reset to defaults';
+    reset.addEventListener('click', () => {
+      hv = clone(HD); hSave();
+      body.querySelectorAll('.hp-sec').forEach((sec, si) => {});
+      // refresh inputs + readouts
+      let idx = 0;
+      const rows = body.querySelectorAll('.hp-row');
+      SECTIONS.forEach(([key]) => FIELDS.forEach(([f,,,,,fmt]) => {
+        const row = rows[idx++];
+        const inp = row.querySelector('input'); const val = row.querySelector('.v');
+        inp.value = hv[key][f]; val.textContent = fmt(hv[key][f]);
+      }));
+    });
+    foot.appendChild(reset); body.appendChild(foot);
+    document.body.appendChild(panel);
+
+    // Toolbar toggle button
+    const btn = document.createElement('button');
+    btn.className = 'hp-btn'; btn.type = 'button';
+    btn.innerHTML = '<span class="dia"></span> Hero image';
+    btn.addEventListener('click', () => {
+      const open = panel.classList.toggle('open');
+      btn.classList.toggle('on', open);
+    });
+    panel.querySelector('.x').addEventListener('click', () => {
+      panel.classList.remove('open'); btn.classList.remove('on');
+    });
+    document.querySelector('.vw-bar').appendChild(btn);
+
+    hPost();
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -5,6 +5,8 @@ import { Textarea } from './ui/textarea';
 import { Clock, ArrowLeft, Send } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
+import { PdNav } from './redesign/PdNav';
+import { PmFooter } from './redesign/PmFooter';
 
 interface MissedRoundProps {
   participantToken: string;
@@ -37,60 +39,52 @@ export function MissedRoundView({
   onBackToDashboard,
 }: MissedRoundViewProps) {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <Card>
-          <CardContent className="pt-8 pb-8">
-            <div className="flex flex-col items-center text-center gap-5">
-              <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
-                <Clock className="h-8 w-8 text-destructive" />
-              </div>
-
-              <div>
-                <h2 className="text-2xl font-bold mb-2">You didn't make it in time</h2>
-                {roundName && (
-                  <p className="text-muted-foreground text-sm">{roundName}</p>
-                )}
-              </div>
-
-              <p className="text-muted-foreground text-sm">
-                Your conversation partner was waiting for you at the meeting point. Please try to be on time for your next round — it means a lot to the person expecting you.
-              </p>
-
-              {!isSubmitted ? (
-                <div className="w-full space-y-3 mt-2">
-                  <p className="text-sm text-left font-medium">What happened?</p>
-                  <Textarea
-                    placeholder="Tell us why you couldn't make it (optional)..."
-                    value={feedback}
-                    onChange={(e) => onFeedbackChange(e.target.value)}
-                    className="min-h-[80px] resize-none"
-                  />
-                  {feedback.trim() && (
-                    <Button
-                      onClick={onSubmitFeedback}
-                      disabled={isSubmitting}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      {isSubmitting ? 'Sending...' : 'Send feedback'}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3 w-full">
-                  <p className="text-sm text-green-700 dark:text-green-300">Thanks for letting us know!</p>
-                </div>
-              )}
-
-              <Button onClick={onBackToDashboard} className="w-full mt-2">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to dashboard
-              </Button>
+    <div className="wonderelo pm-page" data-active="missed-round" data-feedback={isSubmitted ? 'sent' : 'form'}>
+      <div className="pm-shell">
+        <PdNav
+          onBrandClick={onBackToDashboard}
+          onDashboard={onBackToDashboard}
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
+        <div data-screen="missed-round">
+          <div className="pm-band">
+            <div className="pm-eventrow">
+              <div className="pm-event"><span className="name">{roundName || 'Your round'}</span><span className="org">Speed networking</span></div>
+              <span className="pm-state is-quiet"><span className="dot" /> Round closed</span>
             </div>
-          </CardContent>
-        </Card>
+            <div className="pm-center" style={{ paddingTop: 4 }}>
+              <div className="pm-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <h1 className="pm-h1" style={{ marginTop: 16 }}>You didn't make it in time</h1>
+            </div>
+          </div>
+          <div className="pm-body">
+            {!isSubmitted ? (
+              <div>
+                <p className="pm-muted pm-center" style={{ margin: '0 auto', maxWidth: 320, fontSize: '13.5px', lineHeight: 1.55 }}>Your conversation partner was waiting for you at the meeting point. Please try to be on time for your next round — it means a lot to the person expecting you.</p>
+                <p className="pm-fieldlabel" style={{ margin: '22px 0 8px' }}>What happened?</p>
+                <textarea className="pm-textarea" placeholder="Tell us why you couldn't make it (optional)..." value={feedback} onChange={(e) => onFeedbackChange(e.target.value)} />
+                <button className="pm-btn is-primary" type="button" style={{ marginTop: 12 }} onClick={onSubmitFeedback} disabled={isSubmitting || !feedback.trim()}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  {isSubmitting ? 'Sending…' : 'Send feedback'}
+                </button>
+                <div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard} style={{ marginTop: 14 }}>Back to dashboard</button></div>
+              </div>
+            ) : (
+              <div className="pm-center" style={{ padding: '10px 0 4px' }}>
+                <div className="pm-badge is-ok">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <h2 className="pm-h1 is-sent" style={{ marginTop: 16 }}>Thanks for letting us know</h2>
+                <p className="pm-muted" style={{ margin: '10px auto 0', maxWidth: 300, fontSize: '13.5px', lineHeight: 1.55 }}>We've passed your note to the organizer. Your spot for the next round is still open — please try to arrive on time.</p>
+                <div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard} style={{ marginTop: 18 }}>Back to dashboard</button></div>
+              </div>
+            )}
+          </div>
+        </div>
+        <PmFooter onBrandClick={onBackToDashboard} />
       </div>
     </div>
   );

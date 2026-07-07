@@ -91,85 +91,110 @@ export function UserPublicPageView({
   onHowItWorksDialogOpenChange,
   onRegistrationStepChange,
 }: UserPublicPageViewProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const firstName = participantProfile?.firstName || '';
+  const eventName = userProfile?.eventName || userProfile?.organizerName || '';
+  const initials = String(firstName ? firstName[0] : (participantProfile?.email?.[0] || 'A')).toUpperCase();
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [menuOpen]);
+
+  const registration = (
+    <SessionRegistration
+      sessions={availableSessions}
+      userSlug={userSlug}
+      eventName={userProfile?.eventName || userProfile?.organizerName || ''}
+      registeredRoundIds={registeredRoundIds}
+      registeredRoundsMap={registeredRoundsMap}
+      registeredRoundsPerSession={registeredRoundsPerSession}
+      participantProfile={participantProfile}
+      participantToken={participantToken}
+      participantStatusMap={participantStatusMap}
+      onStepChange={onRegistrationStepChange}
+      noWrapper
+    />
+  );
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {participantToken ? (
-        <ParticipantNav
-          participantToken={participantToken}
-          firstName={participantProfile?.firstName}
-          lastName={participantProfile?.lastName}
-          onLogoClick={() => onNavigate('/')}
-          onHomeClick={() => onNavigate('/')}
-          onDashboardClick={() => onNavigate(`/p/${participantToken}`)}
-          onProfileClick={() => onNavigate(`/p/${participantToken}/profile`)}
-          onLogout={onLogout}
-        />
-      ) : (
-        <nav className="border-b border-border">
-          <div className="container mx-auto max-w-4xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h2
-                className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => onNavigate('/')}
+    <div className={`wonderelo ev-page${participantToken ? ' is-signed-in' : ''}`}>
+      <div className="ev-shell">
+
+        <nav className="ev-nav">
+          <a className="ev-brand" tabIndex={0} onClick={() => onNavigate('/')}>
+            <span className="mark"><span className="inner" /></span>
+            <span className="word">wond<em>e</em>relo</span>
+          </a>
+
+          {!participantToken ? (
+            <button className="ev-nav-cta ev-nav-guest" type="button" onClick={() => onMagicLinkDialogOpenChange(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              Manage my rounds
+            </button>
+          ) : (
+            <>
+              <div
+                className={`ev-nav-cta ev-nav-trigger${menuOpen ? ' is-open' : ''}`}
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
               >
-                Wonderelo
-              </h2>
-              <div className="flex items-center space-x-4">
-                <Button
-                  onClick={() => onMagicLinkDialogOpenChange(true)}
-                  variant="outline"
-                  size="sm"
-                  className="btn-hover-white"
-                >
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Manage my rounds
-                </Button>
+                <span className="av-mini">{initials}</span>
+                <span>{firstName || 'Me'}</span>
+                <svg className="ev-nav-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </div>
-            </div>
-          </div>
+              <div className={`ev-nav-menu${menuOpen ? ' is-open' : ''}`} role="menu" onClick={(e) => e.stopPropagation()}>
+                <button className="ev-nav-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); onNavigate(`/p/${participantToken}`); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                  Dashboard
+                </button>
+                <button className="ev-nav-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); onNavigate(`/p/${participantToken}/profile`); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+                  Profile
+                </button>
+                <button className="ev-nav-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); onNavigate(`/p/${participantToken}/address-book`); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M9 15.5a3 3 0 0 1 6 0"/></svg>
+                  Address book
+                </button>
+                <button className="ev-nav-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); onNavigate('/'); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+                  Wonderelo home
+                </button>
+                <div className="ev-nav-menu-divider" />
+                <button className="ev-nav-menu-item is-danger" type="button" role="menuitem" onClick={() => { setMenuOpen(false); onLogout(); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
         </nav>
-      )}
 
-      <OrganizerHeader
-        profileImageUrl={userProfile?.profileImageUrl}
-        eventName={userProfile?.eventName}
-        organizerName={userProfile?.organizerName}
-        variant="banner"
-      />
-
-      <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-        <div className="max-w-md mx-auto w-full space-y-4">
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => onHowItWorksDialogOpenChange(true)}
-              className="flex items-center gap-1 text-sm text-foreground underline hover:text-primary mx-auto"
-            >
-              <HelpCircle className="h-3.5 w-3.5" />
+        {registrationStep === 'select-rounds' && (
+          <section className="ev-org">
+            <div className="av" aria-label="Organizer photo">
+              {userProfile?.profileImageUrl
+                ? <img src={userProfile.profileImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span className="lbl">photo</span>}
+            </div>
+            <div className="ev-event-name">{eventName}</div>
+            <button className="ev-how-link" type="button" onClick={() => onHowItWorksDialogOpenChange(true)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               How rounds work
             </button>
-          </div>
+          </section>
+        )}
 
-          {registrationStep === 'select-rounds' && (
-            <div className="text-center pt-4">
-              <h1 className="text-2xl font-bold">When can we mix you in?</h1>
-            </div>
-          )}
+        {registrationStep === 'select-rounds' && (
+          <h1 className="ev-title">
+            <span className="name">{firstName}, </span>when can we <span className="w-italic">mix</span> you in?
+          </h1>
+        )}
 
-          <SessionRegistration
-            sessions={availableSessions}
-            userSlug={userSlug}
-            eventName={userProfile?.eventName || userProfile?.organizerName || ''}
-            registeredRoundIds={registeredRoundIds}
-            registeredRoundsMap={registeredRoundsMap}
-            registeredRoundsPerSession={registeredRoundsPerSession}
-            participantProfile={participantProfile}
-            participantToken={participantToken}
-            participantStatusMap={participantStatusMap}
-            onStepChange={onRegistrationStepChange}
-            noWrapper
-          />
-        </div>
+        {registration}
       </div>
 
       <Dialog open={magicLinkDialogOpen} onOpenChange={onMagicLinkDialogOpenChange}>
@@ -752,7 +777,11 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
     );
   }
 
-  if (userProfile && availableForRegistration.length === 0) {
+  // Empty state (no published rounds) is now rendered by the redesigned shell below
+  // (UserPublicPageView → EventSessionsView `.ev-empty`), so this old inline branch is
+  // disabled and the empty case falls through to the main return.
+  // (Dead block kept for now — safe to delete through its closing brace.)
+  if (false && userProfile && availableForRegistration.length === 0) {
     debugLog('🔴 RENDERING EMPTY STATE - No sessions available');
     return (
       <div className="min-h-screen bg-background flex flex-col">

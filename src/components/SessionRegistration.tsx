@@ -13,6 +13,10 @@ import { CheckCircle, Clock, Users, Calendar, Phone, Mail, User, ArrowLeft, Arro
 import { NetworkingSession } from '../App';
 import { toast } from 'sonner@2.0.3';
 import { RoundItem } from './RoundItem';
+import { EventSessionsView } from './redesign/EventSessionsView';
+import { EventModals } from './redesign/EventModals';
+import { ContinueRegistrationAuthView } from './redesign/ContinueRegistrationAuthView';
+import { ContinueRegistrationConfirmView } from './redesign/ContinueRegistrationConfirmView';
 import { RoundRulesDialog, RoundRule } from './RoundRulesDialog';
 import { MeetingPointsDialog } from './MeetingPointsDialog';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -91,6 +95,7 @@ export interface SessionRegistrationSelectRoundsViewProps {
   // Data
   availableSessions: NetworkingSession[];
   sessions: NetworkingSession[]; // full list (used to build meeting-points dialog data)
+  eventName?: string;
   selectedSessions: SelectedSession[];
   selectedRounds: Map<string, Set<string>>;
   roundSelections: Map<string, { team?: string; topic?: string; topics?: string[] }>;
@@ -105,6 +110,7 @@ export interface SessionRegistrationSelectRoundsViewProps {
   meetingPointsFilterSessionId: string | null;
   showRoundRules: boolean;
   roundRules: RoundRule[];
+  contextSessionName?: string;
 
   // Flags
   noWrapper?: boolean;
@@ -113,11 +119,13 @@ export interface SessionRegistrationSelectRoundsViewProps {
   // Helpers (pure)
   isRoundRegisterable: (session: NetworkingSession, round: any) => boolean;
   generateRoundTimeDisplay: (startTime: string, duration: number) => string;
+  getRoundTimeState: (session: NetworkingSession, round: any) => 'open' | 'live' | 'wrapped' | 'closed';
+  getRoundCloseSeconds: (session: NetworkingSession, round: any) => number | null;
 
   // Handlers
   onShowMeetingPoints: (sessionId: string) => void;
   onCloseMeetingPoints: (open: boolean) => void;
-  onShowRoundRules: (open: boolean) => void;
+  onShowRoundRules: (open: boolean, sessionName?: string) => void;
   onRoundSelect: (session: NetworkingSession, roundId: string) => void;
   onTeamSelect: (roundId: string, team: string) => void;
   onTopicSelect: (roundId: string, topic: string) => void;
@@ -130,6 +138,7 @@ export interface SessionRegistrationSelectRoundsViewProps {
 export function SessionRegistrationSelectRoundsView({
   availableSessions,
   sessions,
+  eventName,
   selectedSessions,
   selectedRounds,
   roundSelections,
@@ -142,10 +151,13 @@ export function SessionRegistrationSelectRoundsView({
   meetingPointsFilterSessionId,
   showRoundRules,
   roundRules,
+  contextSessionName,
   noWrapper = false,
   hideStickyBar = false,
   isRoundRegisterable,
   generateRoundTimeDisplay,
+  getRoundTimeState,
+  getRoundCloseSeconds,
   onShowMeetingPoints,
   onCloseMeetingPoints,
   onShowRoundRules,
@@ -202,231 +214,68 @@ export function SessionRegistrationSelectRoundsView({
     errorMessage = 'Please select a topic for each round';
   }
 
+  const selectedCount = Array.from(selectedRounds.values()).reduce((n, s) => n + s.size, 0);
+
   const content = (
     <>
-      {/* Sessions Selection */}
-      <div>
-        <div className="space-y-4">
-          {availableSessions.map((session) => {
-            const sessionRounds = selectedRounds.get(session.id) || new Set();
+      <EventSessionsView
+        availableSessions={availableSessions}
+        eventName={eventName}
+        selectedRounds={selectedRounds}
+        roundSelections={roundSelections}
+        registeredRoundsPerSession={registeredRoundsPerSession}
+        participantStatusMap={participantStatusMap}
+        isRoundRegisterable={isRoundRegisterable}
+        getRoundTimeState={getRoundTimeState}
+        getRoundCloseSeconds={getRoundCloseSeconds}
+        canContinue={canContinue}
+        errorMessage={errorMessage}
+        selectedCount={selectedCount}
+        hideStickyBar={hideStickyBar}
+        onRoundSelect={onRoundSelect}
+        onTeamSelect={onTeamSelect}
+        onTopicSelect={onTopicSelect}
+        onMultipleTopicsSelect={onMultipleTopicsSelect}
+        onShowMeetingPoints={onShowMeetingPoints}
+        onShowRoundRules={onShowRoundRules}
+        onContinue={onContinue}
+      />
 
-            return (
-              <Card
-                key={session.id}
-                className="transition-all hover:border-muted-foreground/20"
-              >
-                <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
-                        {session.name}
-                      </h3>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {new Date(session.date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {session.roundDuration} min rounds
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                    <Users className="h-4 w-4" />
-                    {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
-                  </div>
-
-                  {/* Meeting Points and Round Rules Links */}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-1">
-                    <button
-                      type="button"
-                      onClick={() => onShowMeetingPoints(session.id)}
-                      className="flex items-center gap-1 text-foreground underline hover:text-primary"
-                    >
-                      <MapPin className="h-3.5 w-3.5" />
-                      Meeting points
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onShowRoundRules(true)}
-                      className="flex items-center gap-1 text-foreground underline hover:text-primary"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      Round rules
-                    </button>
-                  </div>
-
-                  {/* Rounds Selection */}
-                  {session.rounds && session.rounds.length > 0 && (
-                    <div className="mt-3">
-                      <div className="space-y-2">
-                        {session.rounds.map((round, roundIndex) => {
-                          const isRoundSelected = sessionRounds.has(round.id);
-                          const roundSelectionData = roundSelections.get(round.id) || {};
-                          const isRegisteredRound = registeredRoundsPerSession.get(session.id)?.has(round.id) || false;
-
-                          const participantStatus = isRegisteredRound ? participantStatusMap.get(round.id) : undefined;
-                          if (participantStatus === 'no-match') {
-                            return null;
-                          }
-
-                          const roundKey = `${session.id}:${round.id}`;
-                          const isNextUpcoming = roundKey === globalNextUpcomingRoundId;
-
-                          const canRegister = isRoundRegisterable(session, round);
-
-                          const isFirstRegisterable = canRegister &&
-                            !isRegisteredRound &&
-                            session.rounds.slice(0, roundIndex).every((r) =>
-                              !isRoundRegisterable(session, r) || registeredRoundsPerSession.get(session.id)?.has(r.id)
-                            );
-
-                          if (!canRegister && !isRegisteredRound) {
-                            const lastNonRegisterableIndex = session.rounds
-                              .map((r, i) => ({ round: r, index: i }))
-                              .filter(({ round: r }) => !isRoundRegisterable(session, r) && !registeredRoundsPerSession.get(session.id)?.has(r.id))
-                              .pop()?.index;
-
-                            if (roundIndex !== lastNonRegisterableIndex) {
-                              return null;
-                            }
-                          }
-
-                          return (
-                            <RoundItem
-                              key={round.id}
-                              round={round}
-                              session={session}
-                              isSelected={isRoundSelected}
-                              isRegistered={isRegisteredRound}
-                              isRegisterable={canRegister}
-                              isNextUpcoming={isNextUpcoming}
-                              participantId={participantProfile?.id}
-                              participantStatus={participantStatus}
-                              onSelect={(roundId) => onRoundSelect(session, roundId)}
-                              generateRoundTimeDisplay={generateRoundTimeDisplay}
-                              selectedTeam={roundSelectionData.team}
-                              selectedTopic={roundSelectionData.topic}
-                              selectedTopics={roundSelectionData.topics}
-                              onTeamSelect={onTeamSelect}
-                              onTopicSelect={onTopicSelect}
-                              onMultipleTopicsSelect={onMultipleTopicsSelect}
-                              showRegistrationClosesCountdown={isFirstRegisterable}
-                              showUnregisterButton={isRegisteredRound && !!participantToken}
-                              onUnregister={() => onUnregister(round.id, round.name)}
-                              onConfirmAttendance={onConfirmAttendance}
-                              registeredCount={(round as any).registeredCount as number | undefined}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {availableSessions.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No rounds available for registration at this time.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Add padding to prevent content from being hidden under sticky button */}
-        {!hideStickyBar && <div className="h-32" />}
-
-        {/* Continue button and text */}
-        {!hideStickyBar && (
-          <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10" style={{ minHeight: '100px' }}>
-            <div className="container mx-auto max-w-md space-y-3">
-              <Button
-                onClick={onContinue}
-                className="w-full"
-                disabled={selectedSessions.length === 0 || !canContinue}
-              >
-                Continue
-              </Button>
-
-              {selectedSessions.length === 0 && (
-                <p className="text-sm text-center text-muted-foreground">
-                  Select at least one round
-                </p>
-              )}
-
-              {errorMessage && selectedSessions.length > 0 && (
-                <p className="text-sm text-center text-muted-foreground">
-                  {errorMessage}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Meeting Points Dialog */}
-        <MeetingPointsDialog
-          open={showMeetingPoints}
-          onOpenChange={onCloseMeetingPoints}
-          sessionsWithMeetingPoints={sessions
-            .filter(s => s.meetingPoints && s.meetingPoints.length > 0)
-            .filter(s => !meetingPointsFilterSessionId || s.id === meetingPointsFilterSessionId)
-            .map(s => ({
-              sessionId: s.id,
-              sessionName: s.name,
-              meetingPoints: s.meetingPoints || [],
-              date: s.date,
-              rounds: s.rounds
-            }))
-            .sort((a, b) => {
-              const getEarliestRoundTime = (sessionData: any): number => {
-                if (!sessionData.date || !sessionData.rounds || sessionData.rounds.length === 0) return Infinity;
-
-                let earliestTime = Infinity;
-
-                for (const round of sessionData.rounds) {
-                  if (!round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') continue;
-
-                  try {
-                    const [hours, minutes] = round.startTime.split(':').map(Number);
-                    const roundStart = new Date(sessionData.date);
-                    roundStart.setHours(hours, minutes, 0, 0);
-                    const timestamp = roundStart.getTime();
-
-                    if (timestamp < earliestTime) {
-                      earliestTime = timestamp;
-                    }
-                  } catch (error) {
-                    continue;
-                  }
-                }
-
-                return earliestTime;
-              };
-
-              const aTime = getEarliestRoundTime(a);
-              const bTime = getEarliestRoundTime(b);
-
-              return aTime - bTime;
-            })
-          }
-        />
-
-        {/* Round Rules Dialog */}
-        <RoundRulesDialog
-          open={showRoundRules}
-          onOpenChange={onShowRoundRules}
-          rules={roundRules}
-        />
-      </div>
+      <EventModals
+        eventName={eventName}
+        sessionName={contextSessionName}
+        meetingPointsOpen={showMeetingPoints}
+        roundRulesOpen={showRoundRules}
+        onClose={() => { onCloseMeetingPoints(false); onShowRoundRules(false); }}
+        sessionsWithMeetingPoints={sessions
+          .filter(s => s.meetingPoints && s.meetingPoints.length > 0)
+          .filter(s => !meetingPointsFilterSessionId || s.id === meetingPointsFilterSessionId)
+          .map(s => ({
+            sessionId: s.id,
+            sessionName: s.name,
+            meetingPoints: s.meetingPoints || [],
+            date: s.date,
+            rounds: s.rounds,
+          }))
+          .sort((a, b) => {
+            const earliest = (sd: any): number => {
+              if (!sd.date || !sd.rounds || sd.rounds.length === 0) return Infinity;
+              let t = Infinity;
+              for (const round of sd.rounds) {
+                if (!round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') continue;
+                try {
+                  const [h, m] = round.startTime.split(':').map(Number);
+                  const rs = new Date(sd.date); rs.setHours(h, m, 0, 0);
+                  if (rs.getTime() < t) t = rs.getTime();
+                } catch { continue; }
+              }
+              return t;
+            };
+            return earliest(a) - earliest(b);
+          })
+        }
+        roundRules={roundRules}
+      />
     </>
   );
 
@@ -479,6 +328,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
   const [meetingPointsFilterSessionId, setMeetingPointsFilterSessionId] = useState<string | null>(null);
   const [showRoundRules, setShowRoundRules] = useState(false);
   const [roundRules, setRoundRules] = useState<RoundRule[]>([]);
+  const [modalSessionName, setModalSessionName] = useState('');
 
   // Notify parent component when step changes
   useEffect(() => {
@@ -1462,18 +1312,26 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
       return isPublished;
     })
     .map(session => {
-      const filteredRounds = session.rounds?.filter(round => {
-        const isVisible = isRoundVisible(session, round);
-        debugLog('🕐 Round visibility check:', {
-          sessionName: session.name,
-          roundName: round.name,
-          roundStartTime: round.startTime,
-          sessionDate: session.date,
-          isVisible
-        });
-        return isVisible;
-      }) || [];
-      
+      const allRounds = session.rounds || [];
+      const startMs = (r: any) => {
+        try {
+          const [h, m] = String(r.startTime).split(':').map(Number);
+          const d = new Date(r.date || session.date); d.setHours(h, m, 0, 0);
+          return d.getTime();
+        } catch { return 0; }
+      };
+      // Show all still-visible (live/upcoming) rounds, plus AT MOST ONE — the most
+      // recent — ended ("wrapped") round. Older ended rounds stay hidden.
+      let mostRecentEnded: any = null;
+      allRounds.forEach(round => {
+        if (!isRoundVisible(session, round) && (!mostRecentEnded || startMs(round) > startMs(mostRecentEnded))) {
+          mostRecentEnded = round;
+        }
+      });
+      const filteredRounds = allRounds.filter(round =>
+        isRoundVisible(session, round) || round === mostRecentEnded
+      );
+
       return {
         ...session,
         rounds: filteredRounds
@@ -1512,6 +1370,27 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     count: availableSessions.length,
     sessions: availableSessions.map(s => ({ name: s.name, roundsCount: s.rounds.length }))
   });
+
+  // Re-send the verification email (design's "resend the link" on the Confirm-email step).
+  // No dedicated resend endpoint exists — re-POSTing register-participant re-issues the email.
+  const handleResendVerification = async () => {
+    try {
+      const { apiBaseUrl, publicAnonKey } = await import('../utils/supabase/info');
+      const response = await fetch(`${apiBaseUrl}/register-participant`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${publicAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userSlug, participant: registrationData, sessions: selectedSessions }),
+      });
+      if (response.ok) {
+        toast.success('Verification email re-sent. Check your inbox.');
+      } else {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || 'Could not resend the email. Please try again.');
+      }
+    } catch {
+      toast.error('Network error. Please try again.');
+    }
+  };
 
   // Handler for Continue button - proceed from round selection
   const handleContinue = () => {
@@ -1813,91 +1692,20 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
       }
     };
 
+    const showSessionName = sessionsWithMeetingPoints.length > 1;
+    const mpSelectedCount = Array.from(selectedRounds.values()).reduce((n, s) => n + s.size, 0);
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto p-6 max-w-md">
-          <div className="text-center mb-6">
-            <h1 className="mb-2">These are our meeting points</h1>
-            <p className="text-muted-foreground">
-              Stay near them before the round start.
-            </p>
-          </div>
-
-          {sessionsWithMeetingPoints.length > 0 ? (
-            <div className="space-y-6 mb-6">
-              {sessionsWithMeetingPoints.map((session) => (
-                <div key={session.sessionId}>
-                  {sessionsWithMeetingPoints.length > 1 && (
-                    <h2 className="mb-3">{session.sessionName}</h2>
-                  )}
-
-                  <div className="space-y-3">
-                    {session.meetingPoints.map((point) => (
-                      <Card key={point.id} className="overflow-hidden">
-                        {point.imageUrl && (!point.type || point.type === 'physical') && (
-                          <div className="aspect-square overflow-hidden bg-muted">
-                            <ImageWithFallback
-                              src={point.imageUrl}
-                              alt={point.name || 'Meeting point'}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        <CardContent className={point.imageUrl && (!point.type || point.type === 'physical') ? 'p-3' : 'p-4'}>
-                          <div className="flex items-center gap-2">
-                            {point.type === 'virtual' ? (
-                              <Video className="h-4 w-4 text-primary flex-shrink-0" />
-                            ) : (
-                              <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                            )}
-                            <p className="text-sm font-medium">{point.name}</p>
-                          </div>
-                          {point.type === 'virtual' && (
-                            <p className="text-xs text-muted-foreground mt-1 ml-6">Video call</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground mb-6">No meeting points added yet.</p>
-          )}
-
-          {/* Spacer for sticky bottom */}
-          <div className="h-24" />
-
-          {/* Sticky bottom buttons */}
-          <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
-            <div className="max-w-md mx-auto flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setCurrentStep(participantToken ? 'select-rounds' : 'auth-choice');
-                  window.scrollTo(0, 0);
-                }}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <Button
-                onClick={handleFinalizeRegistration}
-                className="flex-1"
-                disabled={isSubmitting}
-              >
-                {isSubmitting
-                  ? `Processing${'.'.repeat(processingDots)}`
-                  : participantToken
-                    ? 'Finalise my registration!'
-                    : 'Continue'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ContinueRegistrationConfirmView
+        eventName={eventName}
+        selectedCount={mpSelectedCount}
+        sessions={sessionsWithMeetingPoints}
+        showSessionName={showSessionName}
+        finaliseLabel={participantToken ? 'Finalise my registration!' : 'Continue'}
+        isSubmitting={isSubmitting}
+        processingDots={processingDots}
+        onFinalise={handleFinalizeRegistration}
+        onBack={() => { setCurrentStep(participantToken ? 'select-rounds' : 'auth-choice'); window.scrollTo(0, 0); }}
+      />
     );
   }
 
@@ -2099,324 +1907,72 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
   // Step 2: Auth Choice (Sign in or Create account)
   if (currentStep === 'auth-choice') {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto p-6 max-w-md">
-          {/* Header */}
-          <div className="mb-8">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setCurrentStep('select-rounds');
-                window.scrollTo(0, 0);
-              }}
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            
-            <div className="text-center mb-6">
-              <h1 className="mb-2">Continue your registration</h1>
-              <p className="text-muted-foreground">
-                Create an account or sign in to continue
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {/* Create account - First time here */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">First time here?</CardTitle>
-                <CardDescription>
-                  Create your account to join the networking rounds
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleRegistrationSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName-create" className="flex items-center gap-1 mb-2">
-                        <User className="h-4 w-4" />
-                        First name
-                      </Label>
-                      <Input
-                        id="firstName-create"
-                        type="text"
-                        value={registrationData.firstName}
-                        onChange={(e) => {
-                          setRegistrationData(prev => ({
-                            ...prev,
-                            firstName: e.target.value
-                          }));
-                          if (formErrors.firstName) {
-                            setFormErrors(prev => ({ ...prev, firstName: '' }));
-                          }
-                        }}
-                        className={formErrors.firstName ? 'border-destructive' : ''}
-                        disabled={isSubmitting}
-                      />
-                      {formErrors.firstName && (
-                        <p className="text-sm text-destructive mt-1">{formErrors.firstName}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName-create" className="mb-2 block">Last name</Label>
-                      <Input
-                        id="lastName-create"
-                        type="text"
-                        value={registrationData.lastName}
-                        onChange={(e) => {
-                          setRegistrationData(prev => ({
-                            ...prev,
-                            lastName: e.target.value
-                          }));
-                          if (formErrors.lastName) {
-                            setFormErrors(prev => ({ ...prev, lastName: '' }));
-                          }
-                        }}
-                        className={formErrors.lastName ? 'border-destructive' : ''}
-                        disabled={isSubmitting}
-                      />
-                      {formErrors.lastName && (
-                        <p className="text-sm text-destructive mt-1">{formErrors.lastName}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email-create" className="flex items-center gap-1 mb-2">
-                      <Mail className="h-4 w-4" />
-                      Email address
-                    </Label>
-                    <Input
-                      id="email-create"
-                      type="email"
-                      value={registrationData.email}
-                      onChange={(e) => {
-                        handleEmailChange(e);
-                        if (formErrors.email) {
-                          setFormErrors(prev => ({ ...prev, email: '' }));
-                        }
-                      }}
-                      onBlur={handleEmailBlur}
-                      disabled={isSubmitting}
-                      className={(emailError || formErrors.email) ? 'border-destructive' : ''}
-                    />
-                    {(emailError || formErrors.email) && (
-                      <p className="text-sm text-destructive mt-1">{emailError || formErrors.email}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone-create" className="flex items-center gap-1 mb-2">
-                      <Phone className="h-4 w-4" />
-                      Phone number
-                    </Label>
-                    <div className="flex gap-2">
-                      <Popover open={phoneCountryOpen} onOpenChange={setPhoneCountryOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={phoneCountryOpen}
-                            className="w-[120px] justify-between"
-                            disabled={isSubmitting}
-                            type="button"
-                          >
-                            {registrationData.phoneCountry}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Search country..." />
-                            <CommandList>
-                              <CommandEmpty>No country found.</CommandEmpty>
-                              <CommandGroup>
-                                {sortedCountryCodes.map((country) => (
-                                  <CommandItem
-                                    key={country.code}
-                                    value={`${country.name} ${country.prefix}`}
-                                    onSelect={() => {
-                                      setRegistrationData(prev => ({
-                                        ...prev,
-                                        phoneCountry: country.prefix
-                                      }));
-                                      setPhoneCountryOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={`mr-2 h-4 w-4 ${
-                                        registrationData.phoneCountry === country.prefix
-                                          ? 'opacity-100'
-                                          : 'opacity-0'
-                                      }`}
-                                    />
-                                    <span className="inline-block w-12 text-muted-foreground">{country.prefix}</span>
-                                    <span>{country.name}</span>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <Input
-                        id="phone-create"
-                        type="tel"
-                        value={registrationData.phone}
-                        onChange={(e) => {
-                          setRegistrationData(prev => ({
-                            ...prev,
-                            phone: e.target.value
-                          }));
-                          if (formErrors.phone) {
-                            setFormErrors(prev => ({ ...prev, phone: '' }));
-                          }
-                        }}
-                        placeholder={getPhonePlaceholder()}
-                        disabled={isSubmitting}
-                        className={`flex-1 ${formErrors.phone ? 'border-destructive' : ''}`}
-                      />
-                    </div>
-                    {formErrors.phone && (
-                      <p className="text-sm text-destructive mt-1">{formErrors.phone}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        id="acceptTerms-create"
-                        checked={registrationData.acceptTerms}
-                        onCheckedChange={(checked) => setRegistrationData(prev => ({
-                          ...prev,
-                          acceptTerms: checked === true
-                        }))}
-                        disabled={isSubmitting}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1">
-                        <Label htmlFor="acceptTerms-create" className="text-sm cursor-pointer">
-                          I accept the{' '}<a href="https://wonderelo.com/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">Terms of service</a>*
-                        </Label>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        id="allowMarketing-create"
-                        checked={registrationData.allowMarketing}
-                        onCheckedChange={(checked) => setRegistrationData(prev => ({
-                          ...prev,
-                          allowMarketing: checked === true
-                        }))}
-                        disabled={isSubmitting}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1">
-                        <Label htmlFor="allowMarketing-create" className="text-sm cursor-pointer">
-                          I allow the event organizer to use my email for marketing purposes
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? <>Processing{'.'.repeat(processingDots)}</> : <>Create account and continue</>}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Sign in with magic link - Already registered */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Already registered?</CardTitle>
-                <CardDescription>
-                  Sign in with a magic link sent to your email
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {magicLinkSent ? (
-                  <div className="space-y-4">
-                    <div className="text-center py-4">
-                      <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                        <Mail className="h-6 w-6 text-primary" />
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        We've sent a magic link to
-                      </p>
-                      <p className="font-medium">{magicLinkEmail}</p>
-                    </div>
-
-                    <Separator />
-
-                    <div className="text-sm text-muted-foreground text-center">
-                      <p>Didn't receive the email?</p>
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 mt-1"
-                        onClick={() => {
-                          setMagicLinkSent(false);
-                          setMagicLinkEmail('');
-                        }}
-                      >
-                        Try again
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="magic-link-email" className="flex items-center gap-1 mb-2">
-                        <Mail className="h-4 w-4" />
-                        Email address
-                      </Label>
-                      <Input
-                        id="magic-link-email"
-                        type="email"
-                        placeholder="your.email@example.com"
-                        value={magicLinkEmail}
-                        onChange={(e) => setMagicLinkEmail(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSendMagicLink();
-                          }
-                        }}
-                      />
-                    </div>
-
-                    <Button
-                      className="w-full"
-                      onClick={handleSendMagicLink}
-                      disabled={isSendingMagicLink || !magicLinkEmail}
-                    >
-                      {isSendingMagicLink ? (
-                        <>Sending...</>
-                      ) : (
-                        <>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Send magic link
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+      <ContinueRegistrationAuthView
+        eventName={eventName}
+        selectedCount={Array.from(selectedRounds.values()).reduce((n, s) => n + s.size, 0)}
+        registrationData={registrationData}
+        setRegistrationData={setRegistrationData}
+        formErrors={formErrors}
+        setFormErrors={setFormErrors}
+        emailError={emailError}
+        onEmailChange={handleEmailChange}
+        onEmailBlur={handleEmailBlur}
+        onRegistrationSubmit={handleRegistrationSubmit}
+        sortedCountryCodes={sortedCountryCodes}
+        phonePlaceholder={getPhonePlaceholder()}
+        phoneCountryOpen={phoneCountryOpen}
+        setPhoneCountryOpen={setPhoneCountryOpen}
+        magicLinkEmail={magicLinkEmail}
+        setMagicLinkEmail={setMagicLinkEmail}
+        magicLinkSent={magicLinkSent}
+        setMagicLinkSent={setMagicLinkSent}
+        onSendMagicLink={handleSendMagicLink}
+        isSendingMagicLink={isSendingMagicLink}
+        isSubmitting={isSubmitting}
+        processingDots={processingDots}
+        onBack={() => { setCurrentStep('select-rounds'); window.scrollTo(0, 0); }}
+      />
     );
   }
 
   // Step 3: Email Verification Waiting
   if (currentStep === 'email-verification-waiting') {
-    return <EmailVerificationWaiting email={registrationData.email} />;
+    return (
+      <EmailVerificationWaiting
+        email={registrationData.email}
+        eventName={eventName}
+        selectedCount={Array.from(selectedRounds.values()).reduce((n, s) => n + s.size, 0)}
+        onBack={() => { setCurrentStep('meeting-points'); window.scrollTo(0, 0); }}
+        onResend={handleResendVerification}
+      />
+    );
   }
+
+  const getRoundTimeState = (session: any, round: any): 'open' | 'live' | 'wrapped' | 'closed' => {
+    try {
+      if (!round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') return 'open';
+      const [h, m] = String(round.startTime).split(':').map(Number);
+      const start = new Date(session.date); start.setHours(h, m, 0, 0);
+      const now = getCurrentTime();
+      const durationMin = round.duration || session.roundDuration || 10;
+      const end = new Date(start.getTime() + durationMin * 60000);
+      if (now >= end) return 'wrapped';
+      if (now >= start) return 'live';
+      return isRoundRegisterable(session, round) ? 'open' : 'closed';
+    } catch { return 'open'; }
+  };
+
+  const getRoundCloseSeconds = (session: any, round: any): number | null => {
+    try {
+      if (!round.startTime || round.startTime === 'To be set' || round.startTime === 'TBD') return null;
+      const [h, m] = String(round.startTime).split(':').map(Number);
+      const start = new Date(session.date); start.setHours(h, m, 0, 0);
+      const params: any = getParametersOrDefault();
+      const safety = params.safetyWindowMinutes ?? 5;
+      const secs = Math.floor((start.getTime() - safety * 60000 - getCurrentTime().getTime()) / 1000);
+      return secs > 0 ? secs : null;
+    } catch { return null; }
+  };
 
   // Step 1: Select Rounds
   if (currentStep === 'select-rounds') {
@@ -2424,6 +1980,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
       <SessionRegistrationSelectRoundsView
         availableSessions={availableSessions}
         sessions={sessions}
+        eventName={eventName}
         selectedSessions={selectedSessions}
         selectedRounds={selectedRounds}
         roundSelections={roundSelections}
@@ -2436,13 +1993,17 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
         meetingPointsFilterSessionId={meetingPointsFilterSessionId}
         showRoundRules={showRoundRules}
         roundRules={roundRules}
+        contextSessionName={modalSessionName}
         noWrapper={noWrapper}
         hideStickyBar={hideStickyBar}
         isRoundRegisterable={isRoundRegisterable}
         generateRoundTimeDisplay={generateRoundTimeDisplay}
+        getRoundTimeState={getRoundTimeState}
+        getRoundCloseSeconds={getRoundCloseSeconds}
         onShowMeetingPoints={(sessionId) => {
           setMeetingPointsFilterSessionId(sessionId);
           setShowMeetingPoints(true);
+          setModalSessionName(sessions.find((s) => s.id === sessionId)?.name || '');
         }}
         onCloseMeetingPoints={(open) => {
           setShowMeetingPoints(open);
@@ -2453,8 +2014,9 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
             window.history.replaceState(null, '', window.location.pathname);
           }
         }}
-        onShowRoundRules={(open) => {
+        onShowRoundRules={(open, sessionName) => {
           setShowRoundRules(open);
+          if (open && sessionName) setModalSessionName(sessionName);
           if (!open && window.location.hash === '#round-rules') {
             window.history.replaceState(null, '', window.location.pathname);
           }

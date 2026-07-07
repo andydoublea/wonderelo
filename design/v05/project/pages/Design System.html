@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Design System</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    /* Brand palette */
+    --purple: #5C2277;
+    --purple-deep: #4b1d51;
+    --purple-ink: #2d1133;
+    --orange: #dd531c;
+    --orange-bright: #ff6a2a;
+    --cream: #f7f1e6;
+    --paper: #fbf6ec;
+    --paper-deep: #f1e9d8;
+    --ink: #3a2e34;
+
+    /* Typography */
+    --font-display: "Bricolage Grotesque", sans-serif;
+    --font-serif: "Instrument Serif", serif;
+    --font-body: "Space Grotesk", system-ui, sans-serif;
+    --font-hand: "Caveat", cursive;
+
+    /* Surface */
+    --hairline: rgba(76,25,77,.10);
+    --hairline-strong: rgba(76,25,77,.18);
+    --shadow-card: 0 20px 40px rgba(76,25,77,.18);
+    --shadow-soft: 0 8px 24px rgba(76,25,77,.08);
+
+    /* Radius */
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 22px;
+    --r-xl: 28px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ───────── Layout chrome ───────── */
+  .ds-shell { max-width: 1240px; margin: 0 auto; padding: 80px 60px 160px; }
+
+  .ds-masthead { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 40px; padding-bottom: 28px; border-bottom: 1px solid var(--hairline); margin-bottom: 80px; }
+  .ds-masthead .meta { font-family: var(--font-serif); font-style: italic; font-size: 22px; color: var(--orange); }
+  .ds-masthead h1 { margin: 12px 0 0; font-family: var(--font-display); font-weight: 800; font-size: 88px; line-height: 0.95; letter-spacing: -0.04em; color: var(--purple-deep); }
+  .ds-masthead .stamp { display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid var(--hairline-strong); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--purple-deep); background: rgba(255,255,255,.5); }
+  .ds-masthead .stamp .dot { width: 8px; height: 8px; background: var(--orange); transform: rotate(45deg); }
+  .ds-masthead p.lede { margin: 24px 0 0; max-width: 720px; font-size: 18px; line-height: 1.55; color: var(--ink); grid-column: 1 / 2; }
+
+  /* Section heads */
+  .ds-section { margin-top: 120px; }
+  .ds-eyebrow { display: inline-flex; align-items: center; gap: 10px; color: var(--orange); font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+  .ds-eyebrow::before { content: ""; width: 28px; height: 1px; background: var(--orange); }
+  .ds-section > h2 { margin: 14px 0 8px; font-family: var(--font-display); font-weight: 800; font-size: 48px; line-height: 1.0; letter-spacing: -0.03em; color: var(--purple-deep); }
+  .ds-section > h2 em { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--orange); }
+  .ds-section > p.intro { max-width: 640px; margin: 0 0 40px; font-size: 16px; line-height: 1.55; color: var(--ink); }
+
+  /* Subhead */
+  h3.ds-sub { margin: 40px 0 16px; font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: var(--purple-deep); text-transform: uppercase; letter-spacing: .14em; font-size: 12px; }
+  h3.ds-sub::before { content: ""; display: inline-block; width: 6px; height: 6px; background: var(--orange); transform: rotate(45deg); margin-right: 10px; vertical-align: middle; }
+
+  /* ───────── Color swatches ───────── */
+  .swatch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+  .swatch { background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
+  .swatch .chip { height: 140px; display: flex; align-items: flex-end; padding: 16px; }
+  .swatch .chip .label { font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .swatch .meta { padding: 14px 16px 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .swatch .meta .name { font-size: 13px; font-weight: 600; color: var(--purple-deep); }
+  .swatch .meta .hex { font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); opacity: .7; }
+  .swatch .meta .var { display: block; margin-top: 4px; font-size: 11px; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--purple); opacity: .65; }
+
+  /* Usage rules */
+  .usage-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 28px; }
+  .usage-list .rule { background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 22px; }
+  .usage-list .rule .title { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--purple-deep); margin-bottom: 6px; }
+  .usage-list .rule p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+  .usage-list .rule .swatch-row { display: flex; gap: 6px; margin-top: 14px; }
+  .usage-list .rule .swatch-row span { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--hairline); }
+
+  /* ───────── Type ───────── */
+  .type-stack { display: grid; grid-template-columns: 200px 1fr; gap: 28px 40px; align-items: baseline; padding: 28px 0; border-bottom: 1px solid var(--hairline); }
+  .type-stack .label { font-size: 11px; font-weight: 700; letter-spacing: .22em; color: var(--purple); text-transform: uppercase; padding-top: 12px; }
+  .type-stack .label .meta { display: block; margin-top: 6px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 400; font-size: 11px; color: var(--ink); opacity: .65; letter-spacing: 0; text-transform: none; }
+  .type-display { font-family: var(--font-display); font-weight: 800; font-size: 88px; line-height: 0.95; letter-spacing: -0.04em; color: var(--purple-deep); }
+  .type-display em { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--orange); }
+  .type-h1 { font-family: var(--font-display); font-weight: 800; font-size: 56px; line-height: 1.0; letter-spacing: -0.035em; color: var(--purple-deep); }
+  .type-h2 { font-family: var(--font-display); font-weight: 800; font-size: 36px; line-height: 1.05; letter-spacing: -0.025em; color: var(--purple-deep); }
+  .type-h3 { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: var(--purple-deep); }
+  .type-italic { font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 44px; color: var(--orange); }
+  .type-eyebrow-demo { color: var(--orange); font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+  .type-lede { font-size: 18px; line-height: 1.55; color: var(--ink); max-width: 560px; }
+  .type-body { font-size: 15px; line-height: 1.55; color: var(--ink); max-width: 560px; }
+  .type-mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; color: var(--purple-deep); }
+  .type-hand { font-family: var(--font-hand); font-weight: 700; font-size: 38px; color: var(--orange); }
+
+  /* ───────── Buttons ───────── */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  .btn { font-family: var(--font-body); font-size: 16px; font-weight: 600; padding: 16px 24px; border-radius: var(--r-md); border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: transform .12s ease, box-shadow .12s ease; }
+  .btn-primary { background: var(--orange); color: #fff; box-shadow: 0 8px 20px rgba(221,83,28,.30); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(221,83,28,.36); }
+  .btn-secondary { background: var(--purple-deep); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--purple-deep); border-color: var(--hairline-strong); }
+  .btn-ghost:hover { background: var(--cream); }
+  .btn-link { background: transparent; padding: 6px 0; color: var(--purple-deep); border-radius: 0; border-bottom: 1.5px solid var(--purple-deep); }
+  .btn .arrow { width: 16px; height: 16px; }
+
+  /* ───────── Cards ───────── */
+  .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .card { background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--r-xl); padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+  .card .img-slot { width: 100%; height: 160px; border-radius: 16px; background: rgba(255,255,255,.6); display: flex; align-items: center; justify-content: center; color: var(--purple); font-family: var(--font-serif); font-style: italic; font-size: 18px; opacity: .7; border: 1px dashed var(--hairline); }
+  .card h4 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--purple-deep); letter-spacing: -0.01em; }
+  .card p { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+
+  /* Card variants */
+  .card-dark { background: var(--purple-deep); color: #fff; border-color: rgba(255,255,255,.08); }
+  .card-dark h4 { color: #fff; }
+  .card-dark p { color: rgba(255,255,255,.78); }
+  .card-dark .img-slot { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.10); color: rgba(255,255,255,.6); }
+  .card-orange { background: var(--orange); color: #fff; border-color: transparent; }
+  .card-orange h4 { color: #fff; }
+  .card-orange p { color: rgba(255,255,255,.92); }
+  .card-orange .number-tag { font-family: var(--font-serif); font-style: italic; font-size: 22px; color: rgba(255,255,255,.85); }
+
+  /* Floating tag */
+  .float-tag { display: inline-flex; align-items: center; gap: 12px; background: #fff; padding: 14px 18px; border-radius: 18px; box-shadow: var(--shadow-card); }
+  .float-tag .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 16px; }
+  .float-tag .title { font-size: 13px; font-weight: 700; color: var(--purple-deep); }
+  .float-tag .sub { font-size: 11px; color: var(--ink); opacity: .65; margin-top: 2px; }
+
+  .float-tag-dark { background: var(--purple-deep); color: #fff; }
+  .float-tag-dark .title { color: #fff; }
+  .float-tag-dark .sub { color: rgba(255,255,255,.65); }
+  .float-tag-dark .ico { background: rgba(255,255,255,.15); }
+
+  /* Avatar */
+  .avatar { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
+
+  /* Numbered node */
+  .node { width: 56px; height: 56px; border-radius: 50%; background: var(--cream); border: 2px solid var(--orange); color: var(--purple-deep); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+
+  /* Eyebrow + step labels */
+  .step-label { font-family: var(--font-serif); font-style: italic; color: var(--orange); font-size: 22px; }
+
+  /* Star rating */
+  .stars { display: inline-flex; gap: 4px; }
+  .stars svg { color: var(--orange); }
+
+  /* ───────── Decorative ───────── */
+  .diamond-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .diamond { display: inline-block; transform: rotate(45deg); }
+  .diamond.orange { background: var(--orange); }
+  .diamond.purple { background: var(--purple-deep); }
+
+  .pattern-band { position: relative; height: 8px; display: flex; justify-content: space-between; padding: 0 24px; align-items: center; background: var(--paper); border: 1px solid var(--hairline); border-radius: 4px; }
+  .pattern-band span { width: 5px; height: 5px; transform: rotate(45deg); opacity: .5; }
+
+  /* Backdrop showcase */
+  .backdrop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .backdrop { aspect-ratio: 4/3; border-radius: var(--r-lg); position: relative; padding: 24px; overflow: hidden; border: 1px solid var(--hairline); }
+  .backdrop .name { position: absolute; left: 24px; bottom: 22px; font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+  .backdrop .name small { display: block; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; font-weight: 400; opacity: .65; margin-top: 4px; }
+  .backdrop.paper { background: var(--paper); color: var(--purple-deep); }
+  .backdrop.paper-deep { background: var(--paper-deep); color: var(--purple-deep); }
+  .backdrop.cream { background: var(--cream); color: var(--purple-deep); }
+  .backdrop.purple { background: var(--purple-deep); color: #fff; }
+  .backdrop.purple-ink { background: var(--purple-ink); color: #fff; }
+  .backdrop.orange { background: var(--orange); color: #fff; }
+
+  .backdrop .deco-d1 { position: absolute; left: 14%; top: 24px; width: 14px; height: 14px; background: var(--orange); transform: rotate(45deg); }
+  .backdrop .deco-d2 { position: absolute; right: 18%; top: 38px; width: 10px; height: 10px; background: var(--purple-deep); transform: rotate(45deg); }
+  .backdrop.purple .deco-d1, .backdrop.purple-ink .deco-d1 { background: var(--orange-bright); }
+  .backdrop.purple .deco-d2, .backdrop.purple-ink .deco-d2 { background: rgba(255,255,255,.25); }
+  .backdrop.orange .deco-d1 { background: #fff; }
+  .backdrop.orange .deco-d2 { background: rgba(255,255,255,.4); }
+  .backdrop .big-italic { position: absolute; right: -6%; bottom: -56px; font-family: var(--font-serif); font-style: italic; font-size: 180px; color: rgba(255,255,255,.06); line-height: 1; }
+  .backdrop.paper .big-italic, .backdrop.paper-deep .big-italic, .backdrop.cream .big-italic { color: rgba(76,25,77,.05); }
+
+  /* Spec table */
+  .spec-table { width: 100%; border-collapse: collapse; }
+  .spec-table th, .spec-table td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--hairline); font-size: 14px; vertical-align: top; }
+  .spec-table th { font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--purple); background: var(--paper-deep); }
+  .spec-table td.tok { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--purple-deep); }
+  .spec-table td.usage { color: var(--ink); }
+
+  /* Radius / shadow row */
+  .token-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .token-card { background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 22px; }
+  .token-card .preview { height: 120px; background: #fff; border: 1px solid var(--hairline); display: flex; align-items: center; justify-content: center; }
+  .token-card .preview-shadow { background: #fff; box-shadow: var(--shadow-card); border: none; }
+  .token-card .preview-shadow-soft { background: #fff; box-shadow: var(--shadow-soft); border: none; }
+  .token-card .label { display: flex; justify-content: space-between; margin-top: 14px; align-items: baseline; }
+  .token-card .label .name { font-family: var(--font-display); font-weight: 700; color: var(--purple-deep); font-size: 14px; }
+  .token-card .label .val { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--ink); opacity: .7; }
+
+  .footer-rule { margin-top: 140px; padding-top: 36px; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink); opacity: .7; letter-spacing: .14em; text-transform: uppercase; }
+  .footer-rule .dot { width: 8px; height: 8px; background: var(--orange); transform: rotate(45deg); display: inline-block; margin-right: 10px; vertical-align: middle; }
+
+  /* Voice card */
+  .voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .voice-card { padding: 26px; border-radius: var(--r-lg); border: 1px solid var(--hairline); background: var(--paper); }
+  .voice-card.do { border-color: rgba(221,83,28,.30); }
+  .voice-card.dont { background: rgba(76,25,77,.04); }
+  .voice-card .head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+  .voice-card.do .head { color: var(--orange); }
+  .voice-card.dont .head { color: var(--purple-deep); opacity: .55; }
+  .voice-card ul { margin: 16px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .voice-card li { font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--purple-deep); letter-spacing: -0.01em; }
+  .voice-card.dont li { text-decoration: line-through; opacity: .5; font-weight: 500; }
+
+  /* Logo lockup */
+  .lockup { display: flex; align-items: center; gap: 14px; padding: 22px 26px; background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--r-lg); }
+  .lockup .mark { width: 40px; height: 40px; background: var(--orange); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+  .lockup .mark .inner { width: 16px; height: 16px; background: #fff; transform: rotate(45deg); }
+  .lockup .word { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -0.025em; color: var(--purple-deep); }
+  .lockup .word em { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--orange); }
+
+</style>
+</head>
+<body>
+
+<main class="ds-shell">
+
+  <!-- ───────── Masthead ───────── -->
+  <header class="ds-masthead">
+    <div>
+      <div class="meta">brand &amp; product</div>
+      <h1>Wonderelo<br />Design&nbsp;System</h1>
+      <p class="lede">Visual vocabulary for Wonderelo's marketing site, app, and printed material — distilled from the homepage redesign. Cream paper backgrounds, deep purple ink, hot orange accents, with an italic serif used as a melodic counterpoint to a confident grotesque display.</p>
+    </div>
+    <div class="stamp"><span class="dot"></span> v1.0 · 2026</div>
+  </header>
+
+
+  <!-- ───────── 1. Logo / wordmark ───────── -->
+  <section class="ds-section">
+    <span class="ds-eyebrow">01 · Identity</span>
+    <h2>The <em>wordmark</em></h2>
+    <p class="intro">A Bricolage Grotesque wordmark, set tight and confident — all one voice, no decorative italics. The mark is a tilted square (a.k.a. our diamond), echoed in decorative dots throughout the site.</p>
+
+    <div style="display: flex; gap: 22px; flex-wrap: wrap;">
+      <div class="lockup">
+        <div class="mark"><div class="inner"></div></div>
+        <div class="word">wonderelo</div>
+      </div>
+      <div class="lockup" style="background: var(--purple-deep); border-color: transparent;">
+        <div class="mark" style="background: var(--orange-bright);"><div class="inner"></div></div>
+        <div class="word" style="color: #fff;">wonderelo</div>
+      </div>
+      <div class="lockup" style="background: var(--orange); border-color: transparent;">
+        <div class="mark" style="background: rgba(255,255,255,.15);"><div class="inner" style="background: #fff;"></div></div>
+        <div class="word" style="color: #fff;">wonderelo</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ───────── 2. Color ───────── -->
+  <section class="ds-section">
+    <span class="ds-eyebrow">02 · Color</span>
+    <h2>A palette of <em>paper, ink, and ember</em></h2>
+    <p class="intro">Three families: warm paper neutrals form the canvas, deep purple is the voice (for type and dark sections), and orange is the spark — used sparingly for one thing: drawing your eye to the next move.</p>
+
+    <h3 class="ds-sub">Primary</h3>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="chip" style="background: var(--purple);"><div class="label" style="color: #fff;">Purple</div></div>
+        <div class="meta"><div><div class="name">Purple</div><span class="var">--purple</span></div><div class="hex">#5C2277</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--purple-deep);"><div class="label" style="color: #fff;">Purple Deep</div></div>
+        <div class="meta"><div><div class="name">Purple Deep</div><span class="var">--purple-deep</span></div><div class="hex">#4B1D51</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--purple-ink);"><div class="label" style="color: #fff;">Purple Ink</div></div>
+        <div class="meta"><div><div class="name">Purple Ink</div><span class="var">--purple-ink</span></div><div class="hex">#2D1133</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--orange);"><div class="label" style="color: #fff;">Orange</div></div>
+        <div class="meta"><div><div class="name">Orange</div><span class="var">--orange</span></div><div class="hex">#DD531C</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--orange-bright);"><div class="label" style="color: #fff;">Orange Bright</div></div>
+        <div class="meta"><div><div class="name">Orange Bright</div><span class="var">--orange-bright</span></div><div class="hex">#FF6A2A</div></div>
+      </div>
+    </div>
+
+    <h3 class="ds-sub">Neutrals — paper &amp; ink</h3>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="chip" style="background: var(--paper);"><div class="label" style="color: var(--purple-deep);">Paper</div></div>
+        <div class="meta"><div><div class="name">Paper</div><span class="var">--paper</span></div><div class="hex">#FBF6EC</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--paper-deep);"><div class="label" style="color: var(--purple-deep);">Paper Deep</div></div>
+        <div class="meta"><div><div class="name">Paper Deep</div><span class="var">--paper-deep</span></div><div class="hex">#F1E9D8</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--cream);"><div class="label" style="color: var(--purple-deep);">Cream</div></div>
+        <div class="meta"><div><div class="name">Cream</div><span class="var">--cream</span></div><div class="hex">#F7F1E6</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--ink);"><div class="label" style="color: #fff;">Ink</div></div>
+        <div class="meta"><div><div class="name">Ink</div><span class="var">--ink</span></div><div class="hex">#3A2E34</div></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: #fff; border-right: 1px solid var(--hairline);"><div class="label" style="color: var(--purple-deep);">White</div></div>
+        <div class="meta"><div><div class="name">White</div><span class="var">#fff</span></div><div class="hex">#FFFFFF</div></div>
+      </div>
+    </div>
+
+    <h3 class="ds-sub">Usage rules</h3>
+    <div class="usage-list">
+      <div class="rule">
+        <div class="title">Purple Deep is the voice</div>
+        <p>Almost all headlines, body type and primary nav sit in Purple Deep. Reserve pure black for nothing.</p>
+        <div class="swatch-row"><span style="background: var(--purple-deep);"></span><span style="background: var(--purple);"></span></div>
+      </div>
+      <div class="rule">
+        <div class="title">Orange is the spark</div>
+        <p>One orange element per viewport — the next CTA, an italic accent word, a key icon. Never a paragraph.</p>
+        <div class="swatch-row"><span style="background: var(--orange);"></span><span style="background: var(--orange-bright);"></span></div>
+      </div>
+      <div class="rule">
+        <div class="title">Paper, not white</div>
+        <p>Default surface is Paper. White is reserved for floating tags and overlay cards that need to lift off the page.</p>
+        <div class="swatch-row"><span style="background: var(--paper);"></span><span style="background: var(--paper-deep);"></span><span style="background: var(--cream);"></span></div>
+      </div>
+    </div>
+
+    <h3 class="ds-sub">Section backdrops</h3>
+    <div class="backdrop-grid">
+      <div class="backdrop paper">
+        <span class="deco-d1"></span><span class="deco-d2"></span>
+        <div class="name">Paper<small>most marketing sections</small></div>
+      </div>
+      <div class="backdrop paper-deep">
+        <span class="deco-d1"></span><span class="deco-d2"></span>
+        <div class="name">Paper Deep<small>The Reality, How it works</small></div>
+      </div>
+      <div class="backdrop cream">
+        <span class="deco-d1"></span>
+        <div class="name">Cream<small>quiet rests, banners</small></div>
+      </div>
+      <div class="backdrop purple">
+        <span class="deco-d1"></span><span class="deco-d2"></span>
+        <div class="big-italic">connect</div>
+        <div class="name" style="color: #fff;">Purple Deep<small style="color: rgba(255,255,255,.6);">Who is it for, footer</small></div>
+      </div>
+      <div class="backdrop purple-ink">
+        <span class="deco-d1"></span><span class="deco-d2"></span>
+        <div class="big-italic">moments</div>
+        <div class="name" style="color: #fff;">Purple Ink<small style="color: rgba(255,255,255,.6);">heaviest dark, app shell</small></div>
+      </div>
+      <div class="backdrop orange">
+        <span class="deco-d1"></span><span class="deco-d2"></span>
+        <div class="name" style="color: #fff;">Orange<small style="color: rgba(255,255,255,.7);">featured tile, single hero</small></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ───────── 3. Typography ───────── -->
+  <section class="ds-section">
+    <span class="ds-eyebrow">03 · Typography</span>
+    <h2>Three voices in <em>conversation</em></h2>
+    <p class="intro">Bricolage Grotesque carries the message — confident, modern, slightly squared. Instrument Serif italic adds emotion to one word per line. Space Grotesk works the body. Caveat is reserved for editorial flourish, never UI.</p>
+
+    <div class="type-stack">
+      <div class="label">Display<span class="meta">Bricolage Grotesque · 800 · 88/0.95 · -0.04em</span></div>
+      <div class="type-display">Meet people<br/>worth <em>knowing.</em></div>
+    </div>
+    <div class="type-stack">
+      <div class="label">H1<span class="meta">Bricolage Grotesque · 800 · 56/1.0 · -0.035em</span></div>
+      <div class="type-h1">Every gathering is better when <em style="font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--orange);">people connect</em></div>
+    </div>
+    <div class="type-stack">
+      <div class="label">H2<span class="meta">Bricolage Grotesque · 800 · 36/1.05 · -0.025em</span></div>
+      <div class="type-h2">Tailor each round to fit your event</div>
+    </div>
+    <div class="type-stack">
+      <div class="label">H3 / Card title<span class="meta">Bricolage Grotesque · 700 · 22/1.2 · -0.02em</span></div>
+      <div class="type-h3">Three icebreakers, one room.</div>
+    </div>
+    <div class="type-stack">
+      <div class="label">Italic accent<span class="meta">Instrument Serif · italic · 44px</span></div>
+      <div class="type-italic">— the brand's grace note —</div>
+    </div>
+    <div class="type-stack">
+      <div class="label">Eyebrow<span class="meta">Space Grotesk · 700 · 12px · 0.22em tracking · UPPER</span></div>
+      <div><span class="ds-eyebrow" style="color: var(--orange);">Who is it for</span></div>
+    </div>
+    <div class="type-stack">
+      <div class="label">Lede<span class="meta">Space Grotesk · 400 · 18/1.55</span></div>
+      <div class="type-lede">Wonderelo gets people talking — at conferences, weddings, retreats, and team off-sites — using short structured rounds anyone can join.</div>
+    </div>
+    <div class="type-stack">
+      <div class="label">Body<span class="meta">Space Grotesk · 400 · 15/1.55</span></div>
+      <div class="type-body">A short paragraph for card descriptions, supporting copy, and dense feature lists. We keep paragraphs short and the hierarchy obvious — this isn't a magazine, it's a marketing site that respects your time.</div>
+    </div>
+    <div class="type-stack">
+      <div class="label">Step / numeral<span class="meta">Instrument Serif · italic · 22px · orange</span></div>
+      <div class="step-label">Step 02</div>
+    </div>
+    <div class="type-stack">
+      <div class="label">Mono<span class="meta">SF Mono / system mono · 13px</span></div>
+      <div class="type-mono">— used for tokens, codes, anything literal</div>
+    </div>
+    <div class="type-stack" style="border-bottom: none;">
+      <div class="label">Hand<span class="meta">Caveat · 700 · 38px · editorial only</span></div>
+      <div class="type-hand">A handwritten cue for a poster moment.</div>
+    </div>
+  </section>
+
+
+  <!-- ───────── 4. Spacing & shape ───────── -->
+  <section class="ds-section">
+    <span class="ds-eyebrow">04 · Shape</span>
+    <h2>Radius, shadow, &amp; <em>edge</em></h2>
+    <p class="intro">Cards round generously (22–28px) so the page feels soft. Buttons round less (14px) so they read as decisive. Shadows are deep and purple-tinted — never neutral grey.</p>
+
+    <div class="token-row">
+      <div class="token-card">
+        <div class="preview" style="border-radius: var(--r-sm);"></div>
+        <div class="label"><span class="name">Radius / sm</span><span class="val">10px</span></div>
+      </div>
+      <div class="token-card">
+        <div class="preview" style="border-radius: var(--r-md);"></div>
+        <div class="label"><span class="name">Radius / md</span><span class="val">14px · buttons</span></div>
+      </div>
+      <div class="token-card">
+        <div class="preview" style="border-radius: var(--r-lg);"></div>
+        <div class="label"><span class="name">Radius / lg</span><span class="val">22px · cards</span></div>
+      </div>
+      <div class="token-card">
+        <div class="preview" style="border-radius: var(--r-xl);"></div>
+        <div class="label"><span class="name">Radius / xl</span><span class="val">28px · feature tiles</span></div>
+      </div>
+    </div>
+
+    <h3 class="ds-sub">Shadows</h3>
+    <div class="token-row">
+      <div class="token-card">
+        <div class="preview preview-shadow-soft" style="border-radius: 14px;"></div>
+        <div class="label"><span class="name">Shadow / soft</span><span class="val">0 8 24 rgba(76,25,77,.08)</span></div>
+      </div>
+      <div class="token-card">
+        <div class="preview preview-shadow" style="border-radius: 14px;"></div>
+        <div class="label"><span class="name">Shadow / card</span><span class="val">0 20 40 rgba(76,25,77,.18)</span></div>
+      </div>
+      <div class="token-card">
+        <div class="preview" style="border-radius: 14px; box-shadow: 0 8px 20px rgba(221,83,28,.30); background: #fff; border: none;"></div>
+        <div class="label"><span class="name">Shadow / cta</span><span class="val">0 8 20 rgba(221,83,28,.30)</span></div>
+      </div>
+      <div class="token-card">
+        <div class="preview" style="border: 1px solid var(--hairline-strong); border-radius: 14px;"></div>
+        <div class="label"><span class="name">Hairline</span><span class="val">1px rgba(76,25,77,.10–.18)</span></div>
+      </div>
+    </div>
+
+    <h3 class="ds-sub">Section spacing</h3>
+    <table class="spec-table">
+      <tr><th style="width: 30%;">Token</th><th style="width: 25%;">Value</th><th>Where</th></tr>
+      <tr><td class="tok">--space-section</td><td class="tok">120–140px</td><td class="usage">Top &amp; bottom padding of every marketing section.</td></tr>
+      <tr><td class="tok">--space-section-pad-x</td><td class="tok">60px</td><td class="usage">Side padding of marketing sections; collapses to 24–32 on mobile.</td></tr>
+      <tr><td class="tok">--container-max</td><td class="tok">1240px</td><td class="usage">Max content width inside a section.</td></tr>
+      <tr><td class="tok">--gap-card-grid</td><td class="tok">22px</td><td class="usage">Gap between cards in a 3-column row.</td></tr>
+      <tr><td class="tok">--gap-tight</td><td class="tok">10–12px</td><td class="usage">Inside lockups, button content, list items.</td></tr>
+    </table>
+  </section>
+
+
+  <!-- ───────── 5. Components ───────── -->
+  <section class="ds-section">
+    <span class="ds-eyebrow">05 · Components</span>
+    <h2>The <em>kit</em></h2>
+    <p class="intro">A small, opinionated set. Each piece appears at least three times across the homepage, so we treat them as system primitives — not one-off illustrations.</p>
+
+    <h3 class="ds-sub">Eyebrow + section title</h3>
+    <div style="background: var(--paper-deep); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 56px 48px; text-align: center; margin-bottom: 28px;">
+      <span class="ds-eyebrow">The reality</span>
+      <h2 style="margin: 14px 0 0; font-family: var(--font-display); font-weight: 800; font-size: 56px; line-height: 1.0; letter-spacing: -0.035em; color: var(--purple-deep); text-wrap: balance;">9 out of 10 people leave events <em style="font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--orange);">without making a connection</em></h2>
+      <p style="max-width: 560px; margin: 22px auto 0; font-size: 17px; line-height: 1.55; color: var(--ink);">A short lede sits centered under the title with an Instrument Serif italic accent on the most important phrase.</p>
+    </div>
+
+    <h3 class="ds-sub">Buttons</h3>
+    <div class="btn-row" style="margin-bottom: 16px;">
+      <button class="btn btn-primary">Start hosting<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
+      <button class="btn btn-secondary">Watch demo</button>
+      <button class="btn btn-ghost">See plans</button>
+      <a class="btn btn-link">How it works <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></a>
+    </div>
+    <table class="spec-table" style="margin-top: 8px;">
+      <tr><th>Variant</th><th>Background</th><th>Use</th></tr>
+      <tr><td class="tok">.btn-primary</td><td class="tok">var(--orange) · #fff</td><td class="usage">The single most important action on the screen.</td></tr>
+      <tr><td class="tok">.btn-secondary</td><td class="tok">var(--purple-deep) · #fff</td><td class="usage">Companion to primary on hero / CTA blocks.</td></tr>
+      <tr><td class="tok">.btn-ghost</td><td class="tok">transparent · purple-deep</td><td class="usage">Tertiary actions, nav, &amp; toolbars.</td></tr>
+      <tr><td class="tok">.btn-link</td><td class="tok">underline · purple-deep</td><td class="usage">Inline reading flow ("learn more", "read story").</td></tr>
+    </table>
+
+    <h3 class="ds-sub">Cards</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="img-slot">illustration</div>
+        <h4>Paper card</h4>
+        <p>Default card. Cream paper surface, hairline border, generous radius. Used in 3-up grids — features, problems, testimonials.</p>
+      </div>
+      <div class="card card-dark">
+        <div class="img-slot">illustration</div>
+        <h4>Dark card</h4>
+        <p>Used inside Purple Deep sections. Translucent surface, faint white border. Numbered with an Instrument Serif italic numeral.</p>
+      </div>
+      <div class="card card-orange" style="position: relative;">
+        <div class="number-tag">01</div>
+        <h4 style="font-size: 28px;">Featured tile</h4>
+        <p>The hero card in a bento. Wears Orange so it owns the page. One per layout, never two.</p>
+        <div style="position: absolute; right: -24px; top: -24px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,.08);"></div>
+      </div>
+    </div>
+
+    <h3 class="ds-sub">Floating tags</h3>
+    <p style="font-size: 14px; line-height: 1.55; color: var(--ink); max-width: 560px; margin: -8px 0 18px;">Small "stat tiles" that float over imagery — the Wonderelo equivalent of a lower-third. Two flavours: paper (over imagery) and dark (over light backgrounds).</p>
+    <div style="display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 16px;">
+      <div class="float-tag">
+        <div class="ico">W</div>
+        <div><div class="title">Wonderimage™</div><div class="sub">AI room photography</div></div>
+      </div>
+      <div class="float-tag float-tag-dark">
+        <div class="ico">⏱</div>
+        <div><div class="title">5 min rounds</div><div class="sub">tunable per event</div></div>
+      </div>
+      <div class="float-tag">
+        <div class="ico" style="background: var(--purple-deep);">★</div>
+        <div><div class="title">4.9 average</div><div class="sub">across 240+ events</div></div>
+      </div>
+    </div>
+
+    <h3 class="ds-sub">Numbered nodes &amp; rails</h3>
+    <p style="font-size: 14px; line-height: 1.55; color: var(--ink); max-width: 560px; margin: -8px 0 18px;">For "How it works" timelines: a vertical orange dashed rail with cream-filled numbered circles that bridge image &amp; copy halves.</p>
+    <div style="background: var(--paper-deep); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 36px; display: flex; gap: 24px; align-items: center;">
+      <div class="node">1</div>
+      <div style="width: 60px; height: 2px; background: repeating-linear-gradient(90deg, var(--orange) 0 8px, transparent 8px 14px);"></div>
+      <div class="node">2</div>
+      <div style="width: 60px; height: 2px; background: repeating-linear-gradient(90deg, var(--orange) 0 8px, transparent 8px 14px);"></div>
+      <div class="node">3</div>
+      <div style="width: 60px; height: 2px; background: repeating-linear-gradient(90deg, var(--orange) 0 8px, transparent 8px 14px);"></div>
+      <div class="node">4</div>
+    </div>
+
+    <h3 class="ds-sub">Avatars &amp; star rating</h3>
+    <div style="display: flex; gap: 22px; align-items: center; flex-wrap: wrap;">
+      <div class="avatar" style="background: var(--orange);">MK</div>
+      <div class="avatar" style="background: var(--purple-deep);">JS</div>
+      <div class="avatar" style="background: #2A6FDB;">AL</div>
+      <div class="avatar" style="background: #1F8A5B;">RH</div>
+      <div style="height: 32px; width: 1px; background: var(--hairline);"></div>
+      <div class="stars">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6l1.94 4.06L14.4 6.3l-3.32 3.06L11.94 14 8 11.66 4.06 14l.86-4.64L1.6 6.3l4.46-.64z"/></svg>
+      </div>
+      <span style="font-size: 14px; color: var(--ink); opacity: .7;">5 stars · orange · used on testimonial cards</span>
+    </div>
+
+    <h3 class="ds-sub">Iconography — line, 2.4 stroke</h3>
+    <div style="display: flex; gap: 24px; align-items: center; padding: 24px; background: var(--paper-deep); border: 1px solid var(--hairline); border-radius: var(--r-lg);">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple-deep)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple-deep)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple-deep)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple-deep)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple-deep)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--purple-deep)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9 17 14 19 22 12 18 5 22 7 14 2 9 9 9"/></svg>
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--purple); margin-left: auto;">2.4px stroke · round caps · purple-deep</span>
+    </div>
+  </section>
+
+
+  <!-- ───────── 6. Decorative ───────── -->
+  <section class="ds-section">
+    <span class="ds-eyebrow">06 · Decorative</span>
+    <h2>The <em>diamonds</em></h2>
+    <p class="intro">A 45° rotated square is Wonderelo's only proprietary mark beyond type. It punctuates corners, separates list items, and forms the wordmark's mark. Always orange or purple-deep, never grey, never inside body copy.</p>
+
+    <h3 class="ds-sub">Sizes &amp; colors</h3>
+    <div class="diamond-row">
+      <span class="diamond orange" style="width: 8px; height: 8px;"></span>
+      <span class="diamond orange" style="width: 12px; height: 12px;"></span>
+      <span class="diamond orange" style="width: 18px; height: 18px;"></span>
+      <span class="diamond orange" style="width: 24px; height: 24px;"></span>
+      <span style="width: 12px;"></span>
+      <span class="diamond purple" style="width: 8px; height: 8px;"></span>
+      <span class="diamond purple" style="width: 12px; height: 12px;"></span>
+      <span class="diamond purple" style="width: 18px; height: 18px;"></span>
+      <span class="diamond purple" style="width: 24px; height: 24px;"></span>
+      <span style="margin-left: auto; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--purple);">8 · 12 · 18 · 24 px</span>
+    </div>
+
+    <h3 class="ds-sub">Pattern band</h3>
+    <p style="font-size: 14px; line-height: 1.55; color: var(--ink); max-width: 560px; margin: -8px 0 18px;">Used as a top rule for decorative section breakers — e.g. above the "As seen in" press strip.</p>
+    <div class="pattern-band">
+      <span class="diamond orange"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond orange"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond orange"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond orange"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond orange"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond purple"></span>
+      <span class="diamond orange"></span>
+    </div>
+
+    <h3 class="ds-sub">Section corner accents</h3>
+    <p style="font-size: 14px; line-height: 1.55; color: var(--ink); max-width: 560px; margin: -8px 0 18px;">Four diamonds, scattered into the corners of long sections — at ~5–14% from each edge, sized 14–22px, alternating orange &amp; purple. The pattern is asymmetric on purpose.</p>
+    <div style="position: relative; height: 280px; background: var(--paper-deep); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden;">
+      <span class="diamond orange" style="position: absolute; left: 8%; top: 36px; width: 18px; height: 18px;"></span>
+      <span class="diamond purple" style="position: absolute; right: 10%; top: 56px; width: 14px; height: 14px;"></span>
+      <span class="diamond purple" style="position: absolute; left: 14%; bottom: 48px; width: 22px; height: 22px;"></span>
+      <span class="diamond orange" style="position: absolute; right: 6%; bottom: 28px; width: 16px; height: 16px;"></span>
+      <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-style: italic; font-size: 28px; color: var(--purple-deep); opacity: .7;">— section content lives here —</div>
+    </div>
+
+    <h3 class="ds-sub">Big italic backdrop word</h3>
+    <p style="font-size: 14px; line-height: 1.55; color: var(--ink); max-width: 560px; margin: -8px 0 18px;">On Purple Deep sections, a single oversized Instrument Serif italic word bleeds off the corner at 4–8% white opacity. One word, one section.</p>
+    <div style="position: relative; height: 220px; background: var(--purple-deep); border-radius: var(--r-lg); overflow: hidden; padding: 36px;">
+      <div style="position: absolute; left: -2%; bottom: -60px; font-family: var(--font-serif); font-style: italic; font-size: 220px; color: rgba(255,255,255,.06); line-height: 1;">connect</div>
+      <div style="position: relative; color: #fff;">
+        <span class="ds-eyebrow" style="color: var(--orange-bright);">Who is it for</span>
+        <h3 style="margin: 14px 0 0; font-family: var(--font-display); font-weight: 800; font-size: 36px; line-height: 1.05; letter-spacing: -0.025em;">Every gathering is better when <em style="font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--orange-bright);">people connect</em></h3>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ───────── 7. Voice ───────── -->
+  <section class="ds-section">
+    <span class="ds-eyebrow">07 · Voice</span>
+    <h2>How we <em>talk</em></h2>
+    <p class="intro">Wonderelo's copy is warm, low-jargon, and confidently short. It addresses the host (not the guest), and it never apologizes for being lighthearted about a serious problem: people leaving events without a single conversation.</p>
+
+    <div class="voice-grid">
+      <div class="voice-card do">
+        <div class="head">— do</div>
+        <ul>
+          <li>Meet people worth knowing.</li>
+          <li>9 out of 10 people leave events without a single connection.</li>
+          <li>Tailor each round to fit your event.</li>
+          <li>Three icebreakers, one room, zero awkwardness.</li>
+        </ul>
+      </div>
+      <div class="voice-card dont">
+        <div class="head">— don't</div>
+        <ul>
+          <li>Empower attendees to forge meaningful connections.</li>
+          <li>Leverage our AI-powered networking platform.</li>
+          <li>The premier solution for enterprise event engagement.</li>
+          <li>Unlock authentic moments at scale.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer-rule">
+    <span><span class="dot"></span>Wonderelo · Design System v1.0</span>
+    <span>Source: Homepage Redesign · 2026</span>
+  </footer>
+
+</main>
+
+</body>
+</html>

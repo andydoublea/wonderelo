@@ -1,0 +1,237 @@
+/* ─────────────────────────────────────────────────────────────
+   Wonderelo — new brand layer (Claude Design redesign)
+
+   Source of truth: design bundle `wonderelo-public.css` (:root --w-* block).
+   Loaded AFTER index.css + visual-styles.css (see main.tsx) so it wins
+   within its scope.
+
+   ▸ OPT-IN: nothing here changes the app until an ancestor carries the
+     `.wonderelo` class. Admin (`/admin/*`, rendered under <AdminRoute>) never
+     gets that class, so the admin panel keeps its current design untouched.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Brand palette — verbatim from the design bundle */
+  --w-purple:        #5C2277;
+  --w-purple-deep:   #4b1d51;
+  --w-purple-ink:    #2d1133;
+  --w-orange:        #dd531c;
+  --w-orange-bright: #ff6a2a;
+  --w-cream:         #f7f1e6;
+  --w-paper:         #fbf6ec;
+  --w-paper-deep:    #f1e9d8;
+  --w-ink:           #3a2e34;
+
+  /* State tokens introduced by System States (v05) */
+  --w-destructive:   #c0392b;
+  --w-success:       #1f8a4d;
+
+  /* Typography */
+  --w-font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --w-font-serif:   "Instrument Serif", Georgia, serif;
+  --w-font-body:    "Space Grotesk", system-ui, sans-serif;
+  --w-font-hand:    "Caveat", cursive;
+  --w-font-mono:    ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Surface + radius */
+  --w-hairline:        rgba(76, 25, 77, 0.10);
+  --w-hairline-strong: rgba(76, 25, 77, 0.18);
+  --w-shadow-card:     0 20px 40px rgba(76, 25, 77, 0.18);
+  --w-shadow-soft:     0 8px 24px rgba(76, 25, 77, 0.08);
+  --w-shadow-cta:      0 8px 20px rgba(221, 83, 28, 0.30);
+  --w-r-sm: 10px;
+  --w-r-md: 14px;
+  --w-r-lg: 22px;
+  --w-r-xl: 28px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Brand scope — re-route the app's shadcn tokens to the new brand.
+   Tailwind v4 maps `--color-*` → `var(--<token>)`, so overriding the base
+   token inside `.wonderelo` is enough for `bg-primary`, `text-foreground`,
+   `border-border`, etc. to pick up the brand within this subtree.
+   ───────────────────────────────────────────────────────────── */
+.wonderelo {
+  --background:            var(--w-paper);
+  --foreground:            var(--w-ink);
+  --card:                  var(--w-paper);
+  --card-foreground:       var(--w-ink);
+  --popover:               var(--w-paper);
+  --popover-foreground:    var(--w-ink);
+  --primary:               var(--w-orange);
+  --primary-foreground:    #ffffff;
+  --secondary:             var(--w-purple-deep);
+  --secondary-foreground:  #ffffff;
+  --muted:                 var(--w-cream);
+  --muted-foreground:      var(--w-purple);
+  --accent:                var(--w-cream);
+  --accent-foreground:     var(--w-purple-deep);
+  --destructive:           var(--w-destructive);
+  --destructive-foreground:#ffffff;
+  --border:                var(--w-hairline);
+  --input:                 var(--w-hairline-strong);
+  --input-background:      #ffffff;
+  --ring:                  var(--w-orange);
+  --radius:                var(--w-r-md);
+
+  background: var(--w-paper);
+  color: var(--w-ink);
+  font-family: var(--w-font-body);
+}
+
+/* Page background — the design puts the paper/cream bg on <body>, so it fills the
+   whole viewport (top + bottom included). We were putting it on the inner .ev-page
+   wrapper, which doesn't cover the full height, so the legacy #faf8f3 <html>/<body>
+   showed through top and bottom. Re-assert the brand page bg on the real document
+   whenever a `.wonderelo` screen is mounted (beats the vs-jasper FOUC bg). */
+html:has(.wonderelo) {
+  background: var(--w-paper) !important;
+}
+html:has(.wonderelo) body {
+  background: transparent !important;
+}
+@media (min-width: 640px) {
+  html:has(.wonderelo) {
+    /* Flat cream — the design's subtle radial glow here was only desktop framing and
+       read as a visible colour break across the page; flat keeps it uniform. */
+    background: var(--w-cream) !important;
+  }
+}
+
+/* Signature type move — italic serif accent in orange. Maps to the design's
+   `.w-italic` and to the <Italic> primitive. */
+.wonderelo .w-italic {
+  font-family: var(--w-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--w-orange);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Legacy-skin neutraliser.
+
+   The app wears a global `vs-*` skin (visual-styles.css, class on <html>) that
+   styles base elements with `html.vs-<id> <el> { … !important }`. Those rules
+   out-specify the brand's own class rules and leak into the brand island.
+   Re-assert the brand for headings inside `.wonderelo` at higher specificity so
+   the design wins. Keep this here (brand-global) — it applies to every ported
+   screen. The orange italic accent must still beat the heading colour.
+   ───────────────────────────────────────────────────────────── */
+html[class*="vs-"] .wonderelo h1,
+html[class*="vs-"] .wonderelo h2,
+html[class*="vs-"] .wonderelo h3,
+html[class*="vs-"] .wonderelo h4,
+html[class*="vs-"] .wonderelo h5,
+html[class*="vs-"] .wonderelo h6 {
+  font-family: var(--w-font-display) !important;
+}
+html[class*="vs-"] .wonderelo .w-italic,
+html[class*="vs-"] .wonderelo em.w-italic,
+html[class*="vs-"] .wonderelo .ev-title em {
+  font-family: var(--w-font-serif) !important;
+  font-weight: 400 !important;
+  color: var(--w-orange) !important;
+}
+
+/* vs-jasper styles the base <footer> element with `background-color: … !important`
+   (specificity 0,1,1), which out-specifies the design's `.cr-footer` (0,1,0) and washes
+   the dark footer to vanilla. Re-assert the design's dark footer inside the brand island.
+   Add more base-element leak fixes (nav/input/section/etc.) here if future ported pages
+   surface them — same pattern as the heading neutraliser above. */
+html[class*="vs-"] .wonderelo .cr-footer,
+html[class*="vs-"] .wonderelo .pd-footer,
+html[class*="vs-"] .wonderelo .ac-footer,
+html[class*="vs-"] .wonderelo .pm-footer {
+  background: var(--w-purple-ink) !important;
+}
+
+/* vs-jasper's base h1..h6 rules force their own font-size / weight / colour with
+   !important and out-specify the design's heading CLASSES (e.g. .ac-card-title,
+   .pm-h1). Re-assert each design heading that renders as a real <h1..h6> so the
+   design values win. Extend this list when a new ported heading leaks. */
+html[class*="vs-"] .wonderelo .ac-title { font-size: 30px !important; font-weight: 800 !important; line-height: 1.05 !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .ac-card-title { font-size: 16px !important; font-weight: 800 !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .ab-empty h3 { font-size: 18px !important; font-weight: 800 !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .ac-title em { color: var(--w-orange) !important; }
+html[class*="vs-"] .wonderelo .pm-h1 { font-size: 27px !important; font-weight: 800 !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .pm-h1.is-sent { font-size: 22px !important; }
+
+/* ─── vs-jasper base-element leaks: input / textarea / select ───
+   vs-jasper forces `input,select,textarea { background:white; border-color; border-radius }`
+   with !important, which washes the design fields (a white pill inside the vanilla `.ac-input`
+   box; wrong border/radius on `.cr-input`). Reset every field inside the island to transparent,
+   then re-assert the two classes that ARE the styled field themselves. */
+html[class*="vs-"] .wonderelo input,
+html[class*="vs-"] .wonderelo textarea,
+html[class*="vs-"] .wonderelo select {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  border-radius: inherit !important;
+}
+html[class*="vs-"] .wonderelo input:focus,
+html[class*="vs-"] .wonderelo textarea:focus,
+html[class*="vs-"] .wonderelo select:focus {
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+html[class*="vs-"] .wonderelo .cr-input {
+  background: #fff !important;
+  border: 1px solid var(--w-hairline-strong) !important;
+  border-radius: 10px !important;
+}
+html[class*="vs-"] .wonderelo .pm-textarea {
+  background: #fff !important;
+  border: 1.5px solid var(--w-hairline-strong) !important;
+  border-radius: 12px !important;
+}
+
+/* Footer tagline/copy are <p> → vs-jasper's `p:not([data-slot]) { color !important }` washes
+   them to dark body text, invisible on the dark footer. Re-assert the design's light footer text. */
+html[class*="vs-"] .wonderelo .cr-footer .tagline,
+html[class*="vs-"] .wonderelo .pd-footer .tagline,
+html[class*="vs-"] .wonderelo .ac-footer .tagline,
+html[class*="vs-"] .wonderelo .pm-footer .tagline { color: rgba(255,255,255,.85) !important; }
+html[class*="vs-"] .wonderelo .cr-footer .copy,
+html[class*="vs-"] .wonderelo .pd-footer .copy,
+html[class*="vs-"] .wonderelo .ac-footer .copy,
+html[class*="vs-"] .wonderelo .pm-footer .copy { color: rgba(255,255,255,.4) !important; }
+
+/* Nav avatar chip is a fixed 24px circle — keep the flex row from squishing it. */
+html[class*="vs-"] .wonderelo .av-mini { flex-shrink: 0 !important; }
+
+/* More redesign headings that render as real <h1/h2/h3> and get washed to vs-jasper's
+   serif / green-heading / weight-400. Re-assert each design heading. (Event-page headings
+   .ev-title / .ev-session h3 are already neutralised inline in wonderelo-event-page.css.)
+   Their <em> accents keep their own colour via `.w-italic` or a direct `… em` rule, which
+   out-ranks the inherited heading colour, so only the heading element needs re-asserting. */
+html[class*="vs-"] .wonderelo .cr-head h1 { font-size: 32px !important; font-weight: 800 !important; line-height: 1.05 !important; letter-spacing: -.025em !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .pd-hero-headline h1 { font-size: 25px !important; font-weight: 800 !important; line-height: 1.12 !important; letter-spacing: -.025em !important; color: #fff !important; }
+html[class*="vs-"] .wonderelo .pm-fe-headline { font-size: 21px !important; font-weight: 800 !important; line-height: 1.1 !important; letter-spacing: -.02em !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .ev-empty-title { font-size: 26px !important; font-weight: 800 !important; line-height: 1.1 !important; letter-spacing: -.025em !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .pd-empty-headline { font-size: 20px !important; font-weight: 700 !important; letter-spacing: -.02em !important; color: var(--w-purple-deep) !important; }
+
+/* Dark-card headings live on the purple .pm-focuscard / .pm-focusbox with white inline text.
+   vs-jasper's `h1 !important` (and the .pm-h1 purple neutraliser above) repaint them dark →
+   unreadable on the purple. Re-assert white + the design's per-card size. Their <em> accents
+   keep their own #ff8855 colour (vs-jasper doesn't touch <em>). */
+html[class*="vs-"] .wonderelo .pm-focuscard h1,
+html[class*="vs-"] .wonderelo .pm-focusbox h1 { color: #fff !important; font-weight: 800 !important; }
+html[class*="vs-"] .wonderelo .pm-focuscard h1 { font-size: 25px !important; }
+html[class*="vs-"] .wonderelo .pm-focusbox .pm-h1 { font-size: 23px !important; }
+html[class*="vs-"] .wonderelo .pm-focusbox h1:not(.pm-h1) { font-size: 28px !important; }
+
+/* vs-jasper's base `nav { background:vanilla; border-color:border-light }` washes the redesign
+   nav bar (slightly too bright, grey hairline instead of the purple one). Re-assert the design. */
+html[class*="vs-"] .wonderelo .pd-nav,
+html[class*="vs-"] .wonderelo .cr-nav,
+html[class*="vs-"] .wonderelo .ac-nav { background: rgba(251,246,236,.94) !important; border-color: var(--w-hairline) !important; }
+html[class*="vs-"] .wonderelo .ev-nav { background: var(--w-paper) !important; border-color: var(--w-hairline) !important; }
+
+/* Body <p> text: vs-jasper's `p:not([data-slot])` (specificity 0,2,1 + !important) washes even
+   multi-class design paragraphs to its neutral #3d3d3d. Re-assert the design's warm-ink body
+   colours for the paragraphs that leak (footer .tagline/.copy are handled above; .cev .sent /
+   .email keep their colour on their own 0,3,0 selectors). */
+html[class*="vs-"] .wonderelo .ac-sub { color: rgba(43,24,16,.66) !important; }
+html[class*="vs-"] .wonderelo .cr-head .lede,
+html[class*="vs-"] .wonderelo .cr-magic-sent .lede { color: var(--w-ink) !important; }
+html[class*="vs-"] .wonderelo .pm-muted { color: var(--w-ink) !important; }

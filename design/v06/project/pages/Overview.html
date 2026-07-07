@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<!--
+  Pages overview board — Figma-style map of every page and screen state.
+  · Real sizes: desktop pages render at their true width next to mobile ones.
+  · Pages flow left→right; vertical stacking = versions of the same page
+    (mobile version, current-build screenshot slot, legacy v1).
+  · Click a card label (or double-click a card) → fullscreen live preview.
+  · "Links" toggle overlays the navigation graph, labelled by button.
+  · "Current build" cards are drop zones — drag in screenshots of the live
+    app to compare current state vs new design (persisted).
+  Lives at project root so <image-slot> sidecar persistence works.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Pages map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(circle at 18% 12%, rgba(76,25,77,.05), transparent 38%),
+      radial-gradient(circle at 84% 86%, rgba(221,83,28,.05), transparent 40%),
+      var(--w-cream);
+    font-family: var(--w-font-body);
+    color: var(--w-ink);
+    user-select: none;
+  }
+
+  #stage { position: fixed; inset: 0; overflow: hidden; cursor: grab; }
+  #stage.is-panning { cursor: grabbing; }
+  #world { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+  #links { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; z-index: 5; }
+  #links.is-off { display: none; }
+  #grid {
+    position: absolute; top: -8000px; left: -8000px; width: 60000px; height: 60000px;
+    background-image: radial-gradient(rgba(76,25,77,.10) 2px, transparent 2px);
+    background-size: 120px 120px; z-index: 0; pointer-events: none;
+  }
+
+  /* ───── Node frames (real size) ───── */
+  .node {
+    position: absolute; z-index: 2;
+    border-radius: 6px; background: var(--w-paper);
+    outline: 2px solid rgba(76,25,77,.22);
+    box-shadow: 0 30px 80px rgba(76,25,77,.10);
+    overflow: hidden;
+  }
+  .node.is-target { outline: 6px solid var(--w-orange); }
+  .node.is-slot { background: transparent; outline: none; box-shadow: none; overflow: visible; }
+  .node iframe { position: absolute; top: 0; left: 0; border: 0; pointer-events: none; background: #fff; }
+  .node .ld { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--w-font-mono); font-size: 28px; color: var(--w-ink); opacity: .35; letter-spacing: .14em; text-transform: uppercase; }
+
+  /* ───── Counter-scaled labels (constant screen size) ───── */
+  .lwrap { position: absolute; z-index: 8; width: 0; height: 0; }
+  .lstack {
+    position: absolute; left: 0; bottom: 0;
+    transform-origin: 0 100%;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  }
+  .lpill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.95);
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 999px; padding: 6px 13px;
+    box-shadow: 0 6px 18px rgba(76,25,77,.16);
+    cursor: pointer; white-space: nowrap;
+  }
+  .lpill:hover { border-color: var(--w-orange); }
+  .lpill .dot { width: 9px; height: 9px; transform: rotate(45deg); flex-shrink: 0; }
+  .lpill .t { font-family: var(--w-font-display); font-weight: 700; font-size: 14px; letter-spacing: -.01em; color: var(--w-purple-deep); }
+  .lpill .s { font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .04em; color: var(--w-ink); opacity: .55; }
+  .lpill .tag {
+    font-family: var(--w-font-mono); font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    padding: 2px 7px; border-radius: 5px; text-transform: uppercase;
+  }
+  .tag.desktop { background: rgba(76,25,77,.10); color: var(--w-purple-deep); }
+  .tag.mobile  { background: rgba(221,83,28,.12); color: var(--w-orange); }
+  .tag.current { background: #2b2b2b; color: #ffd9a8; }
+
+  /* Dev-toggle bar — surfaced under the page-name chip for pages that have one */
+  .tbar { display: flex; flex-wrap: wrap; gap: 5px; padding-left: 2px; }
+  .tgrp {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: rgba(255,255,255,.95); border: 1px solid var(--w-hairline-strong);
+    border-radius: 999px; padding: 3px 4px 3px 9px;
+    box-shadow: 0 4px 12px rgba(76,25,77,.12); white-space: nowrap;
+  }
+  .tgrp .gl { font-family: var(--w-font-mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--w-ink); opacity: .5; margin-right: 2px; }
+  .tgrp button {
+    border: none; background: transparent; cursor: pointer;
+    font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .03em;
+    padding: 4px 9px; border-radius: 999px; color: var(--w-ink); opacity: .6;
+  }
+  .tgrp button.is-active { background: var(--w-purple-deep); color: #fff; opacity: 1; }
+  .devbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #2b2b2b; color: #ffd9a8; border: 1px dashed rgba(255,217,168,.5);
+    border-radius: 999px; padding: 5px 12px; cursor: pointer;
+    font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .03em;
+    box-shadow: 0 4px 12px rgba(76,25,77,.12); white-space: nowrap;
+  }
+  .devbtn:hover { background: #383838; }
+
+  .gwrap { position: absolute; z-index: 7; width: 0; height: 0; }
+  .gpill { position: absolute; left: 0; bottom: 0; transform-origin: 0 100%; white-space: nowrap; }
+  .gpill .k { display:block; font-family: var(--w-font-mono); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--w-orange); font-weight: 700; }
+  .gpill .t { display:block; font-family: var(--w-font-display); font-weight: 800; font-size: 34px; letter-spacing: -.02em; color: var(--w-purple-deep); line-height: 1.05; }
+  .gpill .t em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+
+  .ewrap { position: absolute; z-index: 9; width: 0; height: 0; pointer-events: none; }
+  .epill {
+    position: absolute; left: 0; top: 0; transform-origin: 0 0;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    padding: 6px 13px; border-radius: 999px; white-space: nowrap;
+    box-shadow: 0 6px 16px rgba(76,25,77,.3);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .epill .b { width: 6px; height: 6px; background: var(--w-orange-bright); transform: rotate(45deg); flex-shrink: 0; }
+  #elayer.is-off { display: none; }
+
+  /* ───── Focus overlay ───── */
+  #focus { position: fixed; inset: 0; z-index: 100; background: rgba(42,21,56,.72); backdrop-filter: blur(6px); display: none; }
+  #focus.is-open { display: flex; flex-direction: column; align-items: center; padding: 22px; }
+  #focus .f-head {
+    width: min(94vw, 1340px); display: flex; align-items: center; gap: 12px;
+    padding: 0 4px 12px;
+  }
+  #focus .f-title { font-family: var(--w-font-display); font-weight: 700; font-size: 18px; color: #fff; }
+  #focus .f-sub { font-family: var(--w-font-mono); font-size: 11px; color: rgba(255,255,255,.6); }
+  #focus .f-close {
+    margin-left: auto; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.1);
+    color: #fff; cursor: pointer; font-size: 16px; line-height: 1;
+  }
+  #focus .f-close:hover { background: rgba(255,255,255,.22); }
+  #focus .f-body { flex: 1; min-height: 0; display: flex; justify-content: center; width: 100%; }
+  #focus iframe { border: 0; border-radius: 14px; background: #fff; height: 100%; box-shadow: 0 40px 120px rgba(0,0,0,.45); }
+
+  /* ───── Toolbar + title ───── */
+  #bar {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    z-index: 50; display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(10px);
+    border: 1px solid var(--w-hairline-strong); border-radius: 14px;
+    padding: 7px 8px; box-shadow: 0 14px 38px rgba(76,25,77,.18);
+  }
+  #bar button {
+    border: none; background: transparent; cursor: pointer;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    color: var(--w-purple-deep); padding: 8px 11px; border-radius: 9px;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  #bar button:hover { background: var(--w-cream); }
+  #bar .sep { width: 1px; height: 22px; background: var(--w-hairline); margin: 0 3px; }
+  #bar .z { font-family: var(--w-font-mono); font-size: 12px; min-width: 46px; text-align: center; opacity: .7; }
+  #bar .toggle {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 7px 13px 7px 11px; border-radius: 999px;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+  }
+  #bar .toggle.is-on { background: var(--w-purple-deep); color: #fff; border-color: var(--w-purple-deep); }
+  #bar .toggle .sw { width: 30px; height: 17px; border-radius: 999px; background: var(--w-hairline-strong); position: relative; transition: background .15s; flex-shrink: 0; }
+  #bar .toggle.is-on .sw { background: var(--w-orange-bright); }
+  #bar .toggle .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; transition: transform .15s; }
+  #bar .toggle.is-on .sw::after { transform: translateX(13px); }
+
+  #titlecard {
+    position: fixed; left: 22px; top: 20px; z-index: 50; max-width: 320px;
+    background: rgba(255,255,255,.88); backdrop-filter: blur(8px);
+    border: 1px solid var(--w-hairline-strong); border-radius: 16px;
+    padding: 15px 17px;
+    box-shadow: 0 14px 38px rgba(76,25,77,.12);
+  }
+  #titlecard .eyebrow { font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--w-orange); font-weight: 700; }
+  #titlecard h1 { margin: 7px 0 0; font-family: var(--w-font-display); font-weight: 800; font-size: 23px; letter-spacing: -.025em; color: var(--w-purple-deep); line-height: 1.04; }
+  #titlecard h1 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  #titlecard p { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--w-ink); opacity: .8; }
+  #titlecard .hint { margin-top: 9px; font-family: var(--w-font-mono); font-size: 10px; color: var(--w-ink); opacity: .55; letter-spacing: .02em; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="world">
+    <div id="grid"></div>
+    <svg id="links" class="is-off"></svg>
+    <div id="elayer" class="is-off"></div>
+  </div>
+</div>
+
+<div id="bar">
+  <button id="fit" title="Fit to screen">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg>
+    Fit
+  </button>
+  <div class="sep"></div>
+  <button id="zout" title="Zoom out">–</button>
+  <span class="z" id="zlabel">100%</span>
+  <button id="zin" title="Zoom in">+</button>
+  <div class="sep"></div>
+  <button class="toggle" id="linktoggle" title="Show navigation links">
+    <span class="sw"></span> Links
+  </button>
+</div>
+
+<div id="focus">
+  <div class="f-head">
+    <span class="f-title" id="f-title"></span>
+    <span class="f-sub" id="f-sub"></span>
+    <button class="f-close" id="f-close" title="Close (Esc)">✕</button>
+  </div>
+  <div class="f-body"><iframe id="f-frame"></iframe></div>
+</div>
+
+<script src="image-slot.js"></script>
+<script>
+(function(){
+  const P = '';
+  const HGAP = 170, VGAP = 150, BANDGAP = 620, TOP = 300, LEFT = 90;
+
+  const GROUPS = [
+    { key: 'Phase 01',    title: 'Marketing &amp; <em>public</em>' },
+    { key: 'Journey',     title: 'Participant <em>journey</em>' },
+    { key: 'Phase 02',    title: 'Sign <em>in</em>' },
+    { key: 'Phase 02',    title: 'Organizer <em>sign up</em>' },
+    { key: 'Phase 03+04', title: 'Organizer <em>studio</em>' },
+  ];
+
+  const DASH = P+'Participant Dashboard.html';
+  const FLOW = P+'Participant Flow.html';
+  const ORG  = P+'Organizer Studio.html';
+  const MATCH = P+'Participant Matching.html';
+  const ACCT = P+'Participant Account.html';
+
+  const mob = (file, est) => ({ kind:'mobile', file, w:390, est, sub:'mobile', tag:'mobile', side:'left' });
+  const cur = (slotId, w, h) => ({ kind:'slot', slotId, w, h, sub:'current build', tag:'current' });
+  // Mobile version of an auth screen (full-bleed 432px page) — stacks below its desktop card.
+  const authMob = (only, est = 880) => ({ kind:'mobile', file: FLOW+'?only='+only, w:432, est, sub:'mobile', tag:'mobile' });
+  // Mobile version of an organizer-studio screen (full-bleed 432px page).
+  const orgMob = (only, est = 1900) => ({ kind:'mobile', file: ORG+'?only='+only, w:432, est, sub:'mobile', tag:'mobile' });
+
+  // Pages flow left→right; `children` stack below (versions of the page).
+  // Dev toggle for the mobile nav — opens the hamburger menu in the board.
+  const navMenuToggle = { label:'Menu', fn:'setNavMenu', options:[{l:'Closed',v:'closed'},{l:'Open',v:'open'}] };
+  const PAGES = [
+    // ── Marketing (desktop, real width + mobile version + current slot)
+    { id:'home',     file:P+'home/Homepage Desktop.html', title:'Homepage',  w:1440, est:9000, col:0, dot:'#dd531c', tag:'desktop',
+      children:[
+        Object.assign(mob(P+'home/Homepage Mobile.html', 7200), { sub:'mobile · original', toggles:[navMenuToggle] }),
+        Object.assign(mob(P+'home/Homepage Mobile v2.html', 7200), { sub:'mobile · v2 (from desktop)', toggles:[navMenuToggle] }),
+      ] },
+    { id:'pricing',  file:P+'Pricing.html',   title:'Pricing',   w:1280, est:4323, col:0, dot:'#dd531c', tag:'desktop',
+      children:[ Object.assign(mob(P+'Pricing.html', 7200), { toggles:[navMenuToggle] }), cur('cur-pricing', 1280, 760) ] },
+    { id:'story',    file:P+'Our Story.html', title:'Our Story', w:1280, est:5090, col:0, dot:'#dd531c', tag:'desktop',
+      children:[ Object.assign(mob(P+'Our Story.html', 7600), { toggles:[navMenuToggle] }), cur('cur-story', 1280, 760) ] },
+    { id:'blog',     file:P+'Blog.html',      title:'Blog',      w:1280, est:3419, col:0, dot:'#dd531c', tag:'desktop',
+      children:[ Object.assign(mob(P+'Blog.html', 6200), { toggles:[navMenuToggle] }), cur('cur-blog', 1280, 760) ] },
+    { id:'blogpost', file:P+'Blog Post.html', title:'Blog Post', w:1280, est:5195, col:0, dot:'#dd531c', tag:'desktop',
+      children:[ Object.assign(mob(P+'Blog Post.html', 7600), { toggles:[navMenuToggle] }), cur('cur-blogpost', 1280, 760) ] },
+    { id:'usecase',  file:P+'Use Case.html',  title:'Use Case',  w:1280, est:5293, col:0, dot:'#dd531c', tag:'desktop',
+      children:[ Object.assign(mob(P+'Use Case.html', 7800), { toggles:[navMenuToggle] }), cur('cur-usecase', 1280, 760) ] },
+    { id:'designsys', file:P+'Design System.html', title:'Design System', sub:'reference', w:1280, est:6000, col:0, dot:'#4c194d', tag:'desktop' },
+    // ── Participant journey — registration funnel merges straight into the dashboard row
+    { id:'event',     file:P+'Event Page.html', title:'Event Page', w:432, est:1950, col:1, dot:'#4c194d', tag:'mobile',
+      toggles:[
+        { label:'View as', fn:'setViewAs',     options:[{l:'Guest',v:'guest'},{l:'Andy',v:'signed'}] },
+        { label:'Rounds',  fn:'setRoundsState', options:[{l:'With',v:'with'},{l:'Empty',v:'empty'}] },
+      ],
+      children:[ cur('cur-event', 390, 800) ] },
+    { id:'cr1',       file:P+'Continue Registration.html?screen=contact', title:'Continue Registration', sub:'contact info', w:432, est:1090, col:1, dot:'#4c194d', tag:'mobile',
+      toggles:[
+        { label:'View as', fn:'setViewAs', options:[{l:'Guest',v:'guest'},{l:'Andy',v:'signed'}] },
+      ],
+      children:[ cur('cur-cr', 390, 800) ] },
+    { id:'cr2',       file:P+'Continue Registration.html?screen=meeting', title:'Continue Registration', sub:'meeting points', w:432, est:1090, col:1, dot:'#4c194d', tag:'mobile' },
+    { id:'cr3',       file:P+'Continue Registration Confirm.html', title:'Confirm your email', sub:'check your inbox', w:432, est:1090, col:1, dot:'#4c194d', tag:'mobile' },
+    // ── Participant dashboard states (Empty + Past first, then the live progression)
+    { id:'d-empty', file:DASH+'?variant=empty',     title:'Participant dashboard · Empty',              w:432, est:1200, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'d-past',  file:DASH+'?variant=past-only', title:'Participant dashboard · Past only',          w:432, est:1500, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'d-reg',   file:DASH+'?variant=default',   title:'Participant dashboard · Registered',         w:432, est:2807, col:1, dot:'#dd531c', tag:'mobile',
+      toggles:[
+        { label:'Meeting',  attr:'mpdisplay', options:[{l:'Photo',v:'photo'},{l:'No photo',v:'list'}] },
+        { label:'Topics',   attr:'tg',        options:[{l:'On',v:'on'},{l:'Off',v:'off'}] },
+        { label:'Celebrate',attr:'celebrate', options:[{l:'Off',v:'off'},{l:'Just reg.',v:'on'}] },
+      ],
+      children:[
+        cur('cur-dash', 390, 800),
+      ] },
+    { id:'d-win',   file:DASH+'?variant=window',    title:'Participant dashboard · Confirm attendance', w:432, est:2600, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'d-conf',  file:DASH+'?variant=confirmed', title:'Participant dashboard · Confirmed',          w:432, est:2600, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'d-live',  file:DASH+'?variant=live',      title:'Participant dashboard · Live',               w:432, est:1500, col:1, dot:'#dd531c', tag:'mobile' },
+    // ── Matching flow (T-0 onward) — full brand pages, in journey order
+    { id:'m1', file:MATCH+'?screen=meeting-point',      title:'Meeting point',      sub:'go to the spot',   w:432, est:1500, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'m2', file:MATCH+'?screen=no-match',           title:'No match',           sub:'nobody confirmed', w:432, est:1100, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'m3', file:MATCH+'?screen=find-each-other',    title:'Find each other',    sub:'show your number', w:432, est:1700, col:1, dot:'#dd531c', tag:'mobile',
+      toggles:[
+        { label:'Background', fn:'setFindBg',     options:[{l:'On',v:'on'},{l:'Off',v:'off'}] },
+        { label:'Matches', fn:'setMatchCount',  options:[{l:'Many',v:'many'},{l:'One',v:'one'}] },
+        { label:'Marek',   fn:'setMarekResult', options:[{l:'Choosing',v:'choosing'},{l:'Wrong pick',v:'wrong'}] },
+      ],
+      devbtn:{ label:'🎲 new random ID', fn:'regenerateIdentity' } },
+    { id:'m4', file:MATCH+'?screen=networking',         title:'Networking',         sub:'round is live',    w:432, est:1500, col:1, dot:'#dd531c', tag:'mobile',
+      toggles:[
+        { label:'Confetti', fn:'setNetworkConfetti', options:[{l:'Off',v:'off'},{l:'Celebrate',v:'on'}] },
+      ] },
+    { id:'m5', file:MATCH+'?screen=contact-sharing',    title:'Contact sharing',    sub:'time is up',       w:432, est:1700, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'m6', file:MATCH+'?screen=wonderelo-feedback', title:'Wonderelo feedback', sub:'rate the round',   w:432, est:1300, col:1, dot:'#dd531c', tag:'mobile' },
+    { id:'m7', file:MATCH+'?screen=missed-round',       title:'Missed round',       sub:'too late',         w:432, est:1300, col:1, dot:'#dd531c', tag:'mobile',
+      toggles:[
+        { label:'Feedback', fn:'setMissedFeedback', options:[{l:'Form',v:'form'},{l:'Sent',v:'sent'}] },
+      ] },
+    // ── Logged-in account pages (dropdown menu) — close the journey row
+    { id:'acct-profile', file:ACCT+'?screen=profile',      title:'Profile settings', sub:'dropdown menu', w:432, est:1700, col:1, dot:'#4c194d', tag:'mobile' },
+    { id:'acct-ab',      file:ACCT+'?screen=address-book', title:'Address book',     sub:'dropdown menu', w:432, est:1700, col:1, dot:'#4c194d', tag:'mobile',
+      toggles:[
+        { label:'State', fn:'setAddressBook', options:[{l:'Has contacts',v:'full'},{l:'Empty',v:'empty'}] },
+      ] },
+    // ── Sign in — participant + organizer sign-in flows (Phase 02)
+    { id:'psi1', file:FLOW+'?only=psi1-email',    title:'Participant sign in', sub:'1 · magic link',    w:1240, est:1180, col:2, dot:'#5C2277', tag:'desktop',
+      children:[ authMob('psi1-email-m') ] },
+    { id:'psi2', file:FLOW+'?only=psi2-sent',     title:'Participant sign in', sub:'2 · link sent',     w:1240, est:1180, col:2, dot:'#5C2277', tag:'desktop',
+      children:[ authMob('psi2-sent-m') ] },
+    { id:'osi1', file:FLOW+'?only=osi1-signin',   title:'Organizer sign in',   sub:'1 · sign in',       w:1240, est:1180, col:2, dot:'#4c194d', tag:'desktop',
+      children:[ authMob('osi1-signin-m') ] },
+    { id:'osi2', file:FLOW+'?only=osi2-forgot',   title:'Organizer sign in',   sub:'2 · forgot',        w:1240, est:1180, col:2, dot:'#4c194d', tag:'desktop',
+      children:[ authMob('osi2-forgot-m') ] },
+    { id:'osi3', file:FLOW+'?only=osi3-reset',    title:'Organizer sign in',   sub:'3 · reset',         w:1240, est:1180, col:2, dot:'#4c194d', tag:'desktop',
+      children:[ authMob('osi3-reset-m') ] },
+    // ── Organizer sign up — four-step flow on its own row (Phase 02)
+    { id:'osu1', file:FLOW+'?only=osu1-account',  title:'Organizer sign up',   sub:'1 · account',       w:1240, est:1240, col:3, dot:'#dd531c', tag:'desktop',
+      children:[ authMob('osu1-account-m') ] },
+    { id:'osu2', file:FLOW+'?only=osu2-discovery',title:'Organizer sign up',   sub:'2 · discovery',     w:1240, est:1240, col:3, dot:'#dd531c', tag:'desktop',
+      children:[ authMob('osu2-discovery-m') ] },
+    { id:'osu3', file:FLOW+'?only=osu3-org',      title:'Organizer sign up',   sub:'3 · organisation',  w:1240, est:1240, col:3, dot:'#dd531c', tag:'desktop',
+      children:[ authMob('osu3-org-m') ] },
+    { id:'osu4', file:FLOW+'?only=osu4-verify',   title:'Organizer sign up',   sub:'4 · verify email',  w:1240, est:1180, col:3, dot:'#dd531c', tag:'desktop',
+      children:[ authMob('osu4-verify-m') ] },
+    // ── Organizer studio screens (+ current slots)
+    { id:'o-home', file:ORG+'?only=b0-home', title:'Rounds', sub:'B0 · /dashboard', w:1240, h:1540, col:4, dot:'#dd531c', tag:'desktop',
+      toggles:[
+        { label:'Onboarding', fn:'setOnboarding', options:[{l:'Off',v:'off'},{l:'First login',v:'on'}] },
+        { label:'Welcome modal', fn:'setWelcomeModal', options:[{l:'Off',v:'off'},{l:'Standard',v:'on'},{l:'Compact (13")',v:'compact'}] },
+        { label:'Plan', fn:'setBilling', options:[{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'},{l:'Free',v:'free'}] },
+      ],
+      children:[ cur('cur-home', 1240, 740), orgMob('b0-home-m', 1980) ] },
+    { id:'o-c4', file:ORG+'?only=c4-live-round',     title:'Live round monitor',  sub:'C4', w:1240, h:2880, col:4, dot:'#dd531c', tag:'desktop',
+      toggles:[
+        { label:'Status', fn:'setRoundStatus', options:[{l:'Published',v:'published'},{l:'Draft',v:'draft'}] },
+        { label:'Plan', fn:'setBilling', options:[{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'},{l:'Free',v:'free'}] },
+      ],
+      children:[ cur('cur-c4', 1240, 740), orgMob('c4-live-round-m', 2160) ] },
+    { id:'o-c1', file:ORG+'?only=c1-round-form',     title:'Round form',          sub:'C1', w:1240, h:3560, col:4, dot:'#dd531c', tag:'desktop',
+      toggles:[
+        { label:'Plan', fn:'setBilling', options:[{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'},{l:'Free',v:'free'}] },
+        { label:'Publish dialog', fn:'showPublishDialog', options:[{l:'Off',v:'off'},{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'}] },
+      ],
+      children:[ cur('cur-c1', 1320, 740), orgMob('c1-round-form-m', 3320) ] },
+    { id:'o-c1b', file:ORG+'?only=c1b-round-success', title:'Round created',       sub:'C1 · success', w:1240, h:1840, col:4, dot:'#dd531c', tag:'desktop',
+      toggles:[
+        { label:'Status', fn:'setRoundStatus', options:[{l:'Published',v:'published'},{l:'Draft',v:'draft'}] },
+        { label:'Plan', fn:'setBilling', options:[{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'},{l:'Free',v:'free'}] },
+      ],
+      devbtn:{ label:'🎉 drop confetti', fn:'dropConfetti' },
+      children:[ cur('cur-c1b', 1240, 740), Object.assign(orgMob('c1b-round-success-m', 1640), { devbtn:{ label:'🎉 drop confetti', fn:'dropConfetti' } }) ] },
+    { id:'o-c2', file:ORG+'?only=c2-event-settings', title:'Event page settings', sub:'C2', w:1240, h:1520, col:4, dot:'#dd531c', tag:'desktop',
+      toggles:[ { label:'Plan', fn:'setBilling', options:[{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'},{l:'Free',v:'free'}] } ],
+      children:[ cur('cur-c2', 1320, 740), orgMob('c2-event-settings-m', 1040) ] },
+    { id:'o-d1', file:ORG+'?only=d1-account',        title:'Account settings',    sub:'D1', w:1240, h:1120, col:4, dot:'#dd531c', tag:'desktop',
+      toggles:[ { label:'Plan', fn:'setBilling', options:[{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'},{l:'Free',v:'free'}] } ],
+      children:[ cur('cur-d1', 1240, 740), orgMob('d1-account-m', 980) ] },
+    { id:'o-d2', file:ORG+'?only=d2-billing',        title:'Billing',             sub:'D2', w:1240, h:2080, col:4, dot:'#dd531c', tag:'desktop',
+      toggles:[ { label:'Plan', fn:'setBilling', options:[{l:'Subscription',v:'subscription'},{l:'Credits',v:'credits'},{l:'Free',v:'free'}] } ],
+      children:[ cur('cur-d2', 1240, 740), orgMob('d2-billing-m', 2360) ] },
+    { id:'o-d3', file:P+'Event Promo Slide.html',     title:'Event promo slide',   sub:'D3 · 1920×1080', w:1920, h:1080, col:4, dot:'#dd531c', tag:'desktop', children:[ cur('cur-d3', 1920, 1080) ] },
+  ];
+
+  const EDGES = [
+    { from:'event',     to:'cr1',   label:'Continue',                 kind:'right' },
+    { from:'cr1',       to:'event', label:'Back · Round selection',   kind:'left'  },
+  ];
+
+  // ─────────── Flatten pages + children into NODES ───────────
+  const NODES = [];
+  PAGES.forEach((p)=>{
+    p.kind = 'page'; p.children = (p.children || []).filter((c)=> c.kind !== 'slot');
+    NODES.push(p);
+    p.children.forEach((ch, i)=>{
+      ch.id = p.id + '~' + i;
+      ch.parent = p;
+      ch.title = ch.title || p.title;
+      ch.dot = ch.dot || p.dot;
+      ch.col = p.col;
+      NODES.push(ch);
+    });
+  });
+  const byId = {}; NODES.forEach(n => byId[n.id] = n);
+
+  const world = document.getElementById('world');
+  const linksSvg = document.getElementById('links');
+  const elayer = document.getElementById('elayer');
+
+  // ─────────── Build DOM ───────────
+  const groupScalable = []; // band titles — constant screen size
+  const chipScalable  = []; // page-name chips — shrink gently with zoom
+  let   edgeScalable  = []; // link labels — constant screen size (rebuilt per drawLinks)
+  GROUPS.forEach((g)=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'gwrap';
+    wrap.innerHTML = '<div class="gpill"><span class="k">'+g.key+'</span><span class="t">'+g.title+'</span></div>';
+    world.appendChild(wrap);
+    g.wrap = wrap;
+    groupScalable.push(wrap.firstChild);
+  });
+
+  NODES.forEach((n)=>{
+    n.naturalH = n.h || n.est || n.w * 1.4;
+    const el = document.createElement('div');
+    el.className = 'node' + (n.kind==='slot' ? ' is-slot' : '');
+    el.id = 'node-' + n.id.replace('~','-');
+    el.style.width = n.w + 'px';
+    if (n.kind === 'slot') {
+      el.innerHTML = '<image-slot id="'+n.slotId+'" style="width:'+n.w+'px;height:'+n.h+'px" radius="6" placeholder="Drop a screenshot of the current '+(n.parent?n.parent.title:'page')+'"></image-slot>';
+    } else {
+      el.innerHTML = '<div class="ld">loading</div>';
+    }
+    world.appendChild(el);
+    n.el = el;
+
+    // label pill + optional dev-toggle bar (counter-scaled, anchored above the frame)
+    const lw = document.createElement('div');
+    lw.className = 'lwrap';
+    const tagCls = n.tag==='current' || n.kind==='slot' ? 'current' : (n.tag||'mobile');
+    let toggleHTML = '';
+    if (n.toggles && n.toggles.length) {
+      toggleHTML = '<div class="tbar">' + n.toggles.map((tg, gi)=>(
+        '<div class="tgrp" data-attr="'+(tg.attr||'')+'" data-fn="'+(tg.fn||'')+'">'+
+          '<span class="gl">'+tg.label+'</span>'+
+          tg.options.map((o, oi)=>'<button type="button" data-val="'+o.v+'"'+(oi===0?' class="is-active"':'')+'>'+o.l+'</button>').join('')+
+        '</div>'
+      )).join('') + '</div>';
+    }
+    lw.innerHTML = '<div class="lstack"><div class="lpill">'+
+      '<span class="dot" style="background:'+n.dot+'"></span>'+
+      '<span class="t">'+n.title+'</span>'+
+      (n.sub ? '<span class="s">'+n.sub+'</span>' : '')+
+      '<span class="tag '+tagCls+'">'+(n.kind==='slot'?'current':(n.tag||''))+'</span>'+
+    '</div>' + toggleHTML + (n.devbtn ? '<div class="tbar"><button type="button" class="devbtn">'+n.devbtn.label+'</button></div>' : '') + '</div>';
+    world.appendChild(lw);
+    n.lwrap = lw;
+    const stack = lw.firstChild;
+    const pill = stack.firstChild;
+    chipScalable.push(stack);
+    if (n.kind !== 'slot') {
+      pill.addEventListener('click', (e)=>{ e.stopPropagation(); openFocus(n); });
+      n.el.addEventListener('dblclick', ()=> openFocus(n));
+    }
+    // Wire dev toggles: relay clicks into the (same-origin) iframe's own toggle.
+    if (n.toggles && n.toggles.length) {
+      stack.querySelectorAll('.tgrp').forEach((grp)=>{
+        const attr = grp.dataset.attr;
+        const fn = grp.dataset.fn;
+        grp.querySelectorAll('button').forEach((b)=>{
+          b.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            grp.querySelectorAll('button').forEach(x=>x.classList.remove('is-active'));
+            b.classList.add('is-active');
+            try {
+              const ifr = n.el.querySelector('iframe');
+              if (fn) { ifr?.contentWindow?.[fn]?.(b.dataset.val); }
+              else { ifr?.contentDocument?.querySelector('.pd-variant-toggle [data-'+attr+'="'+b.dataset.val+'"]')?.click(); }
+            } catch(err) {}
+          });
+        });
+      });
+    }
+    // Wire dev action button: call a function inside the (same-origin) iframe.
+    if (n.devbtn) {
+      const db = stack.querySelector('.devbtn');
+      if (db) db.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        try {
+          const win = n.el.querySelector('iframe')?.contentWindow;
+          if (win && typeof win[n.devbtn.fn] === 'function') win[n.devbtn.fn]();
+        } catch(err) {}
+      });
+    }
+  });
+
+  // ─────────── Layout: bands; pages left→right; versions stacked below ───────────
+  function layout(){
+    let bandY = TOP;
+    GROUPS.forEach((g, gi)=>{
+      const pages = PAGES.filter(p=>p.col===gi);
+      let x = LEFT, bandBottom = bandY;
+      pages.forEach((p)=>{
+        const leftKids  = p.children.filter(c=>c.side==='left');
+        const belowKids = p.children.filter(c=>c.side!=='left');
+        const leftW   = leftKids.length ? Math.max.apply(null, leftKids.map(c=>c.w)) : 0;
+        const leftPad = leftW ? leftW + HGAP : 0;
+        const mainW   = Math.max.apply(null, [p.w].concat(belowKids.map(c=>c.w)));
+        const colW    = leftPad + mainW;
+
+        p.fh = p.naturalH;
+        p.x = x + leftPad + (mainW - p.w)/2; p.y = bandY;
+        place(p);
+
+        // mobile version sits to the LEFT of the desktop page, top-aligned
+        let leftBottom = bandY;
+        leftKids.forEach((ch)=>{
+          ch.fh = ch.naturalH;
+          ch.x = x + (leftW - ch.w)/2; ch.y = bandY;
+          place(ch);
+          leftBottom = Math.max(leftBottom, ch.y + ch.fh);
+        });
+
+        // remaining versions (current build, etc.) stack below the desktop page
+        let y = bandY + p.fh + VGAP;
+        belowKids.forEach((ch)=>{
+          ch.fh = ch.naturalH;
+          ch.x = x + leftPad + (mainW - ch.w)/2; ch.y = y;
+          place(ch);
+          y += ch.fh + VGAP;
+        });
+        bandBottom = Math.max(bandBottom, y - VGAP, leftBottom);
+        x += colW + HGAP;
+      });
+      g.wrap.style.left = LEFT + 'px';
+      g.wrap.style.top = (bandY - 90) + 'px';
+      bandY = bandBottom + BANDGAP;
+    });
+    drawLinks();
+  }
+  function place(n){
+    n.el.style.left = n.x + 'px';
+    n.el.style.top = n.y + 'px';
+    n.el.style.height = n.fh + 'px';
+    if (n.iframe) n.iframe.style.height = n.naturalH + 'px';
+    n.lwrap.style.left = n.x + 'px';
+    n.lwrap.style.top = (n.y - 18) + 'px';
+  }
+
+  // ─────────── Iframe load queue ───────────
+  const queue = NODES.filter(n=>n.kind!=='slot');
+  let active = 0; const CONC = 4;
+  function pump(){
+    while (active < CONC && queue.length) {
+      const n = queue.shift();
+      active++;
+      const ifr = document.createElement('iframe');
+      ifr.setAttribute('scrolling','no');
+      ifr.style.width = n.w + 'px';
+      ifr.style.height = n.naturalH + 'px';
+      let settled = false;
+      const settle = ()=>{
+        if (settled) return; settled = true;
+        const ld = n.el.querySelector('.ld'); if (ld) ld.remove();
+        active--; pump();
+      };
+      ifr.addEventListener('load', ()=>{
+        if (!n.h) {
+          const isApp = n.w <= 640; // narrow app screens prop themselves open with min-height:100vh
+          // Neutralise the page's own min-height:100vh ONCE so the body collapses
+          // to its true content height. Measuring then never needs to shrink the
+          // frame (which caused a visible flicker), and the ResizeObserver can't
+          // feed back on itself because the body height no longer tracks the frame.
+          try {
+            const d = ifr.contentDocument;
+            const st = d.createElement('style');
+            // Kill infinite decorative animations (confetti, blinking dots, flip
+            // clocks, marquees, ember pulses) — across 50+ embedded iframes their
+            // constant repainting reads as flicker on the zoomed-out board. Base
+            // CSS states stay visible; only the loops stop. App screens also get
+            // their min-height:100vh neutralised so they size to true content.
+            st.textContent = '*,*::before,*::after{animation:none!important}'
+              + (isApp ? 'html,body,[class*="-shell"]{min-height:0!important}' : '');
+            d.head.appendChild(st);
+          } catch(e){}
+          const remeasure = ()=>{
+            try {
+              const d = ifr.contentDocument;
+              // Use body.scrollHeight (true content height). documentElement.scrollHeight
+              // is floored at the iframe's own viewport height, so it can never report
+              // a value smaller than the current frame — which blocked short app screens
+              // from shrinking and left a gap below the footer.
+              const mh = d.body.scrollHeight || d.documentElement.scrollHeight || 0;
+              if (mh > 200 && Math.abs(mh - n.naturalH) > 4) {
+                n.naturalH = mh;
+                n.fh = mh;
+                ifr.style.height = mh + 'px';
+                if (n.el) n.el.style.height = mh + 'px';
+                scheduleLayout();
+              }
+            } catch(e){}
+          };
+          remeasure();
+          // Re-fit when late assets (images, fonts) change the content height.
+          try {
+            const d = ifr.contentDocument;
+            if (window.ResizeObserver) {
+              const ro = new ResizeObserver(()=> remeasure());
+              ro.observe(d.body);
+            }
+            d.querySelectorAll('img').forEach(img=>{
+              if (!img.complete) img.addEventListener('load', remeasure, { once:true });
+            });
+          } catch(e){}
+          // Belt-and-braces: catch late layout shifts (lazy images, web fonts)
+          // that don't move the observed box but do change scrollHeight.
+          setTimeout(remeasure, 1500);
+          setTimeout(remeasure, 4000);
+        }
+        // Freeze the page's JS-driven motion once it has settled: flip clocks,
+        // countdowns and any rAF loop tick continuously and — across many frames —
+        // read as flicker on the zoomed-out board. Only the narrow app screens have
+        // these; the heavy React marketing pages must keep their JS so their layout
+        // (and measured height) stays intact, so we never freeze those.
+        if (n.w <= 640) setTimeout(()=>{
+          try {
+            const w = ifr.contentWindow;
+            w.requestAnimationFrame = ()=>0;
+            w.cancelAnimationFrame = ()=>{};
+            const maxId = w.setTimeout(()=>{}, 0);
+            for (let i = 0; i <= maxId; i++) { w.clearTimeout(i); w.clearInterval(i); }
+          } catch(e){}
+        }, 7000);
+        settle();
+      });
+      setTimeout(settle, 12000);
+      ifr.src = n.file;
+      n.el.appendChild(ifr);
+      n.iframe = ifr;
+      ifr.style.height = n.naturalH + 'px';
+    }
+  }
+
+  // ─────────── Links ───────────
+  function drawLinks(){
+    linksSvg.innerHTML =
+      '<defs><marker id="ah2" markerWidth="11" markerHeight="11" refX="8" refY="5.5" orient="auto">'+
+      '<path d="M1 1 L9 5.5 L1 10" fill="none" stroke="#dd531c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>';
+    elayer.innerHTML = '';
+    edgeScalable = [];
+    let downIdx = 0;
+    EDGES.forEach((e)=>{
+      const a = byId[e.from], b = byId[e.to];
+      if (!a || !b || a.x===undefined || b.x===undefined) return;
+      let x1,y1,x2,y2,c1x,c1y,c2x,c2y, dash=false;
+      const aMid = a.y + Math.min(a.fh, 1400)/2, bMid = b.y + Math.min(b.fh, 1400)/2;
+      if (e.kind === 'right') {
+        x1=a.x+a.w; y1=aMid; x2=b.x; y2=bMid;
+        const dx=Math.max(70,(x2-x1)/2); c1x=x1+dx; c1y=y1; c2x=x2-dx; c2y=y2;
+      } else if (e.kind === 'left') {
+        x1=a.x; y1=aMid+340; x2=b.x+b.w; y2=bMid+340; dash=true;
+        const dx=Math.max(70,(x1-x2)/2); c1x=x1-dx; c1y=y1; c2x=x2+dx; c2y=y2;
+      } else { // down → target in a band below
+        const off = (downIdx++ % 2) ? 120 : -120;
+        x1=a.x+a.w/2; y1=a.y+a.fh; x2=b.x+b.w/2+off; y2=b.y;
+        const dy=Math.max(120,(y2-y1)/2); c1x=x1; c1y=y1+dy; c2x=x2; c2y=y2-dy;
+      }
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d','M'+x1+' '+y1+' C '+c1x+' '+c1y+' '+c2x+' '+c2y+' '+x2+' '+y2);
+      path.setAttribute('fill','none');
+      path.setAttribute('stroke','#dd531c');
+      path.setAttribute('stroke-width','10');
+      if (dash) path.setAttribute('stroke-dasharray','26 22');
+      path.setAttribute('marker-end','url(#ah2)');
+      linksSvg.appendChild(path);
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx',x1); dot.setAttribute('cy',y1); dot.setAttribute('r','16');
+      dot.setAttribute('fill','#dd531c');
+      linksSvg.appendChild(dot);
+      const mx = .125*x1+.375*c1x+.375*c2x+.125*x2, my = .125*y1+.375*c1y+.375*c2y+.125*y2;
+      const ew = document.createElement('div');
+      ew.className='ewrap'; ew.style.left=mx+'px'; ew.style.top=my+'px';
+      ew.innerHTML = '<div class="epill"><span class="b"></span>'+e.label+'</div>';
+      elayer.appendChild(ew);
+      edgeScalable.push(ew.firstChild);
+      ew.firstChild.dataset.center = '1';
+    });
+    syncScalable();
+  }
+
+  // ─────────── Pan / zoom + counter-scaled labels ───────────
+  let tx=0, ty=0, scale=1, lastK=null;
+  function syncScalable(){
+    const k  = Math.min(22, Math.max(1, 1/scale));            // constant screen size
+    const kc = Math.min(7,  Math.max(0.85, Math.pow(1/scale, 0.5))); // chips shrink with zoom
+    groupScalable.forEach((el)=>{ el.style.transform = 'scale('+k+')'; });
+    edgeScalable.forEach((el)=>{ el.style.transform = 'scale('+k+') translate(-50%,-50%)'; el.style.transformOrigin = '0 0'; });
+    chipScalable.forEach((el)=>{ el.style.transform = 'scale('+kc+')'; });
+    lastK = k;
+  }
+  function apply(){
+    world.style.transform = 'translate('+tx+'px,'+ty+'px) scale('+scale+')';
+    document.getElementById('zlabel').textContent = (scale>=0.1 ? Math.round(scale*100) : (scale*100).toFixed(1))+'%';
+    syncScalable();
+  }
+  let layoutQueued = false;
+  function scheduleLayout(){
+    if (layoutQueued) return;
+    layoutQueued = true;
+    requestAnimationFrame(()=>{ layoutQueued = false; layout(); });
+  }
+  function fit(){
+    let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    NODES.forEach(n=>{
+      minX=Math.min(minX,n.x); minY=Math.min(minY,n.y-160);
+      maxX=Math.max(maxX,n.x+n.w); maxY=Math.max(maxY,n.y+n.fh);
+    });
+    const padL=380, padR=60, padT=46, padB=104, W=innerWidth, H=innerHeight;
+    const availW=W-padL-padR, availH=H-padT-padB;
+    scale = Math.min(availW/(maxX-minX), availH/(maxY-minY), 1);
+    tx = padL + (availW-(maxX-minX)*scale)/2 - minX*scale;
+    ty = padT + (availH-(maxY-minY)*scale)/2 - minY*scale;
+    apply();
+  }
+  const stage=document.getElementById('stage');
+  stage.addEventListener('wheel',(e)=>{
+    e.preventDefault();
+    const f = e.deltaY<0 ? 1.13 : 1/1.13;
+    const ns = Math.min(2, Math.max(0.012, scale*f));
+    const r = stage.getBoundingClientRect();
+    const px=e.clientX-r.left, py=e.clientY-r.top;
+    tx = px-(px-tx)*(ns/scale); ty = py-(py-ty)*(ns/scale);
+    scale=ns; apply();
+  }, {passive:false});
+  let pan=null;
+  stage.addEventListener('pointerdown',(e)=>{
+    if (e.target.closest('.lpill') || e.target.closest('.tbar') || e.target.closest('.devbtn') || e.target.closest('image-slot')) return;
+    pan={x:e.clientX,y:e.clientY,tx,ty}; stage.classList.add('is-panning'); stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove',(e)=>{ if(!pan) return; tx=pan.tx+(e.clientX-pan.x); ty=pan.ty+(e.clientY-pan.y); apply(); });
+  stage.addEventListener('pointerup',()=>{ pan=null; stage.classList.remove('is-panning'); });
+  stage.addEventListener('pointercancel',()=>{ pan=null; stage.classList.remove('is-panning'); });
+  function zoomCenter(f){
+    const ns=Math.min(2,Math.max(0.012,scale*f));
+    const px=innerWidth/2, py=innerHeight/2;
+    tx=px-(px-tx)*(ns/scale); ty=py-(py-ty)*(ns/scale); scale=ns; apply();
+  }
+  document.getElementById('zin').onclick=()=>zoomCenter(1.25);
+  document.getElementById('zout').onclick=()=>zoomCenter(1/1.25);
+  document.getElementById('fit').onclick=fit;
+
+  // ─────────── Focus overlay (no new tab — avoids preview-token issue) ───────────
+  const focus = document.getElementById('focus');
+  const fFrame = document.getElementById('f-frame');
+  function openFocus(n){
+    document.getElementById('f-title').textContent = n.title;
+    document.getElementById('f-sub').textContent = (n.sub ? n.sub + ' · ' : '') + n.file.replace(P,'');
+    fFrame.style.width = n.kind==='mobile' ? '390px' : 'min(94vw, '+Math.max(n.w, 700)+'px)';
+    fFrame.src = n.file;
+    focus.classList.add('is-open');
+  }
+  function closeFocus(){ focus.classList.remove('is-open'); fFrame.src='about:blank'; }
+  document.getElementById('f-close').onclick = closeFocus;
+  focus.addEventListener('click',(e)=>{ if (e.target === focus || e.target.classList.contains('f-body')) closeFocus(); });
+  document.addEventListener('keydown',(e)=>{ if (e.key==='Escape') closeFocus(); });
+
+  // ─────────── Links toggle ───────────
+  let linksOn=false;
+  const toggle=document.getElementById('linktoggle');
+  toggle.onclick=()=>{
+    linksOn=!linksOn;
+    toggle.classList.toggle('is-on',linksOn);
+    linksSvg.classList.toggle('is-off',!linksOn);
+    elayer.classList.toggle('is-off',!linksOn);
+    NODES.forEach(n=>n.el.classList.remove('is-target'));
+    if(linksOn) EDGES.forEach(e=>{ const t=byId[e.to]; if(t) t.el.classList.add('is-target'); });
+  };
+
+  // go
+  layout();
+  fit();
+  pump();
+
+  // Settle sweep — with 50+ iframes loading concurrently, frames keep growing as
+  // late assets (images, web fonts, React renders) land. Re-measure every frame on
+  // a fixed cadence for a generous window so they all converge to true content
+  // height. We do NOT early-exit on momentary stability: heavy marketing pages look
+  // "stable" at their estimate for a few seconds before their images expand them.
+  (function settleSweep(){
+    let runs = 0;
+    const iv = setInterval(()=>{
+      let changed = false;
+      NODES.forEach(n=>{
+        if (n.h || !n.iframe) return;
+        try {
+          const d = n.iframe.contentDocument;
+          const mh = d.body.scrollHeight || d.documentElement.scrollHeight || 0;
+          if (mh > 200 && Math.abs(mh - n.naturalH) > 4) {
+            n.naturalH = mh; n.fh = mh; n.iframe.style.height = mh + 'px';
+            if (n.el) n.el.style.height = mh + 'px'; changed = true;
+          }
+        } catch(e){}
+      });
+      if (changed) scheduleLayout();
+      // Keep sweeping for ~24s to catch slow image/font loads, then stop.
+      if (++runs >= 40) clearInterval(iv);
+    }, 600);
+  })();
+})();
+</script>
+
+</body>
+</html>

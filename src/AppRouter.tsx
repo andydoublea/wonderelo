@@ -69,7 +69,6 @@ const AdminBpmnDiagram = lazy(() => import('./components/AdminBpmnDiagram').then
 const AdminPagePreview = lazy(() => import('./components/AdminPagePreview').then(m => ({ default: m.AdminPagePreview })));
 const AdminParameters = lazy(() => import('./components/AdminParameters').then(m => ({ default: m.AdminParameters })));
 const AdminOrganizerRequests = lazy(() => import('./components/AdminOrganizerRequests').then(m => ({ default: m.AdminOrganizerRequests })));
-const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({ default: m.ThemeManager })));
 const AdminLeads = lazy(() => import('./components/AdminLeads').then(m => ({ default: m.AdminLeads })));
 const AdminStyleGuide = lazy(() => import('./components/AdminStyleGuide').then(m => ({ default: m.AdminStyleGuide })));
 const AdminPricing = lazy(() => import('./components/AdminPricing').then(m => ({ default: m.AdminPricing })));
@@ -807,20 +806,6 @@ function AdminDashboardRoute() {
         />
       </Suspense>
     </>
-  );
-}
-
-function AdminThemeRoute() {
-  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <Suspense fallback={<RouteLoader />}>
-      <ThemeManager
-        accessToken={accessToken}
-        onBack={() => navigate('/admin')}
-      />
-    </Suspense>
   );
 }
 
@@ -2144,7 +2129,6 @@ function AppProviderWithRouter() {
             h(Route, { path: '/event-promo', element: h(ProtectedRoute, null, h(EventPromoPageRoute)) }),
             h(Route, { path: '/billing', element: h(ProtectedRoute, null, h(BillingSettingsRoute)) }),
             h(Route, { path: '/admin', element: h(AdminRoute, null, h(AdminDashboardRoute)) }),
-            h(Route, { path: '/admin/theme', element: h(AdminRoute, null, h(AdminThemeRoute)) }),
             h(Route, { path: '/admin/ice-breakers', element: h(AdminRoute, null, h(AdminIceBreakersRoute)) }),
             h(Route, { path: '/admin/notification-texts', element: h(AdminRoute, null, h(AdminNotificationTextsRoute)) }),
             h(Route, { path: '/admin/toast-messages', element: h(AdminRoute, null, h(AdminToastMessagesRoute)) }),

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import { PdNav } from '../components/redesign/PdNav';
 import { ParticipantLayout } from '../components/ParticipantLayout';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -10,7 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Mail, Phone, Loader2, Check, X, ArrowLeft, User, ChevronsUpDown, Linkedin, Instagram, Globe } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
-import { COUNTRY_CODES } from '../utils/countryCodes';
+import { COUNTRY_CODES, flagForPrefix } from '../utils/countryCodes';
 
 export interface ParticipantProfileFormData {
   firstName: string;
@@ -55,266 +56,76 @@ export function ParticipantProfileView({
   onCancel,
   onBack,
 }: ParticipantProfileViewProps) {
+  const Ico = {
+    back: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+    user: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>,
+    mail: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>,
+    linkedin: <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.76-2.05C20.4 8.65 21 11 21 14.1V21h-4v-6.1c0-1.45-.03-3.3-2-3.3s-2.3 1.57-2.3 3.2V21H9z"/></svg>,
+    instagram: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>,
+    globe: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>,
+    other: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>,
+    check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  };
+  const field = (key: keyof ParticipantProfileFormData, label: string, icon: JSX.Element, type: string, placeholder: string, full: boolean, hint?: string) => (
+    <div className={`ac-field${full ? ' full' : ''}`}>
+      <label className="ac-label">{label}</label>
+      <div className="ac-input">{icon}<input type={type} placeholder={placeholder} value={formData[key] || ''} onChange={(e) => onFieldChange(key, e.target.value)} disabled={saving} /></div>
+      {hint && <span className="ac-hint">{hint}</span>}
+    </div>
+  );
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to dashboard
-        </Button>
-
-        <h1 className="text-3xl font-bold mb-2">Profile settings</h1>
-        <p className="text-muted-foreground">
-          Update your contact information
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSave} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First name *</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="firstName"
-                    type="text"
-                    placeholder="John"
-                    value={formData.firstName}
-                    onChange={(e) => onFieldChange('firstName', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Your name is shown when we match you with other participants. Please use your real name.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last name *</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="lastName"
-                    type="text"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={(e) => onFieldChange('lastName', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
+    <div className="wonderelo pa-page" data-active="profile">
+      <div className="ac-shell">
+        <PdNav
+          firstName={formData.firstName}
+          lastName={formData.lastName}
+          onBrandClick={onBack}
+          onDashboard={onBack}
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
+        <div data-screen="profile">
+          <button className="ac-back" type="button" onClick={onBack}>{Ico.back}Back to dashboard</button>
+          <div className="ac-head">
+            <span className="ac-eyebrow">Your account</span>
+            <h1 className="ac-title">Profile <em>settings</em></h1>
+            <p className="ac-sub">Update the contact details we use to match you and that you can share with the people you meet.</p>
+          </div>
+          <form className="ac-card" onSubmit={onSave}>
+            <h2 className="ac-card-title">Personal information</h2>
+            <p className="ac-card-note">Your name is shown when we match you with other participants — please use your real name.</p>
+            <div className="ac-grid2">
+              {field('firstName', 'First name', Ico.user, 'text', 'Andy', false)}
+              {field('lastName', 'Last name', Ico.user, 'text', 'Abel', false)}
+              {field('email', 'Email address', Ico.mail, 'email', 'you@gmail.com', true, 'You can share this with your match if you choose to.')}
+              <div className="ac-field full">
+                <label className="ac-label">Phone number</label>
+                <div className="ac-input is-focus"><span className="prefix">{flagForPrefix(formData.phoneCountry)} {formData.phoneCountry}</span><input type="tel" placeholder="903 555 218" value={formData.phone || ''} onChange={(e) => onFieldChange('phone', e.target.value)} disabled={saving} /></div>
+                <span className="ac-hint">We send a reminder 5 minutes before the round starts.</span>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email address *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={formData.email}
-                    onChange={(e) => onFieldChange('email', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  You can share this contact with your match if you choose to.
-                </p>
-              </div>
-              <div></div>
+            <div className="ac-section-label">Social links <span style={{ fontWeight: 500, color: 'rgba(43,24,16,.45)', fontSize: 12 }}>— optional</span></div>
+            <p className="ac-card-note" style={{ marginTop: 4 }}>If you add these, they're shared along with your email and phone when you and a partner exchange contacts.</p>
+            <div className="ac-grid2">
+              {field('linkedinUrl', 'LinkedIn', Ico.linkedin, 'url', 'linkedin.com/in/…', true)}
+              {field('instagramUrl', 'Instagram', Ico.instagram, 'url', 'instagram.com/…', true)}
+              {field('websiteUrl', 'Website', Ico.globe, 'url', 'https://…', false)}
+              {field('otherSocial', 'Other', Ico.other, 'text', '@handle or URL', false)}
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone number *</Label>
-                <div className="flex gap-2">
-                  <Popover open={phoneCountryOpen} onOpenChange={onPhoneCountryOpenChange}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={phoneCountryOpen}
-                        className="w-[120px] justify-between"
-                        disabled={saving}
-                        type="button"
-                      >
-                        {formData.phoneCountry}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search country..." />
-                        <CommandList>
-                          <CommandEmpty>No country found.</CommandEmpty>
-                          <CommandGroup>
-                            {COUNTRY_CODES.map((country) => (
-                              <CommandItem
-                                key={country.code}
-                                value={`${country.name} ${country.prefix}`}
-                                onSelect={() => {
-                                  onFieldChange('phoneCountry', country.prefix);
-                                  onPhoneCountryOpenChange(false);
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    formData.phoneCountry === country.prefix
-                                      ? 'opacity-100'
-                                      : 'opacity-0'
-                                  }`}
-                                />
-                                <div className="flex items-center justify-between w-full">
-                                  <span>{country.name}</span>
-                                  <span className="text-muted-foreground ml-2">{country.prefix}</span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <div className="flex-1 relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder={COUNTRY_CODES.find(c => c.prefix === formData.phoneCountry)?.placeholder || '123 456 789'}
-                      value={formData.phone}
-                      onChange={(e) => onFieldChange('phone', e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  We send a reminder 5 minutes before the round. You can share this contact with your match if you choose to.
-                </p>
-              </div>
-              <div></div>
-            </div>
-
-            <div className="pt-2">
-              <h3 className="text-sm font-semibold mb-1">Social links (optional)</h3>
-              <p className="text-xs text-muted-foreground mb-4">
-                If you fill these in, they'll be shared along with your email and phone when you and a partner exchange contacts. We never ask for these at registration.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin">LinkedIn</Label>
-                  <div className="relative">
-                    <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="linkedin"
-                      type="url"
-                      placeholder="https://linkedin.com/in/..."
-                      value={formData.linkedinUrl}
-                      onChange={(e) => onFieldChange('linkedinUrl', e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="instagram">Instagram</Label>
-                  <div className="relative">
-                    <Instagram className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="instagram"
-                      type="url"
-                      placeholder="https://instagram.com/..."
-                      value={formData.instagramUrl}
-                      onChange={(e) => onFieldChange('instagramUrl', e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="website"
-                      type="url"
-                      placeholder="https://..."
-                      value={formData.websiteUrl}
-                      onChange={(e) => onFieldChange('websiteUrl', e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="otherSocial">Other (X, TikTok, etc.)</Label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="otherSocial"
-                      type="text"
-                      placeholder="@handle or URL"
-                      value={formData.otherSocial}
-                      onChange={(e) => onFieldChange('otherSocial', e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <X className="h-4 w-4 text-destructive flex-shrink-0" />
-                <p className="text-sm text-destructive">{error}</p>
-              </div>
-            )}
-
-            {success && (
-              <div className="flex items-center space-x-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={!hasChanges || saving}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!hasChanges || saving}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save changes'
-                )}
-              </Button>
+            {error && <p className="ac-hint" style={{ color: 'var(--w-destructive)' }}>{error}</p>}
+            {success && <p className="ac-hint" style={{ color: 'var(--w-success)' }}>{success}</p>}
+            <div className="ac-actions">
+              <button className="ac-btn is-outline" type="button" onClick={onCancel} disabled={saving}>Cancel</button>
+              <button className="ac-btn is-primary" type="submit" disabled={saving || !hasChanges}>{Ico.check}{saving ? 'Saving…' : 'Save changes'}</button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+        <footer className="ac-footer">
+          <a className="ac-brand"><span className="mark"><span className="inner" /></span><span className="word">wond<em>e</em>relo</span></a>
+          <p className="tagline">Break your bubble, meet new people</p>
+          <p className="copy">© 2026 Wonderelo</p>
+        </footer>
+      </div>
     </div>
   );
 }
@@ -535,40 +346,28 @@ export default function ParticipantProfile() {
 
   if (loading) {
     return (
-      <ParticipantLayout
-        participantToken={token}
-        firstName={profile.firstName}
-        lastName={profile.lastName}
-      >
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </ParticipantLayout>
+      <div className="wonderelo pa-page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--w-orange)' }} />
+      </div>
     );
   }
 
   return (
-    <ParticipantLayout
-      participantToken={token}
-      firstName={profile.firstName}
-      lastName={profile.lastName}
-    >
-      <ParticipantProfileView
-        formData={formData}
-        error={error}
-        success={success}
-        saving={saving}
-        hasChanges={hasChanges}
-        phoneCountryOpen={phoneCountryOpen}
-        onPhoneCountryOpenChange={setPhoneCountryOpen}
-        onFieldChange={handleFieldChange}
-        onSave={handleSave}
-        onCancel={() => {
-          setFormData({ ...profile });
-          setError('');
-        }}
-        onBack={() => navigate(`/p/${token}`)}
-      />
-    </ParticipantLayout>
+    <ParticipantProfileView
+      formData={formData}
+      error={error}
+      success={success}
+      saving={saving}
+      hasChanges={hasChanges}
+      phoneCountryOpen={phoneCountryOpen}
+      onPhoneCountryOpenChange={setPhoneCountryOpen}
+      onFieldChange={handleFieldChange}
+      onSave={handleSave}
+      onCancel={() => {
+        setFormData({ ...profile });
+        setError('');
+      }}
+      onBack={() => navigate(`/p/${token}`)}
+    />
   );
 }

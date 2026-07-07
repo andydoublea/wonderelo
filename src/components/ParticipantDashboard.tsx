@@ -25,6 +25,9 @@ import {
 } from './ui/alert-dialog';
 import { debugLog, errorLog } from '../utils/debug';
 import { useTime } from '../contexts/TimeContext';
+import { PdNav } from './redesign/PdNav';
+import { FlipClock } from './redesign/FlipClock';
+import { matchNote } from './redesign/EventSessionsView';
 
 export interface Registration {
   roundId: string;
@@ -136,351 +139,485 @@ export function ParticipantDashboardView({
   generateRoundTimeDisplay,
   isRoundCompleted: _isRoundCompleted,
 }: ParticipantDashboardViewProps) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 10000); return () => clearInterval(t); }, []);
+
+  const justRegistered = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('just-registered') === '1';
+
+  const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const startMs = (round: any, session: any): number => {
+    const [h, m] = String(round?.startTime || '0:0').split(':').map(Number);
+    const d = new Date(round?.date || session?.date || Date.now());
+    d.setHours(h || 0, m || 0, 0, 0);
+    return d.getTime();
+  };
+  const fmtDayTime = (round: any, session: any): string => {
+    const d = new Date(startMs(round, session));
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}, ${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+  };
+  const fmtTime = (round: any, session: any): string => {
+    const d = new Date(startMs(round, session));
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const fmtDate = (round: any, session: any): string => {
+    const d = new Date(startMs(round, session));
+    return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+  };
+
+  // ── derive the hero (next upcoming) round + its timing state ──
+  let hero: { session: NetworkingSession; round: Round; reg?: Registration; status?: string } | null = null;
+  if (globalNextUpcomingRoundId) {
+    const [sid, rid] = globalNextUpcomingRoundId.split(':');
+    const sw = upcomingSessions.find((s) => s.session.id === sid);
+    const round = sw?.session.rounds?.find((r) => r.id === rid);
+    if (sw && round) {
+      hero = {
+        session: sw.session,
+        round,
+        reg: registrations.find((r) => r.roundId === rid && r.sessionId === sid),
+        status: sw.registrationStatusMap?.get(rid),
+      };
+    }
+  }
+
+  // ── past tally (contacts / rounds / events) ──
+  let pastContacts = 0;
+  let pastRoundCount = 0;
+  const pastEventIds = new Set<string>();
+  pastSessions.forEach(({ session, registeredRoundIds }) => {
+    registeredRoundIds.forEach((rid) => {
+      pastRoundCount += 1;
+      pastContacts += sharedContactsByRound.get(rid)?.length || 0;
+    });
+    if (registeredRoundIds.size > 0) pastEventIds.add(session.id);
+  });
+
+  // ── hero state + page variant ──
+  let heroState: 'pre-confirm' | 'in-window' | 'confirmed' | 'live' | 'past' | 'empty' = 'empty';
+  let secsLeft = 0;
+  let heroHours = false;
+  if (hero) {
+    const start = startMs(hero.round, hero.session);
+    const confWin = (hero.round.confirmationWindow ?? 5) * 60000;
+    const end = start + (hero.round.duration || hero.session.roundDuration || 5) * 60000;
+    if (now < start - confWin) { heroState = 'pre-confirm'; secsLeft = Math.floor((start - confWin - now) / 1000); heroHours = true; }
+    else if (now < start) { heroState = hero.status === 'confirmed' ? 'confirmed' : 'in-window'; secsLeft = Math.floor((start - now) / 1000); }
+    else if (now < end) { heroState = 'live'; secsLeft = Math.floor((end - now) / 1000); }
+    else { heroState = 'pre-confirm'; secsLeft = 0; heroHours = true; }
+  } else {
+    heroState = (registrations.length > 0 || pastRoundCount > 0) ? 'past' : 'empty';
+  }
+  const variant = ({ 'pre-confirm': 'default', 'in-window': 'window', confirmed: 'confirmed', live: 'live', past: 'past-only', empty: 'empty' } as const)[heroState];
+
+  const heroOrgReg = hero ? registrations.find((r) => r.sessionId === hero!.session.id) : undefined;
+  const heroSel = hero ? (roundSelections.get(hero.round.id) || {}) : {};
+  const heroMatchNote = hero ? matchNote(hero.session, heroSel.team) : null;
+
+  // ── other upcoming rounds (grouped by session, excluding the hero round) ──
+  const otherUpcoming = upcomingSessions
+    .map(({ session, registeredRoundIds, registrationStatusMap }) => {
+      const rounds = (session.rounds || []).filter((r) =>
+        registeredRoundIds.has(r.id)
+        && !_isRoundCompleted(session, r, registrationStatusMap?.get(r.id))
+        && !(hero && r.id === hero.round.id));
+      return { session, rounds, registrationStatusMap, org: registrations.find((r) => r.sessionId === session.id) };
+    })
+    .filter((e) => e.rounds.length > 0);
+
+  const addSlug = heroOrgReg?.organizerUrlSlug
+    || registrations.find((r) => r.organizerUrlSlug)?.organizerUrlSlug
+    || '';
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://wonderelo.com';
+  const doShare = (kind: string) => {
+    const u = encodeURIComponent(shareUrl);
+    const text = encodeURIComponent('Break your bubble, meet new people on Wonderelo');
+    if (kind === 'copy') { navigator.clipboard?.writeText(shareUrl).then(() => toast.success('Link copied')); return; }
+    const urls: Record<string, string> = {
+      x: `https://twitter.com/intent/tweet?url=${u}&text=${text}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${u}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${u}`,
+    };
+    if (urls[kind]) window.open(urls[kind], '_blank', 'noopener');
+  };
+
+  const rules = (roundRules && roundRules.length > 0) ? roundRules : [
+    { title: 'Initiate deep talks', description: 'Skip the weather talk — meaningful relationships emerge when you share views, values, and stories.' },
+    { title: 'End round on time', description: 'It keeps you from getting stuck in one conversation and helps you reach your next round without delay.' },
+    { title: 'Do not ask for contacts', description: "After the round you'll be asked if you want to exchange contacts — sharing happens only if both agree." },
+  ];
+
+  const HowSteps = [
+    { n: '01', img: '/how-it-works-3.png', title: 'Confirm attendance', desc: "You'll get an SMS 5 minutes before each round. Tap to confirm you're joining." },
+    { n: '02', img: '/meeting-bar.png', title: 'Go to meeting point', desc: "We'll reveal your spot the moment matching runs — head there once you know where to go." },
+    { n: '03', img: '/how-it-works-4.png', title: 'Find your match', desc: "At the spot, your phone shows a unique image — same as your match's, with a different number. Confirm by entering your partner's number." },
+    { n: '04', img: '/how-it-works-5.png', title: 'Exchange contacts', desc: 'After the round, you can choose to exchange contacts — sharing only happens if both of you agree.' },
+  ];
+
+  const avatarClass = (i: number) => (i % 3 === 0 ? 'pd-av is-orange' : i % 3 === 2 ? 'pd-av is-cream' : 'pd-av');
+  const initialsOf = (c: { firstName: string; lastName: string }) => `${(c.firstName || '?')[0] || ''}${(c.lastName || '')[0] || ''}`.toUpperCase();
+
   return (
-    <ParticipantLayout
-      firstName={firstName}
-      lastName={lastName}
-    >
-      <div className="space-y-8 max-w-md mx-auto text-center">
-        {/* Upcoming section */}
-        <div>
-          <h2 className="mb-4">Upcoming rounds</h2>
-          <div className="space-y-4">
-            {upcomingSessions.map(({ session, registeredRoundIds, registrationStatusMap }) => {
-              const organizerReg = registrations.find(r => r.sessionId === session.id);
+    <div className={`wonderelo pd-page${justRegistered ? ' is-just-registered' : ''}`} data-variant={variant} data-hero-state={heroState}>
+      <div className="pd-shell">
+        <PdNav
+          firstName={firstName}
+          lastName={lastName}
+          onBrandClick={() => token && onAddMoreRoundsNavigate('')}
+          onDashboard={() => token && onAddMoreRoundsNavigate('')}
+          onProfile={onAddressBookNavigate}
+          onAddressBook={onAddressBookNavigate}
+          onHome={() => onAddMoreRoundsNavigate('')}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
 
-              return (
-                <Card key={session.id} className="transition-all hover:border-muted-foreground/20 max-w-md">
-                  <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1">
-                        <h3 className="mb-2 text-left">
-                          {organizerReg?.organizerName || 'Unknown organizer'}
-                        </h3>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline">{session.name}</Badge>
-                          {organizerReg?.organizerUrlSlug && (
-                            <span className="text-xs text-muted-foreground">#{organizerReg.organizerUrlSlug}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {session.date ? new Date(session.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric'
-                            }) : 'Date to be set'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {session.roundDuration} min rounds
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+        <section className="pd-celebration">
+          <span className="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Registered
+          </span>
+          <h2 className="title">{firstName}, <em>you're in!</em></h2>
+        </section>
 
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                      <Users className="h-4 w-4" />
-                      {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
-                    </div>
-
-                    {session.rounds && session.rounds.length > 0 && (() => {
-                      const registeredRounds = session.rounds.filter(round => {
-                        const isCompleted = _isRoundCompleted(session, round);
-                        const isRegistered = registeredRoundIds.has(round.id);
-                        return !isCompleted && isRegistered;
-                      });
-
-                      if (registeredRounds.length === 0) return null;
-
-                      return (
-                        <div className="mt-3">
-                          <div className="space-y-2">
-                            {registeredRounds.map((round) => {
-                              const roundSelectionData = roundSelections.get(round.id) || {};
-                              const roundKey = `${session.id}:${round.id}`;
-                              const currentStatus = registrationStatusMap?.get(round.id);
-
-                              const roundRegistration = registrations.find(r => r.roundId === round.id && r.sessionId === session.id);
-
-                              const shouldShowUnregisterButton = ['registered', 'confirmed'].includes(currentStatus || '');
-
-                              return (
-                                <RoundItem
-                                  key={round.id}
-                                  round={round}
-                                  session={session}
-                                  isRegistered={true}
-                                  participantStatus={currentStatus}
-                                  participantId={participantId}
-                                  showUnregisterButton={shouldShowUnregisterButton}
-                                  onUnregister={() => onRoundToggle(session, round, true, currentStatus)}
-                                  generateRoundTimeDisplay={generateRoundTimeDisplay}
-                                  selectedTeam={roundSelectionData.team}
-                                  selectedTopic={roundSelectionData.topic}
-                                  selectedTopics={roundSelectionData.topics}
-                                  isNextUpcoming={roundKey === globalNextUpcomingRoundId}
-                                  onConfirmAttendance={onConfirmAttendance}
-                                  lastConfirmTimestamp={lastConfirmTimestamp}
-                                  onConfirmationWindowExpired={onConfirmationWindowExpired}
-                                  matchDetails={roundRegistration?.matchId ? {
-                                    matchId: roundRegistration.matchId,
-                                    matchPartnerNames: roundRegistration.matchPartnerNames || [],
-                                    meetingPointId: roundRegistration.meetingPointId,
-                                    identificationImageUrl: roundRegistration.identificationImageUrl
-                                  } : undefined}
-                                  registeredCount={round.registeredCount}
-                                  showDuration={true}
-                                  hasFreshData={hasFreshData}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {organizerReg?.organizerUrlSlug && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 w-full"
-                        onClick={() => onAddMoreRoundsNavigate(organizerReg.organizerUrlSlug)}
-                      >
-                        + Add more rounds
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-
-            {upcomingSessions.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                {registrations.length === 0 ? (
-                  <>
-                    <p className="mb-2">You don't have any registrations yet.</p>
-                    <p className="text-sm">Register for rounds via an event page to see them here.</p>
-                  </>
-                ) : (
-                  <p>No upcoming rounds</p>
-                )}
+        <div className="pd-roundzone">
+          <header className="pd-hero">
+            {(variant === 'default' || variant === 'window' || variant === 'confirmed') && (
+              <div className="pd-hero-headline">
+                {variant === 'default' && <div data-headline-state="default"><span className="k">You're on the list</span><h1>{firstName}, soon, the <em>time will come!</em></h1></div>}
+                {variant === 'window' && <div data-headline-state="window"><span className="k">Confirm your spot</span><h1>You're in, <em>{firstName}!</em></h1></div>}
+                {variant === 'confirmed' && <div data-headline-state="confirmed"><span className="k">You're confirmed</span><h1>All set, {firstName} — your <em>match is brewing</em></h1></div>}
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Completed section */}
-        <div>
-          <h2 className="mb-4">Completed rounds</h2>
-          <div className="space-y-4">
-            {[...pastSessions].sort((a, b) => {
-              const getLatestRoundTime = (s: typeof a) => {
-                let latest = 0;
-                for (const round of s.session.rounds || []) {
-                  if (!s.registeredRoundIds.has(round.id)) continue;
-                  try {
-                    const [h, m] = (round.startTime || '').split(':').map(Number);
-                    const d = new Date(round.date || s.session.date || '');
-                    d.setHours(h, m, 0, 0);
-                    if (d.getTime() > latest) latest = d.getTime();
-                  } catch { /* skip */ }
-                }
-                return latest;
-              };
-              return getLatestRoundTime(b) - getLatestRoundTime(a);
-            }).map(({ session, registeredRoundIds, registrationStatusMap }) => {
-              const organizerReg = registrations.find(r => r.sessionId === session.id);
+            {hero && (
+              <div className="pd-hero-greet">
+                <div className="pd-hero-event">
+                  <span className="name">{heroOrgReg?.organizerName || hero.session.name}</span>
+                  <span className="org">{hero.session.name}</span>
+                </div>
+                {heroState === 'pre-confirm' && <span className="pd-hero-state"><span className="dot" /> Upcoming</span>}
+                {heroState === 'in-window' && <span className="pd-hero-state is-window"><span className="dot" /> Confirm now</span>}
+                {heroState === 'confirmed' && <span className="pd-hero-state is-confirmed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9 }}><polyline points="20 6 9 17 4 12"/></svg> Confirmed</span>}
+                {heroState === 'live' && <span className="pd-hero-state is-live"><span className="dot" /> Live</span>}
+              </div>
+            )}
 
-              return (
-                <Card key={session.id} className="transition-all hover:border-muted-foreground/20 opacity-60 max-w-md">
-                  <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px] text-left">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1 text-left">
-                        <h3 className="mb-2 text-left">
-                          {organizerReg?.organizerName || 'Unknown organizer'}
-                        </h3>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline">{session.name}</Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {session.date ? new Date(session.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric'
-                            }) : 'Date to be set'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {session.roundDuration} min rounds
-                          </div>
+            {heroState === 'pre-confirm' && (
+              <div data-hero-state="pre-confirm">
+                <div className="pd-hero-eyebrow">Confirm attendance in</div>
+                <div className="pd-hero-clock-wrap"><FlipClock seconds={secsLeft} hours={heroHours} /></div>
+                <div className="pd-hero-context">Round starts <strong>{fmtDayTime(hero!.round, hero!.session)}</strong></div>
+                <div className="pd-hero-sms-wrap"><div className="pd-hero-sms">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <span>You'll get an SMS reminder</span>
+                </div></div>
+              </div>
+            )}
+
+            {heroState === 'in-window' && (
+              <div data-hero-state="in-window">
+                <div className="pd-hero-eyebrow">Round starts in</div>
+                <div className="pd-hero-clock-wrap"><FlipClock seconds={secsLeft} /></div>
+                <div className="pd-hero-context">Lock your seat for <strong>{fmtDayTime(hero!.round, hero!.session)}</strong></div>
+                <div style={{ textAlign: 'center' }}>
+                  <button className="pd-hero-cta" type="button" onClick={() => onConfirmAttendance(hero!.round.id)}>Yes, I'll join this round</button>
+                  <div className="pd-hero-decline"><button type="button" onClick={() => onRoundToggle(hero!.session, hero!.round, true, hero!.status)}>I can't make it</button></div>
+                </div>
+              </div>
+            )}
+
+            {heroState === 'confirmed' && (
+              <div data-hero-state="confirmed">
+                <div className="pd-hero-eyebrow">Round starts in</div>
+                <div className="pd-hero-clock-wrap"><FlipClock seconds={secsLeft} /></div>
+                <div className="pd-hero-context">Now wait for your meeting point</div>
+              </div>
+            )}
+
+            {heroState === 'live' && (
+              <div data-hero-state="live">
+                <div className="pd-hero-eyebrow">Round ends in</div>
+                <div className="pd-hero-clock-wrap"><FlipClock seconds={secsLeft} /></div>
+                <div className="pd-hero-context">{hero?.session.meetingPoints?.[0]?.name ? <>You're at <strong>{hero.session.meetingPoints[0].name}</strong></> : 'Your round is live'}</div>
+                <div style={{ textAlign: 'center' }}>
+                  <button className="pd-hero-cta" type="button" onClick={() => token && onAddMoreRoundsNavigate('')}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    Show your round
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {heroState === 'past' && (
+              <div data-hero-state="past">
+                <div className="pd-hero-eyebrow">All rounds wrapped</div>
+                <div className="pd-hero-clock-wrap" style={{ flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontFamily: 'var(--w-font-display)', fontWeight: 800, fontSize: 56, lineHeight: 1, letterSpacing: '-.03em', color: '#fff' }}>
+                    {pastContacts} <span style={{ fontFamily: 'var(--w-font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: 28, color: 'var(--w-orange-bright)', verticalAlign: 'middle' }}>{pastContacts === 1 ? 'contact' : 'contacts'}</span>
+                  </div>
+                </div>
+                <div className="pd-hero-context">Across {pastRoundCount} {pastRoundCount === 1 ? 'round' : 'rounds'} at {pastEventIds.size} {pastEventIds.size === 1 ? 'event' : 'events'}</div>
+              </div>
+            )}
+
+            {heroState === 'empty' && (
+              <div data-hero-state="empty">
+                <div className="pd-hero-eyebrow">Wondering what's next?</div>
+                <div className="pd-hero-clock-wrap" style={{ flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontFamily: 'var(--w-font-display)', fontWeight: 800, fontSize: 40, lineHeight: 1, letterSpacing: '-.03em', color: '#fff', textAlign: 'center', maxWidth: '18ch', textWrap: 'balance' }}>
+                    One <em style={{ fontFamily: 'var(--w-font-serif)', fontStyle: 'italic', fontWeight: 400, color: 'var(--w-orange-bright)' }}>event code</em> away from your first round
+                  </div>
+                </div>
+                <div className="pd-hero-context">Got an event code? Drop it below to register</div>
+              </div>
+            )}
+
+            {hero && (
+              <div className="pd-round-cancel pd-hero-cancel">
+                <button type="button" onClick={() => onRoundToggle(hero!.session, hero!.round, true, hero!.status)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Cancel this round
+                </button>
+              </div>
+            )}
+          </header>
+
+          {hero && (
+            <section className="pd-rounddetails">
+              <div className="pd-rd-prefs">
+                <div className="pd-rd-head"><span className="pd-rd-title">Your <em>round</em></span></div>
+                <div className="pd-hero-session-meta">
+                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {hero.round.duration || hero.session.roundDuration || 5} min round</span>
+                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Groups of {hero.session.groupSize || 2}</span>
+                </div>
+                {(heroSel.topic || (heroSel.topics && heroSel.topics.length) || heroSel.team) && (
+                  <div className="pd-rd-fields">
+                    {(heroSel.topic || (heroSel.topics && heroSel.topics.length > 0)) && (
+                      <div className="pd-expand-section" data-field="topic">
+                        <div className="pd-expand-label">I want to <em>talk about</em></div>
+                        <div className="pd-chips" role="group">
+                          {(hero.session.topics || []).map((t: string) => {
+                            const active = heroSel.topic === t || (heroSel.topics || []).includes(t);
+                            return <button type="button" key={t} className={`pd-chip is-topic${active ? ' is-active' : ''}`}>{t}</button>;
+                          })}
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-                      <Users className="h-4 w-4" />
-                      {session.limitParticipants ? `Max ${session.maxParticipants}` : 'Unlimited'} participants • Groups of {session.groupSize}
-                    </div>
-
-                    {session.rounds && session.rounds.length > 0 && (() => {
-                      const registeredRounds = session.rounds.filter(round => {
-                        const roundStatus = registrationStatusMap?.get(round.id);
-                        return _isRoundCompleted(session, round, roundStatus) && registeredRoundIds.has(round.id);
-                      });
-
-                      if (registeredRounds.length === 0) return null;
-
-                      return (
-                        <div className="mt-3">
-                          <div className="space-y-2">
-                            {[...registeredRounds].reverse().map((round) => {
-                              const status = registrationStatusMap?.get(round.id);
-                              const roundContacts = sharedContactsByRound.get(round.id);
-
-                              return (
-                                <div
-                                  key={round.id}
-                                  className="border rounded border-muted p-2"
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-medium">{round.name}</span>
-                                      {status && (
-                                        <ParticipantStatusBadge status={status} />
-                                      )}
-                                    </div>
-                                    {roundContacts && roundContacts.length > 0 && (
-                                      <div className="flex items-center gap-2">
-                                        {roundContacts.map((contact, i) => (
-                                          <button
-                                            key={i}
-                                            onClick={onAddressBookNavigate}
-                                            className="flex items-center gap-1.5 text-xs text-primary hover:underline"
-                                          >
-                                            <BookUser className="h-3 w-3" />
-                                            {contact.firstName} {contact.lastName}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {organizerReg?.organizerUrlSlug && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 w-full"
-                        onClick={() => onAddMoreRoundsNavigate(organizerReg.organizerUrlSlug)}
-                      >
-                        + Add more rounds
-                      </Button>
                     )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-
-            {pastSessions.length === 0 && (
-              <Card className="transition-all max-w-md">
-                <CardContent className="pt-[16px] pr-[16px] pb-[45px] pl-[16px]">
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No completed rounds</p>
+                    {heroSel.team && (
+                      <div className="pd-expand-section" data-field="group">
+                        <div className="pd-expand-label">I belong to <em>the group</em></div>
+                        <div className="pd-chips" role="radiogroup">
+                          {(hero.session.teams || []).map((t: string) => (
+                            <button type="button" key={t} className={`pd-chip is-group${heroSel.team === t ? ' is-active' : ''}`}>{t}</button>
+                          ))}
+                        </div>
+                        {heroMatchNote && (
+                          <div className="pd-match-note">
+                            <svg className="icon" width="40" height="40" viewBox="0 0 40 40"><circle cx="11" cy="20" r="8.5" fill="none" stroke="#4b1d51" opacity=".5" strokeWidth="1.4" strokeDasharray="2 2.5"/><circle cx="29" cy="20" r="8.5" fill="none" stroke="#dd531c" strokeWidth="1.4" strokeDasharray="2 2.5"/><line x1="14" y1="20" x2="26" y2="20" stroke="#dd531c" strokeWidth="1.4"/><circle cx="11" cy="20" r="3.2" fill="#4b1d51"/><circle cx="29" cy="20" r="3.2" fill="#dd531c"/></svg>
+                            <div className="body"><div className="eyebrow">{heroMatchNote.eyebrow}</div><div className="text">{heroMatchNote.text}</div></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                )}
+              </div>
+
+              {(hero.session.meetingPoints && hero.session.meetingPoints.length > 0) && (
+                <div className="pd-rd-box">
+                  <div className="pd-rd-head"><span className="pd-rd-title">Meeting <em>points</em></span><span className="pd-rd-hint">Be near these before your round</span></div>
+                  <div className="pd-mp"><div className="pd-mp-grid">
+                    {hero.session.meetingPoints.map((mp: any, i: number) => (
+                      <div className="pd-mp-grid-card" key={mp.id || i}>
+                        <div className="pd-mp-grid-photo">
+                          {mp.imageUrl && (!mp.type || mp.type === 'physical')
+                            ? <img src={mp.imageUrl} alt={mp.name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <span className="lbl">photo</span>}
+                        </div>
+                        <div className="pd-mp-grid-name">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          {mp.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div></div>
+                </div>
+              )}
+
+              <div className="pd-rd-box">
+                <div className="pd-rd-head"><span className="pd-rd-title">Round <em>rules</em></span></div>
+                <div className="pd-rules-inline">
+                  {rules.map((r: any, i: number) => (
+                    <div className="pd-rule-inline" key={i}><div><div className="t">{r.title}</div><div className="d">{r.description}</div></div></div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
         </div>
+
+        <section className="pd-howit">
+          <div className="pd-howit-head">How rounds work</div>
+          <ol className="pd-howit-list">
+            {HowSteps.map((s, i) => (
+              <li className="pd-howit-step" data-step={String(i + 1)} key={s.n}>
+                <span className="pd-howit-num"><img src={s.img} alt="" onError={(e) => { (e.currentTarget.style.display = 'none'); }} /></span>
+                <div className="pd-howit-text">
+                  <span className="pd-howit-title"><span className="pd-howit-step-num">{s.n}</span>{s.title}</span>
+                  <span className="pd-howit-desc">{s.desc}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="pd-empty">
+          <h3 className="pd-empty-headline" data-only="past-headline">Ready for next round?</h3>
+          <form className="pd-empty-join" onSubmit={(e) => { e.preventDefault(); const v = (e.currentTarget.elements.namedItem('code') as HTMLInputElement)?.value?.trim(); if (v) onAddMoreRoundsNavigate(v.toLowerCase().replace(/^#/, '')); }}>
+            <div className="pd-empty-input-wrap">
+              <span className="hash">#</span>
+              <input name="code" type="text" placeholder="event code" maxLength={20} />
+            </div>
+            <button className="pd-empty-join-btn" type="submit">
+              Join
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </button>
+          </form>
+          <p className="pd-empty-hint">Codes look like <span className="chip">#summit26</span> &middot; ask your organizer</p>
+        </section>
+
+        <div data-section="upcoming">
+          {otherUpcoming.length > 0 && <div className="pd-eyebrow"><span className="label">Other upcoming rounds</span></div>}
+          {otherUpcoming.map(({ session, rounds, registrationStatusMap, org }) => (
+            <article className="pd-event" key={session.id}>
+              <div className="pd-event-head">
+                <div className="pd-event-org" aria-hidden="true" />
+                <div className="pd-event-meta">
+                  <div className="pd-event-name">{org?.organizerName || session.name}</div>
+                  <div className="pd-event-org-name">{session.name}</div>
+                  <div className="pd-session-meta">
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {session.roundDuration || 5} min rounds</span>
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Groups of {session.groupSize || 2}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="pd-rounds">
+                {rounds.map((round) => {
+                  const st = registrationStatusMap?.get(round.id);
+                  return (
+                    <div className="pd-round" key={round.id}>
+                      <div className="pd-round-line">
+                        <span className="pd-round-when"><span className="pd-round-time">{fmtTime(round, session)}</span><span className="pd-round-date">{fmtDate(round, session)}</span></span>
+                        <span className="pd-round-spacer" />
+                        <button className="pd-round-cancel-inline" type="button" onClick={() => onRoundToggle(session, round, true, st)}>Cancel</button>
+                        <span className={`pd-status${st === 'confirmed' ? ' is-confirmed' : ' is-pending'}`}>{st === 'confirmed' ? 'Confirmed' : 'Registered'}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          ))}
+          {addSlug && (
+            <div style={{ textAlign: 'center' }}>
+              <button className="pd-add" type="button" onClick={() => onAddMoreRoundsNavigate(addSlug)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add more rounds
+              </button>
+            </div>
+          )}
+        </div>
+
+        <section className="pd-share">
+          <div className="pd-share-head"><div className="pd-share-title">Bring a friend?</div><div className="pd-share-sub">Spread the word — more people, more wondering.</div></div>
+          <div className="pd-share-buttons">
+            <button className="pd-share-btn" type="button" onClick={() => doShare('copy')}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span className="lbl">Copy link</span></button>
+            <button className="pd-share-btn" type="button" onClick={() => doShare('x')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg><span className="lbl">X / Twitter</span></button>
+            <button className="pd-share-btn" type="button" onClick={() => doShare('linkedin')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg><span className="lbl">LinkedIn</span></button>
+            <button className="pd-share-btn" type="button" onClick={() => doShare('facebook')}><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg><span className="lbl">Facebook</span></button>
+          </div>
+        </section>
+
+        <div data-section="past">
+          {pastRoundCount > 0 && <div className="pd-eyebrow"><span className="label">Completed rounds</span><span className="count">{pastRoundCount} {pastRoundCount === 1 ? 'round' : 'rounds'} · {pastContacts} {pastContacts === 1 ? 'contact' : 'contacts'}</span></div>}
+          {[...pastSessions].map(({ session, registeredRoundIds, registrationStatusMap }) => {
+            const org = registrations.find((r) => r.sessionId === session.id);
+            const rounds = (session.rounds || []).filter((r) => registeredRoundIds.has(r.id));
+            if (rounds.length === 0) return null;
+            return (
+              <article className="pd-event" key={session.id}>
+                <div className="pd-event-head">
+                  <div className="pd-event-org" aria-hidden="true" />
+                  <div className="pd-event-meta">
+                    <div className="pd-event-name">{org?.organizerName || session.name}</div>
+                    <div className="pd-event-org-name">{session.name}</div>
+                    <div className="pd-session-meta">
+                      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {session.roundDuration || 5} min rounds</span>
+                      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Groups of {session.groupSize || 2}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="pd-rounds">
+                  {rounds.map((round) => {
+                    const st = registrationStatusMap?.get(round.id);
+                    const contacts = sharedContactsByRound.get(round.id) || [];
+                    const missed = st === 'no-show' || st === 'missed';
+                    return (
+                      <div className="pd-round is-past" key={round.id}>
+                        <div className="pd-round-line">
+                          <span className="pd-round-when"><span className="pd-round-time">{fmtTime(round, session)}</span><span className="pd-round-date">{fmtDate(round, session)}</span></span>
+                          <span className="pd-round-spacer" />
+                          {missed
+                            ? <span className="pd-status is-missed">No show</span>
+                            : <span className="pd-status is-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Completed</span>}
+                        </div>
+                        {!missed && contacts.length > 0 && (
+                          <div className="pd-past-strip">
+                            <div className="pd-avatars">
+                              {contacts.slice(0, 3).map((c, i) => <span className={avatarClass(i)} key={i}>{initialsOf(c)}</span>)}
+                              {contacts.length > 3 && <span className="pd-av-rest">+{contacts.length - 3}</span>}
+                            </div>
+                            <div className="pd-shared">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                              <strong>{contacts.length}</strong> {contacts.length === 1 ? 'contact' : 'contacts'} exchanged
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <footer className="pd-footer">
+          <a className="pd-brand"><span className="mark"><span className="inner" /></span><span className="word">wond<em>e</em>relo</span></a>
+          <p className="tagline">Break your bubble, meet new people</p>
+          <p className="copy">© 2026 Wonderelo</p>
+        </footer>
       </div>
-
-      <MeetingPointsDialog
-        open={showMeetingPoints}
-        onOpenChange={onSetShowMeetingPoints}
-        meetingPoints={selectedSessionForDialog?.meetingPoints}
-      />
-
-      <RoundRulesDialog
-        open={showRoundRules}
-        onOpenChange={onSetShowRoundRules}
-        rules={roundRules}
-      />
 
       <AlertDialog open={showUnregisterDialog} onOpenChange={onSetShowUnregisterDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm unregistration</AlertDialogTitle>
+            <AlertDialogTitle>Cancel this round?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to unregister from{' '}
-              <span className="font-medium">{pendingUnregister?.round.name}</span>
-              {pendingUnregister?.session.name && (
-                <>
-                  {' '}in <span className="font-medium">{pendingUnregister.session.name}</span>
-                </>
-              )}
-              {pendingUnregister?.session.date && (
-                <>
-                  {' '}on{' '}
-                  <span className="font-medium">
-                    {new Date(pendingUnregister.session.date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </>
-              )}?
+              {pendingUnregister && (<>You'll give up your spot for <span className="font-medium">{pendingUnregister.round?.name || 'this round'}</span>. You can register again later if spots remain.</>)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={onCancelUnregister}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirmUnregister}>
-              Unregister
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={onCancelUnregister}>Keep it</AlertDialogCancel>
+            <AlertDialogAction onClick={onConfirmUnregister}>Cancel round</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {showDebug && (
-        <div className="fixed bottom-0 right-0 w-1/3 h-1/2 bg-black text-green-400 font-mono text-xs overflow-auto p-4 border-l border-t border-green-400 z-50">
-          <div className="flex justify-between items-center mb-2 sticky top-0 bg-black pb-2">
-            <div className="font-bold">🐛 DEBUG LOGS</div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onClearDebugLogs}
-              className="h-6 px-2 text-green-400 hover:text-green-300"
-            >
-              Clear
-            </Button>
-          </div>
-          <div className="space-y-1">
-            {debugLogs.map((log, i) => (
-              <div key={i} className={log.includes('[ERROR]') ? 'text-red-400' : ''}>
-                {log}
-              </div>
-            ))}
-            {debugLogs.length === 0 && (
-              <div className="text-muted-foreground">No logs yet. Perform actions to see debug output.</div>
-            )}
-          </div>
-        </div>
-      )}
-    </ParticipantLayout>
+    </div>
   );
 }
 

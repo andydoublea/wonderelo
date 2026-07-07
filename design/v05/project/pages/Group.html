@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Group detail (rozcestník level 2)
+  Reads ?group=public|participant|auth|organizer and lists that group's pages.
+  Fast: plain links, no live iframe previews.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Group</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  body { background: var(--w-paper); }
+
+  .gp-shell { max-width: 980px; margin: 0 auto; padding: 48px 40px 110px; }
+
+  .gp-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13.5px;
+    color: var(--w-ink); opacity: .7; text-decoration: none;
+    padding: 8px 0; transition: opacity .15s;
+  }
+  .gp-back:hover { opacity: 1; color: var(--w-purple-deep); }
+  .gp-back svg { transition: transform .15s; }
+  .gp-back:hover svg { transform: translateX(-3px); }
+
+  .gp-head { position: relative; margin-top: 18px; padding-bottom: 30px; border-bottom: 1px solid var(--w-hairline); }
+  .gp-head .num { font-family: var(--w-font-mono); font-size: 12px; font-weight: 600; letter-spacing: .18em; color: var(--w-orange); }
+  .gp-head h1 { margin: 12px 0 0; font-size: clamp(34px, 4.4vw, 52px); }
+  .gp-head h1 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .gp-head p { margin: 16px 0 0; max-width: 600px; font-size: 16px; line-height: 1.55; color: var(--w-ink); opacity: .85; }
+
+  .gp-list { margin-top: 30px; display: flex; flex-direction: column; gap: 12px; }
+
+  .gp-row {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px;
+    background: var(--w-paper); border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-lg); padding: 20px 24px;
+    text-decoration: none; color: inherit;
+    transition: border-color .15s, transform .12s, box-shadow .15s;
+  }
+  .gp-row:hover { border-color: var(--w-hairline-strong); transform: translateY(-2px); box-shadow: var(--w-shadow-soft); }
+
+  .gp-row .idx {
+    width: 38px; height: 38px; flex: none; border-radius: 10px;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-mono); font-size: 13px; font-weight: 600; color: var(--w-purple-deep);
+  }
+  .gp-row .mid { min-width: 0; }
+  .gp-row .mid .t {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 19px;
+    letter-spacing: -0.02em; color: var(--w-purple-deep);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .gp-row .mid .t em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .gp-row .mid .t .badge {
+    font-family: var(--w-font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--w-orange); background: rgba(221,83,28,.09); border: 1px solid rgba(221,83,28,.22);
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .gp-row .mid .s { margin-top: 4px; font-size: 13.5px; line-height: 1.45; color: var(--w-ink); opacity: .72; }
+  .gp-row .mid .path {
+    margin-top: 8px; display: inline-block;
+    font-family: var(--w-font-mono); font-size: 11px; color: var(--w-purple-deep);
+    background: var(--w-cream); padding: 3px 8px; border-radius: 5px;
+    overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap;
+  }
+  .gp-row .go { color: var(--w-orange); display: inline-flex; flex: none; }
+  .gp-row .go svg { transition: transform .15s; }
+  .gp-row:hover .go svg { transform: translateX(3px); }
+
+  .gp-empty { margin-top: 40px; font-family: var(--w-font-mono); font-size: 14px; color: var(--w-ink); opacity: .7; }
+
+  @media (max-width: 640px) {
+    .gp-shell { padding: 36px 22px 80px; }
+    .gp-row { grid-template-columns: auto 1fr; }
+    .gp-row .go { display: none; }
+  }
+</style>
+</head>
+<body data-screen-label="Group detail">
+
+<div class="gp-shell">
+  <a class="gp-back" href="Pages.html"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 19l-7-7 7-7"/></svg> All groups</a>
+
+  <header class="gp-head" id="head"></header>
+  <main class="gp-list" id="list"></main>
+</div>
+
+<script>
+  // Page target: '@<id>' opens View.html?id=<id> (desktop + mobile artboards + toggles);
+  // a raw path opens that file directly (multi-artboard canvases, deep links).
+  const GROUPS = {
+    public: {
+      num: '01', title: 'Public <em>site</em>',
+      desc: 'The pages every visitor sees before signing up. Self-contained marketing mockups in the brand language.',
+      pages: [
+        ['Homepage', '@homepage', 'The marketing front door — hero, how-it-works, logos.', ''],
+        ['Pricing', '@pricing', 'Capacity slider, two plan cards, comparison table, FAQ.', ''],
+        ['Our Story', '@story', 'Editorial founder narrative — chapters, pull quote, signature.', ''],
+        ['Blog', '@blog', 'Article listing — featured post, category chips, post grid.', ''],
+        ['Blog Post', '@blogpost', 'Long-form article with sticky TOC and author block.', ''],
+        ['Use Case', '@usecase', 'Conferences landing — benefits, steps, scenarios, testimonial.', ''],
+        ['Design System', '@designsys', 'Tokens, type scale and components.', 'Reference'],
+      ]
+    },
+    participant: {
+      num: '02', title: 'Participant <em>journey</em>',
+      desc: 'Everything a guest touches — from the public event page through registration, the dashboard and the live matching flow.',
+      pages: [
+        ['Event page', '@event', 'wonderelo.com/<slug> — the page everyone lands on after the QR.', ''],
+        ['Continue registration', '@continuereg', 'Contact info and meeting-point selection.', ''],
+        ['Confirm email', '@confirmemail', 'Check-your-inbox confirmation screen.', ''],
+        ['Participant dashboard', '@dashboard', 'Empty → registered → confirmed → live states.', 'States'],
+        ['Matching flow', '@matching', 'Meeting point → find each other → networking → feedback.', 'Flow'],
+        ['Account', '@account', 'Profile settings and address book.', ''],
+        ['Full flow canvas', 'Participant Flow.html', 'Every onboarding and participant screen on one canvas.', 'Canvas'],
+      ]
+    },
+    auth: {
+      num: '03', title: 'Sign in &amp; <em>sign up</em>',
+      desc: 'Account access for both sides — participant magic links and the four-step organizer sign-up with email verification.',
+      pages: [
+        ['Participant sign in', 'Participant Flow.html?only=psi1-email', 'Magic-link request and the link-sent confirmation.', ''],
+        ['Organizer sign in', 'Participant Flow.html?only=osi1-signin', 'Sign in, forgot password, and reset.', ''],
+        ['Organizer sign up', 'Participant Flow.html?only=osu1-account', 'Account → discovery → organisation → verify email.', ''],
+        ['Full auth canvas', 'Participant Flow.html', 'All sign-in and sign-up screens on one canvas.', 'Canvas'],
+      ]
+    },
+    organizer: {
+      num: '04', title: 'Organizer <em>studio</em>',
+      desc: 'The organizer\u2019s daily workspace — create rounds, monitor them live, and manage the event page, account and billing.',
+      pages: [
+        ['Studio canvas', 'Organizer Studio.html', 'Rounds, round form, live monitor, event settings, account, billing — 8 screens.', 'Canvas'],
+        ['Event promo slide', '@promo', 'The projected 1920×1080 scan-to-join venue slide.', '16:9'],
+      ]
+    },
+  };
+
+  const resolveHref = (t) => t.charAt(0) === '@' ? 'View.html?id=' + t.slice(1) : t;
+
+  const arrow = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
+  const slug = new URLSearchParams(location.search).get('group') || 'public';
+  const g = GROUPS[slug] || GROUPS.public;
+  document.title = 'Wonderelo — ' + g.title.replace(/<[^>]+>/g, '');
+
+  document.getElementById('head').innerHTML = `
+    <span class="num">${g.num}</span>
+    <h1 class="w-display">${g.title}</h1>
+    <p>${g.desc}</p>`;
+
+  document.getElementById('list').innerHTML = g.pages.map(([title, target, sub, badge], i) => {
+    const href = resolveHref(target);
+    const isView = target.charAt(0) === '@';
+    return `
+    <a class="gp-row" href="${href}" data-screen-label="${title}">
+      <span class="idx">${String(i + 1).padStart(2, '0')}</span>
+      <span class="mid">
+        <span class="t">${title}${badge ? `<span class="badge">${badge}</span>` : ''}${isView ? '<span class="badge" style="color:var(--w-purple-deep);background:rgba(76,25,77,.07);border-color:var(--w-hairline-strong);">Desktop + mobile</span>' : ''}</span>
+        <span class="s">${sub}</span>
+        <span class="path">${href}</span>
+      </span>
+      <span class="go">${arrow}</span>
+    </a>`;
+  }).join('');
+</script>
+
+</body>
+</html>

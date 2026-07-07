@@ -9,6 +9,23 @@ import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { WondereloHeader } from './WondereloHeader';
 import { MissedRound } from './MissedRound';
+import { PdNav } from './redesign/PdNav';
+import { FlipClock } from './redesign/FlipClock';
+import { PmFooter } from './redesign/PmFooter';
+
+// Shared participant nav wired for the matching flow (dashboard + logout only;
+// profile/address-book are secondary during a live round).
+function MatchNav({ firstName, onBackToDashboard }: { firstName?: string; onBackToDashboard: () => void }) {
+  return (
+    <PdNav
+      firstName={firstName}
+      onBrandClick={onBackToDashboard}
+      onDashboard={onBackToDashboard}
+      onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+      onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+    />
+  );
+}
 
 export interface MatchData {
   matchId: string;
@@ -49,64 +66,48 @@ export function MatchInfoMatchedView({
   onImHere,
   onBackToDashboard,
 }: MatchInfoMatchedViewProps) {
+  const walkSecs = matchData.walkingDeadline
+    ? Math.max(0, Math.floor((new Date(matchData.walkingDeadline).getTime() - Date.now()) / 1000))
+    : null;
+  const isVirtual = matchData.meetingPointType === 'virtual';
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-32">
-        {countdown && <div className="mb-8">{countdown}</div>}
-
-        <h1 className="text-4xl font-bold mb-12">
-          We have a match for you! {matchData.meetingPointType === 'virtual' ? 'Join the call:' : 'Now go to:'}
-        </h1>
-
-        <fieldset className="mb-12 border-2 border-border rounded-2xl px-8 py-8 min-h-[220px] grid place-items-center gap-6">
-          <h2 className="text-4xl font-bold">{matchData.meetingPointName}</h2>
-
-          {matchData.meetingPointType === 'virtual' && matchData.meetingPointVideoCallUrl ? (
-            <div>
-              <a
-                href={matchData.meetingPointVideoCallUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-xl text-lg font-semibold hover:bg-primary/90 transition-colors shadow-lg"
-              >
-                <Video className="h-6 w-6" />
-                Join video call
-                <ExternalLink className="h-5 w-5" />
-              </a>
-              <p className="text-sm text-muted-foreground mt-3">Opens in a new tab</p>
+    <div className="wonderelo pm-page" data-active="meeting-point">
+      <div className="pm-shell">
+        <MatchNav firstName={matchData.participants?.[0]?.firstName} onBackToDashboard={onBackToDashboard} />
+        <div data-screen="meeting-point">
+          <div className="pm-band">
+            <div className="pm-eventrow">
+              <div className="pm-event"><span className="name">{matchData.roundName || 'Your round'}</span><span className="org">Live round</span></div>
+              <span className="pm-state"><span className="dot" /> Live</span>
             </div>
-          ) : (
-            matchData.meetingPointImageUrl && (
-              <div>
-                <img
-                  src={matchData.meetingPointImageUrl}
-                  alt={matchData.meetingPointName}
-                  className="mx-auto rounded-lg shadow-lg max-w-md w-full object-cover"
-                  style={{ maxHeight: '400px' }}
-                />
+            <div className="pm-focusbox">
+              <div className="eyebrow">{isVirtual ? 'Join the call' : 'Now go to'}</div>
+              <div className="place">{matchData.meetingPointName}</div>
+              <div className="photo">
+                {isVirtual && matchData.meetingPointVideoCallUrl ? (
+                  <a href={matchData.meetingPointVideoCallUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                  </a>
+                ) : matchData.meetingPointImageUrl ? (
+                  <img src={matchData.meetingPointImageUrl} alt={matchData.meetingPointName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                )}
               </div>
-            )
-          )}
-        </fieldset>
-
-        <div>
-          <button
-            onClick={onBackToDashboard}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
+            </div>
+            {(walkSecs != null || countdown) && (
+              <div className="pm-center"><div className="pm-deadline"><span className="lbl">Walk over in</span>{walkSecs != null ? <FlipClock seconds={walkSecs} mini /> : countdown}</div></div>
+            )}
+          </div>
+          <div className="pm-sticky">
+            <button className="pm-btn is-primary" type="button" onClick={onImHere} disabled={isSubmitting}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {isSubmitting ? 'Checking in…' : (isVirtual ? 'I have joined the call' : `I am at ${matchData.meetingPointName}`)}
+            </button>
+            <div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard} style={{ marginTop: 12 }}>Back to dashboard</button></div>
+          </div>
         </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-lg z-10">
-        <div className="max-w-md mx-auto">
-          <Button size="lg" className="w-full" onClick={onImHere} disabled={isSubmitting}>
-            <MapPin className="h-5 w-5 mr-2" />
-            {isSubmitting ? 'Checking in...' : `I am at ${matchData.meetingPointName}`}
-          </Button>
-        </div>
+        <PmFooter onBrandClick={onBackToDashboard} />
       </div>
     </div>
   );
@@ -119,26 +120,27 @@ export interface MatchInfoNoMatchViewProps {
 
 export function MatchInfoNoMatchView({ onBackToDashboard, onBackToEventPage }: MatchInfoNoMatchViewProps) {
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        <div className="text-6xl mb-6">😳</div>
-        <h1 className="text-4xl font-bold mb-4">No match found</h1>
-        <p className="text-lg text-muted-foreground mb-12">
-          No one else registered for this round.
-        </p>
-        <h2 className="text-2xl font-bold mb-6">Try another round!</h2>
-        <Button size="lg" onClick={onBackToEventPage}>
-          Back to event page
-        </Button>
-        <div className="mt-6">
-          <button
-            onClick={onBackToDashboard}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
+    <div className="wonderelo pm-page" data-active="no-match">
+      <div className="pm-shell">
+        <MatchNav onBackToDashboard={onBackToDashboard} />
+        <div data-screen="no-match">
+          <div className="pm-band">
+            <div className="pm-eventrow">
+              <div className="pm-event"><span className="name">Your round</span><span className="org">Speed networking</span></div>
+              <span className="pm-state is-quiet"><span className="dot" /> Round closed</span>
+            </div>
+            <div className="pm-center" style={{ paddingTop: 6 }}>
+              <div className="pm-emoji">😳</div>
+              <h1 className="pm-h1" style={{ marginTop: 14 }}>No match found</h1>
+              <p className="pm-muted" style={{ margin: '12px auto 0', maxWidth: 280 }}>No one else registered for this round.</p>
+            </div>
+          </div>
+          <div className="pm-sticky">
+            <button className="pm-btn is-primary" type="button" onClick={onBackToEventPage}>Try another round</button>
+            <div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard} style={{ marginTop: 12 }}>Back to dashboard</button></div>
+          </div>
         </div>
+        <PmFooter onBrandClick={onBackToDashboard} />
       </div>
     </div>
   );

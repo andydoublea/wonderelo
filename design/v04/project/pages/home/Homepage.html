@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Homepage Redesign</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    background: #1a0f1c;
+    color: #1f1a14;
+  }
+  /* hide scrollbars on inner scrollers in artboards */
+  .ab-shell { overflow: hidden; }
+
+  /* ───────── Interaction layer ─────────
+     All effects are non-destructive — they layer transitions, transforms,
+     and decorative pseudo-elements on top of React's inline styles.        */
+
+  /* Click ripple — a small diamond burst */
+  .fx-ripple {
+    position: fixed; pointer-events: none; z-index: 9998;
+    width: 14px; height: 14px; transform: translate(-50%, -50%) rotate(45deg);
+    background: #dd531c;
+    animation: fx-ripple-pop .55s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+  @keyframes fx-ripple-pop {
+    0% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(.4); }
+    70% { opacity: .35; }
+    100% { opacity: 0; transform: translate(-50%, -50%) rotate(225deg) scale(2.4); }
+  }
+
+  /* Scroll-reveal — sections drift up into place */
+  .fx-reveal { opacity: 0; transform: translateY(28px); transition: opacity .9s ease, transform .9s cubic-bezier(.2,.7,.2,1); will-change: opacity, transform; }
+  .fx-reveal.is-in { opacity: 1; transform: translateY(0); }
+  /* Stagger inside revealed sections */
+  .fx-reveal .fx-stagger { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+  .fx-reveal.is-in .fx-stagger { opacity: 1; transform: translateY(0); }
+  .fx-reveal.is-in .fx-stagger:nth-child(1) { transition-delay: 0s; }
+  .fx-reveal.is-in .fx-stagger:nth-child(2) { transition-delay: .18s; }
+  .fx-reveal.is-in .fx-stagger:nth-child(3) { transition-delay: .36s; }
+  .fx-reveal.is-in .fx-stagger:nth-child(4) { transition-delay: .54s; }
+  .fx-reveal.is-in .fx-stagger:nth-child(5) { transition-delay: .72s; }
+  .fx-reveal.is-in .fx-stagger:nth-child(6) { transition-delay: .90s; }
+  .fx-reveal.is-in .fx-stagger:nth-child(7) { transition-delay: 1.08s; }
+  .fx-reveal.is-in .fx-stagger:nth-child(8) { transition-delay: 1.26s; }
+
+  /* Card lift — affects React-styled cards we tag at runtime */
+  .fx-card {
+    transition: transform .35s cubic-bezier(.2,.7,.2,1),
+                box-shadow .35s ease,
+                border-color .35s ease !important;
+    will-change: transform;
+  }
+  .fx-card:hover {
+    transform: translateY(-6px) !important;
+    box-shadow: 0 28px 56px rgba(76,25,77,.18) !important;
+    border-color: rgba(76,25,77,.22) !important;
+  }
+  /* Card image — gentle zoom on hover */
+  .fx-card .fx-card-media { overflow: hidden; transition: border-radius .35s ease; }
+  .fx-card .fx-card-media > * {
+    transition: transform .8s cubic-bezier(.2,.7,.2,1), filter .5s ease !important;
+  }
+  .fx-card:hover .fx-card-media > * { transform: scale(1.06); }
+
+  /* Diamond decorations — subtle drift + hover wiggle */
+  .fx-diamond {
+    transition: transform .5s cubic-bezier(.2,.7,.2,1), background-color .25s ease, opacity .35s ease !important;
+    will-change: transform;
+  }
+  .fx-diamond:hover { transform: rotate(135deg) scale(1.35) !important; }
+  @keyframes fx-float {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -10px; }
+  }
+  .fx-diamond.fx-float { animation: fx-float 6s ease-in-out infinite; }
+
+  /* Magnetic / hover lift for buttons */
+  .fx-btn {
+    transition: transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .25s ease, background-color .2s ease, color .2s ease !important;
+    position: relative;
+  }
+  .fx-btn:hover { transform: translateY(-2px) scale(1.02) !important; }
+  .fx-btn:active { transform: translateY(0) scale(.98) !important; }
+
+  /* Generic clickable — anything with cursor:pointer or onClick gets a subtle hover */
+  .fx-clickable {
+    transition: transform .22s cubic-bezier(.2,.7,.2,1),
+                color .2s ease,
+                opacity .2s ease,
+                background-color .2s ease,
+                filter .25s ease !important;
+    will-change: transform;
+  }
+  .fx-clickable:hover { transform: translateY(-1px) !important; filter: brightness(1.04); }
+  .fx-clickable:active { transform: translateY(0) !important; }
+
+  /* Pill / badge clickables — swap to orange tint on hover */
+  .fx-pill {
+    transition: background-color .25s ease, color .25s ease, border-color .25s ease, transform .22s cubic-bezier(.2,.7,.2,1) !important;
+  }
+  .fx-pill:hover {
+    color: #dd531c !important;
+    border-color: rgba(221,83,28,.45) !important;
+    background-color: rgba(221,83,28,.08) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  /* Icon-only anchor / button — scale + tint */
+  .fx-icon {
+    transition: transform .25s cubic-bezier(.2,.7,.2,1), color .2s ease, background-color .2s ease !important;
+  }
+  .fx-icon:hover { transform: scale(1.12) rotate(-3deg) !important; color: #dd531c !important; }
+
+  /* Lockup / wordmark clickable */
+  .fx-lockup { transition: transform .3s cubic-bezier(.2,.7,.2,1) !important; }
+  .fx-lockup:hover { transform: rotate(-1deg) scale(1.04) !important; }
+
+  /* Image clickable — zoom + brighten */
+  .fx-img-click { transition: transform .35s cubic-bezier(.2,.7,.2,1), filter .25s ease !important; }
+  .fx-img-click:hover { transform: scale(1.04) !important; filter: brightness(1.06) saturate(1.05); }
+
+  /* Italic accent — a slow ember pulse */
+  @keyframes fx-ember {
+    0%, 100% { text-shadow: 0 0 0 rgba(221,83,28,0); }
+    50% { text-shadow: 0 0 22px rgba(221,83,28,.35); }
+  }
+  .fx-ember { animation: fx-ember 4.2s ease-in-out infinite; }
+
+  /* Underline grow on text links / inline anchors */
+  .fx-link {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1.5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size .35s cubic-bezier(.2,.7,.2,1);
+    text-decoration: none;
+  }
+  .fx-link:hover { background-size: 100% 1.5px; }
+
+  /* Marquee — for the press logos row when tagged */
+  .fx-marquee { display: flex; gap: 48px; animation: fx-marquee 30s linear infinite; }
+  .fx-marquee:hover { animation-play-state: paused; }
+  @keyframes fx-marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* Image reveal — a sliding orange curtain that wipes off */
+  .fx-img-reveal { position: relative; }
+  .fx-img-reveal::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(221,83,28,.85) 50%, transparent 70%);
+    transform: translateX(-110%);
+    pointer-events: none;
+    transition: transform 1.1s cubic-bezier(.2,.7,.2,1);
+  }
+  .fx-img-reveal.is-in::before { transform: translateX(110%); }
+
+  /* Honor reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .fx-reveal, .fx-reveal .fx-stagger { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .fx-marquee, .fx-diamond.fx-float, .fx-ember { animation: none !important; }
+  }
+
+  /* Top nav hover states (live nav rendered by hero-variants.js) */
+  .wn-nav-link {
+    position: relative;
+    transition: color .25s ease;
+  }
+  .wn-nav-link::before { display: none; }
+  .wn-nav-link::after { display: none; }
+  .wn-nav-link:hover { color: #4c194d !important; }
+  .wn-nav-light .wn-nav-link:hover { color: #4c194d !important; }
+  .wn-nav-dark .wn-nav-link:hover { color: #fff !important; }
+
+  /* Duration chips inside the Features tile — opt out of the global .fx-pill
+     hover that was turning the white "Panel" chip orange-on-orange (invisible).
+     Keep a subtle press feedback only. */
+  .duration-chip { cursor: pointer; }
+  .duration-chip.fx-pill:hover,
+  .duration-chip.fx-clickable:hover,
+  .duration-chip.fx-btn:hover,
+  .duration-chip:hover {
+    transform: none !important;
+    filter: brightness(1.08) !important;
+    box-shadow: none !important;
+  }
+  .duration-chip.fx-pill:hover { color: inherit; border-color: inherit; }
+
+  .wn-nav-signin {
+    position: relative;
+    transition: color .2s ease;
+  }
+  .wn-nav-signin:hover { color: #4c194d !important; }
+  .wn-nav-dark .wn-nav-signin:hover { color: #fff !important; }
+
+  .wn-nav-cta {
+    transition: background-color .25s ease, transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .25s ease !important;
+  }
+  .wn-nav-cta:hover {
+    background: #c14617 !important;
+    transform: translateY(-2px) scale(1.03) !important;
+    box-shadow: 0 12px 28px rgba(221,83,28,.45) !important;
+  }
+  .wn-nav-cta:active { transform: translateY(0) scale(.98) !important; }
+
+  .wn-nav-lockup { transition: transform .3s cubic-bezier(.2,.7,.2,1); }
+  .wn-nav-lockup:hover { transform: rotate(-1deg) scale(1.03); }
+
+  /* Keep "Start for free" text white on hover (the auto-applied .fx-pill rule
+     would otherwise tint it red and kill the contrast). */
+  .wn-nav-cta,
+  .wn-nav-cta:hover,
+  .wn-nav-cta.fx-pill:hover,
+  .wn-nav-cta.fx-btn:hover { color: #fff !important; }
+
+  /* The logo symbol image sits inside the lockup; the lockup already tilts on
+     hover. Suppress the auto-applied .fx-img-click scale/brighten so the
+     symbol doesn't independently shift inside its tilting parent. */
+  .wn-nav-lockup img,
+  .wn-nav-lockup img.fx-img-click,
+  .wn-nav-lockup img.fx-img-click:hover {
+    transform: translate(-50%,-50%) rotate(-6deg) !important;
+    filter: none !important;
+  }
+
+  /* Footer link hover — brighten to white + nudge */
+  .wn-footer-link:hover {
+    color: #ffffff !important;
+    transform: translateX(3px);
+  }
+
+  /* Per-row reveal for the How-it-works steps — drift in from the appropriate side */
+  .fx-reveal .fx-step-row { opacity: 0; transform: translateY(48px); transition: opacity 1s cubic-bezier(.2,.7,.2,1), transform 1s cubic-bezier(.2,.7,.2,1); will-change: opacity, transform; }
+  .fx-step-row.is-in { opacity: 1 !important; transform: translateY(0) !important; }
+  @media (prefers-reduced-motion: reduce) {
+    .fx-step-row { opacity: 1 !important; transform: none !important; transition: none !important; }
+  }
+
+  /* Participant join bar */
+  .wn-participant-input::placeholder { color: rgba(76,25,77,.4); }
+  .wn-participant-input:focus { border-color: rgba(76,25,77,.5) !important; box-shadow: 0 0 0 3px rgba(76,25,77,.10); }
+  .wn-participant-join:hover { opacity: 1 !important; transform: translateY(-1px); }
+
+  /* Topics tags — interactive */
+  .wn-topic-tag { cursor: pointer; transition: transform .18s ease, background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+  .wn-topic-tag:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.18); }
+
+  /* Feature tile reveal — staggered as user scrolls */
+  .fx-reveal .fx-feature-tile { opacity: 0; transform: translateY(36px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); will-change: opacity, transform; }
+  .fx-reveal.is-in .fx-feature-tile { opacity: 1; transform: translateY(0); }
+  .fx-reveal.is-in .fx-feature-tile:nth-child(1) { transition-delay: .05s; }
+  .fx-reveal.is-in .fx-feature-tile:nth-child(2) { transition-delay: .18s; }
+  .fx-reveal.is-in .fx-feature-tile:nth-child(3) { transition-delay: .31s; }
+  .fx-reveal.is-in .fx-feature-tile:nth-child(4) { transition-delay: .44s; }
+  .fx-reveal.is-in .fx-feature-tile:nth-child(5) { transition-delay: .57s; }
+  .fx-reveal.is-in .fx-feature-tile:nth-child(6) { transition-delay: .70s; }
+  .fx-reveal.is-in .fx-feature-tile:nth-child(7) { transition-delay: .83s; }
+  @media (prefers-reduced-motion: reduce) {
+    .fx-feature-tile { opacity: 1 !important; transform: none !important; transition: none !important; }
+  }
+
+  /* ── Flip-clock (flipclock.us style) ──────────────────────── */
+  .fc-clock {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+  .fc-colon {
+    color: rgba(255,255,255,.85);
+    font-weight: 800;
+    font-size: 28px;
+    padding: 0 3px;
+    line-height: 1;
+    transform: translateY(-2px);
+  }
+  .fc-cell {
+    position: relative;
+    width: 30px; height: 44px;
+    line-height: 44px;
+    perspective: 280px;
+    color: #fff;
+    font-weight: 800;
+    font-size: 30px;
+    text-align: center;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #1a0822;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.05),
+      0 2px 4px rgba(0,0,0,.3);
+  }
+  .fc-cell .fc-half {
+    position: absolute; left: 0; right: 0;
+    height: 50%;
+    overflow: hidden;
+    background: #2a0e34;
+    backface-visibility: hidden;
+  }
+  .fc-cell .fc-half.fc-top {
+    top: 0;
+    border-radius: 5px 5px 0 0;
+    background: linear-gradient(180deg, #3a1547 0%, #260b30 100%);
+  }
+  .fc-cell .fc-half.fc-bot {
+    bottom: 0;
+    border-radius: 0 0 5px 5px;
+    background: linear-gradient(180deg, #1f0828 0%, #311240 100%);
+  }
+  .fc-cell .fc-half span {
+    display: block;
+    height: 44px;
+    line-height: 44px;
+    text-align: center;
+  }
+  .fc-cell .fc-half.fc-bot span { margin-top: -22px; }
+  .fc-cell .fc-hinge {
+    position: absolute; left: 0; right: 0;
+    top: 50%; height: 1px;
+    background: rgba(0,0,0,.6);
+    box-shadow: 0 1px 0 rgba(255,255,255,.04);
+    z-index: 4;
+    pointer-events: none;
+  }
+
+  .fc-cell .fc-flap {
+    position: absolute; left: 0; right: 0;
+    height: 50%;
+    overflow: hidden;
+    backface-visibility: hidden;
+    z-index: 3;
+  }
+  .fc-cell .fc-flap span {
+    display: block;
+    height: 44px;
+    line-height: 44px;
+    text-align: center;
+    color: #fff;
+    font-weight: 800;
+    font-size: 30px;
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+  .fc-cell .fc-flap.fc-flap-top {
+    top: 0;
+    border-radius: 5px 5px 0 0;
+    background: linear-gradient(180deg, #3a1547 0%, #260b30 100%);
+    transform-origin: 50% 100%;
+    animation: fc-flap-down .58s cubic-bezier(.45,.05,.55,.95) forwards;
+  }
+  .fc-cell .fc-flap.fc-flap-bot {
+    bottom: 0;
+    border-radius: 0 0 5px 5px;
+    background: linear-gradient(180deg, #1f0828 0%, #311240 100%);
+    transform-origin: 50% 0%;
+    transform: rotateX(90deg);
+    animation: fc-flap-up .58s cubic-bezier(.45,.05,.55,.95) forwards;
+    animation-delay: .28s;
+  }
+  .fc-cell .fc-flap.fc-flap-bot span { margin-top: -22px; }
+  @keyframes fc-flap-down {
+    0%   { transform: rotateX(0deg);   }
+    100% { transform: rotateX(-90deg); }
+  }
+  @keyframes fc-flap-up {
+    0%   { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg);  }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fc-cell .fc-flap { display: none; }
+  }
+
+  /* Testimonial card hover */
+  .fx-testimonial-card { transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s ease, border-color .35s ease; }
+  .fx-testimonial-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 48px rgba(76,25,77,.18), 0 4px 10px rgba(76,25,77,.08);
+    border-color: rgba(221,83,28,.45) !important;
+  }
+  .fx-testimonial-card:hover .fx-testimonial-stars { transform: scale(1.06); }
+  .fx-testimonial-stars { transition: transform .35s cubic-bezier(.2,.7,.2,1); transform-origin: left center; }
+
+  /* Article (blog) card hover */
+  .fx-article-card { transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s ease; }
+  .fx-article-card:hover { transform: translateY(-6px); box-shadow: 0 24px 48px rgba(76,25,77,.18), 0 4px 10px rgba(76,25,77,.08); }
+  .fx-article-card .fx-article-img { transition: transform .8s cubic-bezier(.2,.7,.2,1); }
+  .fx-article-card:hover .fx-article-img { transform: scale(1.06); }
+  .fx-article-card .fx-article-arrow { transition: transform .35s cubic-bezier(.2,.7,.2,1); display: inline-block; }
+  .fx-article-card:hover .fx-article-arrow { transform: translateX(6px); }
+
+  /* ─── Responsive preview (container queries) ────────────────── */
+  /* Extracted to responsive.css (linked above) so the main page and
+     responsive-test.html stay in sync. Empty placeholder kept so the
+     build below remains valid. */
+  .rspv-container--legacy-placeholder { display: none; }
+
+  /* ─── Hero V2 — responsive layout ──────────────────────────────
+     Content caps at 1440 and centers; only the section background and the
+     nav / participant / logo-strip borders run full width. At ≤1024 the
+     illustration drops below the headline column. */
+  .hero-inner {
+    position: relative;
+    z-index: 5;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 150px 60px 104px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 48px;
+    align-items: center;
+  }
+  .hero-text { min-width: 0; position: relative; z-index: 2; }
+  .hero-head { overflow-wrap: break-word; }
+  .hero-art { position: relative; width: 100%; aspect-ratio: 836 / 470; z-index: 1; }
+  .hero-art-glow { position: absolute; inset: 0; background: radial-gradient(ellipse 55% 60% at 50% 50%, #ffffff 0%, #ffffff 40%, transparent 70%); opacity: .5; pointer-events: none; }
+  .hero-art-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 30px 60px rgba(76,25,77,.22)); }
+
+  /* Desktop: keep the illustration large — it scales up toward the right edge
+     (bleeding slightly, as in the original), sitting behind the headline. */
+  @media (min-width: 1367px) { .hero-art { transform: scale(1.24); transform-origin: center right; } }
+  @media (min-width: 1025px) and (max-width: 1366px) { .hero-art { transform: scale(1.3); transform-origin: center right; } }
+
+  @media (max-width: 1024px) {
+    .hero-inner {
+      grid-template-columns: 1fr;
+      gap: 30px;
+      padding: 128px 40px 108px;
+      align-items: center;
+      justify-items: center;
+    }
+    .hero-text { order: 1; max-width: 660px; text-align: center; }
+    .hero-text > p { margin-left: auto; margin-right: auto; }
+    .hero-text > div { justify-content: center; }
+    .hero-art { order: 2; width: 100%; max-width: 720px; margin: 0 auto; }
+  }
+  @media (max-width: 560px) {
+    .hero-inner { padding: 124px 22px 110px; gap: 24px; }
+  }
+
+  /* (rules in responsive.css)
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="hero-variants.js"></script>
+<script type="text/babel" src="sections.jsx"></script>
+<script type="text/babel" src="app.js"></script>
+
+<script src="interactivity.js"></script>
+<script src="hero-tweak-apply.js"></script>
+</body>
+</html>

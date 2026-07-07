@@ -1,0 +1,207 @@
+  * { box-sizing: border-box; }
+  .pa-page { margin: 0; background: var(--w-paper); color: var(--w-ink); font-family: var(--w-font-body); }
+
+  .ac-shell { max-width: 432px; margin: 0 auto; padding: 0 20px 0; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ───── Top nav (mirrors dashboard) ───── */
+  .ac-nav {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(251,246,236,.94); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--w-hairline);
+    margin: 0 -20px; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    overflow: visible;
+  }
+  .ac-brand { display: inline-flex; align-items: center; gap: 52px; cursor: pointer; text-decoration: none; }
+  .ac-brand .mark { position: relative; width: 26px; height: 26px; flex-shrink: 0; overflow: visible; }
+  .ac-brand .mark .inner {
+    display: block; width: 92px; height: 92px;
+    background: url("/Wonderelo-logo-symbol.png") center / contain no-repeat;
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(calc(-50% + 16px), -50%) rotate(-6deg); pointer-events: none;
+  }
+  .ac-brand .word { font-family: var(--w-font-display); font-weight: 800; font-size: 17px; letter-spacing: -0.025em; color: var(--w-purple-deep); line-height: 1; }
+  .ac-brand .word em { font: inherit; color: inherit; font-style: normal; }
+  .ac-nav-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--w-hairline-strong);
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    color: var(--w-purple-deep); cursor: pointer; white-space: nowrap;
+  }
+  .ac-nav-cta svg { width: 10px; height: 10px; opacity: .55; }
+  .ac-nav-cta { padding: 4px 12px 4px 4px; gap: 7px; user-select: none; }
+  .ac-nav-cta .av-mini {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 10.5px;
+  }
+  .ac-nav-caret { transition: transform .15s ease; }
+  .ac-nav-cta.is-open .ac-nav-caret { transform: rotate(180deg); }
+  .ac-nav-menu {
+    position: absolute; top: calc(100% + 8px); right: 20px; min-width: 200px;
+    background: #fff; border: 1px solid var(--w-hairline-strong); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(76,25,77,.18); padding: 6px; display: none; z-index: 100;
+  }
+  .ac-nav-menu.is-open { display: block; }
+  .ac-nav-menu-item {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    background: transparent; border: none; border-radius: 8px;
+    font-family: var(--w-font-body); font-weight: 500; font-size: 13.5px;
+    color: var(--w-ink); cursor: pointer; text-align: left; transition: background .12s, color .12s;
+  }
+  .ac-nav-menu-item:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .ac-nav-menu-item svg { width: 14px; height: 14px; color: var(--w-purple); opacity: .65; flex-shrink: 0; }
+  .ac-nav-menu-item:hover svg { opacity: 1; color: var(--w-orange); }
+  .ac-nav-menu-divider { height: 1px; background: var(--w-hairline); margin: 4px 2px; }
+  .ac-nav-menu-item.is-danger { color: rgb(180, 50, 50); }
+  .ac-nav-menu-item.is-danger svg { color: rgb(180, 50, 50); }
+  .ac-nav-menu-item.is-danger:hover { background: rgba(180, 50, 50, 0.06); color: rgb(180, 50, 50); }
+
+  /* ───── Back link + page head ───── */
+  .ac-back {
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 22px;
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-family: var(--w-font-body); font-size: 13px; font-weight: 600; color: rgba(75,29,81,.62);
+  }
+  .ac-back svg { width: 15px; height: 15px; }
+  .ac-back:hover { color: var(--w-purple-deep); }
+
+  .ac-head { margin: 16px 0 0; }
+  .ac-eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--w-font-body); font-weight: 700; font-size: 10px;
+    letter-spacing: .22em; text-transform: uppercase; color: var(--w-purple);
+  }
+  .ac-eyebrow { color: var(--w-orange); }
+  .ac-eyebrow::before { content: ""; width: 16px; height: 1px; background: var(--w-orange); }
+  .ac-title { margin: 12px 0 6px; font-family: var(--w-font-display); font-weight: 800; font-size: 30px; line-height: 1.05; letter-spacing: -.025em; color: var(--w-purple-deep); }
+  .ac-title em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .ac-sub { margin: 0; font-size: 13.5px; color: rgba(43,24,16,.66); line-height: 1.5; }
+
+  /* ───── White cards ───── */
+  .ac-card {
+    margin-top: 18px; padding: 22px 20px; border-radius: 18px;
+    background: #fff; border: 1px solid var(--w-hairline);
+    box-shadow: 0 10px 28px rgba(75,29,81,.07);
+  }
+  .ac-card-title { margin: 0 0 4px; font-family: var(--w-font-display); font-weight: 800; font-size: 16px; letter-spacing: -.01em; color: var(--w-purple-deep); }
+  .ac-card-note { margin: 0 0 18px; font-size: 12.5px; color: rgba(43,24,16,.58); line-height: 1.5; }
+
+  /* ───── Form fields ───── */
+  .ac-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  .ac-field { display: flex; flex-direction: column; gap: 7px; }
+  .ac-field.full { grid-column: 1 / -1; }
+  .ac-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--w-purple-deep); }
+  .ac-label .opt { color: rgba(43,24,16,.4); font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .ac-input {
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px 14px; border-radius: 11px;
+    background: var(--w-paper); border: 1.5px solid var(--w-hairline-strong);
+  }
+  .ac-input.is-focus { border-color: var(--w-orange); background: #fff; box-shadow: 0 0 0 3px rgba(221,83,28,.12); }
+  .ac-input svg { width: 16px; height: 16px; color: rgba(75,29,81,.5); flex-shrink: 0; }
+  .ac-input input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-family: var(--w-font-body); font-size: 14.5px; color: var(--w-ink); min-width: 0;
+  }
+  .ac-input .prefix { font-size: 14px; color: rgba(43,24,16,.6); white-space: nowrap; font-weight: 600; }
+  .ac-hint { font-size: 11.5px; color: rgba(43,24,16,.55); line-height: 1.45; }
+
+  .ac-section-label { margin: 22px 0 2px; font-family: var(--w-font-display); font-weight: 700; font-size: 14px; color: var(--w-purple-deep); }
+
+  /* ───── Buttons ───── */
+  .ac-actions { display: flex; gap: 10px; margin-top: 22px; }
+  .ac-btn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 18px; border-radius: 12px; cursor: pointer;
+    font-family: var(--w-font-body); font-weight: 700; font-size: 14px; border: 1.5px solid transparent;
+  }
+  .ac-btn svg { width: 16px; height: 16px; }
+  .ac-btn.is-primary { background: var(--w-orange); color: #fff; box-shadow: 0 10px 22px rgba(221,83,28,.28); }
+  .ac-btn.is-outline { background: #fff; color: var(--w-purple-deep); border-color: var(--w-hairline-strong); }
+  .ac-btn.is-block { width: 100%; }
+
+  /* ───── Address book ───── */
+  .ab-count {
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 4px;
+    padding: 4px 11px 4px 9px; border-radius: 999px;
+    background: rgba(221,83,28,.10); border: 1px solid rgba(221,83,28,.22);
+    font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--w-orange);
+  }
+  .ab-count .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--w-orange); }
+
+  .ab-list { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  .ab-card {
+    padding: 16px 16px 14px; border-radius: 16px;
+    background: #fff; border: 1px solid var(--w-hairline);
+    box-shadow: 0 8px 22px rgba(75,29,81,.06);
+  }
+  .ab-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .ab-id {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 17px; color: #fff;
+    letter-spacing: -.02em;
+  }
+  .ab-name { font-family: var(--w-font-display); font-weight: 800; font-size: 17px; letter-spacing: -.02em; color: var(--w-purple-deep); line-height: 1.1; }
+  .ab-meta { margin-top: 4px; font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .02em; color: rgba(75,29,81,.55); line-height: 1.5; }
+  .ab-meta .ev { display: block; color: var(--w-purple-deep); font-weight: 600; }
+  .ab-meta .ss { display: block; }
+  .ab-meta .ss b { color: var(--w-orange); font-weight: 600; }
+  .ab-date { font-family: var(--w-font-mono); font-size: 10.5px; color: rgba(75,29,81,.5); white-space: nowrap; flex-shrink: 0; padding-top: 3px; }
+  .ab-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .ab-row { display: flex; align-items: center; gap: 9px; }
+  .ab-row svg { width: 15px; height: 15px; color: rgba(75,29,81,.5); flex-shrink: 0; }
+  .ab-row a, .ab-row span.v { font-size: 13.5px; color: var(--w-purple-deep); text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ab-row .copy { width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: rgba(75,29,81,.45); flex-shrink: 0; }
+  .ab-row .copy:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .ab-socials { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .ab-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: var(--w-cream); border: 1px solid var(--w-hairline); font-size: 11.5px; font-weight: 600; color: var(--w-purple-deep); text-decoration: none; }
+  .ab-chip svg { width: 13px; height: 13px; }
+  .ab-group { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--w-hairline); font-size: 11.5px; color: rgba(43,24,16,.6); }
+  .ab-save { margin-top: 14px; }
+
+  /* Empty state */
+  .ab-empty { margin-top: 26px; padding: 40px 28px; border-radius: 18px; background: #fff; border: 1px solid var(--w-hairline); text-align: center; box-shadow: 0 10px 28px rgba(75,29,81,.06); }
+  .ab-empty .ring { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 16px; background: var(--w-cream); display: flex; align-items: center; justify-content: center; }
+  .ab-empty .ring svg { width: 28px; height: 28px; color: var(--w-purple); opacity: .7; }
+  .ab-empty h3 { margin: 0 0 8px; font-family: var(--w-font-display); font-weight: 800; font-size: 18px; color: var(--w-purple-deep); }
+  .ab-empty p { margin: 0 auto; max-width: 280px; font-size: 13px; color: rgba(43,24,16,.62); line-height: 1.55; }
+
+  /* ───── Footer (mirrors dashboard) ───── */
+  .ac-footer {
+    margin: 40px -20px 0; padding: 40px 20px calc(44px + env(safe-area-inset-bottom));
+    background: #2d1133; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .ac-footer .ac-brand { cursor: default; }
+  .ac-footer .ac-brand .word { color: #fff; }
+  .ac-footer .tagline { margin: 2px 0 0; font-family: var(--w-font-display); font-weight: 500; font-size: 15px; color: rgba(255,255,255,.85); }
+  .ac-footer .copy { margin: 0; font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .04em; color: rgba(255,255,255,.4); }
+
+  /* ───── Screen routing ───── */
+  [data-screen] { display: none; }
+  .pa-page[data-active="profile"] [data-screen="profile"],
+  .pa-page[data-active="address-book"] [data-screen="address-book"] { display: block; }
+  /* Active screen grows to fill, so the full-bleed footer hugs the bottom
+     even on short pages (no cream gap below it). */
+  .ac-shell > [data-screen] { flex: 1 0 auto; }
+
+  /* Desktop framing — frame the 432px column on wide screens (same as mobile, just wrapped) */
+  @media (min-width: 640px) {
+    .pa-page {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(221,83,28,.06), transparent 40%),
+        var(--w-cream);
+    }
+    .ac-shell {
+      margin: 24px auto; min-height: 0; background: var(--w-paper);
+      border: 1px solid var(--w-hairline); border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(76,25,77,.10);
+      overflow: hidden;
+    }
+    .ac-nav { margin: 0 -20px; border-radius: 24px 24px 0 0; }
+    .ac-footer { margin-bottom: 0; }
+  }

@@ -7,6 +7,8 @@ import { Textarea } from './ui/textarea';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { WondereloHeader } from './WondereloHeader';
+import { PdNav } from './redesign/PdNav';
+import { PmFooter } from './redesign/PmFooter';
 
 export const FEEDBACK_OPTIONS = [
   { id: 'nice-talk', label: 'Nice talk', icon: '💬' },
@@ -59,80 +61,47 @@ export function ContactSharingPartnerFeedbackView({
   onContactToggle,
   onNext,
 }: ContactSharingPartnerFeedbackViewProps) {
+  const [adding, setAdding] = useState<Record<string, boolean>>({});
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
-        <h1 className="text-4xl font-bold mb-2">Time is up!</h1>
-        <p className="text-xl text-muted-foreground mb-6">How was your conversation?</p>
-
-        <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto text-center">
-          We often underestimate how much others enjoyed talking to us. If you enjoyed the conversation, let the other person know.
-        </p>
-
-        <div className="space-y-6 max-w-md mx-auto">
-          {partners.map((partner) => (
-            <div key={partner.id} className="border-2 rounded-2xl overflow-hidden">
-              <div className="p-4 pb-3">
-                <p className="text-xl font-bold text-left">
-                  {partner.firstName} {partner.lastName}
-                </p>
-              </div>
-
-              <div className="px-4 pb-3">
-                <p className="text-xs text-muted-foreground mb-2 text-left">Send a quick reaction (optional)</p>
-                <div className="flex flex-wrap gap-2">
-                  {FEEDBACK_OPTIONS.map((option) => {
-                    const isSelected = (feedback[partner.id] || []).includes(option.id);
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => onFeedbackToggle(partner.id, option.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all border ${
-                          isSelected
-                            ? 'bg-primary/10 text-primary border-primary/30 font-medium'
-                            : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
-                        }`}
-                      >
-                        <span>{option.icon}</span>
-                        <span>{option.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="px-4 pb-3">
-                <Textarea
-                  placeholder="Write your own feedback (optional)"
-                  value={customFeedback[partner.id] || ''}
-                  onChange={(e) => onCustomFeedbackChange(partner.id, e.target.value)}
-                  className="text-sm resize-none h-16"
-                />
-              </div>
-
-              <div className="px-4 pb-4 border-t border-border/50 pt-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-left">
-                    <p className="text-sm font-medium">Share my contact</p>
-                    <p className="text-xs text-muted-foreground">Both must agree to exchange contacts</p>
-                    <p className="text-xs text-muted-foreground mt-1">Feedback and contacts will be shared after 15 minutes.</p>
-                  </div>
-                  <Switch
-                    checked={contactSharing[partner.id] || false}
-                    onCheckedChange={() => onContactToggle(partner.id)}
-                  />
-                </div>
-              </div>
+    <div className="wonderelo pm-page" data-active="contact-sharing">
+      <div className="pm-shell">
+        <PdNav
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
+        <div data-screen="contact-sharing">
+          <div className="pm-warm">
+            <div className="pm-band">
+              <div className="pm-eventrow"><div className="pm-event"><span className="name">Your round</span><span className="org">Speed networking</span></div><span className="pm-state is-quiet"><span className="dot" /> Round done</span></div>
             </div>
-          ))}
+            <div className="pm-center" style={{ paddingTop: 4 }}>
+              <div className="eyebrow" style={{ color: 'var(--w-orange)' }}>Time is up!</div>
+              <h1 className="pm-h1" style={{ marginTop: 10 }}>Enjoyed the conversation? Tell them!</h1>
+            </div>
+            {partners.map((p) => {
+              const isAdding = adding[p.id] || !!customFeedback[p.id];
+              return (
+              <div className={`cs-pcard${isAdding ? ' is-adding' : ''}`} key={p.id} style={{ marginTop: 18 }}>
+                <div className="cs-pname">{p.firstName} {p.lastName}</div>
+                <div className="pm-chips" style={{ marginTop: 12 }}>
+                  {FEEDBACK_OPTIONS.map((o) => {
+                    const on = (feedback[p.id] || []).includes(o.id);
+                    return <button type="button" key={o.id} className={`pm-chip${on ? ' is-on' : ''}`} onClick={() => onFeedbackToggle(p.id, o.id)}>{o.icon} {o.label}</button>;
+                  })}
+                  <button className="pm-addown" type="button" data-addown onClick={() => setAdding((a) => ({ ...a, [p.id]: true }))}>+ Add your own…</button>
+                </div>
+                <div className="pm-addown-field"><textarea className="pm-textarea" style={{ minHeight: 56 }} placeholder="Your reaction…" value={customFeedback[p.id] || ''} onChange={(e) => onCustomFeedbackChange(p.id, e.target.value)} /></div>
+                <div className="cs-share">
+                  <div><div className="t">Share my contact</div><div className="s">Both must agree to exchange</div></div>
+                  <button type="button" className={`pm-switch${contactSharing[p.id] ? ' is-on' : ''}`} aria-pressed={!!contactSharing[p.id]} onClick={() => onContactToggle(p.id)}><span className="knob" /></button>
+                </div>
+              </div>
+            );})}
+          </div>
+          <p className="pm-muted" style={{ margin: '16px 2px 0', fontSize: '11.5px', opacity: .6, textAlign: 'center' }}>Feedback and contacts are shared 15 minutes after the round ends.</p>
+          <button className="pm-btn is-primary" type="button" style={{ marginTop: 16 }} onClick={onNext}>Next</button>
         </div>
-
-        <div className="mt-8 max-w-md mx-auto">
-          <Button size="lg" className="w-full" onClick={onNext}>
-            Next
-          </Button>
-        </div>
+        <PmFooter />
       </div>
     </div>
   );
@@ -157,50 +126,42 @@ export function ContactSharingWondereloFeedbackView({
   onSave,
   onBack,
 }: ContactSharingWondereloFeedbackViewProps) {
+  const faces = [
+    { id: 'sad', emoji: '😞', label: 'Not great' },
+    { id: 'neutral', emoji: '😐', label: 'Okay' },
+    { id: 'happy', emoji: '😊', label: 'Great!' },
+  ];
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center pb-12">
-        <h1 className="text-4xl font-bold mb-10">How was your Wonderelo experience?</h1>
-
-        <div className="max-w-md mx-auto">
-          <div className="flex justify-center gap-4 mb-6">
-            {[
-              { id: 'sad', emoji: '😞', label: 'Not great' },
-              { id: 'neutral', emoji: '😐', label: 'Okay' },
-              { id: 'happy', emoji: '😊', label: 'Great!' },
-            ].map((option) => (
-              <button
-                key={option.id}
-                onClick={() => onRatingChange(wondereloRating === option.id ? null : option.id)}
-                className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all border-2 ${
-                  wondereloRating === option.id
-                    ? 'border-primary bg-primary/5 scale-110'
-                    : 'border-transparent hover:bg-muted'
-                }`}
-              >
-                <span className="text-3xl">{option.emoji}</span>
-                <span className="text-xs text-muted-foreground">{option.label}</span>
-              </button>
-            ))}
+    <div className="wonderelo pm-page" data-active="wonderelo-feedback">
+      <div className="pm-shell">
+        <PdNav
+          onBrandClick={onBack}
+          onDashboard={onBack}
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
+        <div data-screen="wonderelo-feedback">
+          <div className="pm-warm">
+            <div className="pm-band">
+              <div className="pm-eventrow"><div className="pm-event"><span className="name">Your round</span><span className="org">Speed networking</span></div><span className="pm-state is-quiet"><span className="dot" /> Last step</span></div>
+            </div>
+            <div className="pm-focuscard" style={{ marginTop: 6, padding: '22px 18px', textAlign: 'left' }}>
+              <span className="eyebrow">Last step</span>
+              <h1 style={{ margin: '9px 0 0', fontFamily: 'var(--w-font-display)', fontWeight: 800, fontSize: 25, letterSpacing: '-.02em', color: '#fff' }}>How was your <em style={{ fontFamily: 'var(--w-font-serif)', fontStyle: 'italic', fontWeight: 400, color: '#ff8855' }}>Wonderelo</em> experience?</h1>
+              <div className="pm-faces" style={{ marginTop: 20 }}>
+                {faces.map((f) => (
+                  <button type="button" key={f.id} className={`pm-face${wondereloRating === f.id ? ' is-on' : ''}`} onClick={() => onRatingChange(wondereloRating === f.id ? null : f.id)}>
+                    <span className="emoji">{f.emoji}</span><span className="lbl">{f.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ marginTop: 16 }}><textarea className="pm-textarea" placeholder="Tell us more (optional)" value={wondereloFeedback} onChange={(e) => onFeedbackChange(e.target.value)} /></div>
+            </div>
           </div>
-
-          <Textarea
-            placeholder="Tell us more (optional)"
-            value={wondereloFeedback}
-            onChange={(e) => onFeedbackChange(e.target.value)}
-            className="text-sm resize-none h-24"
-          />
+          <button className="pm-btn is-primary" type="button" style={{ marginTop: 20 }} onClick={onSave} disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Finish'}</button>
+          <div className="pm-center"><button className="pm-link" type="button" style={{ marginTop: 14 }} onClick={onBack}>Back to dashboard</button></div>
         </div>
-
-        <div className="mt-8 max-w-md mx-auto space-y-3">
-          <Button size="lg" className="w-full" onClick={onSave} disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Finish'}
-          </Button>
-          <Button variant="ghost" className="w-full" onClick={onBack} disabled={isSubmitting}>
-            Back
-          </Button>
-        </div>
+        <PmFooter onBrandClick={onBack} />
       </div>
     </div>
   );

@@ -4,6 +4,9 @@ import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 import { WondereloHeader } from './WondereloHeader';
+import { PdNav } from './redesign/PdNav';
+import { PmFooter } from './redesign/PmFooter';
+import { FlipClock } from './redesign/FlipClock';
 
 export interface NetworkingData {
   matchId: string;
@@ -29,38 +32,44 @@ export function MatchNetworkingView({
   countdown,
   onBackToDashboard,
 }: MatchNetworkingViewProps) {
+  const endSecs = networkingData.networkingEndTime
+    ? Math.max(0, Math.floor((new Date(networkingData.networkingEndTime).getTime() - Date.now()) / 1000))
+    : null;
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        <h1 className="text-4xl font-bold mb-8">
-          Your round has begun!
-        </h1>
-
-        {countdown && <div className="mb-8">{countdown}</div>}
-
-        {networkingData.iceBreakers && networkingData.iceBreakers.length > 0 && (
-          <div className="mt-12">
-            <p className="text-lg text-muted-foreground mb-6">Questions to help you start:</p>
-            <div className="space-y-4 text-left max-w-md mx-auto">
-              {networkingData.iceBreakers.map((iceBreaker, index) => (
-                <div key={index} className="flex gap-3 p-4 border rounded-lg">
-                  <span className="text-primary font-semibold shrink-0">{index + 1}.</span>
-                  <span>{typeof iceBreaker === 'string' ? iceBreaker : iceBreaker.question}</span>
-                </div>
-              ))}
+    <div className="wonderelo pm-page" data-active="networking">
+      <div className="pm-shell">
+        <PdNav
+          firstName={networkingData.partners?.[0]?.firstName}
+          onBrandClick={onBackToDashboard}
+          onDashboard={onBackToDashboard}
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
+        <div data-screen="networking">
+          <div className="pm-band">
+            <div className="pm-eventrow">
+              <div className="pm-event"><span className="name">{networkingData.roundName || 'Your round'}</span><span className="org">Live round</span></div>
+              <span className="pm-state"><span className="dot" /> Live</span>
+            </div>
+            <div className="pm-focusbox" style={{ textAlign: 'center' }}>
+              <h1 style={{ margin: 0, fontFamily: 'var(--w-font-display)', fontWeight: 800, fontSize: 28, letterSpacing: '-.02em', color: '#fff' }}>Enjoy the talk!</h1>
+              <div style={{ marginTop: 20 }}><span className="eyebrow">Round ends in</span></div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>{endSecs != null ? <FlipClock seconds={endSecs} /> : countdown}</div>
+              {networkingData.iceBreakers && networkingData.iceBreakers.length > 0 && (
+                <>
+                  <div className="eyebrow" style={{ marginTop: 24 }}>Ice breakers you can begin with</div>
+                  <div className="pm-ib" style={{ marginTop: 12 }}>
+                    {networkingData.iceBreakers.map((ib, i) => (
+                      <div className="pm-ib-item" key={i}><span className="n">{i + 1}.</span><span>{typeof ib === 'string' ? ib : (ib.question || ib.text)}</span></div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        )}
-
-        <div className="mt-12">
-          <button
-            onClick={onBackToDashboard}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
+          <div className="pm-body"><div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard}>Back to dashboard</button></div></div>
         </div>
+        <PmFooter onBrandClick={onBackToDashboard} />
       </div>
     </div>
   );

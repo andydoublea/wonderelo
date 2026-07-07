@@ -5,6 +5,10 @@ import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
 import { GeometricIdentification } from './GeometricIdentification';
 import { WondereloHeader } from './WondereloHeader';
+import { PdNav } from './redesign/PdNav';
+import { PmFooter } from './redesign/PmFooter';
+import { FlipClock } from './redesign/FlipClock';
+import { Geoid } from './redesign/Geoid';
 
 export interface Partner {
   id: string;
@@ -55,149 +59,82 @@ export function MatchPartnerView({
   onBackToDashboard,
   inlineCountdown,
 }: MatchPartnerViewProps) {
+  const walkSecs = matchData.walkingDeadline
+    ? Math.max(0, Math.floor((new Date(matchData.walkingDeadline).getTime() - Date.now()) / 1000))
+    : null;
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        <h1 className="text-4xl font-bold mb-12">
-          Show this to your match!
-        </h1>
-
-        {/* Own identification image (full-width, no box) */}
-        <GeometricIdentification
-          matchId={matchData.matchId}
-          number={matchData.myIdentificationNumber}
-          className="rounded-lg shadow-lg w-full block"
+    <div className="wonderelo pm-page" data-active="find-each-other">
+      <div className="pm-shell">
+        <PdNav
+          firstName={matchData.myName}
+          onBrandClick={onBackToDashboard}
+          onDashboard={onBackToDashboard}
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
         />
-        <div className="flex flex-col items-center justify-center mt-2">
-          <h3
-            className="font-bold text-foreground leading-tight break-words w-full text-center"
-            style={{ fontSize: 'clamp(3rem, 13vw, 7rem)' }}
-          >
-            {matchData.myName}
-          </h3>
+        <div data-screen="find-each-other">
+          <div className="pm-fe-grad">
+            <div className="pm-band">
+              <div className="pm-eventrow"><div className="pm-event"><span className="name">Your round</span><span className="org">Live round</span></div><span className="pm-state"><span className="dot" /> Live</span></div>
+              <div className="pm-focusbox">
+                <h1 className="pm-h1 pm-center" style={{ fontSize: 23, color: '#fff' }}>Show this to your <em style={{ color: '#ff8855' }}>match</em></h1>
+                <div className="pm-idframe"><Geoid num={matchData.myIdentificationNumber} size="lg" /></div>
+                <div className="pm-name-big pm-center" style={{ marginTop: 20, fontSize: 38, color: '#fff' }}>{matchData.myName}</div>
+              </div>
+            </div>
+            <div className="pm-body pm-center">
+              <h2 className="pm-fe-headline">Find others with your <em>color</em> and <em>shape</em></h2>
+              <div className="pm-matchcard">
+                {matchData.partners.map((partner) => {
+                  const options = getOptionsForPartner(partner);
+                  const isWrong = wrongGuessPartnerId === partner.id;
+                  const partnerMissed = !partner.isCheckedIn && !!matchData.walkingDeadline && Date.now() > new Date(matchData.walkingDeadline).getTime();
+                  const state = partner.isNumberConfirmed ? 'done' : partner.isCheckedIn ? (isWrong ? 'wrong' : 'choosing') : (partnerMissed ? 'missed' : 'way');
+                  return (
+                    <div className="pm-match" key={partner.id} data-state={state}>
+                      <div className="pm-match-head">
+                        <div className="pm-name-big" style={{ fontSize: 24 }}>{partner.firstName}</div>
+                        {state === 'done' ? (
+                          <span className="pm-mstat is-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}><polyline points="20 6 9 17 4 12" /></svg> Matched</span>
+                        ) : state === 'choosing' || state === 'wrong' ? (
+                          <span className="pm-mstat is-here"><span className="d" /> Already at the spot</span>
+                        ) : state === 'missed' ? (
+                          <span className="pm-mstat is-way"><span className="d" /> Didn't make it</span>
+                        ) : (
+                          <span className="pm-mstat is-way"><span className="d" /> On the way</span>
+                        )}
+                      </div>
+                      {(state === 'choosing' || state === 'wrong') && (
+                        <div className="pm-pickwrap">
+                          {state === 'wrong' ? (
+                            <div className="pm-pickerr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> That's not {partner.firstName}'s number. Try again:</div>
+                          ) : (
+                            <div style={{ fontSize: '12.5px', color: 'var(--w-ink)', opacity: .8, margin: '12px 0', textAlign: 'left' }}>Which number is <strong style={{ color: 'var(--w-purple-deep)', fontWeight: 600 }}>{partner.firstName}</strong>?</div>
+                          )}
+                          <div className="pm-pick">
+                            {options.map((n) => (
+                              <button type="button" key={n} onClick={() => onNumberSelect(partner.id, n)} disabled={isSubmitting} aria-label={`Select ${n}`}><Geoid num={n} size="sm" /></button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {state === 'way' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>Hang tight — you'll pick their number once they arrive.{inlineCountdown && <> ({inlineCountdown} left)</>}</p>}
+                      {state === 'missed' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>They didn't make it to the meeting point in time.</p>}
+                      {state === 'done' && <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}><span className="pm-muted" style={{ fontSize: 13 }}>You found each other — <strong style={{ color: 'var(--w-purple-deep)', fontWeight: 700 }}>good job!</strong></span></div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="pm-body pm-center pm-fe-tail">
+            {walkSecs != null && (
+              <div className="pm-deadline"><span className="lbl">Walking deadline</span><FlipClock seconds={walkSecs} mini /><span className="note">then we'll start without them</span></div>
+            )}
+            <div><button className="pm-link" type="button" onClick={onBackToDashboard}>Back to dashboard</button></div>
+          </div>
         </div>
-
-        {/* Spacer between own image/name and partner boxes */}
-        <div style={{ height: '3rem' }} />
-
-        {/* One combined box per partner: thumbnail + name + status + number picker */}
-        {matchData.partners.map((partner) => {
-          const options = getOptionsForPartner(partner);
-          const isWrongGuess = wrongGuessPartnerId === partner.id;
-          // Partner missed: walking deadline passed AND they never checked in.
-          // The countdown next to their name is to findingDeadline (when
-          // networking begins regardless of arrivals), not to "still on the way",
-          // so showing it implies the partner is still coming when they're not.
-          const partnerMissed =
-            !partner.isCheckedIn &&
-            !!matchData.walkingDeadline &&
-            Date.now() > new Date(matchData.walkingDeadline).getTime();
-          return (
-            <fieldset
-              key={partner.id}
-              className={`mb-8 border-2 rounded-2xl px-4 sm:px-8 py-8 transition-colors ${
-                isWrongGuess ? 'border-red-400 bg-red-50' : 'border-border'
-              }`}
-            >
-              {/* Partner header: name — scaled so it 'sticks out' on any viewport */}
-              <h3
-                className="font-bold leading-none break-words text-center"
-                style={{ fontSize: 'clamp(3.5rem, 16vw, 8rem)' }}
-              >
-                {partner.firstName}
-              </h3>
-
-              <p
-                className={`mt-0 ${
-                  partner.isCheckedIn
-                    ? 'text-green-600 font-medium'
-                    : partnerMissed
-                    ? 'text-red-600 font-medium'
-                    : 'text-muted-foreground'
-                }`}
-                style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.125rem)' }}
-              >
-                {partner.isCheckedIn ? (
-                  `is already at the meeting point ✓`
-                ) : partnerMissed ? (
-                  `didn't make it in time`
-                ) : (
-                  <>
-                    is on the way...
-                    {inlineCountdown && <> ({inlineCountdown} left)</>}
-                  </>
-                )}
-              </p>
-
-              {/* Small horizontal divider between status and number prompt */}
-              <hr
-                className="border-t border-border mx-auto"
-                style={{ width: '3rem', marginTop: '1rem', marginBottom: '1rem' }}
-              />
-
-              {partner.isNumberConfirmed ? (
-                // Already confirmed — show locked state instead of number picker
-                <div className="flex items-center justify-center gap-4 py-6 bg-green-50 border border-green-200 rounded-xl">
-                  <GeometricIdentification
-                    matchId={matchData.matchId}
-                    number={partner.identificationNumber}
-                    className="rounded-lg shadow w-20 h-20 flex-shrink-0"
-                  />
-                  <div className="text-left">
-                    <p className="text-green-700 font-semibold text-lg">Number confirmed ✓</p>
-                    <p className="text-sm text-green-600">You're good to go</p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Prompt — match the 'is on the way...' size/weight */}
-                  <p
-                    className="text-muted-foreground mb-2"
-                    style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.125rem)' }}
-                  >
-                    What's the number?
-                  </p>
-                  {isWrongGuess ? (
-                    <p className="text-red-600 font-medium mb-6">
-                      Wrong number! Your partner got a new number — look again!
-                    </p>
-                  ) : (
-                    <div className="mb-6" />
-                  )}
-
-                  {/* Candidate numbers — always in one row of 3 */}
-                  <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-sm mx-auto">
-                    {options.map((num) => (
-                      <button
-                        key={num}
-                        onClick={() => onNumberSelect(partner.id, num)}
-                        disabled={isSubmitting}
-                        className="rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed aspect-square"
-                        aria-label={`Select ${num}`}
-                      >
-                        <GeometricIdentification
-                          matchId={matchData.matchId}
-                          number={num}
-                          className="block w-full h-full"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </fieldset>
-          );
-        })}
-
-        <div>
-          <button
-            onClick={onBackToDashboard}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
-        </div>
+        <PmFooter onBrandClick={onBackToDashboard} />
       </div>
     </div>
   );
