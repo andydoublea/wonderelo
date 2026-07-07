@@ -220,6 +220,36 @@ html[class*="vs-"] .wonderelo .pm-focuscard h1 { font-size: 25px !important; }
 html[class*="vs-"] .wonderelo .pm-focusbox .pm-h1 { font-size: 23px !important; }
 html[class*="vs-"] .wonderelo .pm-focusbox h1:not(.pm-h1) { font-size: 28px !important; }
 
+/* ─────────────────────────────────────────────────────────────
+   Public marketing pages (Pricing / Our Story / Blog / Blog Post / Use Case / Home).
+   vs-jasper's base `h1,h2,h3 { … !important }` (serif / green / weight-400 / fixed size)
+   out-specifies the design's `.w-display/.w-h1/.w-h2/.w-h3` display typography. Re-assert
+   the design values inside the island. font-family is already handled by the h1..h6 rule.
+   ───────────────────────────────────────────────────────────── */
+html[class*="vs-"] .wonderelo .w-display { font-weight: 800 !important; font-size: clamp(40px, 6vw, 80px) !important; line-height: .98 !important; letter-spacing: -.035em !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .w-h1 { font-weight: 800 !important; font-size: clamp(36px, 4.5vw, 56px) !important; line-height: 1 !important; letter-spacing: -.03em !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .w-h2 { font-weight: 800 !important; font-size: clamp(28px, 3.4vw, 40px) !important; line-height: 1.05 !important; letter-spacing: -.025em !important; color: var(--w-purple-deep) !important; }
+html[class*="vs-"] .wonderelo .w-h3 { font-weight: 700 !important; font-size: 22px !important; line-height: 1.2 !important; letter-spacing: -.02em !important; color: var(--w-purple-deep) !important; }
+
+/* Bare display headings on the marketing pages (styled via descendant selectors like
+   `.bl-featured h2`, `.st-chapter h2`, `.bp-body h2`, `.uc-card h3`) carry NO `.w-*` class, so
+   vs-jasper's `h1-3 !important` (green / weight-400) wins. Re-assert the brand heading colour +
+   weight for every public-page heading; the `.w-*` rules above still supply the sizes. Their
+   <em> accents keep their own orange colour (vs-jasper doesn't touch <em>). */
+html[class*="vs-"] .wonderelo.w-public h1,
+html[class*="vs-"] .wonderelo.w-public h2,
+html[class*="vs-"] .wonderelo.w-public h3 { color: var(--w-purple-deep) !important; font-weight: 800 !important; }
+html[class*="vs-"] .wonderelo.w-public h4 { color: var(--w-purple-deep) !important; font-weight: 700 !important; }
+
+/* Dark-background CTA / featured / timeline headings carry white display text — re-assert white
+   at higher specificity than the purple rule above so vs-jasper's repaint can't hide them. */
+html[class*="vs-"] .wonderelo.w-public .st-cta-inner h2,
+html[class*="vs-"] .wonderelo.w-public .st-timeline h2,
+html[class*="vs-"] .wonderelo.w-public .uc-cta h2,
+html[class*="vs-"] .wonderelo.w-public .bp-cta h2,
+html[class*="vs-"] .wonderelo.w-public .pr-cta h2,
+html[class*="vs-"] .wonderelo.w-public .uc-card.is-featured h3 { color: #fff !important; }
+
 /* vs-jasper's base `nav { background:vanilla; border-color:border-light }` washes the redesign
    nav bar (slightly too bright, grey hairline instead of the purple one). Re-assert the design. */
 html[class*="vs-"] .wonderelo .pd-nav,

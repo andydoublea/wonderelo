@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
-import { ArrowRight } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Navigation } from './Navigation';
-import { Footer } from './Footer';
+import { PublicNav } from './redesign/PublicNav';
+import { PublicFooter } from './redesign/PublicFooter';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+import '../styles/wonderelo-public.css';
+import '../styles/wonderelo-blog.css';
 
 interface BlogPost {
   id: string;
@@ -21,6 +19,7 @@ interface BlogPost {
   author?: string;
   published?: boolean;
   status?: string;
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +93,43 @@ const fallbackPosts: BlogPost[] = [
   },
 ];
 
+// Hardcoded category chips from the mock (used when posts carry no tags).
+const fallbackCategories = [
+  { label: 'All', count: 24, active: true },
+  { label: 'Networking', count: 9 },
+  { label: 'Event design', count: 6 },
+  { label: 'Case studies', count: 4 },
+  { label: 'Product', count: 3 },
+  { label: 'Stories', count: 2 },
+];
+
+// Recent grid cover tag per mock (falls back to first tag / "Article").
+const fallbackTags = ['Networking', 'Research', 'Networking', 'Event design', 'Hybrid', 'Case study'];
+
+// Format an ISO date the way the mock shows it (e.g. "30 Jan", "30 January 2026").
+function shortDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  } catch {
+    return '';
+  }
+}
+function longDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
+
+// Author initials for the featured avatar (mock: "AK").
+function initials(author?: string) {
+  if (!author) return 'AK';
+  const parts = author.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'AK';
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+}
+
 export function BlogListingPage() {
   const navigate = useNavigate();
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -132,68 +168,156 @@ export function BlogListingPage() {
     }
   };
 
+  const featured = blogPosts[0];
+  const recent = blogPosts.slice(1);
+
+  // Category chips: derive from post tags when present, else the mock's hardcoded set.
+  const derivedCategories = (() => {
+    const counts = new Map<string, number>();
+    blogPosts.forEach((p) => (p.tags || []).forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));
+    if (counts.size === 0) return null;
+    const chips = [{ label: 'All', count: blogPosts.length, active: true }];
+    counts.forEach((count, label) => chips.push({ label, count }));
+    return chips;
+  })();
+  const categories = derivedCategories || fallbackCategories;
+
+  const featuredTag = featured?.tags?.[0] || 'Networking';
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Navigation */}
-      <Navigation onGetStarted={() => navigate('/')} onSignIn={() => navigate('/')} />
+    <div className="wonderelo w-public bl-page">
+      {/* Nav */}
+      <PublicNav onGetStarted={() => navigate('/')} onSignIn={() => navigate('/')} />
 
-      {/* Header */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h1 className="mb-4"><span style={{ color: '#5C2277' }}>Discover the magic of networking</span></h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Insights, tips, and strategies to add more value to your networking events
-          </p>
-        </div>
-      </section>
+      <main className="w-shell">
 
-      {/* Blog Posts Grid */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto max-w-6xl">
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Loading posts...</p>
+        {/* Hero */}
+        <section className="bl-hero">
+          <span className="deco deco-1"></span>
+          <span className="deco deco-2"></span>
+          <span className="deco deco-3"></span>
+          <span className="deco deco-4"></span>
+          <span className="deco deco-5"></span>
+          <span className="deco deco-6"></span>
+          <span className="deco deco-7"></span>
+          <span className="deco deco-8"></span>
+          <span className="deco deco-9"></span>
+          <span className="deco deco-10"></span>
+          <span className="deco deco-11"></span>
+          <span className="deco deco-12"></span>
+          <div className="bl-hero-grid">
+            <div>
+              <span className="w-eyebrow">Our blog</span>
+              <h1 className="w-display">The Wonderelo<br /><span className="w-italic">notebook</span></h1>
+              <p className="w-lede" style={{ maxWidth: 540 }}>Practical guides on running networking rounds, dispatches from real events, and the occasional rabbit hole into the science of small talk.</p>
             </div>
-          ) : blogPosts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No blog posts yet. Check back soon!</p>
+            <div className="bl-issue">
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {blogPosts.map((post) => (
-                <Card 
-                  key={post.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow" 
-                  onClick={() => navigate(`/blog/${post.slug}`)}
-                >
-                  {(post.imageUrl || post.coverImage) && (
-                    <ImageWithFallback
-                      src={(post.imageUrl || post.coverImage)!}
-                      alt={post.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                  )}
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                      {post.readTime && <span>{post.readTime}</span>}
-                      {post.author && <span>By {post.author}</span>}
-                    </div>
-                    <h3 className="text-lg mb-2">{post.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {post.excerpt}
-                    </p>
-                    <Button variant="ghost" size="sm" className="p-0 h-auto">
-                      Read more <ArrowRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+          </div>
 
-      <Footer />
+          {/* Categories */}
+          <div className="bl-cats">
+            <span className="label">Topics</span>
+            {categories.map((cat) => (
+              <button key={cat.label} className={`bl-chip${cat.active ? ' is-active' : ''}`} type="button">
+                {cat.label} <span className="count">· {cat.count}</span>
+              </button>
+            ))}
+            <div className="bl-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+              <input type="text" placeholder="Search articles" />
+            </div>
+          </div>
+        </section>
+
+        {/* Featured post */}
+        {featured && (
+          <section className="bl-featured">
+            <a className="ft-cover" href={`/blog/${featured.slug}`} onClick={(e) => { e.preventDefault(); navigate(`/blog/${featured.slug}`); }} aria-label="Read featured post">
+              <span className="ft-tag"><span className="w-diamond"></span> Featured · {shortDate(featured.createdAt)}</span>
+            </a>
+            <div className="ft-body">
+              <div className="ft-meta">
+                <span className="pill">{featuredTag}</span>
+                {featured.readTime && <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> {featured.readTime}</span>}
+                <span>{longDate(featured.createdAt)}</span>
+              </div>
+              <h2>{featured.title}</h2>
+              <p>{featured.excerpt}</p>
+              <div className="ft-author">
+                <span className="av">{initials(featured.author)}</span>
+                <span><strong>{featured.author || 'Andy K.'}</strong> · Founder, Wonderelo</span>
+              </div>
+              <a className="w-btn w-btn-primary ft-cta" href={`/blog/${featured.slug}`} onClick={(e) => { e.preventDefault(); navigate(`/blog/${featured.slug}`); }}>
+                Read the article
+                <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+              </a>
+            </div>
+          </section>
+        )}
+
+        {/* Recent grid */}
+        <section>
+          <div className="bl-section-head">
+            <div>
+              <span className="w-eyebrow">More from the notebook</span>
+              <h2 className="w-h1">Recent <span className="w-italic">posts</span></h2>
+            </div>
+            <div className="actions"></div>
+          </div>
+
+          <div className="bl-grid">
+            {recent.map((post, i) => (
+              <a
+                key={post.id}
+                className={`bl-post is-c${(i % 6) + 1}`}
+                href={`/blog/${post.slug}`}
+                onClick={(e) => { e.preventDefault(); navigate(`/blog/${post.slug}`); }}
+              >
+                <div className="cover"><div className="pattern"></div><span className="tag">{post.tags?.[0] || fallbackTags[i % fallbackTags.length]}</span></div>
+                <div className="body">
+                  <h3>{post.title}</h3>
+                  <p>{post.excerpt}</p>
+                  <div className="meta"><span>{shortDate(post.createdAt)}{post.readTime ? ` · ${post.readTime}` : ''}</span><span className="arrow">Read →</span></div>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <div className="bl-pagination">
+            <button className="is-current" type="button">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button className="dots" type="button">…</button>
+            <button type="button">8</button>
+            <button type="button" aria-label="Next">→</button>
+          </div>
+        </section>
+
+        {/* Newsletter */}
+        <section className="bl-news">
+          <span className="deco-italic">subscribe</span>
+          <div>
+            <span className="w-eyebrow">Subscribe to our newsletter</span>
+            <h2 className="w-h1">Get the next one in your <span className="w-italic">inbox</span></h2>
+            <p>One email a month with our newest field notes, a behind-the-scenes look at a real event, and an idea you can steal for yours.</p>
+          </div>
+          <div>
+            <form onSubmit={(e) => e.preventDefault()}>
+              <input type="email" placeholder="your.email@where.you.work" />
+              <button className="w-btn w-btn-primary" type="submit">
+                Subscribe
+                <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+              </button>
+            </form>
+          </div>
+        </section>
+
+      </main>
+
+      {/* Footer */}
+      <PublicFooter />
     </div>
   );
 }

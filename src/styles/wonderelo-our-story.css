@@ -1,0 +1,297 @@
+  /* ── Hero ─────────────────────────────────────────────── */
+  .wonderelo .st-hero { padding: 80px 0 56px; position: relative; }
+  .wonderelo .st-hero .deco-1 { position: absolute; left: 9%; top: 100px; width: 14px; height: 14px; background: var(--w-orange); transform: rotate(45deg); }
+  .wonderelo .st-hero .deco-2 { position: absolute; right: 11%; top: 220px; width: 22px; height: 22px; background: var(--w-purple-deep); transform: rotate(45deg); }
+  .wonderelo .st-hero .deco-3 { position: absolute; left: 24%; bottom: 8px; width: 9px; height: 9px; background: var(--w-orange); transform: rotate(45deg); opacity: .6; }
+
+  .wonderelo .st-hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 64px; align-items: end; max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+  .wonderelo .st-hero h1 { margin: 22px 0 0; }
+  .wonderelo .st-hero .st-kicker {
+    font-family: var(--w-font-hand); color: var(--w-orange); font-size: 32px; line-height: 1;
+    display: inline-block; transform: rotate(-2.5deg);
+  }
+  .wonderelo .st-hero .st-stamp {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong);
+    background: rgba(255,255,255,.5);
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple-deep);
+    margin-bottom: 24px;
+  }
+  .wonderelo .st-hero .st-stamp .w-diamond { width: 8px; height: 8px; }
+  .wonderelo .st-hero .st-meta {
+    margin-top: 36px;
+    display: grid; grid-template-columns: repeat(3, auto); gap: 32px;
+    padding-top: 28px; border-top: 1px solid var(--w-hairline);
+  }
+  .wonderelo .st-hero .st-meta .item .l {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .7;
+  }
+  .wonderelo .st-hero .st-meta .item .v {
+    margin-top: 6px; font-family: var(--w-font-display); font-weight: 700;
+    font-size: 16px; color: var(--w-purple-deep);
+  }
+  .wonderelo .st-hero .st-meta .item .v em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+
+  /* Hero photo (placeholder — drop in real birthday-party / portrait shot) */
+  .wonderelo .st-photo {
+    position: relative;
+    aspect-ratio: 4/5; border-radius: var(--w-r-lg); overflow: hidden;
+    background:
+      repeating-linear-gradient(135deg, rgba(76,25,77,.07) 0 1px, transparent 1px 14px),
+      linear-gradient(180deg, var(--w-cream), var(--w-paper-deep));
+    border: 1px solid var(--w-hairline);
+  }
+  .wonderelo .st-photo .ph-cap {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 18px; display: flex; align-items: center; gap: 10px;
+    font-family: var(--w-font-mono); font-size: 11px; letter-spacing: .04em;
+    color: rgba(76,25,77,.65);
+    border-top: 1px dashed var(--w-hairline-strong);
+    background: rgba(247,241,230,.86); backdrop-filter: blur(6px);
+  }
+  .wonderelo .st-photo .ph-tag {
+    position: absolute; top: 16px; left: 16px;
+    padding: 6px 10px; border-radius: 6px;
+    background: var(--w-orange); color: #fff;
+    font-family: var(--w-font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase;
+  }
+  .wonderelo .st-photo .ph-overlay {
+    position: absolute; inset: 22% 18% 30% 18%;
+    border: 1px dashed rgba(76,25,77,.4); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-mono); font-size: 11px; color: rgba(76,25,77,.55);
+    text-align: center; padding: 8px;
+  }
+  /* Real founder birthday-party photo — pan/zoom driven by tweak CSS vars */
+  .wonderelo .st-photo .st-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: var(--story-pos-x, 50%) var(--story-pos-y, 50%);
+    transform: scale(var(--story-scale, 1));
+    transform-origin: var(--story-pos-x, 50%) var(--story-pos-y, 50%);
+  }
+  /* "That's me!" founder annotation — hand label + drawn arrow to his face */
+  .wonderelo .st-photo .st-annot { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .wonderelo .st-photo .st-annot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: translateY(50px); filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
+  .wonderelo .st-photo .st-annot .lbl {
+    position: absolute; left: 56%; top: 62%;
+    font-family: var(--w-font-hand); font-weight: 700;
+    font-size: 31px; line-height: .92; color: #fff;
+    transform: rotate(-7deg); white-space: nowrap;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.55));
+  }
+
+  /* ── Pull-quote intro ─────────────────────────────────── */
+  .wonderelo .st-pull {
+    margin-top: 100px;
+    padding: 80px 0;
+    background: var(--w-cream);
+    border-top: 1px solid var(--w-hairline);
+    border-bottom: 1px solid var(--w-hairline);
+    position: relative; overflow: hidden;
+  }
+  .wonderelo .st-pull .deco-italic {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-family: var(--w-font-serif); font-style: italic; font-size: 520px;
+    color: rgba(76,25,77,.04); line-height: 1; pointer-events: none;
+    white-space: nowrap;
+  }
+  .wonderelo .st-pull blockquote {
+    margin: 0 auto; max-width: 880px; padding: 0 40px;
+    font-family: var(--w-font-serif); font-style: italic;
+    font-size: clamp(28px, 3.8vw, 44px); line-height: 1.25;
+    color: var(--w-purple-deep);
+    text-align: center; text-wrap: balance;
+    position: relative;
+  }
+  .wonderelo .st-pull blockquote .accent { color: var(--w-orange); }
+  .wonderelo .st-pull blockquote::before, .wonderelo .st-pull blockquote::after {
+    content: ""; display: inline-block; width: 28px; height: 1px;
+    background: var(--w-orange); vertical-align: middle; margin: 0 16px;
+  }
+
+  /* ── Chapters ─────────────────────────────────────────── */
+  .wonderelo .st-chapters { max-width: 1440px; margin: 100px auto 0; padding: 0 40px; }
+  .wonderelo .st-chapter {
+    max-width: 740px; margin: 0 auto 96px;
+    position: relative;
+  }
+  .wonderelo .st-chapter:last-child { margin-bottom: 0; }
+  .wonderelo .st-chapter .ch-num {
+    position: absolute; top: -8px; left: -160px;
+    width: 120px;
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 88px; line-height: 1; letter-spacing: -0.04em;
+    color: var(--w-paper-deep);
+    -webkit-text-stroke: 1px var(--w-hairline-strong);
+  }
+  .wonderelo .st-chapter h2 {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: clamp(28px, 3.4vw, 40px); line-height: 1.05; letter-spacing: -0.025em;
+    color: var(--w-purple-deep); margin: 0;
+  }
+  .wonderelo .st-chapter h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .wonderelo .st-chapter .ch-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-orange);
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .wonderelo .st-chapter .ch-label::before { content: ""; width: 28px; height: 1px; background: var(--w-orange); }
+  .wonderelo .st-chapter p {
+    margin: 22px 0 0;
+    font-size: 17.5px; line-height: 1.65; color: var(--w-ink);
+    text-wrap: pretty;
+  }
+  .wonderelo .st-chapter p strong { color: var(--w-purple-deep); font-weight: 600; }
+  .wonderelo .st-chapter p em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; font-size: 1.08em; }
+  .wonderelo .st-chapter .ch-figure {
+    margin: 36px 0 0;
+    padding: 22px 24px;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-md);
+    display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center;
+  }
+  .wonderelo .st-chapter .ch-figure .big {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 56px; line-height: 1; letter-spacing: -0.04em;
+    color: var(--w-orange);
+  }
+  .wonderelo .st-chapter .ch-figure .lbl { font-size: 14px; color: var(--w-ink); line-height: 1.45; }
+  .wonderelo .st-chapter .ch-figure .lbl strong { color: var(--w-purple-deep); }
+
+  /* Drop cap on first chapter */
+  .wonderelo .st-chapter.is-first p:first-of-type::first-letter {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400;
+    font-size: 84px; line-height: 0.85;
+    color: var(--w-orange);
+    float: left; padding: 8px 12px 0 0;
+  }
+
+  /* Inline marginalia / handwritten note */
+  .wonderelo .st-margin {
+    position: absolute; right: -240px; top: 80px;
+    width: 200px;
+    font-family: var(--w-font-hand); font-weight: 500; font-size: 22px; line-height: 1.2;
+    color: var(--w-orange);
+    transform: rotate(-2deg);
+  }
+  .wonderelo .st-margin::before {
+    content: ""; display: block;
+    width: 60px; height: 60px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%23dd531c' stroke-width='1.6' stroke-linecap='round'><path d='M8 8 q20 30 44 44 M40 50 l10 -2 l-2 10'/></svg>") no-repeat center;
+    transform: rotate(20deg);
+    margin-bottom: 8px;
+  }
+
+  /* ── Timeline / mid-page strip ────────────────────────── */
+  .wonderelo .st-timeline {
+    margin: 80px auto 0;
+    max-width: 1100px;
+    padding: 56px 48px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: var(--w-r-xl);
+    position: relative; overflow: hidden;
+  }
+  .wonderelo .st-timeline .deco-italic {
+    position: absolute; right: -50px; bottom: -120px;
+    font-family: var(--w-font-serif); font-style: italic; font-size: 320px;
+    color: rgba(255,255,255,.05); line-height: 1; pointer-events: none;
+  }
+  .wonderelo .st-timeline .w-eyebrow { color: var(--w-orange-bright); }
+  .wonderelo .st-timeline .w-eyebrow::before { background: var(--w-orange-bright); }
+  .wonderelo .st-timeline h2 { color: #fff; margin-top: 14px; }
+  .wonderelo .st-timeline h2 em { color: var(--w-orange-bright); }
+  .wonderelo .st-tl-grid {
+    margin-top: 40px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+    position: relative;
+  }
+  .wonderelo .st-tl-grid::before {
+    content: ""; position: absolute; left: 16px; right: 16px; top: 18px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.20) 8%, rgba(255,255,255,.20) 92%, transparent);
+  }
+  .wonderelo .st-tl-step { position: relative; padding-top: 36px; }
+  .wonderelo .st-tl-step::before {
+    content: ""; position: absolute; top: 13px; left: 0;
+    width: 12px; height: 12px; background: var(--w-orange-bright);
+    transform: rotate(45deg);
+    box-shadow: 0 0 0 6px rgba(45,17,51,1);
+  }
+  .wonderelo .st-tl-step .year {
+    font-family: var(--w-font-mono); font-size: 12px; font-weight: 600;
+    color: var(--w-orange-bright); letter-spacing: .08em;
+  }
+  .wonderelo .st-tl-step h4 {
+    margin: 8px 0 0; font-family: var(--w-font-display); font-weight: 700;
+    font-size: 18px; line-height: 1.25; letter-spacing: -0.015em;
+    color: #fff;
+  }
+  .wonderelo .st-tl-step h4 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange-bright); font-weight: 400; }
+  .wonderelo .st-tl-step p {
+    margin: 8px 0 0; font-size: 13.5px; line-height: 1.55;
+    color: rgba(255,255,255,.65);
+  }
+
+  /* ── Author + signature ───────────────────────────────── */
+  .wonderelo .st-author {
+    margin: 96px auto 0; max-width: 740px; padding: 0 40px;
+    display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center;
+  }
+  .wonderelo .st-author .avatar {
+    width: 128px; height: 128px; border-radius: 50%;
+    overflow: hidden;
+    border: 1.5px solid var(--w-hairline-strong);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wonderelo .st-author .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .wonderelo .st-author .sig-name {
+    font-family: var(--w-font-hand); font-weight: 700; color: var(--w-orange);
+    font-size: 42px; line-height: 1; transform: rotate(-2deg); display: inline-block;
+  }
+  .wonderelo .st-author .who {
+    margin-top: 8px;
+    font-size: 14px; color: var(--w-ink); opacity: .72;
+  }
+  .wonderelo .st-author .who strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* ── Final CTA ────────────────────────────────────────── */
+  .wonderelo .st-cta {
+    margin-top: 120px; max-width: 1200px; margin-left: auto; margin-right: auto; padding: 0 40px;
+  }
+  .wonderelo .st-cta-inner {
+    background: var(--w-orange); color: #fff;
+    border-radius: var(--w-r-xl); padding: 80px 56px;
+    position: relative; overflow: hidden;
+    text-align: center;
+  }
+  .wonderelo .st-cta-inner .deco-1 { position: absolute; left: 56px; top: 56px; width: 18px; height: 18px; background: #fff; transform: rotate(45deg); opacity: .25; }
+  .wonderelo .st-cta-inner .deco-2 { position: absolute; right: 64px; top: 88px; width: 12px; height: 12px; background: #fff; transform: rotate(45deg); opacity: .4; }
+  .wonderelo .st-cta-inner .deco-3 { position: absolute; right: 120px; bottom: 64px; width: 22px; height: 22px; background: #fff; transform: rotate(45deg); opacity: .15; }
+  .wonderelo .st-cta-inner .deco-italic { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: var(--w-font-serif); font-style: italic; font-size: 360px; color: rgba(255,255,255,.08); line-height: 1; pointer-events: none; }
+  .wonderelo .st-cta-inner h2 {
+    position: relative;
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: clamp(36px, 4.6vw, 60px); line-height: 1.0; letter-spacing: -0.03em;
+    color: #fff; margin: 0 auto; max-width: 720px; text-wrap: balance;
+  }
+  .wonderelo .st-cta-inner h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-purple-deep); }
+  .wonderelo .st-cta-inner p { position: relative; margin: 20px auto 0; max-width: 500px; font-size: 16.5px; line-height: 1.55; color: rgba(255,255,255,.88); }
+  .wonderelo .st-cta-inner .actions { position: relative; margin-top: 36px; display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .wonderelo .st-cta-inner .w-btn-primary { background: var(--w-purple-deep); box-shadow: 0 8px 20px rgba(45,17,51,.30); }
+  .wonderelo .st-cta-inner .w-btn-primary:hover { background: var(--w-purple-ink); }
+  .wonderelo .st-cta-inner .w-btn-ghost { color: #fff; border-color: rgba(255,255,255,.35); }
+  .wonderelo .st-cta-inner .w-btn-ghost:hover { background: rgba(255,255,255,.10); }
+
+  @media (max-width: 980px) {
+    .wonderelo .st-hero-grid { grid-template-columns: 1fr; gap: 32px; }
+    .wonderelo .st-chapter .ch-num { display: none; }
+    .wonderelo .st-margin { display: none; }
+    .wonderelo .st-tl-grid { grid-template-columns: 1fr 1fr; }
+    .wonderelo .st-tl-grid::before { display: none; }
+    .wonderelo .st-pull .deco-italic { font-size: 260px; }
+  }

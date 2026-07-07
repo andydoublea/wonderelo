@@ -1,0 +1,338 @@
+  /* ── Page-specific ─────────────────────────────────────────── */
+  .wonderelo .pr-hero { padding: 80px 0 56px; position: relative; }
+  .wonderelo .pr-hero .pr-deco-1 { position: absolute; left: 8%; top: 96px; width: 14px; height: 14px; background: var(--w-orange); transform: rotate(45deg); }
+  .wonderelo .pr-hero .pr-deco-2 { position: absolute; right: 12%; top: 64px; width: 10px; height: 10px; background: var(--w-purple-deep); transform: rotate(45deg); }
+  .wonderelo .pr-hero .pr-deco-3 { position: absolute; right: 6%; bottom: 24px; width: 18px; height: 18px; background: var(--w-orange); transform: rotate(45deg); opacity: .35; }
+  .wonderelo .pr-hero-inner { text-align: center; }
+  .wonderelo .pr-lede { max-width: 620px; margin: 24px auto 0; font-size: 18px; line-height: 1.55; color: var(--w-ink); opacity: .85; }
+  .wonderelo .pr-free-pill {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-top: 28px;
+    padding: 9px 14px 9px 12px; border-radius: 999px;
+    background: rgba(76,25,77,.06); border: 1px solid var(--w-hairline-strong);
+    font-size: 13px; font-weight: 600; color: var(--w-purple-deep);
+  }
+  .wonderelo .pr-free-pill .w-diamond { width: 9px; height: 9px; }
+
+  /* ── Capacity selector ─────────────────────────────────────── */
+  .wonderelo .pr-cap {
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    padding: 36px 40px 28px;
+    margin-top: 24px;
+    position: relative; overflow: hidden;
+  }
+  .wonderelo .pr-cap .pr-cap-deco {
+    position: absolute; right: -30px; top: -30px;
+    font-family: var(--w-font-serif); font-style: italic; font-size: 200px;
+    color: rgba(76,25,77,.04); line-height: 1; pointer-events: none;
+  }
+  .wonderelo .pr-cap-head {
+    display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    margin-bottom: 32px; position: relative;
+  }
+  .wonderelo .pr-cap-head .l { display: flex; flex-direction: column; gap: 6px; }
+  .wonderelo .pr-cap-head .label {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .8;
+  }
+  .wonderelo .pr-cap-head .pr-cap-value {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 56px; line-height: 1; letter-spacing: -0.035em;
+    color: var(--w-purple-deep);
+  }
+  .wonderelo .pr-cap-head .pr-cap-value em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; font-size: 28px; color: var(--w-orange); margin-left: 8px; vertical-align: 4px; }
+  .wonderelo .pr-cap-head .pr-cap-meta {
+    text-align: right;
+    font-family: var(--w-font-mono); font-size: 12px;
+    color: var(--w-ink); opacity: .6;
+    line-height: 1.5;
+  }
+
+  /* Slider */
+  .wonderelo .pr-slider { padding: 0 16px; }
+  .wonderelo .pr-track {
+    position: relative; height: 56px;
+  }
+  .wonderelo .pr-track .pr-rail {
+    position: absolute; top: 50%; left: 0; right: 0; height: 4px;
+    background: rgba(76,25,77,.10); border-radius: 999px;
+    transform: translateY(-50%);
+  }
+  .wonderelo .pr-track .pr-fill {
+    position: absolute; top: 50%; left: 0; height: 4px;
+    background: linear-gradient(90deg, var(--w-orange), var(--w-orange-bright));
+    border-radius: 999px;
+    transform: translateY(-50%);
+    transition: width .25s cubic-bezier(.2,.7,.2,1);
+  }
+  .wonderelo .pr-stop {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--w-paper); border: 2px solid rgba(76,25,77,.20);
+    transition: background .2s, border-color .2s, transform .2s;
+    cursor: pointer;
+  }
+  .wonderelo .pr-stop.is-active {
+    background: var(--w-orange); border-color: var(--w-orange);
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  .wonderelo .pr-stop.is-passed {
+    background: var(--w-orange); border-color: var(--w-orange);
+  }
+  .wonderelo .pr-thumb {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--w-orange);
+    box-shadow: 0 6px 14px rgba(221,83,28,.30);
+    cursor: grab; z-index: 2;
+    transition: left .25s cubic-bezier(.2,.7,.2,1);
+  }
+  .wonderelo .pr-thumb::after {
+    content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--w-orange);
+  }
+  .wonderelo .pr-stop-labels {
+    position: relative; height: 16px;
+    margin-top: 16px;
+    font-family: var(--w-font-mono); font-size: 11px;
+    color: var(--w-ink);
+  }
+  .wonderelo .pr-stop-labels .pr-stop-label { position: absolute; transform: translateX(-50%); white-space: nowrap; opacity: .55; }
+  .wonderelo .pr-stop-labels .pr-stop-label.is-active { color: var(--w-orange); opacity: 1; font-weight: 600; }
+
+  /* ── Plan cards ────────────────────────────────────────────── */
+  .wonderelo .pr-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 36px; }
+  .wonderelo .pr-plan {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    padding: 36px 36px 32px;
+    position: relative;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .wonderelo .pr-plan.is-featured {
+    border: 2px solid var(--w-purple-deep);
+    background: linear-gradient(180deg, var(--w-paper) 0%, var(--w-paper) 100%);
+    box-shadow: var(--w-shadow-card);
+  }
+  .wonderelo .pr-plan .pr-plan-tag {
+    position: absolute; top: -14px; left: 32px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--w-orange); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  }
+  .wonderelo .pr-plan .pr-plan-tag .w-diamond { width: 7px; height: 7px; background: #fff; }
+  .wonderelo .pr-plan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .wonderelo .pr-plan-name { font-family: var(--w-font-display); font-weight: 700; font-size: 22px; color: var(--w-purple-deep); letter-spacing: -0.02em; }
+  .wonderelo .pr-plan-toggle { display: inline-flex; gap: 2px; padding: 3px; background: rgba(76,25,77,.06); border-radius: 999px; }
+  .wonderelo .pr-plan-toggle button {
+    border: none; background: transparent;
+    padding: 6px 12px; border-radius: 999px;
+    font-family: var(--w-font-body); font-size: 12px; font-weight: 600;
+    color: var(--w-ink); opacity: .65;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .wonderelo .pr-plan-toggle button.is-active { background: #fff; opacity: 1; color: var(--w-purple-deep); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .wonderelo .pr-plan-toggle .pr-save { color: var(--w-orange); font-weight: 700; font-size: 10px; letter-spacing: .04em; }
+  .wonderelo .pr-plan-price {
+    margin-top: 24px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .wonderelo .pr-plan-price .num {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 64px; line-height: 1; letter-spacing: -0.04em;
+    color: var(--w-purple-deep);
+  }
+  .wonderelo .pr-plan-price .num .currency { font-size: 36px; vertical-align: 14px; margin-right: 2px; opacity: .75; }
+  .wonderelo .pr-plan-price .unit { font-size: 14px; color: var(--w-ink); opacity: .7; line-height: 1.35; max-width: 130px; }
+  .wonderelo .pr-plan-price .unit em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+
+  .wonderelo .pr-plan-feats { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .wonderelo .pr-plan-feats li { display: flex; gap: 12px; align-items: flex-start; font-size: 14.5px; color: var(--w-ink); }
+  .wonderelo .pr-plan-feats li .check {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--w-orange); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  .wonderelo .pr-plan-feats li.is-bold { font-weight: 600; color: var(--w-purple-deep); }
+  .wonderelo .pr-plan-feats li.is-muted { opacity: .55; }
+  .wonderelo .pr-plan-feats li.is-muted .check { background: var(--w-paper-deep); color: var(--w-hairline-strong); }
+
+  .wonderelo .pr-plan-qty {
+    margin-top: 22px; padding: 14px 16px;
+    background: rgba(76,25,77,.04); border-radius: var(--w-r-md);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .wonderelo .pr-plan-qty .label { font-size: 13px; font-weight: 600; color: var(--w-purple-deep); }
+  .wonderelo .pr-qty-ctrl { display: inline-flex; align-items: center; gap: 12px; }
+  .wonderelo .pr-qty-ctrl button {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1px solid var(--w-hairline-strong); background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-purple-deep); font-weight: 700;
+  }
+  .wonderelo .pr-qty-ctrl .qty { font-family: var(--w-font-display); font-weight: 800; font-size: 20px; min-width: 26px; text-align: center; color: var(--w-purple-deep); }
+
+  .wonderelo .pr-plan-cta { margin-top: 24px; width: 100%; justify-content: center; }
+  .wonderelo .pr-plan-foot { margin-top: 14px; font-size: 12px; color: var(--w-ink); opacity: .55; text-align: center; }
+  .wonderelo .pr-plan-foot .w-link-i { color: var(--w-purple); text-decoration: underline; cursor: pointer; }
+
+  /* Comparison table */
+  .wonderelo .pr-compare { margin-top: 96px; }
+  .wonderelo .pr-compare-head { text-align: center; margin-bottom: 40px; }
+  .wonderelo .pr-compare-head .w-eyebrow { justify-content: center; }
+  .wonderelo .pr-compare-head h2 { margin-top: 12px; }
+  .wonderelo .pr-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    overflow: hidden;
+  }
+  .wonderelo .pr-table th, .wonderelo .pr-table td {
+    padding: 18px 24px;
+    text-align: left;
+    border-bottom: 1px solid var(--w-hairline);
+    font-size: 14.5px;
+    vertical-align: middle;
+  }
+  .wonderelo .pr-table thead th {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 14px;
+    color: var(--w-purple-deep); letter-spacing: -0.01em;
+    background: var(--w-cream);
+    padding: 22px 24px;
+  }
+  .wonderelo .pr-table thead th.is-featured { color: var(--w-orange); }
+  .wonderelo .pr-table tbody tr:last-child td { border-bottom: none; }
+  .wonderelo .pr-table tbody td:first-child { font-weight: 500; color: var(--w-purple-deep); }
+  .wonderelo .pr-table tbody td.is-cell { text-align: center; }
+  .wonderelo .pr-table tbody td.is-cell svg { color: var(--w-orange); }
+  .wonderelo .pr-table tbody td.is-cell.is-dim svg { color: var(--w-hairline-strong); }
+  .wonderelo .pr-table .pr-section-row td {
+    background: var(--w-cream);
+    font-family: var(--w-font-display); font-weight: 700; font-size: 12px;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .85;
+  }
+  .wonderelo .pr-table .pr-section-row td::before {
+    content: ""; display: inline-block; width: 6px; height: 6px;
+    background: var(--w-orange); transform: rotate(45deg);
+    margin-right: 10px; vertical-align: middle;
+  }
+
+  /* FAQ */
+  .wonderelo .pr-faq { margin-top: 120px; display: grid; grid-template-columns: 1fr 1.4fr; gap: 80px; align-items: start; }
+  .wonderelo .pr-faq-side h2 { margin-top: 12px; }
+  .wonderelo .pr-faq-side p { margin-top: 18px; max-width: 360px; font-size: 15.5px; line-height: 1.55; color: var(--w-ink); opacity: .8; }
+  .wonderelo .pr-faq-side .w-btn { margin-top: 24px; }
+  .wonderelo .pr-faq-list { display: flex; flex-direction: column; gap: 0; }
+  .wonderelo .pr-faq-item {
+    border-bottom: 1px solid var(--w-hairline);
+    padding: 22px 0;
+  }
+  .wonderelo .pr-faq-item:first-child { border-top: 1px solid var(--w-hairline); }
+  .wonderelo .pr-faq-q {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    cursor: pointer;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 18px;
+    color: var(--w-purple-deep); letter-spacing: -0.015em;
+  }
+  .wonderelo .pr-faq-q .pr-faq-mark {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--w-hairline-strong);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-purple-deep); flex: none;
+    transition: background .15s, color .15s, transform .15s;
+  }
+  .wonderelo .pr-faq-item[open] .pr-faq-mark { background: var(--w-orange); border-color: var(--w-orange); color: #fff; transform: rotate(45deg); }
+  .wonderelo .pr-faq-a {
+    margin-top: 14px;
+    font-size: 14.5px; line-height: 1.65; color: var(--w-ink); opacity: .8;
+    max-width: 580px;
+  }
+  .wonderelo .pr-faq-item summary { list-style: none; }
+  .wonderelo .pr-faq-item summary::-webkit-details-marker { display: none; }
+
+  /* Final CTA */
+  .wonderelo .pr-cta {
+    margin-top: 120px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: var(--w-r-xl); padding: 64px 56px;
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 40px;
+  }
+  .wonderelo .pr-cta .deco-1 { position: absolute; right: 24px; top: 24px; width: 16px; height: 16px; background: var(--w-orange-bright); transform: rotate(45deg); }
+  .wonderelo .pr-cta .deco-2 { position: absolute; right: 58px; top: 60px; width: 10px; height: 10px; background: rgba(255,255,255,.30); transform: rotate(45deg); }
+  .wonderelo .pr-cta .deco-italic { position: absolute; right: -40px; bottom: -120px; font-family: var(--w-font-serif); font-style: italic; font-size: 320px; color: rgba(255,255,255,.04); line-height: 1; pointer-events: none; }
+  .wonderelo .pr-cta h2 { color: #fff; }
+  .wonderelo .pr-cta h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange-bright); }
+  .wonderelo .pr-cta p { margin-top: 16px; max-width: 480px; font-size: 16px; line-height: 1.55; color: rgba(255,255,255,.72); }
+  .wonderelo .pr-cta .pr-cta-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .wonderelo .pr-cta .w-btn-ghost { color: #fff; border-color: rgba(255,255,255,.20); }
+  .wonderelo .pr-cta .w-btn-ghost:hover { background: rgba(255,255,255,.08); }
+
+  @media (max-width: 880px) {
+    .wonderelo .pr-plans { grid-template-columns: 1fr; }
+    .wonderelo .pr-faq { grid-template-columns: 1fr; gap: 40px; }
+    .wonderelo .pr-cta { grid-template-columns: 1fr; padding: 40px 28px; }
+    .wonderelo .pr-cta .pr-cta-actions { justify-content: flex-start; }
+    .wonderelo .pr-table th, .wonderelo .pr-table td { padding: 14px; font-size: 13px; }
+  }
+
+  /* ── Port-only additions (not in the static mock) ──────────────────────
+     The mock is CSS-only; the live page keeps the real logic. These rules
+     cover the extra states the ported components introduce. */
+
+  /* Free-tier notice (mock's `.pr-free-pill` reused as the panel banner). */
+  .wonderelo .pr-free-note {
+    margin-top: 24px; padding: 22px 26px;
+    background: rgba(31,138,77,.06); border: 1px solid rgba(31,138,77,.20);
+    border-radius: var(--w-r-lg);
+    font-size: 14.5px; line-height: 1.55; color: var(--w-purple-deep);
+  }
+
+  /* Gift-card redeem flow (shared row under the plan cards). */
+  .wonderelo .pr-giftcard {
+    margin-top: 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .wonderelo .pr-giftcard-input {
+    height: 38px; width: 180px; padding: 0 14px;
+    background: #fff; border: 1px solid var(--w-hairline-strong); border-radius: var(--w-r-sm);
+    font-family: var(--w-font-mono); font-size: 13px; color: var(--w-ink);
+    text-transform: uppercase;
+  }
+  .wonderelo .pr-giftcard-input:focus { outline: none; border-color: var(--w-orange); box-shadow: 0 0 0 3px rgba(221,83,28,.15); }
+
+  /* Capacity slider — the ported Radix <Slider> replaces the mock's static
+     stop-track. Give the track/thumb the mock's proportions; brand tokens
+     (`--primary`/`--muted`) already colour it orange-on-cream inside `.wonderelo`. */
+  .wonderelo .pr-slider { padding: 0 16px; }
+  .wonderelo .pr-slider [data-slot="slider"] { margin: 8px 0 0; }
+  .wonderelo .pr-slider [data-slot="slider-track"] { height: 4px; background: rgba(76,25,77,.10); }
+  .wonderelo .pr-slider [data-slot="slider-range"] { background: linear-gradient(90deg, var(--w-orange), var(--w-orange-bright)); }
+  .wonderelo .pr-slider [data-slot="slider-thumb"] {
+    width: 28px !important; height: 28px !important;
+    background: #fff; border: 2px solid var(--w-orange);
+    box-shadow: 0 6px 14px rgba(221,83,28,.30);
+  }
+
+  /* ── FAQ accordion (shadcn/Radix) skinned to the mock's `.pr-faq-*` ──
+     The mock used <details>/<summary> with an [open] rule; Radix uses
+     data-state instead, and its trigger ships its own chevron + defaults.
+     Re-assert the mock look and hide the built-in chevron. */
+  .wonderelo .pr-faq-item { padding: 0; }              /* trigger/content own the padding */
+  .wonderelo .pr-faq-q {
+    width: 100%; padding: 22px 0;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 18px;
+    color: var(--w-purple-deep); letter-spacing: -0.015em;
+  }
+  .wonderelo .pr-faq-q:hover { text-decoration: none; }
+  .wonderelo .pr-faq-q > svg { display: none; }        /* hide Radix's default chevron */
+  .wonderelo .pr-faq-item[data-state="open"] .pr-faq-mark {
+    background: var(--w-orange); border-color: var(--w-orange); color: #fff; transform: rotate(45deg);
+  }
+  .wonderelo .pr-faq-a { padding: 0 0 22px; max-width: 580px; }

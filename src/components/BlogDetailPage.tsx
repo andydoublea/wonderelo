@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Button } from './ui/button';
-import { Calendar, Clock } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Navigation } from './Navigation';
-import { Footer } from './Footer';
+import { PublicNav } from './redesign/PublicNav';
+import { PublicFooter } from './redesign/PublicFooter';
 import { AuthorSignature } from './AuthorSignature';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+import '../styles/wonderelo-public.css';
+import '../styles/wonderelo-blog-post.css';
 
 interface BlogPost {
   id: string;
@@ -82,16 +81,29 @@ const fallbackPosts: Record<string, BlogPost> = {
   },
 };
 
+// Related-post cover accent classes, cycled across the (up to) three cards.
+const relatedCoverClass = ['is-c1', 'is-c2', 'is-c3'];
+
+interface TocItem {
+  id: string;
+  text: string;
+}
+
 export function BlogDetailPage() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [blogPost, setBlogPost] = useState<BlogPost | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [toc, setToc] = useState<TocItem[]>([]);
+  const [activeId, setActiveId] = useState<string>('');
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (slug) {
       fetchBlogPost(slug);
+      fetchRelatedPosts(slug);
     }
   }, [slug]);
 
@@ -135,136 +147,264 @@ export function BlogDetailPage() {
     }
   };
 
+  // Fetch a small set of recent posts to surface as "Keep reading", excluding
+  // the current one. Falls back to the built-in sample posts on any failure so
+  // the related grid always has three cards like the mock.
+  const fetchRelatedPosts = async (currentSlug: string) => {
+    const pickFallback = () =>
+      Object.values(fallbackPosts).filter((p) => p.slug !== currentSlug).slice(0, 3);
+    try {
+      const response = await fetch(`${apiBaseUrl}/blog/posts`, {
+        headers: { 'Authorization': `Bearer ${publicAnonKey}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const posts: BlogPost[] = data.posts || [];
+        const others = posts.filter((p) => p.slug !== currentSlug).slice(0, 3);
+        setRelatedPosts(others.length ? others : pickFallback());
+      } else {
+        setRelatedPosts(pickFallback());
+      }
+    } catch (err) {
+      errorLog('Error fetching related posts:', err);
+      setRelatedPosts(pickFallback());
+    }
+  };
+
+  // Derive the table of contents from the H2s inside the rendered article, and
+  // (nice-to-have) track the active section as the reader scrolls.
+  useEffect(() => {
+    if (!blogPost || !bodyRef.current) return;
+    const headings = Array.from(bodyRef.current.querySelectorAll('h2')) as HTMLHeadingElement[];
+    const items: TocItem[] = headings.map((h, i) => {
+      if (!h.id) h.id = `section-${i + 1}`;
+      return { id: h.id, text: h.textContent || '' };
+    });
+    setToc(items);
+    setActiveId(items[0]?.id || '');
+
+    if (!('IntersectionObserver' in window) || items.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) {
+          const top = visible.reduce((a, b) =>
+            a.boundingClientRect.top < b.boundingClientRect.top ? a : b
+          );
+          setActiveId((top.target as HTMLElement).id);
+        }
+      },
+      { rootMargin: '-96px 0px -66% 0px', threshold: 0 }
+    );
+    headings.forEach((h) => observer.observe(h));
+    return () => observer.disconnect();
+  }, [blogPost]);
+
+  const scrollToHeading = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const formattedDate = blogPost
+    ? new Date(blogPost.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : '';
+  const coverImage = blogPost?.coverImage || blogPost?.imageUrl;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+      <div
+        className="wonderelo w-public bpg-page"
+        style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <p style={{ color: 'var(--w-ink)', opacity: 0.6 }}>Loading…</p>
       </div>
     );
   }
 
   if (error || !blogPost) {
     return (
-      <div className="min-h-screen bg-background">
-        <nav className="border-b border-border">
-          <div className="container mx-auto max-w-4xl px-6 py-4">
-            <h2 
-              className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate('/')}
-            >
-              Wonderelo
-            </h2>
-          </div>
-        </nav>
-        <div className="flex items-center justify-center py-20 px-6">
-          <div className="text-center">
-            <h2 className="mb-4">{error || 'Blog post not found'}</h2>
-            <Button onClick={() => navigate('/blog')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to blog
-            </Button>
-          </div>
-        </div>
+      <div className="wonderelo w-public bpg-page">
+        <PublicNav onGetStarted={() => navigate('/')} onSignIn={() => navigate('/')} />
+        <main className="w-shell">
+          <header className="bp-header">
+            <h1>{error || 'Blog post not found'}</h1>
+            <p className="deck">
+              <a
+                className="w-btn w-btn-primary"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate('/blog')}
+              >
+                Back to blog
+              </a>
+            </p>
+          </header>
+        </main>
+        <PublicFooter />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Navigation */}
-      <Navigation />
+    <div className="wonderelo w-public bpg-page">
+      {/* Nav */}
+      <PublicNav onGetStarted={() => navigate('/')} onSignIn={() => navigate('/')} />
 
-      {/* Article */}
-      <article className="py-12 px-6">
-        <div className="container mx-auto max-w-3xl">
-          {/* Featured Image */}
-          {(blogPost.imageUrl || blogPost.coverImage) && (
-            <ImageWithFallback
-              src={(blogPost.imageUrl || blogPost.coverImage)!}
-              alt={blogPost.title}
-              className="w-full h-64 md:h-96 object-cover rounded-lg mb-8"
-            />
-          )}
+      <main className="w-shell">
 
-          {/* Meta */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-            {blogPost.readTime && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>{blogPost.readTime}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date(blogPost.createdAt).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</span>
+        {/* Article header */}
+        <header className="bp-header">
+          <div className="tags">
+            <span className="tag">Networking</span>
+            <span className="tag is-purple">Event design</span>
+            {blogPost.readTime && <span className="tag is-purple">{blogPost.readTime}</span>}
+          </div>
+          <h1>{blogPost.title}</h1>
+          {blogPost.excerpt && <p className="deck">{blogPost.excerpt}</p>}
+
+          <div className="bp-byline">
+            <span className="av">AA</span>
+            <div className="who">
+              <span className="name">Andy Abel</span>
+              <span className="role">Founder, Wonderelo</span>
+            </div>
+            <span className="dot"></span>
+            <div className="meta">
+              <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> {formattedDate}</span>
+              {blogPost.readTime && <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {blogPost.readTime}</span>}
+            </div>
+            <div className="share">
+              <button type="button" aria-label="Share on X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+              <button type="button" aria-label="Share on LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
+              <button type="button" aria-label="Copy link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
             </div>
           </div>
+        </header>
 
-          {/* Title */}
-          <h1 className="text-4xl mb-6">{blogPost.title}</h1>
+        {/* Cover — real image if available, gradient placeholder otherwise */}
+        <section
+          className="bp-cover"
+          style={coverImage ? {
+            backgroundImage: `url(${coverImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          } : undefined}
+        >
+        </section>
 
-          {/* Excerpt */}
-          <p className="text-xl text-muted-foreground mb-8">
-            {blogPost.excerpt}
-          </p>
+        {/* Body */}
+        <section className="bp-grid">
 
-          {/* Content */}
-          <div
-            className="prose prose-lg max-w-none"
-            style={{
-              '--tw-prose-headings': '#1a1a1a',
-            } as React.CSSProperties}
-            dangerouslySetInnerHTML={{ __html: blogPost.content }}
-          />
-          <style>{`
-            .vs-jasper article h1 {
-              color: #5C2277 !important;
-            }
-            .prose h2 {
-              font-size: 1.5rem !important;
-              font-weight: 400 !important;
-              margin-top: 2.5rem !important;
-              margin-bottom: 1rem !important;
-              line-height: 1.3 !important;
-            }
-            .prose h3 {
-              font-size: 1.25rem !important;
-              font-weight: 400 !important;
-              margin-top: 2rem !important;
-              margin-bottom: 0.75rem !important;
-            }
-            .prose p {
-              margin-bottom: 1rem !important;
-            }
-            .prose ul, .prose ol {
-              margin-top: 0.75rem !important;
-              margin-bottom: 1rem !important;
-            }
-          `}</style>
+          {/* TOC — derived from the article's H2s */}
+          <aside className="bp-toc">
+            <span className="label">In this article</span>
+            <ol>
+              {toc.map((item) => (
+                <li
+                  key={item.id}
+                  className={item.id === activeId ? 'is-active' : undefined}
+                  onClick={() => scrollToHeading(item.id)}
+                >
+                  {item.text}
+                </li>
+              ))}
+            </ol>
+          </aside>
 
-          {/* Author signature */}
-          <AuthorSignature className="mt-16 pt-8 border-t border-border" />
-        </div>
-      </article>
+          {/* Article body — injected post.content inherits `.bp-body` styles */}
+          <article className="bp-body">
+            <div ref={bodyRef} dangerouslySetInnerHTML={{ __html: blogPost.content }} />
 
-      {/* CTA Section */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h2 className="mb-4">Ready to transform your networking?</h2>
-          <p className="mb-8 text-muted-foreground">
-            Start creating meaningful connections at your events
-          </p>
-          <Button size="lg" onClick={() => navigate('/')}>
-            Get started for free
-          </Button>
-        </div>
-      </section>
+            {/* Tags + share strip */}
+            <div className="bp-foot">
+              <div className="tag-row">
+                <span>networking</span><span>event design</span><span>venue</span><span>practical</span>
+              </div>
+              <div className="share-row">
+                Share —
+                <button type="button" aria-label="X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+                <button type="button" aria-label="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
+                <button type="button" aria-label="Copy link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+              </div>
+            </div>
 
-      <Footer />
+            {/* Author signature (kept from legacy — wrapped in the mock's block) */}
+            <section className="bp-author">
+              <AuthorSignature />
+            </section>
+
+          </article>
+        </section>
+
+        {/* Related */}
+        <section className="bp-related">
+          <div className="bp-related-head">
+            <div>
+              <span className="w-eyebrow">Keep reading</span>
+              <h2 className="w-h1">More from the <span className="w-italic">blog</span></h2>
+            </div>
+            <a
+              className="w-btn w-btn-ghost w-btn-sm"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/blog')}
+            >
+              Browse all articles →
+            </a>
+          </div>
+          <div className="bp-related-grid">
+            {relatedPosts.map((post, i) => (
+              <a
+                key={post.id}
+                className={`bp-related-post ${relatedCoverClass[i % relatedCoverClass.length]}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/blog/${post.slug}`)}
+              >
+                <div
+                  className="cover"
+                  style={(post.coverImage || post.imageUrl) ? {
+                    backgroundImage: `url(${post.coverImage || post.imageUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  } : undefined}
+                ></div>
+                <div className="body">
+                  <h3>{post.title}</h3>
+                  <div className="meta">{post.readTime ? `Networking · ${post.readTime}` : 'Networking'}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="bp-cta">
+          <span className="deco"></span>
+          <span className="deco-italic">try it</span>
+          <div>
+            <h2>Ready to transform <span className="w-italic">your</span> networking?</h2>
+            <p>Spin up a free Wonderelo event in two minutes, name your meeting points, share the QR code — done. Free up to 5 participants.</p>
+          </div>
+          <a
+            className="w-btn w-btn-primary w-btn-lg"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/')}
+          >
+            Start for free
+            <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+        </section>
+
+      </main>
+
+      {/* Footer */}
+      <PublicFooter />
     </div>
   );
 }

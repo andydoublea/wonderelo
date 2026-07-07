@@ -1,9 +1,11 @@
 import { useNavigate, useParams } from 'react-router';
 import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
+import { PublicNav } from './redesign/PublicNav';
+import { PublicFooter } from './redesign/PublicFooter';
 import { Navigation } from './Navigation';
-import { Footer } from './Footer';
-import { ArrowRight, Calendar, CheckCircle, Users, Zap, Heart, Coffee, Mic, Monitor, Cake, BookOpen, GitBranch, MapPin, Star, Music, GraduationCap } from 'lucide-react';
+import { Cake, BookOpen, GitBranch, MapPin, Star, Music, GraduationCap, Users, Zap, Heart, Coffee, Mic, Monitor } from 'lucide-react';
+import '../styles/wonderelo-public.css';
+import '../styles/wonderelo-use-case.css';
 
 interface UseCaseData {
   slug: string;
@@ -199,6 +201,96 @@ const useCases: Record<string, UseCaseData> = {
   },
 };
 
+// Human-readable label for a use-case slug (used by the crumb + sibling switcher).
+const useCaseLabels: Record<string, string> = {
+  conferences: 'Conferences',
+  meetups: 'Meetups',
+  festivals: 'Festivals',
+  weddings: 'Weddings',
+  bars: 'Bars',
+  schools: 'Schools',
+  teams: 'Teams',
+  barcamps: 'Barcamps',
+  parties: 'Parties',
+};
+
+// Sibling switcher order (matches the mock's chip row). Only slugs present in
+// `useCases` are rendered — derived from Object.keys below.
+const siblingOrder = ['conferences', 'meetups', 'festivals', 'weddings', 'bars', 'schools', 'teams'];
+
+// NEW content not in `useCases`: hero proof stats, logo strip, mini-scenarios and
+// the testimonial. Phase 1 reuses the mock's (conferences) copy as a shared default
+// across every slug — sensible per-variant tailoring can be layered in later.
+const heroTag = (slug: string) => `Wonderelo for ${useCaseLabels[slug] || slug}`;
+
+const proofStats = [
+  { num: '240', accent: '+', label: 'Conferences & barcamps run on Wonderelo' },
+  { num: '6', accent: 'min', label: 'From sign-up to your first round live' },
+  { num: '81', accent: '%', label: 'Attendees say they made a useful contact' },
+];
+
+const logoBrands = [
+  { text: 'Forum', accent: '26' },
+  { text: 'TechFuture' },
+  { text: 'DesignDays' },
+  { text: 'Founder', accent: 'Summit' },
+  { text: 'BarCamp BA' },
+  { text: 'CodeWeek' },
+];
+
+const scenarios = [
+  {
+    num: 'A',
+    label: 'Opening · before the keynote',
+    title: <>A <em>15-minute</em> warmup before the first talk</>,
+    body: 'Run a single, fast pair-round while attendees are still finding seats. By the keynote, the room already feels warm. Works at 100 or 2 000 people.',
+    meta: ['1 round · 5 min · pairs', 'Recommended for 100–2 000'],
+  },
+  {
+    num: 'B',
+    label: 'Between talks · the coffee slot',
+    title: <>Three <em>tight</em> rounds across two breaks</>,
+    body: 'The classic. Two coffee breaks, three networking rounds, named meeting points. Most popular setup — also the easiest to staff.',
+    meta: ['3 rounds · 4 min each', 'Pairs or trios'],
+  },
+  {
+    num: 'C',
+    label: 'Evening · the after-party',
+    title: <>One <em>long</em> round with drinks &amp; matches</>,
+    body: "Lower lighting, drink in hand, longer match windows (8–10 min). The conference's social wrap-up that people actually stay for.",
+    meta: ['1 round · 10 min · trios', 'Add ice-breaker prompts'],
+  },
+];
+
+const testimonial = {
+  cap: 'Anna M. · TechFuture Conf · Vienna',
+  quote: (
+    <>
+      It was the first event where we felt confident <strong>nobody was left out of networking</strong> — even the people who'd usually slip out after the last talk. Three speakers asked us afterwards if it would run again.
+    </>
+  ),
+  name: 'Anna Müller',
+  role: 'Programme lead · TechFuture Conference',
+  stat: <><em>1 600 attendees</em> · 3 rounds · 18 meeting points</>,
+};
+
+// ── Inline icons (kept verbatim from the mock, width/height preserved) ──────────
+const ArrowIco = (
+  <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+);
+const PlayIco = (
+  <svg className="w-ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+);
+
+// Benefit-card icons in mock order (featured card first). Reused for every slug so
+// the featured card always leads with the "connections/people" glyph from the mock.
+const benefitIcons = [
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>,
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>,
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>,
+];
+
 interface UseCaseLandingPageProps {
   onGetStarted: () => void;
   onSignIn?: () => void;
@@ -223,98 +315,210 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
     );
   }
 
+  const activeSlug = data.slug;
+  const siblings = siblingOrder.filter((s) => useCases[s]);
+  const label = useCaseLabels[activeSlug] || activeSlug;
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navigation onGetStarted={onGetStarted} onSignIn={onSignIn} />
+    <div className="wonderelo w-public uc-page">
+      <PublicNav onGetStarted={onGetStarted} onSignIn={onSignIn} />
 
-      {/* Hero Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto max-w-4xl text-center">
-          <p className="text-primary font-medium mb-4 text-sm tracking-wider uppercase">
-            {data.subtitle}
-          </p>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-            {data.heroHeadline}
-          </h1>
-          <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
-            {data.heroDescription}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={onGetStarted} size="lg" className="bg-primary text-primary-foreground">
-              <Calendar className="mr-2 h-5 w-5" />
-              {data.cta}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+      <main className="w-shell">
+
+        {/* Crumb + sibling switcher */}
+        <div className="uc-crumb">
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Who's it for</a>{' '}
+          <span className="sep">/</span> <span>{data.title.replace('Wonderelo for ', '')}</span>
+          <div className="case-row">
+            {siblings.map((slug) => (
+              <a
+                key={slug}
+                className={slug === activeSlug ? 'is-active' : undefined}
+                href="#"
+                onClick={(e) => { e.preventDefault(); navigate(`/for/${slug}`); }}
+              >
+                {useCaseLabels[slug] || slug}
+              </a>
+            ))}
           </div>
         </div>
-      </section>
 
-      {/* Benefits Section */}
-      <section className="py-16 px-6 bg-muted/30">
-        <div className="container mx-auto max-w-5xl">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            Why Wonderelo works for {data.slug === 'teams' ? 'teams' : data.slug}
-          </h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {data.benefits.map((benefit, i) => {
-              const Icon = benefit.icon;
-              return (
-                <Card key={i}>
-                  <CardContent className="p-6">
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Icon className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold mb-1">{benefit.title}</h3>
-                        <p className="text-sm text-muted-foreground">{benefit.description}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+        {/* Hero */}
+        <section className="uc-hero">
+          <span className="deco-1" />
+          <span className="deco-2" />
+          <span className="deco-3" />
 
-      {/* How it Works Section */}
-      <section className="py-16 px-6">
-        <div className="container mx-auto max-w-3xl">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            How it works
-          </h2>
-          <div className="space-y-6">
-            {data.howItWorks.map((step, i) => (
-              <div key={i} className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                  {i + 1}
-                </div>
-                <p className="text-lg pt-0.5">{step}</p>
+          <div className="uc-hero-grid">
+            <div>
+              <span className="uc-tag"><span className="w-diamond" /> {heroTag(activeSlug)}</span>
+              <h1 className="w-display">{data.heroHeadline}</h1>
+              <p className="lede">{data.heroDescription}</p>
+              <div className="actions">
+                <a className="w-btn w-btn-primary w-btn-lg" href="#" onClick={(e) => { e.preventDefault(); onGetStarted(); }}>
+                  {data.cta}
+                  {ArrowIco}
+                </a>
+                <a className="w-btn w-btn-ghost w-btn-lg" href="#" onClick={(e) => { e.preventDefault(); navigate('/demo'); }}>
+                  {PlayIco}
+                  See a 90-sec demo
+                </a>
               </div>
+              <div className="proof">
+                {proofStats.map((s, i) => (
+                  <div key={i}>
+                    <div className="num">{s.num}<em>{s.accent}</em></div>
+                    <div className="l">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Venue scene illustration — decorative, CSS-only */}
+            <div className="uc-hero-scene">
+              <div className="pattern" />
+              <div className="stage">
+                <span className="qr" />
+              </div>
+              <div className="meeting-pt mp-1"><span className="w-diamond" /> Coffee bar · A</div>
+              <div className="meeting-pt mp-2"><span className="w-diamond" /> Foyer · B</div>
+              <div className="meeting-pt mp-3"><span className="w-diamond" /> Atrium · C</div>
+              <div className="meeting-pt mp-4"><span className="w-diamond" /> Stage left · D</div>
+              <span className="person p1" />
+              <span className="person is-purple p2" />
+              <span className="line l1" />
+              <span className="person is-purple p3" />
+              <span className="person p4" />
+              <span className="line l2" />
+              <span className="person p5" />
+              <span className="person is-purple p6" />
+              <div className="scene-cap">
+                <span>Round 02 · pairs · 5 min</span>
+                <span><em>64</em> attendees matched</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      {/* Logo strip (full-bleed) */}
+      <section className="uc-logos">
+        <div className="uc-logos-inner">
+          <div className="l-label">Trusted by organizers at</div>
+          <div className="l-list">
+            {logoBrands.map((b, i) => (
+              <span key={i} className="lg">{b.text}{b.accent && <em>{b.accent}</em>}</span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-6 bg-primary/5">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Ready to try it?
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-            Create your first networking round in under a minute. No credit card needed. Free for up to 10 participants.
-          </p>
-          <Button onClick={onGetStarted} size="lg" className="bg-primary text-primary-foreground">
-            <Calendar className="mr-2 h-5 w-5" />
-            Start for free
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </section>
+      <main className="w-shell">
 
-      <Footer />
+        {/* Benefits */}
+        <section className="uc-benefits">
+          <div className="uc-benefits-head">
+            <span className="w-eyebrow">Why {label.toLowerCase()} pick Wonderelo</span>
+            <h2 className="w-h1">More than a coffee break with <span className="w-italic">name tags</span></h2>
+            <p>You spent months on the talks. Don't leave the most-valuable part of the day to chance.</p>
+          </div>
+
+          <div className="uc-grid">
+            {data.benefits.map((benefit, i) => (
+              <article key={i} className={`uc-card${i === 0 ? ' is-featured' : ''}`}>
+                <span className="num">{String(i + 1).padStart(2, '0')}</span>
+                <div className="ico-wrap">
+                  {benefitIcons[i] || benefitIcons[benefitIcons.length - 1]}
+                </div>
+                <h3>{benefit.title}</h3>
+                <p>{benefit.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="uc-how">
+          <div className="deco-italic">setup</div>
+          <div className="uc-how-head">
+            <span className="w-eyebrow">Setup, end to end</span>
+            <h2 className="w-h1">Four steps. Six <span className="w-italic">minutes</span></h2>
+          </div>
+          <div className="uc-steps">
+            {data.howItWorks.map((step, i) => (
+              <div key={i} className="uc-step">
+                <div className="num-circle">{String(i + 1).padStart(2, '0')}</div>
+                <h4>{step}</h4>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Scenarios */}
+        <section className="uc-scenarios">
+          <div className="uc-scenarios-head">
+            <div>
+              <span className="w-eyebrow">Real conference setups</span>
+              <h2 className="w-h1">Three <span className="w-italic">ways</span> to slot it in</h2>
+            </div>
+            <a className="w-btn w-btn-ghost w-btn-sm" href="#" onClick={(e) => e.preventDefault()}>See all case studies →</a>
+          </div>
+          <div className="uc-scenarios-grid">
+            {scenarios.map((s, i) => (
+              <article key={i} className="uc-scenario">
+                <div className="head"><div className="num">{s.num}</div><div className="l">{s.label}</div></div>
+                <h4>{s.title}</h4>
+                <p>{s.body}</p>
+                <div className="meta">
+                  {s.meta.map((m, j) => <span key={j}>{m}</span>)}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Testimonial */}
+        <section className="uc-quote">
+          <span className="deco-italic">"</span>
+          <span className="deco-d" />
+          <div className="pic">
+            <div className="cap">{testimonial.cap}</div>
+          </div>
+          <div>
+            <blockquote>
+              {testimonial.quote}
+            </blockquote>
+            <div className="author">
+              <div>
+                <div className="name">{testimonial.name}</div>
+                <div className="role">{testimonial.role}</div>
+              </div>
+              <span className="stat">{testimonial.stat}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="uc-cta">
+          <span className="deco-1" />
+          <span className="deco-2" />
+          <span className="deco-italic">go</span>
+          <h2>Add networking to your <span className="w-italic">{label.toLowerCase()}</span> — in the next six minutes</h2>
+          <p>Free for events up to 5 participants — perfect for testing before you commit. No card, no sales call, no integration.</p>
+          <div className="actions">
+            <a className="w-btn w-btn-ghost w-btn-lg" href="#" onClick={(e) => e.preventDefault()}>Talk to us first</a>
+            <a className="w-btn w-btn-primary w-btn-lg" href="#" onClick={(e) => { e.preventDefault(); onGetStarted(); }}>
+              Start for free
+              <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+            </a>
+          </div>
+          <div className="small"><em>3 200+</em> organizers · No credit card · Cancel anytime</div>
+        </section>
+
+      </main>
+
+      <PublicFooter />
     </div>
   );
 }

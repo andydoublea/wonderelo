@@ -1,9 +1,6 @@
 import { useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
 import { Slider } from './ui/slider';
-import { Check, Loader2, CreditCard, Sparkles, Minus, Plus } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { apiBaseUrl } from '../utils/supabase/info';
 import { errorLog } from '../utils/debug';
@@ -16,6 +13,24 @@ interface PricingPanelProps {
   /** Title override */
   title?: string;
 }
+
+// ── Inline icons (match the mock's SVG weights verbatim) ──────────────
+const CheckMark = (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+);
+const CardIco = (
+  <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+);
+const ArrowIco = (
+  <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+);
+
+/** Format an integer with thin-space thousands separators (matches the mock: "1 990"). */
+const grp = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+/** "€99" split so the € can be styled as `.currency`. */
+const euro = (cents: number) => (
+  <><span className="currency">€</span>{grp(cents / 100)}</>
+);
 
 export function PricingPanel({ accessToken, hasSubscription, title }: PricingPanelProps) {
   const [selectedCapacity, setSelectedCapacity] = useState(50);
@@ -141,312 +156,216 @@ export function PricingPanel({ accessToken, hasSubscription, title }: PricingPan
     }
   };
 
+  // Live-derived display values (mirror the mock's render()) ────────────
+  const capValue = grp(currentPricing.capacity);
+  const sliderIdx = getSliderValue(selectedCapacity);
+  const annualPerMonth = Math.round(currentPricing.premiumAnnualPrice / 12);
+
+  // ── Gift-card control (shared under the plans; opened from either foot) ──
+  const giftCardControl = appliedGiftCard ? (
+    <span className="pr-plan-foot" style={{ marginTop: 18 }}>
+      <span style={{ fontFamily: 'var(--w-font-mono)', color: 'var(--w-success)', fontWeight: 600 }}>{appliedGiftCard.code}</span>
+      {' · '}
+      {appliedGiftCard.discountType === 'percentage' ? `${appliedGiftCard.discountValue}% off` : `€${appliedGiftCard.discountValue} off`}
+      {' · '}
+      <span className="w-link-i" role="button" tabIndex={0} onClick={removeGiftCard}>Remove</span>
+    </span>
+  ) : showGiftCardInput ? (
+    <div className="pr-giftcard">
+      <input
+        type="text"
+        className="pr-giftcard-input"
+        placeholder="Enter code"
+        value={giftCardCode}
+        onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
+        onKeyDown={(e) => e.key === 'Enter' && handleValidateGiftCard()}
+        autoFocus
+      />
+      <button
+        type="button"
+        className="w-btn w-btn-ghost w-btn-sm"
+        onClick={handleValidateGiftCard}
+        disabled={giftCardValidating || !giftCardCode.trim()}
+      >
+        {giftCardValidating ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
+      </button>
+      <span className="w-link-i" role="button" tabIndex={0} onClick={() => { setShowGiftCardInput(false); setGiftCardCode(''); }}>Cancel</span>
+    </div>
+  ) : null;
+
   return (
-    <Card className="mb-8">
-      <CardHeader>
-        <CardTitle>{title || (hasSubscription ? 'Change plan' : 'Choose a plan')}</CardTitle>
-        <CardDescription>
-          Pricing is based on your event's capacity
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {/* Free tier notice */}
-        <div className="mb-6 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-            <p className="text-sm font-medium text-green-900 dark:text-green-100">
-              Events up to 5 participants free for testing purposes
-            </p>
+    <>
+      {/* ── Free-tier notice ─────────────────────────────────────────── */}
+      <div className="pr-free-pill">
+        <span className="w-diamond" />
+        Events up to 5 participants free for testing purposes
+      </div>
+
+      {/* ── Capacity selector (data: CAPACITY_OPTIONS) ───────────────── */}
+      <div className="pr-cap" data-component="CapacitySelector">
+        <span className="pr-cap-deco">capacity</span>
+        <div className="pr-cap-head">
+          <div className="l">
+            <span className="label">{title || (hasSubscription ? 'Change plan' : 'Event capacity')}</span>
+            <div className="pr-cap-value">Up to {capValue}<em>participants</em></div>
           </div>
         </div>
-
-        {/* Capacity Slider */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-sm font-medium">Event capacity</label>
-            <div className="text-right">
-              <div className="text-2xl font-bold">
-                Up to {selectedCapacity} participants
-              </div>
-              {}
-            </div>
-          </div>
-
-          <div style={{ padding: '0 13px' }}>
-            <Slider
-              value={[getSliderValue(selectedCapacity)]}
-              onValueChange={(values) => {
-                const capacity = getCapacityFromSlider(values[0]);
-                setSelectedCapacity(capacity);
-              }}
-              min={0}
-              max={CAPACITY_OPTIONS.length - 1}
-              step={1}
-              className="w-full"
-            />
-
-            <div className="relative w-full h-5 mt-2">
-              {CAPACITY_OPTIONS.map((option, index) => {
-                const position = (index / (CAPACITY_OPTIONS.length - 1)) * 100;
-                const thumbOffset = 12.5 * (1 - 2 * position / 100);
-
-                return (
-                  <span
-                    key={option.value}
-                    className={`absolute text-xs text-muted-foreground -translate-x-1/2 ${
-                      index === 0 || index === CAPACITY_OPTIONS.length - 1 ? '' : 'hidden sm:inline'
-                    }`}
-                    style={{ left: `calc(${position}% + ${thumbOffset}px)` }}
-                  >
-                    {option.value}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Gift Card Code */}
-        {!isFree && (
-          <div style={{ marginTop: '12px' }}>
-            {appliedGiftCard ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-green-700">
-                  <span className="font-mono font-medium">{appliedGiftCard.code}</span>
-                  {' · '}
-                  {appliedGiftCard.discountType === 'percentage' ? `${appliedGiftCard.discountValue}% off` : `€${appliedGiftCard.discountValue} off`}
+        <div className="pr-slider">
+          <Slider
+            value={[sliderIdx]}
+            onValueChange={(values) => setSelectedCapacity(getCapacityFromSlider(values[0]))}
+            min={0}
+            max={CAPACITY_OPTIONS.length - 1}
+            step={1}
+            className="w-full"
+          />
+          <div className="pr-stop-labels">
+            {CAPACITY_OPTIONS.map((option, index) => {
+              const position = (index / (CAPACITY_OPTIONS.length - 1)) * 100;
+              return (
+                <span
+                  key={option.value}
+                  className={`pr-stop-label${index === sliderIdx ? ' is-active' : ''}`}
+                  style={{ left: `${position}%` }}
+                >
+                  {grp(option.value)}
                 </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Plan cards (data: PRICING_TIERS[currentTier]) ────────────── */}
+      {isFree ? (
+        <div className="pr-free-note">
+          Free tier includes up to 5 participants — perfect for testing! Choose a larger
+          capacity above to see paid plans.
+        </div>
+      ) : (
+        <div className="pr-plans">
+
+          {/* Single event (pay per event) */}
+          <article className="pr-plan" data-component="SingleEventCard">
+            <div className="pr-plan-head">
+              <div className="pr-plan-name">Single event</div>
+            </div>
+            <div className="pr-plan-price">
+              <div className="num">{euro(currentPricing.singleEventPrice)}</div>
+              <div className="unit">per event, billed<br/><em>once</em></div>
+            </div>
+            <ul className="pr-plan-feats">
+              <li><span className="check">{CheckMark}</span>Up to <strong>{capValue} participants</strong></li>
+              <li><span className="check">{CheckMark}</span>Valid for one event per credit</li>
+              <li><span className="check">{CheckMark}</span>Unlimited rounds within event</li>
+              <li><span className="check">{CheckMark}</span>Custom event page &amp; QR code</li>
+              <li className="is-muted"><span className="check">{CheckMark}</span>Priority support</li>
+            </ul>
+            <div className="pr-plan-qty">
+              <span className="label">Credits</span>
+              <div className="pr-qty-ctrl">
                 <button
                   type="button"
-                  onClick={removeGiftCard}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Remove
-                </button>
-              </div>
-            ) : showGiftCardInput ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter code"
-                  value={giftCardCode}
-                  onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => e.key === 'Enter' && handleValidateGiftCard()}
-                  className="flex h-8 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono"
-                  style={{ width: '160px' }}
-                  autoFocus
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleValidateGiftCard}
-                  disabled={giftCardValidating || !giftCardCode.trim()}
-                  style={{ height: '32px' }}
-                >
-                  {giftCardValidating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    'Apply'
-                  )}
-                </Button>
+                  aria-label="Decrease"
+                  onClick={() => setCreditQuantity(Math.max(1, creditQuantity - 1))}
+                  disabled={creditQuantity <= 1}
+                  style={{ opacity: creditQuantity <= 1 ? 0.4 : 1 }}
+                >−</button>
+                <span className="qty">{creditQuantity}</span>
                 <button
                   type="button"
-                  onClick={() => { setShowGiftCardInput(false); setGiftCardCode(''); }}
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  aria-label="Increase"
+                  onClick={() => setCreditQuantity(Math.min(20, creditQuantity + 1))}
+                  disabled={creditQuantity >= 20}
+                  style={{ opacity: creditQuantity >= 20 ? 0.4 : 1 }}
+                >+</button>
+              </div>
+            </div>
+            <button
+              className="w-btn w-btn-ghost pr-plan-cta"
+              type="button"
+              onClick={() => handleSubscribe('single')}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <><Loader2 className="w-ico animate-spin" /><span className="pr-pay-label">Processing…</span></>
+              ) : (
+                <>{CardIco}<span className="pr-pay-label">Pay {formatPrice(currentPricing.singleEventPrice * creditQuantity)} once</span></>
+              )}
+            </button>
+            <div className="pr-plan-foot">
+              One-time payment · No subscription · <span className="w-link-i" role="button" tabIndex={0} onClick={() => setShowGiftCardInput(true)}>Redeem gift card</span>
+            </div>
+          </article>
+
+          {/* Unlimited subscription */}
+          <article className="pr-plan is-featured" data-component="SubscriptionCard">
+            <span className="pr-plan-tag"><span className="w-diamond" /> Most popular</span>
+            <div className="pr-plan-head">
+              <div className="pr-plan-name">Unlimited events</div>
+              <div className="pr-plan-toggle" role="tablist">
+                <button
+                  className={billingInterval === 'annual' ? 'is-active' : ''}
+                  type="button"
+                  role="tab"
+                  aria-selected={billingInterval === 'annual'}
+                  onClick={() => setBillingInterval('annual')}
                 >
-                  Cancel
+                  Annually <span className="pr-save">−17%</span>
+                </button>
+                <button
+                  className={billingInterval === 'monthly' ? 'is-active' : ''}
+                  type="button"
+                  role="tab"
+                  aria-selected={billingInterval === 'monthly'}
+                  onClick={() => setBillingInterval('monthly')}
+                >
+                  Monthly
                 </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowGiftCardInput(true)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-                style={{ textDecoration: 'underline', textUnderlineOffset: '2px' }}
-              >
-                Redeem gift card
-              </button>
-            )}
-          </div>
-        )}
+            </div>
+            <div className="pr-plan-price">
+              {billingInterval === 'annual' ? (
+                <>
+                  <div className="num">{euro(annualPerMonth)}</div>
+                  <div className="unit">per month, billed<br/><em>€{grp(currentPricing.premiumAnnualPrice / 100)} / year</em></div>
+                </>
+              ) : (
+                <>
+                  <div className="num">{euro(currentPricing.premiumMonthlyPrice)}</div>
+                  <div className="unit">per month<br/><em>billed monthly</em></div>
+                </>
+              )}
+            </div>
+            <ul className="pr-plan-feats">
+              <li className="is-bold"><span className="check">{CheckMark}</span>Unlimited events</li>
+              <li><span className="check">{CheckMark}</span>Up to <strong>{capValue} participants</strong> each</li>
+              <li><span className="check">{CheckMark}</span>Unlimited rounds &amp; sessions</li>
+              <li><span className="check">{CheckMark}</span>Remove Wonderelo branding</li>
+              <li><span className="check">{CheckMark}</span>Priority email support · 24h</li>
+            </ul>
+            <button
+              className="w-btn w-btn-primary pr-plan-cta"
+              type="button"
+              onClick={() => handleSubscribe('subscription')}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <><Loader2 className="w-ico animate-spin" /><span className="pr-sub-label">Processing…</span></>
+              ) : (
+                <><span className="pr-sub-label">Subscribe {billingInterval === 'annual' ? 'annually' : 'monthly'}</span>{ArrowIco}</>
+              )}
+            </button>
+            <div className="pr-plan-foot">
+              Cancel anytime · No setup fee · All prices excl. VAT · <span className="w-link-i" role="button" tabIndex={0} onClick={() => setShowGiftCardInput(true)}>Redeem gift card</span>
+            </div>
+          </article>
 
-        {/* Pricing Display */}
-        {!isFree && (
-          <div className="grid md:grid-cols-2 gap-4" style={{ marginTop: '1rem' }}>
-            {/* Single Event Payment */}
-            <Card className="border-2 flex flex-col">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg">Single event</CardTitle>
-                <div className="text-3xl font-bold">
-                  {formatPrice(currentPricing.singleEventPrice)}
-                </div>
-                <CardDescription>per event credit</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col flex-1 gap-3">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span>Up to {currentPricing.capacity} participants</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span>Valid for one event per credit</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span>Unlimited rounds</span>
-                  </div>
-                </div>
-                <div className="flex-1" />
-                {/* Quantity selector */}
-                <div className="flex items-center justify-between" style={{ padding: '8px 0' }}>
-                  <span className="text-sm font-medium">Credits</span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCreditQuantity(Math.max(1, creditQuantity - 1))}
-                      disabled={creditQuantity <= 1}
-                      className="flex items-center justify-center rounded-md border"
-                      style={{ width: '28px', height: '28px', opacity: creditQuantity <= 1 ? 0.4 : 1 }}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="text-lg font-bold" style={{ minWidth: '24px', textAlign: 'center' }}>{creditQuantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => setCreditQuantity(Math.min(20, creditQuantity + 1))}
-                      disabled={creditQuantity >= 20}
-                      className="flex items-center justify-center rounded-md border"
-                      style={{ width: '28px', height: '28px', opacity: creditQuantity >= 20 ? 0.4 : 1 }}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => handleSubscribe('single')}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Pay {formatPrice(currentPricing.singleEventPrice * creditQuantity)}
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+        </div>
+      )}
 
-            {/* Unlimited Events Subscription */}
-            <Card className="border-2 border-primary flex flex-col">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Unlimited events</CardTitle>
-                  <Badge>Popular</Badge>
-                </div>
-                {/* Annually / Monthly toggle */}
-                <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
-                  <button
-                    type="button"
-                    onClick={() => setBillingInterval('annual')}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                      billingInterval === 'annual'
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Annually
-                    <span className="ml-1 text-[10px] text-green-600 dark:text-green-400 font-semibold">-17%</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBillingInterval('monthly')}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                      billingInterval === 'monthly'
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Monthly
-                  </button>
-                </div>
-                <div className="space-y-1">
-                  {billingInterval === 'monthly' ? (
-                    <>
-                      <div className="text-3xl font-bold">
-                        {formatPrice(currentPricing.premiumMonthlyPrice)}
-                      </div>
-                      <CardDescription>per month</CardDescription>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-3xl font-bold">
-                        {formatPrice(Math.round(currentPricing.premiumAnnualPrice / 12))}
-                      </div>
-                      <CardDescription>
-                        per month, billed {formatPrice(currentPricing.premiumAnnualPrice)} annually
-                      </CardDescription>
-                    </>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col flex-1 gap-3">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span>Up to {currentPricing.capacity} participants</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span className="font-semibold">Unlimited events</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span>Priority support</span>
-                  </div>
-                </div>
-                <div className="flex-1" />
-                <Button
-                  className="w-full"
-                  onClick={() => handleSubscribe('subscription')}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Subscribe
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {isFree && (
-          <div className="text-center py-6 bg-muted/50 rounded-lg" style={{ marginTop: '1rem' }}>
-            <p className="text-sm text-muted-foreground">
-              Free tier includes up to 5 participants — perfect for testing!
-            </p>
-          </div>
-        )}
-
-        <p className="text-xs text-muted-foreground" style={{ marginTop: '12px', textAlign: 'right' }}>
-          All prices excl. VAT
-        </p>
-      </CardContent>
-    </Card>
+      {/* ── Gift-card input / applied badge (shared) ─────────────────── */}
+      {!isFree && giftCardControl}
+    </>
   );
 }
