@@ -327,7 +327,7 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
 
         {/* Crumb + sibling switcher */}
         <div className="uc-crumb">
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Who's it for</a>{' '}
+          <a className="uc-crumb-link" href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Who's it for</a>{' '}
           <span className="sep">/</span> <span>{data.title.replace('Wonderelo for ', '')}</span>
           <div className="case-row">
             {siblings.map((slug) => (

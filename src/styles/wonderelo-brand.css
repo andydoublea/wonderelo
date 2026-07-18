@@ -141,9 +141,21 @@ html[class*="vs-"] .wonderelo .ev-title em {
 html[class*="vs-"] .wonderelo .cr-footer,
 html[class*="vs-"] .wonderelo .pd-footer,
 html[class*="vs-"] .wonderelo .ac-footer,
-html[class*="vs-"] .wonderelo .pm-footer {
+html[class*="vs-"] .wonderelo .pm-footer,
+html[class*="vs-"] .wonderelo .w-footer {
   background: var(--w-purple-ink) !important;
 }
+
+/* Public-site footer text: the dark footer's copy is white-on-ink, but vs-jasper's
+   `p:not([data-slot])` + `a` base rules repaint it to the legacy body grey/orange, which
+   is unreadable there. Re-assert the design's light footer text. (`.w-foot-col h5` keeps
+   its orange-bright from the design — vs-jasper doesn't style h5.) */
+html[class*="vs-"] .wonderelo .w-foot-brand p { color: rgba(255,255,255,.65) !important; }
+html[class*="vs-"] .wonderelo .w-foot-col a { color: rgba(255,255,255,.72) !important; }
+html[class*="vs-"] .wonderelo .w-foot-col a:hover { color: #fff !important; }
+html[class*="vs-"] .wonderelo .w-foot-bottom,
+html[class*="vs-"] .wonderelo .w-foot-bottom a { color: rgba(255,255,255,.5) !important; }
+html[class*="vs-"] .wonderelo .w-foot-cta { color: rgba(255,255,255,.85) !important; }
 
 /* vs-jasper's base h1..h6 rules force their own font-size / weight / colour with
    !important and out-specify the design's heading CLASSES (e.g. .ac-card-title,
@@ -256,6 +268,29 @@ html[class*="vs-"] .wonderelo .pd-nav,
 html[class*="vs-"] .wonderelo .cr-nav,
 html[class*="vs-"] .wonderelo .ac-nav { background: rgba(251,246,236,.94) !important; border-color: var(--w-hairline) !important; }
 html[class*="vs-"] .wonderelo .ev-nav { background: var(--w-paper) !important; border-color: var(--w-hairline) !important; }
+/* Public-site nav — same `nav {}` leak (washed to the legacy vanilla + grey hairline). */
+html[class*="vs-"] .wonderelo .w-nav { background: rgba(251,246,236,.92) !important; border-color: var(--w-hairline) !important; }
+
+/* ─── Homepage (bespoke mock — its values live as JSX inline styles, which vs-jasper's
+   !important base rules still out-rank). The port added hook classes so we can re-assert. ─── */
+/* Hero headline: vs-jasper's fixed `h1 { font-size: 1.75rem }` kills the mock's fluid clamp. */
+html[class*="vs-"] .wonderelo.w-public .hero-head,
+html[class*="vs-"] .wonderelo.w-public .hp-h1 { font-size: clamp(46px, 5.4vw, 84px) !important; line-height: 1.02 !important; }
+/* White display text on the dark / orange sections — the broad purple re-assert above would
+   otherwise invert it into unreadable dark-on-dark. */
+html[class*="vs-"] .wonderelo.w-public .hp-h2-light,
+html[class*="vs-"] .wonderelo.w-public .hp-tile-title-light,
+html[class*="vs-"] .wonderelo.w-public .hp-on-dark h1,
+html[class*="vs-"] .wonderelo.w-public .hp-on-dark h2,
+html[class*="vs-"] .wonderelo.w-public .hp-on-dark h3,
+html[class*="vs-"] .wonderelo.w-public .hp-on-dark h4 { color: #fff !important; }
+html[class*="vs-"] .wonderelo.w-public .hp-lede-light { color: rgba(255,255,255,.9) !important; }
+html[class*="vs-"] .wonderelo.w-public .hp-on-dark p { color: rgba(255,255,255,.75) !important; }
+/* Homepage footer — same base `footer {}` leak as the other footers. */
+html[class*="vs-"] .wonderelo.w-public .wn-footer { background: var(--w-purple-ink) !important; }
+/* Homepage form fields — the island-wide input reset zeroes bg/border; the mock wants solid fields. */
+html[class*="vs-"] .wonderelo.w-public .wn-participant-input,
+html[class*="vs-"] .wonderelo.w-public .hp-lead-field { background: #fff !important; border: 1px solid var(--w-hairline-strong) !important; border-radius: 10px !important; }
 
 /* Body <p> text: vs-jasper's `p:not([data-slot])` (specificity 0,2,1 + !important) washes even
    multi-class design paragraphs to its neutral #3d3d3d. Re-assert the design's warm-ink body

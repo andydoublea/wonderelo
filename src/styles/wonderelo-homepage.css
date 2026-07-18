@@ -432,4 +432,9 @@
     .wonderelo .hero-inner { padding: 124px 22px 110px; gap: 24px; }
   }
 
-  /* (rules in responsive.css)
+  /* The source style block in design/v06 pages/home/Homepage.html ends with an
+     UNTERMINATED comment ("(rules in responsive.css"). No responsive.css exists
+     in the v06 home bundle — the only copies are archived under the _archive
+     folders of older design versions, and Homepage.html never links one.
+     Terminated here so the comment cannot swallow whatever CSS Vite
+     concatenates after this file. */
