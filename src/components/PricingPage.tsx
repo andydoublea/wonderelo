@@ -133,6 +133,7 @@ export function PricingPage({ onGetStarted, onSignIn }: PricingPageProps) {
             <p className="w-lede" style={{ maxWidth: 580, margin: '18px auto 0' }}>Every plan ships with the full networking engine — what differs is capacity, branding, and how often you run.</p>
           </div>
 
+          <div className="pr-table-wrap" style={{ overflowX: 'auto' }}>
           <table className="pr-table">
             <thead>
               <tr>
@@ -160,6 +161,7 @@ export function PricingPage({ onGetStarted, onSignIn }: PricingPageProps) {
               ))}
             </tbody>
           </table>
+          </div>
         </section>
 
         {/* ───────── FAQ ───────── */}
