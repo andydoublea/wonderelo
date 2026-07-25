@@ -248,6 +248,9 @@
   .wonderelo .wn-mlink { display: block; width: 100%; padding: 14px 4px; font-family: var(--w-font-display); font-weight: 600; font-size: 17px; color: var(--w-purple-deep); text-decoration: none; border: none; border-bottom: 1px solid rgba(76,25,77,.08); background: none; text-align: left; cursor: pointer; }
   .wonderelo .wn-mlink:last-child { border-bottom: none; }
   .wonderelo .wn-mlink-cta { color: var(--w-orange); }
+  /* The 120px logo overflows below the 80px bar; keep the bar (logo + burger) above the
+     open dropdown (.wn-mobnav is z-index 49) so the logo stays on top when the menu opens. */
+  .wonderelo .wn-nav > div:first-child { position: relative; z-index: 51; }
 
   @media (max-width: 860px) {
     .wonderelo .wn-nav > div { padding-left: 20px !important; padding-right: 20px !important; }

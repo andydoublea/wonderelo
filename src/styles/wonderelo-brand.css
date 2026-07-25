@@ -130,6 +130,14 @@ html[class*="vs-"] .wonderelo em.w-italic,
 html[class*="vs-"] .wonderelo .ev-title em {
   font-family: var(--w-font-serif) !important;
   font-weight: 400 !important;
+}
+/* Colour is forced ONLY on the <em> accents inside headings — that is where vs-jasper's
+   base rules actually leak. A plain <span class="w-italic"> (public + homepage accents)
+   keeps its own colour: the design CSS supplies orange by default, and homepage accents
+   that pass an explicit colour (e.g. the dark-purple "unforgettable?" on the orange CTA)
+   must NOT be repainted orange by an !important rule. */
+html[class*="vs-"] .wonderelo em.w-italic,
+html[class*="vs-"] .wonderelo .ev-title em {
   color: var(--w-orange) !important;
 }
 
