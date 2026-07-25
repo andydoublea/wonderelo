@@ -1,22 +1,7 @@
 import { useState, useRef } from 'react';
 import type { ReactNode, CSSProperties } from 'react';
 import { useNavigate } from 'react-router';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { 
-  AlertCircle, 
-  ArrowLeft, 
-  UserCircle, 
-  Mic,
-  Mail, 
-  Eye, 
-  EyeOff, 
-  Loader2, 
-  X 
-} from 'lucide-react';
+import { Eye, EyeOff, Loader2, X } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey, projectId } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
@@ -229,6 +214,102 @@ function Field({
   );
 }
 
+/* Cream page + centred DesktopCard shell (mock) — shared by the view and the
+   live container so every auth state renders the same brand card 1:1. */
+function AuthShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="wonderelo">
+      <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', fontFamily: C.fontBody, boxSizing: 'border-box' }}>
+        <div style={{ width: '100%', maxWidth: 480 }}>
+          <div style={{
+            background: C.paper, color: C.ink, padding: '40px 36px 32px',
+            borderRadius: 24, border: `1px solid ${C.hair}`, boxShadow: '0 20px 40px rgba(76,25,77,.12)',
+            display: 'flex', flexDirection: 'column', gap: 24, position: 'relative', overflow: 'hidden', boxSizing: 'border-box',
+          }}>
+            {/* corner diamonds */}
+            <Diamond size={9} style={{ position: 'absolute', top: 20, right: 24 }} />
+            <Diamond size={6} color={C.purple} style={{ position: 'absolute', top: 32, right: 40, opacity: 0.5 }} />
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Segmented Participant / Organizer control (mock) — interactive, shared. */
+function Segmented({
+  active, onChange, disabled,
+}: {
+  active: 'participant' | 'organizer';
+  onChange: (tab: 'participant' | 'organizer') => void;
+  disabled?: boolean;
+}) {
+  const tab = (key: 'participant' | 'organizer', label: string) => {
+    const on = active === key;
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onChange(key)}
+        style={{
+          flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none',
+          background: on ? '#fff' : 'transparent',
+          color: on ? C.purpleDeep : C.ink, opacity: on ? 1 : 0.7,
+          fontFamily: C.fontBody, fontWeight: on ? 700 : 600, fontSize: 13.5,
+          boxShadow: on ? '0 1px 3px rgba(0,0,0,.06)' : 'none', cursor: disabled ? 'default' : 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          transition: 'background .12s, color .12s',
+        }}
+      >
+        {on && <Diamond size={6} color={C.orange} />}{label}
+      </button>
+    );
+  };
+  return (
+    <div style={{ display: 'flex', gap: 4, padding: 4, background: 'rgba(76,25,77,.06)', borderRadius: 12 }}>
+      {tab('participant', 'Participant')}
+      {tab('organizer', 'Organizer')}
+    </div>
+  );
+}
+
+/* Inline error banner (mock) — shared. */
+function ErrorBanner({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(220,38,38,.07)', border: '1px solid rgba(220,38,38,.25)' }}>
+      <X size={16} style={{ color: '#dc2626', flexShrink: 0 }} />
+      <span style={{ fontSize: 13, color: '#dc2626' }}>{children}</span>
+    </div>
+  );
+}
+
+/* Large framed icon for the "sent"/"forgot" screens (mock `BigIcon`). */
+function BigIcon({ children, badge = C.orange }: { children: ReactNode; badge?: string }) {
+  return (
+    <div style={{
+      width: 88, height: 88, borderRadius: 22, margin: '0 auto 22px',
+      background: `linear-gradient(140deg, #fff, ${C.cream})`, border: `1px solid ${C.hair}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+    }}>
+      <Diamond size={10} color={badge} style={{ position: 'absolute', top: -6, right: -6 }} />
+      {children}
+    </div>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.purpleDeep} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 5L2 7" /></svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.purpleDeep} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+  );
+}
+
 export function SignInFlowView({
   activeTab,
   onTabChange,
@@ -253,162 +334,116 @@ export function SignInFlowView({
 }: SignInFlowViewProps) {
   const isParticipant = activeTab === 'participant';
 
-  const tabBtn = (key: 'participant' | 'organizer', label: string) => {
-    const on = activeTab === key;
-    return (
-      <button
-        type="button"
-        onClick={() => onTabChange(key)}
-        style={{
-          flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none',
-          background: on ? '#fff' : 'transparent',
-          color: on ? C.purpleDeep : C.ink, opacity: on ? 1 : 0.7,
-          fontFamily: C.fontBody, fontWeight: on ? 700 : 600, fontSize: 13.5,
-          boxShadow: on ? '0 1px 3px rgba(0,0,0,.06)' : 'none', cursor: 'pointer',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-          transition: 'background .12s, color .12s',
-        }}
-      >
-        {on && <Diamond size={6} color={C.orange} />}{label}
-      </button>
-    );
-  };
-
-  const errorBanner = (msg: string) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(220,38,38,.07)', border: '1px solid rgba(220,38,38,.25)' }}>
-      <X size={16} style={{ color: '#dc2626', flexShrink: 0 }} />
-      <span style={{ fontSize: 13, color: '#dc2626' }}>{msg}</span>
-    </div>
-  );
-
   return (
-    <div className="wonderelo">
-      <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', fontFamily: C.fontBody, boxSizing: 'border-box' }}>
-        <div style={{ width: '100%', maxWidth: 480 }}>
-          {/* DesktopCard (mock) */}
-          <div style={{
-            background: C.paper, color: C.ink, padding: '40px 36px 32px',
-            borderRadius: 24, border: `1px solid ${C.hair}`, boxShadow: '0 20px 40px rgba(76,25,77,.12)',
-            display: 'flex', flexDirection: 'column', gap: 24, position: 'relative', overflow: 'hidden', boxSizing: 'border-box',
-          }}>
-            {/* corner diamonds */}
-            <Diamond size={9} style={{ position: 'absolute', top: 20, right: 24 }} />
-            <Diamond size={6} color={C.purple} style={{ position: 'absolute', top: 32, right: 40, opacity: 0.5 }} />
-
-            {/* Top row — brand lockup (click → back to home) */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Logo onClick={onBack} />
-            </div>
-
-            {/* Heading */}
-            <div>
-              <Eyebrow>Welcome back</Eyebrow>
-              <h1 style={{ margin: '12px 0 8px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.07, letterSpacing: '-0.025em', color: C.purpleDeep }}>
-                Sign in to <Italic>Wonderelo.</Italic>
-              </h1>
-              <p style={{ margin: 0, fontSize: 14.5, color: C.ink, opacity: 0.78, lineHeight: 1.5 }}>
-                {isParticipant ? 'Two ways in — pick the one that fits.' : 'Manage your events and rounds.'}
-              </p>
-            </div>
-
-            {/* Segmented Participant / Organizer control */}
-            <div style={{ display: 'flex', gap: 4, padding: 4, background: 'rgba(76,25,77,.06)', borderRadius: 12 }}>
-              {tabBtn('participant', 'Participant')}
-              {tabBtn('organizer', 'Organizer')}
-            </div>
-
-            {isParticipant ? (
-              <form onSubmit={onParticipantSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {participantError && errorBanner(participantError)}
-                <Field
-                  id="participantEmail"
-                  label="Email address"
-                  type="email"
-                  placeholder="you@email.com"
-                  autoComplete="email"
-                  value={participantEmail}
-                  onChange={(e) => onParticipantEmailChange(e.target.value)}
-                  disabled={participantLoading}
-                />
-                <Btn type="submit" variant="primary" full loading={participantLoading} disabled={!participantEmail} leadingIcon={<MailMini />}>
-                  {participantLoading ? 'Sending link…' : 'Email me a magic link'}
-                </Btn>
-                <p style={{ margin: 0, fontSize: 12.5, color: C.ink, opacity: 0.65, textAlign: 'center', lineHeight: 1.5 }}>
-                  No password needed. We email you a link that signs you straight in.
-                </p>
-              </form>
-            ) : (
-              <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {error && errorBanner(error)}
-                <Field
-                  id="email"
-                  label="Email address"
-                  type="email"
-                  placeholder="you@event.com"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => onEmailChange(e.target.value)}
-                  disabled={isLoading}
-                />
-                <Field
-                  id="password"
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => onPasswordChange(e.target.value)}
-                  disabled={isLoading}
-                  headerRight={
-                    <button
-                      type="button"
-                      onClick={onForgotPassword}
-                      disabled={isLoading}
-                      style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
-                    >
-                      Forgot password?
-                    </button>
-                  }
-                  trailing={
-                    <button
-                      type="button"
-                      onClick={onToggleShowPassword}
-                      disabled={isLoading}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      style={{ background: 'transparent', border: 'none', padding: 0, display: 'inline-flex', cursor: isLoading ? 'default' : 'pointer', color: C.ink }}
-                    >
-                      {showPassword ? <EyeOff size={18} style={{ opacity: 0.6 }} /> : <Eye size={18} style={{ opacity: 0.6 }} />}
-                    </button>
-                  }
-                />
-                <Btn type="submit" variant="primary" full loading={isLoading} disabled={!isFormValid} trailingIcon={<ArrowRightIcon size={16} />}>
-                  {isLoading ? 'Signing in…' : 'Sign in'}
-                </Btn>
-              </form>
-            )}
-
-            {/* Footer */}
-            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
-              {isParticipant ? (
-                <>
-                  Are you an organizer?{' '}
-                  <button type="button" onClick={() => onTabChange('organizer')} disabled={isLoading || participantLoading} style={footerLinkStyle}>
-                    Sign in here →
-                  </button>
-                </>
-              ) : (
-                <>
-                  Need an account?{' '}
-                  <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
-                    Sign up for free →
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+    <AuthShell>
+      {/* Top row — brand lockup (click → back to home) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Logo onClick={onBack} />
       </div>
-    </div>
+
+      {/* Heading */}
+      <div>
+        <Eyebrow>Welcome back</Eyebrow>
+        <h1 style={{ margin: '12px 0 8px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.07, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+          Sign in to <Italic>Wonderelo.</Italic>
+        </h1>
+        <p style={{ margin: 0, fontSize: 14.5, color: C.ink, opacity: 0.78, lineHeight: 1.5 }}>
+          {isParticipant ? 'Two ways in — pick the one that fits.' : 'Manage your events and rounds.'}
+        </p>
+      </div>
+
+      {/* Segmented Participant / Organizer control */}
+      <Segmented active={activeTab} onChange={onTabChange} disabled={isLoading || participantLoading} />
+
+      {isParticipant ? (
+        <form onSubmit={onParticipantSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {participantError && <ErrorBanner>{participantError}</ErrorBanner>}
+          <Field
+            id="participantEmail"
+            label="Email address"
+            type="email"
+            placeholder="you@email.com"
+            autoComplete="email"
+            value={participantEmail}
+            onChange={(e) => onParticipantEmailChange(e.target.value)}
+            disabled={participantLoading}
+          />
+          <Btn type="submit" variant="primary" full loading={participantLoading} disabled={!participantEmail} leadingIcon={<MailMini />}>
+            {participantLoading ? 'Sending link…' : 'Email me a magic link'}
+          </Btn>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.ink, opacity: 0.65, textAlign: 'center', lineHeight: 1.5 }}>
+            No password needed. We email you a link that signs you straight in.
+          </p>
+        </form>
+      ) : (
+        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {error && <ErrorBanner>{error}</ErrorBanner>}
+          <Field
+            id="email"
+            label="Email address"
+            type="email"
+            placeholder="you@event.com"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            disabled={isLoading}
+          />
+          <Field
+            id="password"
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => onPasswordChange(e.target.value)}
+            disabled={isLoading}
+            headerRight={
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                disabled={isLoading}
+                style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
+              >
+                Forgot password?
+              </button>
+            }
+            trailing={
+              <button
+                type="button"
+                onClick={onToggleShowPassword}
+                disabled={isLoading}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{ background: 'transparent', border: 'none', padding: 0, display: 'inline-flex', cursor: isLoading ? 'default' : 'pointer', color: C.ink }}
+              >
+                {showPassword ? <EyeOff size={18} style={{ opacity: 0.6 }} /> : <Eye size={18} style={{ opacity: 0.6 }} />}
+              </button>
+            }
+          />
+          <Btn type="submit" variant="primary" full loading={isLoading} disabled={!isFormValid} trailingIcon={<ArrowRightIcon size={16} />}>
+            {isLoading ? 'Signing in…' : 'Sign in'}
+          </Btn>
+        </form>
+      )}
+
+      {/* Footer */}
+      <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
+        {isParticipant ? (
+          <>
+            Are you an organizer?{' '}
+            <button type="button" onClick={() => onTabChange('organizer')} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+              Sign in here →
+            </button>
+          </>
+        ) : (
+          <>
+            Need an account?{' '}
+            <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+              Sign up for free →
+            </button>
+          </>
+        )}
+      </div>
+    </AuthShell>
   );
 }
 
@@ -699,467 +734,257 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
     }
   };
 
+  // ── Forgot-password sub-view (brand card) ──────────────────────────
   if (showForgotPassword) {
     return (
-      <div className="min-h-screen bg-background">
-        {/* Navigation */}
-        <nav className="border-b border-border">
-          <div className="container mx-auto max-w-6xl px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-8">
-                <h2 className="text-primary wonderelo-logo cursor-pointer" onClick={onBack}>Wonderelo</h2>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Button variant="ghost" onClick={onBack}>
-                  Back to home
-                </Button>
-              </div>
+      <AuthShell>
+        {resetSuccess ? (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <Logo onClick={onBack} />
             </div>
-          </div>
-        </nav>
-
-        <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
-          <div className="w-full max-w-md">
-            <div className="mb-8 text-center">
-              <h1 className="mb-2">
-                Reset your password
+            <div style={{ textAlign: 'center' }}>
+              <BigIcon><MailIcon /></BigIcon>
+              <Eyebrow>Email sent</Eyebrow>
+              <h1 style={{ margin: '14px 0 12px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.08, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+                Check your <Italic>inbox</Italic>
               </h1>
-              <p className="text-muted-foreground">
-                {resetSuccess 
-                  ? "Check your email for reset instructions"
-                  : "Enter your email and we'll send you a reset link"
-                }
+              <p style={{ margin: '0 auto', maxWidth: 360, fontSize: 14.5, lineHeight: 1.55, color: C.ink, opacity: 0.82 }}>
+                We sent a password reset link to <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>{resetEmail}</strong>.
               </p>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Forgot your password?</CardTitle>
-                <CardContent>
-                  {resetSuccess 
-                    ? "Check your email for reset instructions"
-                    : "Enter your email and we'll send you a reset link"
-                  }
-                </CardContent>
-              </CardHeader>
-              <CardContent>
-                {resetSuccess ? (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-center p-6 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                      <div className="text-center">
-                        <Mail className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
-                        <h3 className="mb-2">Email sent!</h3>
-                        <p className="text-sm text-muted-foreground">
-                          We've sent a password reset link to<br />
-                          <span className="font-medium">{resetEmail}</span>
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between pt-4">
-                      <Button variant="outline" onClick={handleBackToSignIn}>
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to sign in
-                      </Button>
-                      <Button onClick={onBack}>
-                        Done
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleResetPassword} className="space-y-6">
-                    {resetError && (
-                      <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <X className="h-4 w-4 text-destructive" />
-                        <p className="text-sm text-destructive">{resetError}</p>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="resetEmail">Email address</Label>
-                      <Input
-                        id="resetEmail"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        disabled={resetLoading}
-                      />
-                    </div>
-
-                    <div className="flex justify-between pt-4">
-                      <Button variant="outline" onClick={handleBackToSignIn} disabled={resetLoading}>
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to sign in
-                      </Button>
-
-                      <Button type="submit" disabled={!resetEmail || resetLoading}>
-                        {resetLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Sending email...
-                          </>
-                        ) : (
-                          'Send reset email'
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="text-center mt-6">
-              <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto font-normal text-primary"
-                  onClick={onSwitchToSignUp}
-                  disabled={resetLoading}
-                >
-                  Sign up for free
-                </Button>
+            <Btn variant="primary" full onClick={onBack} trailingIcon={<ArrowRightIcon size={16} />}>
+              Done
+            </Btn>
+            <div style={{ paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
+              <button type="button" onClick={handleBackToSignIn} style={footerLinkStyle}>← Back to sign in</button>
+            </div>
+          </>
+        ) : (
+          <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Logo onClick={onBack} />
+              <button type="button" onClick={handleBackToSignIn} disabled={resetLoading} style={{ ...footerLinkStyle, fontFamily: C.fontMono, opacity: 0.7 }}>← Back to sign in</button>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <BigIcon badge={C.purple}><LockIcon /></BigIcon>
+              <Eyebrow>Reset password</Eyebrow>
+              <h1 style={{ margin: '12px 0 8px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.07, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+                Forgot your <Italic>password?</Italic>
+              </h1>
+              <p style={{ margin: 0, fontSize: 14.5, color: C.ink, opacity: 0.78, lineHeight: 1.5 }}>
+                Enter your email and we'll send a reset link.
               </p>
             </div>
-          </div>
-        </div>
-      </div>
+            {resetError && <ErrorBanner>{resetError}</ErrorBanner>}
+            <Field
+              id="resetEmail"
+              label="Email address"
+              type="email"
+              placeholder="you@email.com"
+              autoComplete="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              disabled={resetLoading}
+            />
+            <Btn type="submit" variant="primary" full loading={resetLoading} disabled={!resetEmail} leadingIcon={<MailMini />}>
+              {resetLoading ? 'Sending email…' : 'Send reset link'}
+            </Btn>
+            <div style={{ paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
+              Don't have an account?{' '}
+              <button type="button" onClick={onSwitchToSignUp} disabled={resetLoading} style={footerLinkStyle}>
+                Sign up for free →
+              </button>
+            </div>
+          </form>
+        )}
+      </AuthShell>
     );
   }
 
+  // ── Participant "magic link sent" success (brand card) ─────────────
+  if (participantSuccess) {
+    return (
+      <AuthShell>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <Logo onClick={onBack} />
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <BigIcon><MailIcon /></BigIcon>
+          <Eyebrow>Link sent</Eyebrow>
+          <h1 style={{ margin: '14px 0 12px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.08, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+            Check your <Italic>inbox</Italic>
+          </h1>
+          <p style={{ margin: '0 auto', maxWidth: 360, fontSize: 14.5, lineHeight: 1.55, color: C.ink, opacity: 0.82 }}>
+            We emailed a magic link to <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>{participantEmail}</strong>. Click it on this device and you're in.
+          </p>
+        </div>
+        <Btn variant="primary" full onClick={onBack} trailingIcon={<ArrowRightIcon size={16} />}>
+          Done
+        </Btn>
+        <div style={{ padding: 16, borderRadius: 12, background: 'rgba(76,25,77,.04)', border: `1px solid ${C.hair}`, fontSize: 13, color: C.ink, opacity: 0.82, textAlign: 'center' }}>
+          <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>Wrong email?</strong>{' '}
+          <button
+            type="button"
+            onClick={() => { setParticipantSuccess(false); setParticipantEmail(''); }}
+            style={footerLinkStyle}
+          >
+            Use a different one →
+          </button>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  // ── Main sign-in card: Participant / Organizer tabs (brand card) ───
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h2 className="text-primary wonderelo-logo cursor-pointer" onClick={onBack}>Wonderelo</h2>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={onBack}>
-                Back to home
-              </Button>
-              <Button onClick={onSwitchToSignUp}>
-                Sign up
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <h1 className="mb-2">
-              Sign in
-            </h1>
-            <p className="text-muted-foreground">
-              Access your networking rounds
-            </p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Sign in as</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="participant" className="w-full" onValueChange={(value) => setActiveTab(value as 'participant' | 'organizer')}>
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="participant" className="gap-2">
-                    <UserCircle className="h-4 w-4" />
-                    Participant
-                  </TabsTrigger>
-                  <TabsTrigger value="organizer" className="gap-2">
-                    <Mic className="h-4 w-4" />
-                    Organizer
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="participant" className="space-y-6">
-                  {participantSuccess ? (
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-center p-6 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                        <div className="text-center">
-                          <Mail className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
-                          <h3 className="mb-2">Check your email</h3>
-                          <p className="text-sm text-muted-foreground">
-                            We've sent a magic link to<br />
-                            <span className="font-medium">{participantEmail}</span>
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Click the link in the email to access your rounds
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-between pt-4">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            setParticipantSuccess(false);
-                            setParticipantEmail('');
-                          }}
-                        >
-                          <ArrowLeft className="h-4 w-4 mr-2" />
-                          Back
-                        </Button>
-                        <Button onClick={onBack}>
-                          Done
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleParticipantMagicLink} className="space-y-6">
-                      {participantError && (
-                        <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                          <X className="h-4 w-4 text-destructive" />
-                          <p className="text-sm text-destructive">{participantError}</p>
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <Label htmlFor="participantEmail">Email address</Label>
-                        <Input
-                          id="participantEmail"
-                          type="email"
-                          placeholder="your@email.com"
-                          value={participantEmail}
-                          onChange={(e) => {
-                            setParticipantEmail(e.target.value);
-                            if (participantError) setParticipantError('');
-                          }}
-                          disabled={participantLoading}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          We'll send you a magic link to access your rounds
-                        </p>
-                      </div>
-
-                      <div className="flex justify-between pt-4">
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onBack();
-                          }} 
-                          disabled={participantLoading}
-                        >
-                          <ArrowLeft className="h-4 w-4 mr-2" />
-                          Back
-                        </Button>
-
-                        <Button type="submit" disabled={!participantEmail || participantLoading}>
-                          {participantLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Sending link...
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Send magic link
-                            </>
-                          )}
-                        </Button>
-                      </div>
-
-                      {/* Test Login Buttons for Participant - only on dev/staging */}
-                      {showTestLogins && (
-                      <div className="space-y-2 pt-4 border-t">
-                        <p className="text-xs text-muted-foreground mb-2">Quick test logins:</p>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigate('/p/tok-alice-001');
-                          }}
-                          className="text-xs w-full"
-                        >
-                          Quick test login (Alice Novak)
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigate('/p/tok-bob-001');
-                          }}
-                          className="text-xs w-full"
-                        >
-                          Quick test login (Bob Kovac)
-                        </Button>
-                      </div>
-                      )}
-                    </form>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="organizer" className="space-y-6">
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                      <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <X className="h-4 w-4 text-destructive" />
-                        <p className="text-sm text-destructive">{error}</p>
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="your@email.com"
-                          value={formData.email}
-                          onChange={(e) => updateFormData('email', e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && isFormValid() && !isLoading) {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleSubmit();
-                            }
-                          }}
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="password">Password</Label>
-                          <Button 
-                            variant="link" 
-                            className="p-0 h-auto text-sm font-normal text-primary"
-                            onClick={handleForgotPassword}
-                            disabled={isLoading}
-                            type="button"
-                          >
-                            Forgot password?
-                          </Button>
-                        </div>
-                        <div className="relative">
-                          <Input
-                            id="password"
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="Enter your password"
-                            value={formData.password}
-                            onChange={(e) => updateFormData('password', e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && isFormValid() && !isLoading) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleSubmit();
-                              }
-                            }}
-                            disabled={isLoading}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3"
-                            onClick={() => setShowPassword(!showPassword)}
-                            disabled={isLoading}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between pt-4">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onBack();
-                        }} 
-                        disabled={isLoading}
-                      >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back
-                      </Button>
-
-                      <Button type="submit" disabled={!isFormValid() || isLoading}>
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Signing in...
-                          </>
-                        ) : (
-                          'Sign in'
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-
-                  {/* Test Login Button - only on dev/staging */}
-                  {showTestLogins && (
-                  <div className="space-y-2 pt-4 border-t">
-                    <p className="text-xs text-muted-foreground mb-2">Quick test login:</p>
-                    <Button
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const newData = { email: 'andy.double.a+org@gmail.com', password: 'Rukuku' };
-                        setFormData(newData);
-                        formDataRef.current = newData;
-                        setError('');
-                        handleSubmit();
-                      }}
-                      disabled={isLoading}
-                      className="text-xs w-full"
-                    >
-                      Quick test login (andy.double.a+org@gmail.com)
-                    </Button>
-                  </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <div className="text-center mt-6">
-            {activeTab === 'participant' ? (
-              <p className="text-sm text-muted-foreground">
-                Are you an organizer?{' '}
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto font-normal text-primary"
-                  onClick={() => setActiveTab('organizer')}
-                  disabled={isLoading || participantLoading}
-                >
-                  Sign in here
-                </Button>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Need to create an organizer account?{' '}
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto font-normal text-primary"
-                  onClick={onSwitchToSignUp}
-                  disabled={isLoading || participantLoading}
-                >
-                  Sign up for free
-                </Button>
-              </p>
-            )}
-          </div>
-        </div>
+    <AuthShell>
+      {/* Top row — brand lockup (click → back to home) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Logo onClick={onBack} />
       </div>
-    </div>
+
+      {/* Heading */}
+      <div>
+        <Eyebrow>Welcome back</Eyebrow>
+        <h1 style={{ margin: '12px 0 8px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.07, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+          Sign in to <Italic>Wonderelo.</Italic>
+        </h1>
+        <p style={{ margin: 0, fontSize: 14.5, color: C.ink, opacity: 0.78, lineHeight: 1.5 }}>
+          {activeTab === 'participant' ? 'Two ways in — pick the one that fits.' : 'Manage your events and rounds.'}
+        </p>
+      </div>
+
+      {/* Segmented Participant / Organizer control */}
+      <Segmented active={activeTab} onChange={setActiveTab} disabled={isLoading || participantLoading} />
+
+      {activeTab === 'participant' ? (
+        <form onSubmit={handleParticipantMagicLink} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {participantError && <ErrorBanner>{participantError}</ErrorBanner>}
+          <Field
+            id="participantEmail"
+            label="Email address"
+            type="email"
+            placeholder="you@email.com"
+            autoComplete="email"
+            value={participantEmail}
+            onChange={(e) => {
+              setParticipantEmail(e.target.value);
+              if (participantError) setParticipantError('');
+            }}
+            disabled={participantLoading}
+          />
+          <Btn type="submit" variant="primary" full loading={participantLoading} disabled={!participantEmail} leadingIcon={<MailMini />}>
+            {participantLoading ? 'Sending link…' : 'Email me a magic link'}
+          </Btn>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.ink, opacity: 0.65, textAlign: 'center', lineHeight: 1.5 }}>
+            No password needed. We email you a link that signs you straight in.
+          </p>
+
+          {/* Quick test logins — dev/staging only */}
+          {showTestLogins && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16, borderTop: `1px solid ${C.hair}` }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: C.ink, opacity: 0.5, fontFamily: C.fontBody }}>Quick test logins</span>
+              <Btn type="button" variant="ghost" full onClick={() => navigate('/p/tok-alice-001')} disabled={participantLoading} style={{ fontSize: 13, padding: '11px 18px' }}>
+                Alice Novak
+              </Btn>
+              <Btn type="button" variant="ghost" full onClick={() => navigate('/p/tok-bob-001')} disabled={participantLoading} style={{ fontSize: 13, padding: '11px 18px' }}>
+                Bob Kovac
+              </Btn>
+            </div>
+          )}
+        </form>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {error && <ErrorBanner>{error}</ErrorBanner>}
+          <Field
+            id="email"
+            label="Email address"
+            type="email"
+            placeholder="you@event.com"
+            autoComplete="email"
+            value={formData.email}
+            onChange={(e) => updateFormData('email', e.target.value)}
+            disabled={isLoading}
+          />
+          <Field
+            id="password"
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            value={formData.password}
+            onChange={(e) => updateFormData('password', e.target.value)}
+            disabled={isLoading}
+            headerRight={
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={isLoading}
+                style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
+              >
+                Forgot password?
+              </button>
+            }
+            trailing={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{ background: 'transparent', border: 'none', padding: 0, display: 'inline-flex', cursor: isLoading ? 'default' : 'pointer', color: C.ink }}
+              >
+                {showPassword ? <EyeOff size={18} style={{ opacity: 0.6 }} /> : <Eye size={18} style={{ opacity: 0.6 }} />}
+              </button>
+            }
+          />
+          <Btn type="submit" variant="primary" full loading={isLoading} disabled={!isFormValid()} trailingIcon={<ArrowRightIcon size={16} />}>
+            {isLoading ? 'Signing in…' : 'Sign in'}
+          </Btn>
+
+          {/* Quick test login — dev/staging only */}
+          {showTestLogins && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16, borderTop: `1px solid ${C.hair}` }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: C.ink, opacity: 0.5, fontFamily: C.fontBody }}>Quick test login</span>
+              <Btn
+                type="button"
+                variant="ghost"
+                full
+                disabled={isLoading}
+                onClick={() => {
+                  const newData = { email: 'andy.double.a+org@gmail.com', password: 'Rukuku' };
+                  setFormData(newData);
+                  formDataRef.current = newData;
+                  setError('');
+                  handleSubmit();
+                }}
+                style={{ fontSize: 13, padding: '11px 18px' }}
+              >
+                andy.double.a+org@gmail.com
+              </Btn>
+            </div>
+          )}
+        </form>
+      )}
+
+      {/* Footer */}
+      <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
+        {activeTab === 'participant' ? (
+          <>
+            Are you an organizer?{' '}
+            <button type="button" onClick={() => setActiveTab('organizer')} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+              Sign in here →
+            </button>
+          </>
+        ) : (
+          <>
+            Need an account?{' '}
+            <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+              Sign up for free →
+            </button>
+          </>
+        )}
+      </div>
+    </AuthShell>
   );
 }

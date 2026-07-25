@@ -531,46 +531,10 @@ function RoundFormPageRoute() {
 }
 
 function DashboardRoute() {
-  const {
-    currentUser,
-    sessions,
-    isLoadingSessions,
-    eventSlug,
-    updateSession,
-    deleteSession,
-    isAdminUser,
-    handleSignOut
-  } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <AuthenticatedNav
-        currentView="dashboard"
-        currentUser={currentUser}
-        isAdminUser={isAdminUser()}
-        onNavigateToDashboard={() => navigate('/dashboard')}
-        onNavigateToRounds={() => navigate('/rounds')}
-        onNavigateToAccountSettings={() => navigate('/account-settings')}
-        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
-        onNavigateToBilling={() => navigate('/billing')}
-        onNavigateToAdmin={() => navigate('/admin')}
-        onSignOut={handleSignOut}
-      />
-
-      <div className="container mx-auto p-6 flex-1">
-        <Dashboard
-          eventSlug={eventSlug}
-          sessions={sessions}
-          isLoadingSessions={isLoadingSessions}
-          onUpdateSession={updateSession}
-          onDeleteSession={deleteSession}
-        />
-      </div>
-
-      <Footer />
-    </div>
-  );
+  // The organizer Dashboard + Rounds were merged into a single home in the redesign
+  // (the /rounds NetworkingDashboard). Collapse the old split by redirecting here, so
+  // the legacy non-redesigned Dashboard.tsx is no longer reachable.
+  return <Navigate to="/rounds" replace />;
 }
 
 function RoundsRoute() {
