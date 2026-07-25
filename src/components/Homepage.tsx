@@ -345,8 +345,12 @@ function Nav({
   const ink = C.purpleDeep;
   const linkColor = 'rgba(76,25,77,.78)';
   const borderCol = 'rgba(76,25,77,.10)';
+  // Mobile hamburger (mock's `.burger` + `.mobnav`) — below the desktop breakpoint the
+  // centre links collapse into this toggle-driven dropdown.
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const goto = (target: string) => {
+    setMenuOpen(false);
     if (target.startsWith('#')) {
       document.getElementById(target.slice(1))?.scrollIntoView({ behavior: 'smooth' });
     } else {
@@ -421,7 +425,26 @@ function Nav({
                 public pages' translation. */}
             {t('homepage.nav.cta', 'Start for free')}
           </button>
+          {/* Hamburger — hidden on desktop, shown below the breakpoint (CSS). */}
+          <button
+            type="button"
+            className={`wn-burger${menuOpen ? ' is-open' : ''}`}
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <span /><span /><span />
+          </button>
         </div>
+      </div>
+
+      {/* Mobile dropdown (mock `.mobnav`) — the centre links + actions collapse here. */}
+      <div className={`wn-mobnav${menuOpen ? ' is-open' : ''}`}>
+        {NAV_LINKS.map((l) => (
+          <a key={l.label} className="wn-mlink" href={l.target} onClick={(e) => { e.preventDefault(); goto(l.target); }}>{l.label}</a>
+        ))}
+        <a className="wn-mlink" href="/signin" onClick={(e) => { e.preventDefault(); setMenuOpen(false); if (onSignIn) onSignIn(); else onNavigate('/signin'); }}>{t('nav.logIn', 'Sign in')}</a>
+        <button type="button" className="wn-mlink wn-mlink-cta" onClick={() => { setMenuOpen(false); onGetStarted(); }}>{t('homepage.nav.cta', 'Start for free')}</button>
       </div>
     </div>
   );

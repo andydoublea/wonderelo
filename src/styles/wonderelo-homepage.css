@@ -202,7 +202,14 @@
   .wonderelo .wn-nav-cta:active { transform: translateY(0) scale(.98) !important; }
 
   .wonderelo .wn-nav-lockup { transition: transform .3s cubic-bezier(.2,.7,.2,1); }
-  .wonderelo .wn-nav-lockup:hover { transform: rotate(-1deg) scale(1.03); }
+  /* The lockup is role="button", so the shared `.w-public [role=button]:hover` (lift +
+     brightness + shadow) out-ranks the plain `.wn-nav-lockup:hover` and replaces the
+     design's tilt. Re-assert the design tilt at higher specificity + kill the generic FX. */
+  .wonderelo.w-public .wn-nav-lockup:hover {
+    transform: rotate(-1deg) scale(1.03) !important;
+    filter: none !important;
+    box-shadow: none !important;
+  }
 
   /* Keep "Start for free" text white on hover (the auto-applied .fx-pill rule
      would otherwise tint it red and kill the contrast). */
@@ -219,6 +226,42 @@
   .wonderelo .wn-nav-lockup img.fx-img-click:hover {
     transform: translate(-50%,-50%) rotate(-6deg) !important;
     filter: none !important;
+    /* Tailwind preflight's `img { max-width: 100% }` was clamping the 120px symbol to its
+       40px slot (rendering a squished 40×120 box). Let the inline width/height stand. */
+    max-width: none !important;
+  }
+
+  /* Homepage nav responsive: the mock nav is desktop-only (fixed inline padding, no width
+     breakpoints), so below ~860px the centre links no longer fit beside the 120px logo +
+     the two right-hand actions and wrap/overlap. Hide the centre links (still reachable in
+     the footer) and tighten the inner padding — mirroring how the shared .w-nav degrades. */
+  /* ── Mobile hamburger — ported from the design's mobile nav (`.burger` + `.mobnav`).
+     Desktop keeps the inline links; below the breakpoint they collapse into this dropdown. ── */
+  .wonderelo .wn-burger { display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px; width: 42px; height: 42px; border-radius: 11px; cursor: pointer; border: 1px solid rgba(76,25,77,.16); background: rgba(255,255,255,.6); padding: 0; }
+  .wonderelo .wn-burger span { display: block; width: 18px; height: 2px; background: var(--w-purple-deep); border-radius: 2px; transition: transform .25s ease, opacity .2s ease; }
+  .wonderelo .wn-burger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .wonderelo .wn-burger.is-open span:nth-child(2) { opacity: 0; }
+  .wonderelo .wn-burger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  .wonderelo .wn-mobnav { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 49; background: var(--w-paper); border-bottom: 1px solid rgba(76,25,77,.1); box-shadow: 0 20px 44px rgba(76,25,77,.16); flex-direction: column; padding: 8px 18px 18px; transform: translateY(-10px); opacity: 0; pointer-events: none; transition: opacity .22s ease, transform .22s ease; }
+  .wonderelo .wn-mobnav.is-open { opacity: 1; transform: none; pointer-events: auto; }
+  .wonderelo .wn-mlink { display: block; width: 100%; padding: 14px 4px; font-family: var(--w-font-display); font-weight: 600; font-size: 17px; color: var(--w-purple-deep); text-decoration: none; border: none; border-bottom: 1px solid rgba(76,25,77,.08); background: none; text-align: left; cursor: pointer; }
+  .wonderelo .wn-mlink:last-child { border-bottom: none; }
+  .wonderelo .wn-mlink-cta { color: var(--w-orange); }
+
+  @media (max-width: 860px) {
+    .wonderelo .wn-nav > div { padding-left: 20px !important; padding-right: 20px !important; }
+    .wonderelo .wn-nav-link,
+    .wonderelo .wn-nav-signin,
+    .wonderelo .wn-nav-cta { display: none !important; }
+    .wonderelo .wn-burger { display: inline-flex !important; }
+    .wonderelo .wn-mobnav { display: flex; }
+  }
+  /* On small phones scale the lockup down so logo + wordmark + burger fit comfortably. */
+  @media (max-width: 560px) {
+    .wonderelo .wn-nav-lockup img { width: 60px !important; height: 60px !important; }
+    .wonderelo .wn-nav-lockup > div:last-child { font-size: 21px !important; }
+    .wonderelo .wn-nav-lockup { gap: 6px !important; }
   }
 
   /* Footer link hover — brighten to white + nudge */
