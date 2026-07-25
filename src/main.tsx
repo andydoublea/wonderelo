@@ -2,7 +2,7 @@
   import { createRoot } from "react-dom/client";
   import App from "./App.tsx";
   import "./index.css";
-  import "./styles/visual-styles.css";
+  import "./styles/wonderelo-utilities.css";
   import "./styles/button-hover.css";
   import "./styles/wonderelo-brand.css";
   import "./styles/wonderelo-event-page.css";

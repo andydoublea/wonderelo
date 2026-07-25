@@ -1408,16 +1408,11 @@ function AppProviderWithRouter() {
     localStorage.setItem('oliwonder_current_user', JSON.stringify(userData));
   }, []);
 
-  // Load theme and system parameters AFTER a short delay
-  // so the critical page data fetch (/public/user/:slug) gets connection priority
+  // Load system parameters AFTER a short delay so the critical page data fetch
+  // (/public/user/:slug) gets connection priority. (Theme/skin loading was removed —
+  // the app is a single fixed Wonderelo brand.)
   useEffect(() => {
     const timer = setTimeout(async () => {
-      try {
-        const { loadAndApplyTheme } = await import('./utils/themeLoader');
-        await loadAndApplyTheme();
-      } catch (error) {
-        errorLog('Error loading theme:', error);
-      }
       try {
         await fetchSystemParameters();
         debugLog('✅ System parameters loaded');

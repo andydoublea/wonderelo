@@ -1,0 +1,361 @@
+/* Wonderelo — app utilities + toast (sonner) styling.
+   Extracted from the retired visual-styles.css: the 9 vs-* skins were removed in the
+   skin-retirement cleanup (single fixed Wonderelo brand). These are the non-skin rules
+   still in use — button-hover / checklist / btn-group / demo-arrow helpers + toasts. */
+
+/* ---- Button hover override ---- */
+.btn-hover-white {
+  transition: background-color 0.2s ease !important;
+}
+.btn-hover-white:hover {
+  background-color: #ffffff !important;
+}
+
+/* ---- Checklist "Show me where" highlight pulse ---- */
+.checklist-highlight {
+  animation: checklist-pulse 0.6s ease-in-out 4;
+  position: relative;
+  z-index: 10;
+  border-radius: 8px;
+}
+
+@keyframes checklist-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.6); }
+  50% { box-shadow: 0 0 0 8px hsl(var(--primary) / 0.35); }
+}
+
+
+/* ==========================================================================
+   HOMEPAGE RESPONSIVE UTILITIES
+   Custom responsive classes for homepage layout (needed because the pre-compiled
+   Tailwind CSS doesn't generate arbitrary value classes like md:gap-[80px])
+   ========================================================================== */
+
+.gap-responsive-80 {
+  gap: 24px;
+}
+@media (min-width: 768px) {
+  .gap-responsive-80 {
+    gap: 80px;
+  }
+}
+
+.gap-responsive-16 {
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .card-w-quarter {
+    width: calc(25% - 12px);
+  }
+  .md-flex-center {
+    display: flex;
+    justify-content: center;
+  }
+}
+
+/* Missing Tailwind v4 responsive utilities (not in pre-compiled index.css) */
+.basis-full {
+  flex-basis: 100% !important;
+}
+
+@media (width >= 48rem) {
+  .md\:hidden {
+    display: none;
+  }
+  .md\:grid {
+    display: grid;
+  }
+  .md\:block {
+    display: block;
+  }
+  .md\:order-1 {
+    order: 1;
+  }
+  .md\:order-2 {
+    order: 2;
+  }
+  .md\:basis-1\/3 {
+    flex-basis: 33.333333% !important;
+  }
+  .md\:py-20 {
+    padding-block: 5rem;
+  }
+  .md\:mb-16 {
+    margin-bottom: 4rem;
+  }
+  .md\:text-left {
+    text-align: left;
+  }
+}
+
+/* Sheet / Dialog overlay and content (shadcn/radix) — ensure visibility
+   even when animation utilities are missing from pre-compiled Tailwind */
+[data-slot="sheet-overlay"] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+[data-slot="sheet-content"] {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: var(--background);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transition: transform 300ms ease-in-out;
+}
+
+/* Right side sheet positioning */
+[data-slot="sheet-content"][style*="width"] {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  height: 100%;
+  border-left: 1px solid var(--border);
+}
+
+/* Sheet open/close animations */
+[data-slot="sheet-overlay"][data-state="open"] {
+  animation: sheetFadeIn 300ms ease forwards;
+}
+[data-slot="sheet-overlay"][data-state="closed"] {
+  animation: sheetFadeOut 200ms ease forwards;
+}
+[data-slot="sheet-content"][data-state="open"] {
+  animation: sheetSlideIn 300ms ease forwards;
+}
+[data-slot="sheet-content"][data-state="closed"] {
+  animation: sheetSlideOut 200ms ease forwards;
+}
+
+@keyframes sheetFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sheetSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes sheetSlideOut { from { transform: translateX(0); } to { transform: translateX(100%); } }
+
+/* Carousel full-bleed on mobile — breaks out of container padding */
+@media (max-width: 47.9375rem) {
+  .carousel-full-bleed {
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    width: calc(100% + 3rem) !important;
+  }
+  .carousel-full-bleed [data-slot="carousel-content"] {
+    margin-left: 0;
+  }
+  .carousel-full-bleed [data-slot="carousel-item"] {
+    padding-left: 0;
+  }
+}
+
+/* Carousel with peek + bleed — narrower cards with peek, extending to screen edges */
+@media (max-width: 47.9375rem) {
+  .carousel-peek-bleed {
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    width: calc(100% + 3rem) !important;
+  }
+  .carousel-peek-bleed [data-slot="carousel-item"] {
+    flex-basis: 82% !important;
+    padding-left: 0.375rem;
+    padding-right: 0.375rem;
+  }
+  .carousel-peek-bleed [data-slot="carousel-content"] {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* Button group — must beat .vs-jasper button[data-slot="button"] specificity (0,2,1) */
+button[data-slot="button"].btn-group-left,
+button[data-slot="button"].btn-group-left {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+button.btn-group-right,
+button.btn-group-right {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: 9999px !important;
+  border-bottom-right-radius: 9999px !important;
+  margin-left: -1px !important;
+}
+
+/* Demo page switcher arrow — vertical on mobile, horizontal on desktop */
+.demo-arrow-down { display: block; }
+.demo-arrow-right { display: none; }
+@media (min-width: 768px) {
+  .demo-arrow-down { display: none; }
+  .demo-arrow-right { display: block; }
+}
+
+/* ==========================================================================
+   TOAST NOTIFICATIONS — Jasper theme
+   Warm vanilla backgrounds, orange accents, dark green headings.
+   Overrides sonner's defaults to match the site's Jasper visual language.
+   Toasts render to document.body (outside #root), so selectors are unscoped.
+   ========================================================================== */
+
+[data-sonner-toaster] {
+  font-family: inherit !important;
+}
+
+/* Base toast — warm cream, rounded, soft shadow */
+[data-sonner-toast] {
+  border-radius: 0.875rem !important;
+  border: 1px solid #e8e2d8 !important;
+  background: #fffdf7 !important;
+  box-shadow:
+    0 4px 20px -4px rgba(26, 58, 42, 0.08),
+    0 2px 8px -2px rgba(0, 0, 0, 0.04) !important;
+  padding: 14px 16px !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+  gap: 12px !important;
+  color: #1a1a1a !important;
+  backdrop-filter: none !important;
+}
+
+/* Title — dark green, tight tracking */
+[data-sonner-toast] [data-title] {
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+  letter-spacing: -0.005em !important;
+  color: #0d2b1a !important;
+}
+
+/* Description — muted warm gray */
+[data-sonner-toast] [data-description] {
+  font-size: 0.8125rem !important;
+  color: #3d3d3d !important;
+  opacity: 0.9 !important;
+  margin-top: 2px !important;
+}
+
+/* Icon container & sizing */
+[data-sonner-toast] [data-icon] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  margin-top: 1px !important;
+}
+
+[data-sonner-toast] [data-icon] svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+/* ---- Success: soft sage cream, dark green accent ---- */
+[data-sonner-toast][data-type="success"] {
+  background: #f2f7f3 !important;
+  border-color: color-mix(in srgb, #1a3a2a 22%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="success"] [data-title] {
+  color: #0d2b1a !important;
+}
+[data-sonner-toast][data-type="success"] [data-icon],
+[data-sonner-toast][data-type="success"] [data-icon] svg {
+  color: #1a3a2a !important;
+}
+
+/* ---- Error: warm orange-cream, orange accent ---- */
+[data-sonner-toast][data-type="error"] {
+  background: #fef0eb !important;
+  border-color: color-mix(in srgb, #e8552e 32%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="error"] [data-title] {
+  color: #8b2e1c !important;
+}
+[data-sonner-toast][data-type="error"] [data-icon],
+[data-sonner-toast][data-type="error"] [data-icon] svg {
+  color: #e8552e !important;
+}
+
+/* ---- Warning: warm amber-cream ---- */
+[data-sonner-toast][data-type="warning"] {
+  background: #fef8ed !important;
+  border-color: color-mix(in srgb, #d97706 25%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="warning"] [data-title] {
+  color: #78400a !important;
+}
+[data-sonner-toast][data-type="warning"] [data-icon],
+[data-sonner-toast][data-type="warning"] [data-icon] svg {
+  color: #d97706 !important;
+}
+
+/* ---- Info: vanilla with orange accent ---- */
+[data-sonner-toast][data-type="info"] {
+  background: #fffdf7 !important;
+  border-color: color-mix(in srgb, #e8552e 20%, #e8e2d8) !important;
+}
+[data-sonner-toast][data-type="info"] [data-title] {
+  color: #1a3a2a !important;
+}
+[data-sonner-toast][data-type="info"] [data-icon],
+[data-sonner-toast][data-type="info"] [data-icon] svg {
+  color: #e8552e !important;
+}
+
+/* ---- Loading ---- */
+[data-sonner-toast][data-type="loading"] [data-icon],
+[data-sonner-toast][data-type="loading"] [data-icon] svg {
+  color: #e8552e !important;
+}
+
+/* ---- Close button: rounded pill, warm border ---- */
+[data-sonner-toast] [data-close-button] {
+  border-radius: 9999px !important;
+  border: 1px solid #e8e2d8 !important;
+  background: #fffdf7 !important;
+  color: #3d3d3d !important;
+  opacity: 0.6 !important;
+  transition: opacity 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease !important;
+  width: 20px !important;
+  height: 20px !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1 !important;
+  background: #fef0eb !important;
+  border-color: #e8552e !important;
+  color: #e8552e !important;
+}
+
+/* ---- Action button: Jasper pill, filled orange ---- */
+[data-sonner-toast] [data-button]:not([data-cancel]) {
+  border-radius: 9999px !important;
+  background: #e8552e !important;
+  color: white !important;
+  font-weight: 500 !important;
+  padding: 4px 12px !important;
+  letter-spacing: 0.01em !important;
+  border: 1px solid #e8552e !important;
+  transition: background 150ms ease, border-color 150ms ease !important;
+}
+
+[data-sonner-toast] [data-button]:not([data-cancel]):hover {
+  background: #d14a25 !important;
+  border-color: #d14a25 !important;
+}
+
+/* ---- Cancel button: ghost pill ---- */
+[data-sonner-toast] [data-cancel] {
+  border-radius: 9999px !important;
+  background: transparent !important;
+  color: #3d3d3d !important;
+  border: 1px solid #e8e2d8 !important;
+  font-weight: 500 !important;
+  padding: 4px 12px !important;
+  transition: background 150ms ease, border-color 150ms ease !important;
+}
+
+[data-sonner-toast] [data-cancel]:hover {
+  background: #fef0eb !important;
+  border-color: #e8552e !important;
+}
