@@ -1,11 +1,19 @@
+/* Wonderelo — organizer Sign Up wizard (Claude Design v06).
+
+   Ported 1:1 from the design bundle `design/v06/project/pages/auth-screens.jsx`
+   (organizer sign-up = OSAccount → OSDiscovery → OSOrg, a 3-step `DesktopCard`
+   + `Steps` wizard). Atoms (Logo / Field / Btn / Steps / DesktopCard / Italic)
+   are inlined here — same approach as `Homepage.tsx` — rendering 1:1 on the
+   clean single-brand base (no skin / neutralisers).
+
+   ALL wizard logic is preserved from the previous component: step state, email
+   availability check + debounce, slug check, registration-draft autosave,
+   per-step validation, submit/verify handoff and every prop. Only the
+   markup/styling changed. The presentational `SignUpFlowView` (also consumed by
+   AdminPagePreview) keeps its exact prop interface; the container delegates to
+   it so the real flow and the admin preview share one redesigned view. */
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, Loader2, X } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import type { CSSProperties, ReactNode } from 'react';
 import { ServiceType } from '../App';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
@@ -73,6 +81,371 @@ const discoveryOptions = [
   { value: 'other', label: 'Other' }
 ];
 
+/* ─────────────────────────────────────────────────────────────
+   Brand palette + inlined atoms — verbatim from the design bundle
+   (`auth-screens.jsx` / `participant-screens.jsx` `C` + `WAtoms`).
+   ───────────────────────────────────────────────────────────── */
+const C = {
+  purple: '#5C2277',
+  purpleDeep: '#4b1d51',
+  purpleInk: '#2d1133',
+  orange: '#dd531c',
+  orangeBright: '#ff6a2a',
+  cream: '#f7f1e6',
+  paper: '#fbf6ec',
+  paperDeep: '#f1e9d8',
+  ink: '#3a2e34',
+  hair: 'rgba(76,25,77,.10)',
+  hairStrong: 'rgba(76,25,77,.18)',
+  danger: '#dc2626',
+  fontDisplay: '"Bricolage Grotesque", system-ui, sans-serif',
+  fontSerif: '"Instrument Serif", Georgia, serif',
+  fontBody: '"Space Grotesk", system-ui, sans-serif',
+  fontMono: 'ui-monospace, "SF Mono", Menlo, monospace',
+};
+
+/* The design's italic serif accent. */
+function Italic({ children, color = C.orange }: { children: ReactNode; color?: string }) {
+  return <span style={{ fontFamily: C.fontSerif, fontStyle: 'italic', fontWeight: 400, color }}>{children}</span>;
+}
+
+function Diamond({ size = 8, color = C.orange, style = {} }: { size?: number; color?: string; style?: CSSProperties }) {
+  return <span style={{ display: 'inline-block', width: size, height: size, background: color, transform: 'rotate(45deg)', ...style }} />;
+}
+
+/* Brand lockup (symbol + wordmark). Clickable — returns to home (onBack). */
+function Logo({ size = 28, symbolScale = 1.42, onClick }: { size?: number; symbolScale?: number; onClick?: () => void }) {
+  return (
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 9, cursor: onClick ? 'pointer' : 'default' }}
+    >
+      <img
+        src="/Wonderelo-logo-symbol.png"
+        alt=""
+        style={{ width: size * symbolScale, height: size * symbolScale, objectFit: 'contain', flexShrink: 0 }}
+      />
+      <div style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: size * 0.66, letterSpacing: '-0.025em', color: C.purpleDeep, lineHeight: 1 }}>
+        wonderelo
+      </div>
+    </div>
+  );
+}
+
+function ArrowRight({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+function CheckIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function XIcon({ size = 14, color = C.danger }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function Spinner({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <g stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+        <path d="M12 3a9 9 0 1 0 9 9" opacity="0.9" />
+        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" />
+      </g>
+    </svg>
+  );
+}
+
+/* Primary CTA button (extends the mock atom with onClick / disabled / loading). */
+function Btn({
+  children,
+  variant = 'primary',
+  size = 'lg',
+  full = false,
+  leadingIcon,
+  trailingIcon,
+  onClick,
+  disabled = false,
+  type = 'button',
+}: {
+  children: ReactNode;
+  variant?: 'primary' | 'ghost';
+  size?: 'md' | 'lg';
+  full?: boolean;
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: 'button' | 'submit';
+}) {
+  const base: CSSProperties = {
+    fontFamily: C.fontBody, fontWeight: 600,
+    border: '1px solid transparent', cursor: disabled ? 'not-allowed' : 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+    whiteSpace: 'nowrap', borderRadius: 12, width: full ? '100%' : undefined,
+    transition: 'transform .12s, box-shadow .12s, background .12s, opacity .12s',
+    opacity: disabled ? 0.5 : 1,
+  };
+  const sz: CSSProperties = size === 'md' ? { padding: '12px 18px', fontSize: 14.5 } : { padding: '15px 22px', fontSize: 16 };
+  const variants: Record<string, CSSProperties> = {
+    primary: { background: C.orange, color: '#fff', boxShadow: disabled ? 'none' : '0 6px 16px rgba(221,83,28,.30)' },
+    ghost: { background: 'transparent', color: C.purpleDeep, borderColor: C.hairStrong },
+  };
+  return (
+    <button type={type} onClick={onClick} disabled={disabled} style={{ ...base, ...sz, ...variants[variant] }}>
+      {leadingIcon}{children}{trailingIcon}
+    </button>
+  );
+}
+
+/* Wizard progress indicator (auth-screens.jsx `Steps`). */
+function Steps({ n, total, label }: { n: number; total: number; label: ReactNode }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: C.fontMono, letterSpacing: '.14em', color: C.purple, opacity: .8, textTransform: 'uppercase', marginBottom: 10 }}>
+        <span>Step {String(n).padStart(2, '0')} / {String(total).padStart(2, '0')}</span>
+        <span>{label}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {Array.from({ length: total }).map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 4, borderRadius: 4, background: i < n ? C.orange : 'rgba(76,25,77,.10)' }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* Card wrapper (auth-screens.jsx `DesktopCard`). */
+function DesktopCard({ width = 520, children, footer }: { width?: number; children: ReactNode; footer?: ReactNode }) {
+  return (
+    <div
+      style={{
+        width: '100%', maxWidth: width, background: C.paper,
+        fontFamily: C.fontBody, color: C.ink, padding: '40px 36px 32px',
+        borderRadius: 24, border: `1px solid ${C.hair}`,
+        boxShadow: '0 20px 40px rgba(76,25,77,.12)',
+        boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', gap: 24,
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      <Diamond size={9} style={{ position: 'absolute', top: 20, right: 24 }} />
+      <Diamond size={6} color={C.purple} style={{ position: 'absolute', top: 32, right: 40, opacity: .5 }} />
+      {children}
+      {footer && (
+        <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12, color: C.ink, opacity: .65, textAlign: 'center' }}>
+          {footer}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Card heading (title + serif accent + sub). */
+function Heading({ title, accent, sub }: { title: string; accent: ReactNode; sub: string }) {
+  return (
+    <div>
+      <h1 style={{ margin: '0 0 8px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.07, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+        {title} <Italic>{accent}</Italic>
+      </h1>
+      <p style={{ margin: 0, fontSize: 14.5, color: C.ink, opacity: .78, lineHeight: 1.5 }}>{sub}</p>
+    </div>
+  );
+}
+
+/* Small "← …" back / switch link (auth-screens.jsx `BackLink`). */
+function BackLink({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ fontSize: 12, fontFamily: C.fontMono, color: C.ink, opacity: .65, background: 'transparent', border: 'none', cursor: onClick ? 'pointer' : 'default', padding: 0 }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* Editable input field (auth-screens.jsx `Field`, wired to real state). */
+function Field({
+  label,
+  type = 'text',
+  value,
+  onChange,
+  placeholder,
+  hint,
+  error,
+  suffix,
+  password = false,
+  showPassword = false,
+  onTogglePassword,
+}: {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  hint?: ReactNode;
+  error?: ReactNode;
+  suffix?: ReactNode;
+  password?: boolean;
+  showPassword?: boolean;
+  onTogglePassword?: () => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const inputType = password ? (showPassword ? 'text' : 'password') : type;
+  const borderCol = error ? C.danger : focused ? C.orange : C.hairStrong;
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <span style={{ fontFamily: C.fontBody, fontSize: 12, fontWeight: 600, letterSpacing: '.06em', color: C.purpleDeep, textTransform: 'uppercase' }}>
+        {label}
+      </span>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '13px 16px', borderRadius: 12, background: '#fff',
+          border: `1.5px solid ${borderCol}`,
+          boxShadow: focused ? '0 0 0 3px rgba(221,83,28,.12)' : 'none',
+          transition: 'border-color .12s, box-shadow .12s',
+        }}
+      >
+        <input
+          type={inputType}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: C.fontBody, fontSize: 15, color: C.ink, minWidth: 0 }}
+        />
+        {suffix}
+        {password && (
+          <button
+            type="button"
+            onClick={onTogglePassword}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+          >
+            {showPassword ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeOpacity=".6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeOpacity=".6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
+          </button>
+        )}
+      </div>
+      {(hint || error) && (
+        <span style={{ fontSize: 12, color: error ? C.danger : C.ink, opacity: error ? 1 : .7, display: 'inline-flex', alignItems: 'center', gap: 5 }}>{error || hint}</span>
+      )}
+    </label>
+  );
+}
+
+/* Editable radio list (auth-screens.jsx `RadioList`, wired to real state). */
+function RadioList({ options, value, onChange }: { options: { value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <div
+            key={o.value}
+            role="radio"
+            aria-checked={on}
+            tabIndex={0}
+            onClick={() => onChange(o.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(o.value); } }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', borderRadius: 11, cursor: 'pointer',
+              border: `1.5px solid ${on ? C.orange : C.hairStrong}`,
+              background: on ? 'rgba(221,83,28,.06)' : '#fff',
+              transition: 'border-color .12s, background .12s',
+            }}
+          >
+            <span style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, border: `2px solid ${on ? C.orange : C.hairStrong}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              {on && <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.orange }} />}
+            </span>
+            <span style={{ fontSize: 14, color: on ? C.purpleDeep : C.ink, fontWeight: on ? 600 : 500 }}>{o.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Editable select (auth-screens.jsx `SelectField`, native <select> styled to match). */
+function SelectField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string }[];
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <span style={{ fontFamily: C.fontBody, fontSize: 12, fontWeight: 600, letterSpacing: '.06em', color: C.purpleDeep, textTransform: 'uppercase' }}>
+        {label}
+      </span>
+      <div
+        style={{
+          position: 'relative', display: 'flex', alignItems: 'center',
+          padding: '13px 16px', borderRadius: 12, background: '#fff',
+          border: `1.5px solid ${focused ? C.orange : C.hairStrong}`,
+          boxShadow: focused ? '0 0 0 3px rgba(221,83,28,.12)' : 'none',
+          transition: 'border-color .12s, box-shadow .12s',
+        }}
+      >
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            flex: 1, border: 'none', outline: 'none', background: 'transparent', appearance: 'none',
+            WebkitAppearance: 'none', MozAppearance: 'none',
+            fontFamily: C.fontBody, fontSize: 15, color: value ? C.ink : 'rgba(58,46,52,.5)',
+            cursor: 'pointer', paddingRight: 20,
+          }}
+        >
+          <option value="" disabled>{placeholder}</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeOpacity=".5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', right: 16, pointerEvents: 'none' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+    </label>
+  );
+}
+
 // ============================================================
 // Pure view component (shared with AdminPagePreview)
 // ============================================================
@@ -111,6 +484,13 @@ export interface SignUpFlowViewProps {
   onSwitchToSignIn?: () => void;
 }
 
+/* Per-step chrome, from the mock (OSAccount / OSDiscovery / OSOrg). */
+const STEP_META: Record<number, { stepsLabel: ReactNode; title: string; accent: ReactNode; sub: string }> = {
+  1: { stepsLabel: <>Create <Italic>your account</Italic></>, title: 'Get started', accent: 'for free.', sub: "Set up the login you'll use to run your events." },
+  2: { stepsLabel: <>A little <Italic>context</Italic></>, title: 'How did you', accent: 'hear about us?', sub: 'Helps us understand how organizers find Wonderelo.' },
+  3: { stepsLabel: <>About <Italic>your space</Italic></>, title: 'Tell us about', accent: 'your events.', sub: 'So we can tailor templates and defaults for you.' },
+};
+
 export function SignUpFlowView({
   currentStep,
   totalSteps,
@@ -127,8 +507,6 @@ export function SignUpFlowView({
   error,
   isLoading,
   isStepValid,
-  stepTitle,
-  stepDescription,
   onEmailChange,
   onPasswordChange,
   onOrganizerNameChange,
@@ -144,175 +522,150 @@ export function SignUpFlowView({
   onBack,
   onSwitchToSignIn,
 }: SignUpFlowViewProps) {
+  const meta = STEP_META[currentStep] ?? STEP_META[1];
+  const isLast = currentStep >= totalSteps;
+
+  // Email availability → the mock's suffix / hint slots.
+  const emailSuffix =
+    emailCheckStatus === 'available' ? (
+      <span style={{ color: C.purple, fontSize: 13, fontWeight: 600, fontFamily: C.fontMono, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <CheckIcon size={12} /> available
+      </span>
+    ) : undefined;
+  const emailHint = emailCheckStatus === 'checking' ? (
+    <><Spinner size={12} /> Checking availability…</>
+  ) : undefined;
+  const emailError = emailCheckStatus === 'taken' ? 'Email is already registered' : undefined;
+
+  const passwordHint = password && password.length < 6 ? 'Password must be at least 6 characters' : 'Minimum 6 characters.';
+
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h2 className="text-primary cursor-pointer" onClick={onBack}>Wonderelo</h2>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={onBack}>Back to home</Button>
-              {onSwitchToSignIn && (
-                <Button variant="outline" onClick={onSwitchToSignIn}>Sign in</Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div
+      className="wonderelo"
+      style={{
+        minHeight: '100vh', width: '100%', boxSizing: 'border-box',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '48px 20px', background: C.cream,
+        fontFamily: C.fontBody, color: C.ink, position: 'relative', overflow: 'hidden',
+      }}
+    >
+      {/* texture grain — same treatment as the homepage hero */}
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'radial-gradient(rgba(76,25,77,.6) 1px, transparent 1px)', backgroundSize: '4px 4px', pointerEvents: 'none' }} />
 
-      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <h1 className="mb-2">Sign up</h1>
-            <div className="flex justify-center space-x-2 mb-4">
-              {Array.from({ length: totalSteps }, (_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    i + 1 <= currentStep ? 'bg-primary' : 'bg-muted'
-                  }`}
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%' }}>
+        <DesktopCard width={520}>
+          {/* Top row — logo (→ home) + contextual back / switch link */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Logo symbolScale={1.42} onClick={onBack} />
+            {currentStep === 1
+              ? (onSwitchToSignIn && <BackLink onClick={onSwitchToSignIn}>← Already have an account?</BackLink>)
+              : <BackLink onClick={onPrev}>← Back</BackLink>}
+          </div>
+
+          <Steps n={currentStep} total={totalSteps} label={meta.stepsLabel} />
+          <Heading title={meta.title} accent={meta.accent} sub={meta.sub} />
+
+          {error && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(220,38,38,.08)', border: '1px solid rgba(220,38,38,.25)' }}>
+              <XIcon size={15} />
+              <span style={{ fontSize: 13, color: C.danger }}>{error}</span>
+            </div>
+          )}
+
+          {currentStep === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Field
+                label="Email address"
+                type="email"
+                value={email}
+                onChange={onEmailChange}
+                placeholder="your@email.com"
+                suffix={emailSuffix}
+                hint={emailHint}
+                error={emailError}
+              />
+              <Field
+                label="Password"
+                value={password}
+                onChange={onPasswordChange}
+                placeholder="Minimum 6 characters"
+                password
+                showPassword={showPassword}
+                onTogglePassword={onToggleShowPassword}
+                hint={passwordHint}
+              />
+              <Field
+                label="Your name"
+                value={organizerName}
+                onChange={onOrganizerNameChange}
+                placeholder="John Doe"
+              />
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <RadioList options={discoveryOptions} value={discoverySource} onChange={onDiscoverySourceChange} />
+          )}
+
+          {currentStep === 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <SelectField
+                label="What do you organise?"
+                value={eventType}
+                onChange={onEventTypeChange}
+                placeholder="Select event type"
+                options={eventTypeOptions}
+              />
+              {eventType === 'other' && (
+                <Field
+                  label="Describe your event type"
+                  value={eventTypeOther}
+                  onChange={onEventTypeOtherChange}
+                  placeholder="Please describe your event type"
                 />
-              ))}
+              )}
+              <SelectField
+                label="Company size"
+                value={companySize}
+                onChange={onCompanySizeChange}
+                placeholder="Select company size"
+                options={companySizeOptions}
+              />
+              <SelectField
+                label="Your role"
+                value={userRole}
+                onChange={onUserRoleChange}
+                placeholder="Select your role"
+                options={roleOptions}
+              />
             </div>
-            <p className="text-muted-foreground">Step {currentStep} of {totalSteps}</p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{stepTitle}</CardTitle>
-              <CardDescription>{stepDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {error && (
-                <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <X className="h-4 w-4 text-destructive" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email address</Label>
-                    <Input id="email" type="email" placeholder="your@email.com" value={email} onChange={(e) => onEmailChange(e.target.value)} />
-                    {email && (
-                      <div className="text-sm">
-                        {emailCheckStatus === 'checking' && (
-                          <p className="text-muted-foreground flex items-center">
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Checking availability...
-                          </p>
-                        )}
-                        {emailCheckStatus === 'available' && (
-                          <p className="text-green-600 flex items-center"><Check className="h-3 w-3 mr-1" /> Email is available</p>
-                        )}
-                        {emailCheckStatus === 'taken' && (
-                          <p className="text-destructive flex items-center"><X className="h-3 w-3 mr-1" /> Email is already registered</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <div className="relative">
-                      <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Minimum 6 characters" value={password} onChange={(e) => onPasswordChange(e.target.value)} />
-                      <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3" onClick={onToggleShowPassword}>
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    {password && password.length < 6 && (
-                      <p className="text-sm text-muted-foreground">Password must be at least 6 characters</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="organizerName">Your name</Label>
-                    <Input id="organizerName" type="text" placeholder="John Doe" value={organizerName} onChange={(e) => onOrganizerNameChange(e.target.value)} />
-                  </div>
-                </div>
-              )}
-
-              {currentStep === 2 && (
-                <div className="space-y-4">
-                  <RadioGroup value={discoverySource} onValueChange={onDiscoverySourceChange} className="space-y-2">
-                    {discoveryOptions.map((option) => (
-                      <div key={option.value} className="flex items-center space-x-3 rounded-lg border p-2 hover:bg-accent/50 transition-colors">
-                        <RadioGroupItem value={option.value} id={option.value} />
-                        <Label htmlFor={option.value} className="cursor-pointer flex-1">{option.label}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
-
-              {currentStep === 3 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="eventType">What best describes what you organise?</Label>
-                    <Select value={eventType} onValueChange={onEventTypeChange}>
-                      <SelectTrigger><SelectValue placeholder="Select event type" /></SelectTrigger>
-                      <SelectContent>
-                        {eventTypeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {eventType === 'other' && (
-                      <Input placeholder="Please describe your event type" value={eventTypeOther} onChange={(e) => onEventTypeOtherChange(e.target.value)} />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="companySize">Company size</Label>
-                    <Select value={companySize} onValueChange={onCompanySizeChange}>
-                      <SelectTrigger><SelectValue placeholder="Select company size" /></SelectTrigger>
-                      <SelectContent>
-                        {companySizeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="userRole">Your role</Label>
-                    <Select value={userRole} onValueChange={onUserRoleChange}>
-                      <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
-                      <SelectContent>
-                        {roleOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
-              <div className="h-20" />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
-        <div className="max-w-md mx-auto flex justify-between gap-3">
-          {currentStep > 1 ? (
-            <Button variant="outline" onClick={onPrev}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>
-          ) : (
-            <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-2" />Home</Button>
           )}
-          {currentStep < totalSteps ? (
-            <Button onClick={onNext} disabled={!isStepValid} className="flex-1">
-              Next <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
+
+          {isLast ? (
+            <Btn
+              variant="primary"
+              size="lg"
+              full
+              onClick={onSubmit}
+              disabled={!isStepValid || isLoading}
+              leadingIcon={isLoading ? <Spinner size={16} /> : undefined}
+              trailingIcon={isLoading ? undefined : <CheckIcon size={15} />}
+            >
+              {isLoading ? 'Creating account…' : 'Create account'}
+            </Btn>
           ) : (
-            <Button onClick={onSubmit} disabled={!isStepValid || isLoading} className="flex-1">
-              {isLoading ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating account...</>
-              ) : (
-                <>Create account<Check className="h-4 w-4 ml-2" /></>
-              )}
-            </Button>
+            <Btn
+              variant="primary"
+              size="lg"
+              full
+              onClick={onNext}
+              disabled={!isStepValid}
+              trailingIcon={<ArrowRight size={16} />}
+            >
+              Next
+            </Btn>
           )}
-        </div>
+        </DesktopCard>
       </div>
     </div>
   );
@@ -386,7 +739,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
 
   const updateFormData = (field: keyof SignUpData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Check URL slug availability when it changes
     if (field === 'urlSlug' && value.length >= 3) {
       checkSlugAvailability(value);
@@ -400,10 +753,10 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       if (emailTimeoutRef.current) {
         clearTimeout(emailTimeoutRef.current);
       }
-      
+
       // Reset status immediately
       setEmailCheckStatus('idle');
-      
+
       // Check if email format is valid
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (value && emailRegex.test(value)) {
@@ -446,7 +799,7 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     setEmailCheckStatus('checking');
     try {
       debugLog('Checking email availability:', email);
-      
+
       const response = await fetch(
         `${apiBaseUrl}/check-email/${encodeURIComponent(email)}`,
         {
@@ -601,270 +954,43 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
     };
   }, []);
 
+  // Keep the container's slug-check machinery referenced (verify handoff / draft).
+  void removeDiacritics;
+  void slugCheckStatus;
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h2 className="text-primary cursor-pointer" onClick={onBack}>Wonderelo</h2>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={onBack}>
-                Back to home
-              </Button>
-              {onSwitchToSignIn && (
-                <Button variant="outline" onClick={onSwitchToSignIn}>
-                  Sign in
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <h1 className="mb-2">
-              Sign up
-            </h1>
-            <div className="flex justify-center space-x-2 mb-4">
-              {Array.from({ length: totalSteps }, (_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    i + 1 <= currentStep ? 'bg-primary' : 'bg-muted'
-                  }`}
-                />
-              ))}
-            </div>
-            <p className="text-muted-foreground">
-              Step {currentStep} of {totalSteps}
-            </p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{getStepTitle()}</CardTitle>
-              <CardDescription>{getStepDescription()}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {error && (
-                <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <X className="h-4 w-4 text-destructive" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={formData.email}
-                      onChange={(e) => updateFormData('email', e.target.value)}
-                    />
-                    {formData.email && (
-                      <div className="text-sm">
-                        {emailCheckStatus === 'checking' && (
-                          <p className="text-muted-foreground flex items-center">
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            Checking availability...
-                          </p>
-                        )}
-                        {emailCheckStatus === 'available' && (
-                          <p className="text-green-600 flex items-center">
-                            <Check className="h-3 w-3 mr-1" />
-                            Email is available
-                          </p>
-                        )}
-                        {emailCheckStatus === 'taken' && (
-                          <p className="text-destructive flex items-center">
-                            <X className="h-3 w-3 mr-1" />
-                            Email is already registered
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Minimum 6 characters"
-                        value={formData.password}
-                        onChange={(e) => updateFormData('password', e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    {formData.password && formData.password.length < 6 && (
-                      <p className="text-sm text-muted-foreground">
-                        Password must be at least 6 characters
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="organizerName">Your name</Label>
-                    <Input
-                      id="organizerName"
-                      type="text"
-                      placeholder="John Doe"
-                      value={formData.organizerName}
-                      onChange={(e) => updateFormData('organizerName', e.target.value)}
-                    />
-                    {formData.organizerName && formData.organizerName.trim().length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Name is required
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {currentStep === 2 && (
-                <div className="space-y-4">
-                  <RadioGroup
-                    value={formData.discoverySource}
-                    onValueChange={(value) => updateFormData('discoverySource', value)}
-                    className="space-y-2"
-                  >
-                    {discoveryOptions.map((option) => (
-                      <div
-                        key={option.value}
-                        className="flex items-center space-x-3 rounded-lg border p-2 hover:bg-accent/50 transition-colors"
-                      >
-                        <RadioGroupItem value={option.value} id={option.value} />
-                        <Label htmlFor={option.value} className="cursor-pointer flex-1">
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
-
-              {currentStep === 3 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="eventType">What best describes what you organise?</Label>
-                    <Select value={formData.eventType} onValueChange={(value) => updateFormData('eventType', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select event type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {eventTypeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {formData.eventType === 'other' && (
-                      <Input
-                        placeholder="Please describe your event type"
-                        value={formData.eventTypeOther}
-                        onChange={(e) => updateFormData('eventTypeOther', e.target.value)}
-                      />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="companySize">Company size</Label>
-                    <Select value={formData.companySize} onValueChange={(value) => updateFormData('companySize', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select company size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companySizeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="userRole">Your role</Label>
-                    <Select value={formData.userRole} onValueChange={(value) => updateFormData('userRole', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roleOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
-              {/* Spacer for sticky bottom buttons */}
-              <div className="h-20" />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Sticky bottom buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 shadow-lg z-10">
-        <div className="max-w-md mx-auto flex justify-between gap-3">
-          {currentStep > 1 ? (
-            <Button variant="outline" onClick={prevStep}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          ) : (
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Home
-            </Button>
-          )}
-
-          {currentStep < totalSteps ? (
-            <Button onClick={nextStep} disabled={!isStepValid()} className="flex-1">
-              Next
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={!isStepValid() || isLoading} className="flex-1">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                <>
-                  Create account
-                  <Check className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
+    <SignUpFlowView
+      currentStep={currentStep}
+      totalSteps={totalSteps}
+      email={formData.email}
+      password={formData.password}
+      organizerName={formData.organizerName}
+      showPassword={showPassword}
+      emailCheckStatus={emailCheckStatus}
+      discoverySource={formData.discoverySource}
+      eventType={formData.eventType}
+      eventTypeOther={formData.eventTypeOther}
+      companySize={formData.companySize}
+      userRole={formData.userRole}
+      error={error}
+      isLoading={isLoading}
+      isStepValid={!!isStepValid()}
+      stepTitle={getStepTitle()}
+      stepDescription={getStepDescription()}
+      onEmailChange={(v) => updateFormData('email', v)}
+      onPasswordChange={(v) => updateFormData('password', v)}
+      onOrganizerNameChange={(v) => updateFormData('organizerName', v)}
+      onToggleShowPassword={() => setShowPassword(!showPassword)}
+      onDiscoverySourceChange={(v) => updateFormData('discoverySource', v)}
+      onEventTypeChange={(v) => updateFormData('eventType', v)}
+      onEventTypeOtherChange={(v) => updateFormData('eventTypeOther', v)}
+      onCompanySizeChange={(v) => updateFormData('companySize', v)}
+      onUserRoleChange={(v) => updateFormData('userRole', v)}
+      onNext={nextStep}
+      onPrev={prevStep}
+      onSubmit={handleSubmit}
+      onBack={onBack}
+      onSwitchToSignIn={onSwitchToSignIn}
+    />
   );
 }

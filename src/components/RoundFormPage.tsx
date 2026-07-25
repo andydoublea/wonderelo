@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { SessionForm } from './SessionForm';
 import { debugLog } from '../utils/debug';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { C, PageShell, PageHead, Italic } from './redesign/organizerAtoms';
 import { NetworkingSession } from '../App';
 
 // ============================================================
@@ -32,27 +32,26 @@ export function RoundFormPageView({
   onSave,
   onCancel,
 }: RoundFormPageViewProps) {
+  const eyebrow = isEditing ? 'Edit round' : isDuplicating ? 'Duplicate round' : 'New round';
+  const titleVerb = isEditing ? 'Edit' : isDuplicating ? 'Duplicate' : 'Create';
+  // `.wonderelo` marks the redesigned brand surface. No OrgNav here: the route
+  // (AppRouter → RoundFormPageRoute) already renders AuthenticatedNav + Footer,
+  // so PageShell runs with nav={false} footer={false} to avoid a double chrome.
   return (
-    <div className="container mx-auto p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {isEditing ? 'Edit networking round' : isDuplicating ? 'Duplicate networking round' : 'Create new networking round'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SessionForm
-            initialData={initialData}
-            onSubmit={onSave}
-            onCancel={onCancel}
-            userEmail={userEmail}
-            organizerName={organizerName}
-            profileImageUrl={profileImageUrl}
-            userSlug={userSlug}
-            isDuplicate={isDuplicating}
-          />
-        </CardContent>
-      </Card>
+    <div className="wonderelo">
+      <PageShell nav={false} footer={false} bg={C.paper}>
+        <PageHead eyebrow={eyebrow} title={<>{titleVerb} a <Italic>round</Italic></>} />
+        <SessionForm
+          initialData={initialData}
+          onSubmit={onSave}
+          onCancel={onCancel}
+          userEmail={userEmail}
+          organizerName={organizerName}
+          profileImageUrl={profileImageUrl}
+          userSlug={userSlug}
+          isDuplicate={isDuplicating}
+        />
+      </PageShell>
     </div>
   );
 }
@@ -149,12 +148,10 @@ export function RoundFormPage({
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Loading...</CardTitle>
-          </CardHeader>
-        </Card>
+      <div className="wonderelo">
+        <PageShell nav={false} footer={false} bg={C.paper}>
+          <p style={{ fontFamily: C.fontBody, fontSize: 15, color: C.ink, opacity: .7, padding: '40px 0' }}>Loading…</p>
+        </PageShell>
       </div>
     );
   }

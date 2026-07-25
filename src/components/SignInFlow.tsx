@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -63,6 +64,171 @@ export interface SignInFlowViewProps {
   isFormValid: boolean;
 }
 
+// ────────────────────────────────────────────────────────────────
+// Brand palette + inline atoms — ported 1:1 from the Claude Design v06
+// mock (`design/v06/project/pages/auth-screens.jsx` / `participant-screens.jsx`).
+// Kept inline here (like Homepage.tsx) rather than a shared module.
+// ────────────────────────────────────────────────────────────────
+const C = {
+  purple: '#5C2277',
+  purpleDeep: '#4b1d51',
+  orange: '#dd531c',
+  orangeBright: '#ff6a2a',
+  cream: '#f7f1e6',
+  paper: '#fbf6ec',
+  ink: '#3a2e34',
+  hair: 'rgba(76,25,77,.10)',
+  hairStrong: 'rgba(76,25,77,.18)',
+  fontDisplay: '"Bricolage Grotesque", system-ui, sans-serif',
+  fontSerif: '"Instrument Serif", Georgia, serif',
+  fontBody: '"Space Grotesk", system-ui, sans-serif',
+  fontMono: 'ui-monospace, "SF Mono", Menlo, monospace',
+};
+
+const footerLinkStyle: CSSProperties = {
+  background: 'transparent', border: 'none', padding: 0,
+  fontFamily: C.fontBody, fontSize: 12.5, color: C.purpleDeep, fontWeight: 600, cursor: 'pointer',
+};
+
+/* The design's italic serif accent (kept as an inline serif accent per brief). */
+function Italic({ children, color = C.orange }: { children: ReactNode; color?: string }) {
+  return <span style={{ fontFamily: C.fontSerif, fontStyle: 'italic', fontWeight: 400, color }}>{children}</span>;
+}
+
+function Diamond({ size = 8, color = C.orange, style }: { size?: number; color?: string; style?: CSSProperties }) {
+  return <span style={{ display: 'inline-block', width: size, height: size, background: color, transform: 'rotate(45deg)', ...style }} />;
+}
+
+function Eyebrow({ children, color = C.orange }: { children: ReactNode; color?: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color, fontSize: 10, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase', fontFamily: C.fontBody }}>
+      <span style={{ width: 18, height: 1, background: color }} />
+      {children}
+    </span>
+  );
+}
+
+/* Brand lockup — clickable (→ back to home) like the Homepage nav lockup. */
+function Logo({ onClick }: { onClick?: () => void }) {
+  return (
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 9, cursor: onClick ? 'pointer' : 'default' }}
+    >
+      <img src="/Wonderelo-logo-symbol.png" alt="" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
+      <div style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 19, letterSpacing: '-0.025em', color: C.purpleDeep, lineHeight: 1 }}>wonderelo</div>
+    </div>
+  );
+}
+
+function MailMini() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 5L2 7" />
+    </svg>
+  );
+}
+
+function ArrowRightIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+/* Primary CTA (mock `Btn`, size lg) — wired for real disabled/loading states. */
+function Btn({
+  children, variant = 'primary', full = false, leadingIcon, trailingIcon,
+  loading = false, disabled = false, type = 'button', onClick, style,
+}: {
+  children: ReactNode;
+  variant?: 'primary' | 'ghost';
+  full?: boolean;
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
+  loading?: boolean;
+  disabled?: boolean;
+  type?: 'button' | 'submit';
+  onClick?: (e: React.MouseEvent) => void;
+  style?: CSSProperties;
+}) {
+  const variants: Record<string, CSSProperties> = {
+    primary: { background: C.orange, color: '#fff', boxShadow: '0 6px 16px rgba(221,83,28,.30)' },
+    ghost: { background: 'transparent', color: C.purpleDeep, borderColor: C.hairStrong },
+  };
+  const isDisabled = disabled || loading;
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={isDisabled}
+      style={{
+        fontFamily: C.fontBody, fontWeight: 600, border: '1px solid transparent',
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+        whiteSpace: 'nowrap', borderRadius: 12, width: full ? '100%' : undefined,
+        padding: '15px 22px', fontSize: 16, opacity: isDisabled ? 0.6 : 1,
+        transition: 'transform .12s, box-shadow .12s, background .12s, opacity .12s',
+        ...variants[variant], ...style,
+      }}
+    >
+      {loading ? <Loader2 size={16} className="animate-spin" /> : leadingIcon}
+      {children}
+      {!loading && trailingIcon}
+    </button>
+  );
+}
+
+/* Input field (mock `Field`) — controlled, with its own focus-ring state. */
+function Field({
+  label, headerRight, type = 'text', value, placeholder, onChange, disabled, trailing, id, autoComplete,
+}: {
+  label: string;
+  headerRight?: ReactNode;
+  type?: string;
+  value: string;
+  placeholder?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
+  trailing?: ReactNode;
+  id?: string;
+  autoComplete?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <label htmlFor={id} style={{ fontFamily: C.fontBody, fontSize: 12, fontWeight: 600, letterSpacing: '.06em', color: C.purpleDeep, textTransform: 'uppercase' }}>{label}</label>
+        {headerRight}
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 12,
+        background: '#fff', border: `1.5px solid ${focused ? C.orange : C.hairStrong}`,
+        boxShadow: focused ? '0 0 0 3px rgba(221,83,28,.12)' : 'none',
+        transition: 'border-color .12s, box-shadow .12s',
+      }}>
+        <input
+          id={id}
+          type={type}
+          value={value}
+          placeholder={placeholder}
+          onChange={onChange}
+          disabled={disabled}
+          autoComplete={autoComplete}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: C.fontBody, fontSize: 15, color: C.ink, minWidth: 0 }}
+        />
+        {trailing}
+      </div>
+    </div>
+  );
+}
+
 export function SignInFlowView({
   activeTab,
   onTabChange,
@@ -85,193 +251,160 @@ export function SignInFlowView({
   onSwitchToSignUp,
   isFormValid,
 }: SignInFlowViewProps) {
+  const isParticipant = activeTab === 'participant';
+
+  const tabBtn = (key: 'participant' | 'organizer', label: string) => {
+    const on = activeTab === key;
+    return (
+      <button
+        type="button"
+        onClick={() => onTabChange(key)}
+        style={{
+          flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none',
+          background: on ? '#fff' : 'transparent',
+          color: on ? C.purpleDeep : C.ink, opacity: on ? 1 : 0.7,
+          fontFamily: C.fontBody, fontWeight: on ? 700 : 600, fontSize: 13.5,
+          boxShadow: on ? '0 1px 3px rgba(0,0,0,.06)' : 'none', cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          transition: 'background .12s, color .12s',
+        }}
+      >
+        {on && <Diamond size={6} color={C.orange} />}{label}
+      </button>
+    );
+  };
+
+  const errorBanner = (msg: string) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(220,38,38,.07)', border: '1px solid rgba(220,38,38,.25)' }}>
+      <X size={16} style={{ color: '#dc2626', flexShrink: 0 }} />
+      <span style={{ fontSize: 13, color: '#dc2626' }}>{msg}</span>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b border-border">
-        <div className="container mx-auto max-w-6xl px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h2 className="text-primary wonderelo-logo cursor-pointer" onClick={onBack}>Wonderelo</h2>
+    <div className="wonderelo">
+      <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 20px', fontFamily: C.fontBody, boxSizing: 'border-box' }}>
+        <div style={{ width: '100%', maxWidth: 480 }}>
+          {/* DesktopCard (mock) */}
+          <div style={{
+            background: C.paper, color: C.ink, padding: '40px 36px 32px',
+            borderRadius: 24, border: `1px solid ${C.hair}`, boxShadow: '0 20px 40px rgba(76,25,77,.12)',
+            display: 'flex', flexDirection: 'column', gap: 24, position: 'relative', overflow: 'hidden', boxSizing: 'border-box',
+          }}>
+            {/* corner diamonds */}
+            <Diamond size={9} style={{ position: 'absolute', top: 20, right: 24 }} />
+            <Diamond size={6} color={C.purple} style={{ position: 'absolute', top: 32, right: 40, opacity: 0.5 }} />
+
+            {/* Top row — brand lockup (click → back to home) */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Logo onClick={onBack} />
             </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={onBack}>Back to home</Button>
-              <Button onClick={onSwitchToSignUp}>Sign up</Button>
-            </div>
-          </div>
-        </div>
-      </nav>
 
-      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-73px)]">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <h1 className="mb-2">Sign in</h1>
-            <p className="text-muted-foreground">Access your networking rounds</p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Sign in as</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} className="w-full" onValueChange={(value) => onTabChange(value as 'participant' | 'organizer')}>
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="participant" className="gap-2">
-                    <UserCircle className="h-4 w-4" />
-                    Participant
-                  </TabsTrigger>
-                  <TabsTrigger value="organizer" className="gap-2">
-                    <Mic className="h-4 w-4" />
-                    Organizer
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="participant" className="space-y-6">
-                  <form onSubmit={onParticipantSubmit} className="space-y-6">
-                    {participantError && (
-                      <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <X className="h-4 w-4 text-destructive" />
-                        <p className="text-sm text-destructive">{participantError}</p>
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <Label htmlFor="participantEmail">Email address</Label>
-                      <Input
-                        id="participantEmail"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={participantEmail}
-                        onChange={(e) => onParticipantEmailChange(e.target.value)}
-                        disabled={participantLoading}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        We'll send you a magic link to access your rounds
-                      </p>
-                    </div>
-                    <div className="flex justify-between pt-4">
-                      <Button type="button" variant="outline" onClick={onBack} disabled={participantLoading}>
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back
-                      </Button>
-                      <Button type="submit" disabled={!participantEmail || participantLoading}>
-                        {participantLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Sending link...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send magic link
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="organizer" className="space-y-6">
-                  <form onSubmit={onSubmit} className="space-y-6">
-                    {error && (
-                      <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <X className="h-4 w-4 text-destructive" />
-                        <p className="text-sm text-destructive">{error}</p>
-                      </div>
-                    )}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="your@email.com"
-                          value={email}
-                          onChange={(e) => onEmailChange(e.target.value)}
-                          disabled={isLoading}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="password">Password</Label>
-                          <Button
-                            variant="link"
-                            className="p-0 h-auto text-sm font-normal text-primary"
-                            onClick={onForgotPassword}
-                            disabled={isLoading}
-                            type="button"
-                          >
-                            Forgot password?
-                          </Button>
-                        </div>
-                        <div className="relative">
-                          <Input
-                            id="password"
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(e) => onPasswordChange(e.target.value)}
-                            disabled={isLoading}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3"
-                            onClick={onToggleShowPassword}
-                            disabled={isLoading}
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between pt-4">
-                      <Button type="button" variant="outline" onClick={onBack} disabled={isLoading}>
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back
-                      </Button>
-                      <Button type="submit" disabled={!isFormValid || isLoading}>
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Signing in...
-                          </>
-                        ) : (
-                          'Sign in'
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <div className="text-center mt-6">
-            {activeTab === 'participant' ? (
-              <p className="text-sm text-muted-foreground">
-                Are you an organizer?{' '}
-                <Button
-                  variant="link"
-                  className="p-0 h-auto font-normal text-primary"
-                  onClick={() => onTabChange('organizer')}
-                  disabled={isLoading || participantLoading}
-                >
-                  Sign in here
-                </Button>
+            {/* Heading */}
+            <div>
+              <Eyebrow>Welcome back</Eyebrow>
+              <h1 style={{ margin: '12px 0 8px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.07, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+                Sign in to <Italic>Wonderelo.</Italic>
+              </h1>
+              <p style={{ margin: 0, fontSize: 14.5, color: C.ink, opacity: 0.78, lineHeight: 1.5 }}>
+                {isParticipant ? 'Two ways in — pick the one that fits.' : 'Manage your events and rounds.'}
               </p>
+            </div>
+
+            {/* Segmented Participant / Organizer control */}
+            <div style={{ display: 'flex', gap: 4, padding: 4, background: 'rgba(76,25,77,.06)', borderRadius: 12 }}>
+              {tabBtn('participant', 'Participant')}
+              {tabBtn('organizer', 'Organizer')}
+            </div>
+
+            {isParticipant ? (
+              <form onSubmit={onParticipantSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {participantError && errorBanner(participantError)}
+                <Field
+                  id="participantEmail"
+                  label="Email address"
+                  type="email"
+                  placeholder="you@email.com"
+                  autoComplete="email"
+                  value={participantEmail}
+                  onChange={(e) => onParticipantEmailChange(e.target.value)}
+                  disabled={participantLoading}
+                />
+                <Btn type="submit" variant="primary" full loading={participantLoading} disabled={!participantEmail} leadingIcon={<MailMini />}>
+                  {participantLoading ? 'Sending link…' : 'Email me a magic link'}
+                </Btn>
+                <p style={{ margin: 0, fontSize: 12.5, color: C.ink, opacity: 0.65, textAlign: 'center', lineHeight: 1.5 }}>
+                  No password needed. We email you a link that signs you straight in.
+                </p>
+              </form>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Need to create an organizer account?{' '}
-                <Button
-                  variant="link"
-                  className="p-0 h-auto font-normal text-primary"
-                  onClick={onSwitchToSignUp}
-                  disabled={isLoading || participantLoading}
-                >
-                  Sign up for free
-                </Button>
-              </p>
+              <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {error && errorBanner(error)}
+                <Field
+                  id="email"
+                  label="Email address"
+                  type="email"
+                  placeholder="you@event.com"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => onEmailChange(e.target.value)}
+                  disabled={isLoading}
+                />
+                <Field
+                  id="password"
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => onPasswordChange(e.target.value)}
+                  disabled={isLoading}
+                  headerRight={
+                    <button
+                      type="button"
+                      onClick={onForgotPassword}
+                      disabled={isLoading}
+                      style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
+                    >
+                      Forgot password?
+                    </button>
+                  }
+                  trailing={
+                    <button
+                      type="button"
+                      onClick={onToggleShowPassword}
+                      disabled={isLoading}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      style={{ background: 'transparent', border: 'none', padding: 0, display: 'inline-flex', cursor: isLoading ? 'default' : 'pointer', color: C.ink }}
+                    >
+                      {showPassword ? <EyeOff size={18} style={{ opacity: 0.6 }} /> : <Eye size={18} style={{ opacity: 0.6 }} />}
+                    </button>
+                  }
+                />
+                <Btn type="submit" variant="primary" full loading={isLoading} disabled={!isFormValid} trailingIcon={<ArrowRightIcon size={16} />}>
+                  {isLoading ? 'Signing in…' : 'Sign in'}
+                </Btn>
+              </form>
             )}
+
+            {/* Footer */}
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
+              {isParticipant ? (
+                <>
+                  Are you an organizer?{' '}
+                  <button type="button" onClick={() => onTabChange('organizer')} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+                    Sign in here →
+                  </button>
+                </>
+              ) : (
+                <>
+                  Need an account?{' '}
+                  <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+                    Sign up for free →
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

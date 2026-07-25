@@ -1,12 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Save, Loader2 } from 'lucide-react';
-import { Skeleton } from './ui/skeleton';
+import { useState, useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
+import { C, PageShell, PageHead, Italic } from './redesign/organizerAtoms';
 
 interface AccountSettingsProps {
   accessToken: string;
@@ -45,6 +40,91 @@ export interface AccountSettingsViewProps {
   onEmailChange: () => void;
 }
 
+// ============================================================
+// Redesigned field atoms
+// Ported from design/v06/project/pages/screen-account-billing.jsx
+// (AccountSettingsScreen). Defined at module scope so controlled
+// inputs keep focus across re-renders.
+// ============================================================
+
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <span style={{ display: 'block', fontFamily: C.fontBody, fontSize: 11.5, fontWeight: 700, letterSpacing: '.08em', color: C.purpleDeep, textTransform: 'uppercase', marginBottom: 8 }}>
+      {children}
+    </span>
+  );
+}
+
+function Hint({ children }: { children: ReactNode }) {
+  return <p style={{ margin: '7px 0 0', fontSize: 11.5, color: C.ink, opacity: .6 }}>{children}</p>;
+}
+
+function LinkBtn({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      display: 'block', marginTop: 8, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer',
+      fontFamily: C.fontBody, fontSize: 12.5, fontWeight: 600, color: C.orange,
+    }}>{children}</button>
+  );
+}
+
+function ActionBtn({ children, outline, onClick, disabled }: { children: ReactNode; outline?: boolean; onClick?: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} style={{
+      fontFamily: C.fontBody, fontSize: 13, fontWeight: 600, cursor: disabled ? 'default' : 'pointer', padding: '9px 16px', borderRadius: 10,
+      background: 'transparent',
+      color: C.purpleDeep,
+      border: outline ? `1.5px solid ${C.hairStrong}` : '1px solid transparent',
+      opacity: disabled ? .55 : (outline ? 1 : .8),
+    }}>{children}</button>
+  );
+}
+
+function InlineForm({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ maxWidth: 380, marginTop: 16, padding: 18, borderRadius: 12, background: 'rgba(76,25,77,.04)', border: `1px solid ${C.hair}`, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {children}
+    </div>
+  );
+}
+
+// Controlled input styled to match the mock's <Field>. Focus state is real
+// (drives the orange ring), unlike the static `focused` prop in the mock.
+function TextField({ value, onChange, placeholder, type = 'text', disabled = false }: {
+  value?: string;
+  onChange?: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  disabled?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  const active = focused && !disabled;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11,
+      background: disabled ? C.cream : '#fff',
+      border: `1.5px solid ${active ? C.orange : C.hairStrong}`,
+      boxShadow: active ? '0 0 0 3px rgba(221,83,28,.10)' : 'none',
+      transition: 'border-color .15s, box-shadow .15s',
+    }}>
+      <input
+        type={type}
+        value={value}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        readOnly={!onChange}
+        disabled={disabled}
+        placeholder={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          flex: 1, border: 'none', outline: 'none', background: 'transparent',
+          fontFamily: C.fontBody, fontSize: 14, color: disabled ? 'rgba(58,46,52,.55)' : C.ink, minWidth: 0,
+        }}
+      />
+    </div>
+  );
+}
+
 export function AccountSettingsView({
   userEmail,
   organizerName,
@@ -70,171 +150,113 @@ export function AccountSettingsView({
   onPasswordChange,
   onEmailChange,
 }: AccountSettingsViewProps) {
+  // View-local toggle for the collapsible change-password form (matches the
+  // mock). Email uses the prop-driven showEmailChangeForm toggle from the parent.
+  const [showPass, setShowPass] = useState(false);
+
   return (
-    <div className="flex-1">
-      <div className="container mx-auto p-6 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="mb-2">Account settings</h1>
-        </div>
+    // nav={false}: the route (AccountSettingsRoute) and AdminPagePreview already
+    // render their own top nav — a second OrgNav here would double the chrome.
+    <div className="wonderelo">
+      <PageShell nav={false} navActive="Account">
+        <PageHead eyebrow="Your account" title={<>Account <Italic>settings</Italic></>} />
 
-        {isLoading ? (
-          <div className="space-y-6">
-            <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div></CardContent></Card>
-            <Card><CardHeader><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-10 w-full" /></CardContent></Card>
-          </div>
-        ) : (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Account information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="organizerName">Your name</Label>
-                <div className="max-w-sm">
-                  <Input
-                    id="organizerName"
-                    value={organizerName}
-                    onChange={(e) => onOrganizerNameChange(e.target.value)}
-                    placeholder="John Doe"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
+        <div style={{ maxWidth: 760 }}>
+          <section style={{ background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, padding: 28 }}>
+            <h3 style={{ margin: '0 0 24px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 19, color: C.purpleDeep, letterSpacing: '-0.02em' }}>Account information</h3>
 
-              <div>
-                <Label>Email</Label>
-                <div className="max-w-sm">
-                  <Input value={userEmail} disabled className="mt-2 bg-muted" />
-                </div>
-                <button
-                  type="button"
-                  onClick={onToggleEmailChangeForm}
-                  className="text-xs text-primary hover:underline mt-1 block"
-                >
-                  {showEmailChangeForm ? 'Cancel' : 'Change email'}
-                </button>
-
-                {showEmailChangeForm && (
-                  <div className="mt-4 p-4 border rounded-lg bg-muted/30 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      For security, we'll send a verification email to your new address and notify your current email
-                    </p>
-                    <div>
-                      <Label htmlFor="newEmail">New email</Label>
-                      <Input
-                        id="newEmail"
-                        type="email"
-                        value={newEmail}
-                        onChange={(e) => onNewEmailChange(e.target.value)}
-                        placeholder="Enter new email"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="emailChangePassword">Current password</Label>
-                      <Input
-                        id="emailChangePassword"
-                        type="password"
-                        value={emailChangePassword}
-                        onChange={(e) => onEmailChangePasswordChange(e.target.value)}
-                        placeholder="Enter current password"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button onClick={onEmailChange} disabled={isChangingEmail} variant="outline" size="sm">
-                        {isChangingEmail ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing...</>
-                        ) : (
-                          'Change email'
-                        )}
-                      </Button>
-                      <Button onClick={onCancelEmailChange} variant="ghost" size="sm">
-                        Cancel
-                      </Button>
-                    </div>
+            {isLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                {[0, 1].map((i) => (
+                  <div key={i} style={{ maxWidth: 380 }}>
+                    <div style={{ width: 120, height: 11, borderRadius: 6, background: C.hair, marginBottom: 10 }} />
+                    <div style={{ height: 44, borderRadius: 11, background: C.hair }} />
                   </div>
-                )}
+                ))}
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Change password</CardTitle>
-              <CardDescription>Update your password to keep your account secure</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="currentPassword">Current password</Label>
-                <div className="max-w-sm">
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => onCurrentPasswordChange(e.target.value)}
-                    placeholder="Enter current password"
-                    className="mt-2"
-                  />
+                {/* Your name */}
+                <div style={{ maxWidth: 380 }}>
+                  <FieldLabel>Your name</FieldLabel>
+                  <TextField value={organizerName} onChange={onOrganizerNameChange} placeholder="John Doe" />
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="newPassword">New password</Label>
-                <div className="max-w-sm">
-                  <Input
-                    id="newPassword"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => onNewPasswordChange(e.target.value)}
-                    placeholder="Enter new password"
-                    className="mt-2"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">At least 6 characters</p>
-              </div>
+                {/* Email — disabled, with collapsible change form (prop-driven toggle) */}
+                <div>
+                  <div style={{ maxWidth: 380 }}>
+                    <FieldLabel>Email</FieldLabel>
+                    <TextField value={userEmail} disabled />
+                  </div>
+                  <LinkBtn onClick={onToggleEmailChangeForm}>{showEmailChangeForm ? 'Cancel' : 'Change email'}</LinkBtn>
 
-              <div>
-                <Label htmlFor="confirmPassword">Confirm new password</Label>
-                <div className="max-w-sm">
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => onConfirmPasswordChange(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="mt-2"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Button onClick={onPasswordChange} disabled={isChangingPassword} variant="outline" className="w-full sm:w-auto">
-                  {isChangingPassword ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing password...</>
-                  ) : (
-                    'Change password'
+                  {showEmailChangeForm && (
+                    <InlineForm>
+                      <p style={{ margin: 0, fontSize: 13, color: C.ink, opacity: .7, lineHeight: 1.5 }}>
+                        For security, we'll send a verification email to your new address and notify your current email
+                      </p>
+                      <div>
+                        <FieldLabel>New email</FieldLabel>
+                        <TextField type="email" value={newEmail} onChange={onNewEmailChange} placeholder="Enter new email" />
+                      </div>
+                      <div>
+                        <FieldLabel>Current password</FieldLabel>
+                        <TextField type="password" value={emailChangePassword} onChange={onEmailChangePasswordChange} placeholder="Enter current password" />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <ActionBtn outline onClick={onEmailChange} disabled={isChangingEmail}>{isChangingEmail ? 'Changing…' : 'Change email'}</ActionBtn>
+                        <ActionBtn onClick={onCancelEmailChange}>Cancel</ActionBtn>
+                      </div>
+                    </InlineForm>
                   )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                </div>
 
-          <div className="flex justify-end">
-            <Button onClick={onSave} disabled={isSaving} className="w-full sm:w-auto">
-              {isSaving ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
-              ) : (
-                <><Save className="h-4 w-4 mr-2" />Save changes</>
-              )}
-            </Button>
-          </div>
+                {/* Password — masked, with collapsible change form (view-local toggle) */}
+                <div>
+                  <div style={{ maxWidth: 380 }}>
+                    <FieldLabel>Password</FieldLabel>
+                    <TextField value="••••••••" disabled />
+                  </div>
+                  <LinkBtn onClick={() => setShowPass((v) => !v)}>{showPass ? 'Cancel' : 'Change password'}</LinkBtn>
+
+                  {showPass && (
+                    <InlineForm>
+                      <div>
+                        <FieldLabel>Current password</FieldLabel>
+                        <TextField type="password" value={currentPassword} onChange={onCurrentPasswordChange} placeholder="Enter current password" />
+                      </div>
+                      <div>
+                        <FieldLabel>New password</FieldLabel>
+                        <TextField type="password" value={newPassword} onChange={onNewPasswordChange} placeholder="Enter new password" />
+                        <Hint>At least 6 characters</Hint>
+                      </div>
+                      <div>
+                        <FieldLabel>Confirm new password</FieldLabel>
+                        <TextField type="password" value={confirmPassword} onChange={onConfirmPasswordChange} placeholder="Confirm new password" />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <ActionBtn outline onClick={onPasswordChange} disabled={isChangingPassword}>{isChangingPassword ? 'Changing…' : 'Change password'}</ActionBtn>
+                        <ActionBtn onClick={() => setShowPass(false)}>Cancel</ActionBtn>
+                      </div>
+                    </InlineForm>
+                  )}
+                </div>
+
+                {/* Save (persists the organizer name via onSave — preserves original logic) */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+                  <button type="button" onClick={onSave} disabled={isSaving} style={{
+                    fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, cursor: isSaving ? 'default' : 'pointer',
+                    padding: '11px 20px', borderRadius: 12, border: '1px solid transparent',
+                    background: C.orange, color: '#fff', boxShadow: '0 6px 16px rgba(221,83,28,.25)', opacity: isSaving ? .7 : 1,
+                  }}>{isSaving ? 'Saving…' : 'Save changes'}</button>
+                </div>
+
+              </div>
+            )}
+          </section>
         </div>
-        )}
-      </div>
+      </PageShell>
     </div>
   );
 }
