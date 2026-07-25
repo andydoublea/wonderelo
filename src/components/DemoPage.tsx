@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { EventPromoPage } from './EventPromoPage';
 import { UserPublicPage } from './UserPublicPage';
-import { Footer } from './Footer';
+import { PublicFooter } from './redesign/PublicFooter';
 import { Eye, Loader2, Monitor, Smartphone, ArrowLeft, ArrowRight, ArrowDown } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { NetworkingSession } from '../App';
@@ -159,7 +159,7 @@ export function DemoPage() {
         )}
       </div>
 
-      <Footer />
+      <PublicFooter />
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { NetworkingSession } from '../App';
+import { C } from './redesign/organizerAtoms';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -385,42 +386,100 @@ export function SessionDisplayCard({
 
   // Admin mode layout (dashboard)
   if (adminMode) {
+    // Status pill palette + top-strip colour — ported 1:1 from the v06 RoundCard mock.
+    const STATUS_STYLE: Record<string, { label: string; fg: string; bg: string; bd: string }> = {
+      published: { label: 'Published', fg: C.orange,  bg: 'rgba(221,83,28,.10)',   bd: 'rgba(221,83,28,.30)' },
+      scheduled: { label: 'Scheduled', fg: C.purple,  bg: 'rgba(92,34,119,.10)',   bd: 'rgba(92,34,119,.28)' },
+      draft:     { label: 'Draft',     fg: '#9a8478', bg: 'rgba(154,132,120,.14)', bd: 'rgba(154,132,120,.34)' },
+      completed: { label: 'Completed', fg: '#1f8a4d', bg: 'rgba(31,138,77,.10)',   bd: 'rgba(31,138,77,.28)' },
+    };
+    const st = STATUS_STYLE[session.status] || STATUS_STYLE.draft;
+
+    const CIcon = ({ d, size = 14, sw = 2 }: { d: string; size?: number; sw?: number }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: d }} />
+    );
+    const ICON = {
+      cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+      users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+      arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+    };
+    const CMeta = ({ icon, children }: { icon: string; children?: ReactNode }) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.ink, opacity: .8, fontFamily: C.fontBody }}>
+        <span style={{ color: 'rgba(75,29,81,.45)', display: 'inline-flex' }}><CIcon d={icon} size={14} /></span>{children}
+      </div>
+    );
+
+    // ── Card meta strings — mock shows date / "HH:MM · N rounds" / meeting point ──
+    const rawDate = session.date || session.rounds?.[0]?.date || '';
+    const dateStr = (() => {
+      if (!rawDate) return 'Date to be set';
+      const p = new Date(rawDate);
+      if (isNaN(p.getTime())) return 'Date to be set';
+      const wd = p.toLocaleDateString('en-US', { weekday: 'short' });
+      const mon = p.toLocaleDateString('en-US', { month: 'short' });
+      return `${wd} ${p.getDate()} ${mon} ${p.getFullYear()}`;
+    })();
+    const startStr = session.startTime || session.rounds?.[0]?.startTime || '';
+    const roundCount = session.rounds?.length || session.numberOfRounds || 0;
+    const roundsLabel = roundCount === 1 ? '1 round' : `${roundCount} rounds`;
+    const timeStr = startStr ? `${startStr} · ${roundsLabel}` : (roundCount ? roundsLabel : 'Time to be set');
+    const points = session.meetingPoints || [];
+    const fp: any = points[0];
+    const firstPoint = fp ? (typeof fp === 'string' ? fp : fp.name) : '';
+    const pointStr = firstPoint ? (points.length > 1 ? `${firstPoint} +${points.length - 1}` : firstPoint) : 'Not set';
+
+    // Registered count — mirror the dashboard list view (session.participants) with a
+    // rounds.registeredCount fallback so the number is never under-reported.
+    const partLen = (session as unknown as { participants?: unknown[] }).participants?.length || 0;
+    const roundReg = session.rounds?.reduce((s, r) => s + (r.registeredCount || 0), 0) || 0;
+    const registeredCount = Math.max(partLen, roundReg);
+
+    // Primary footer action — Manage (report) for live/finished rounds, else Edit.
+    const showManage = !hideReportButton && (session.status === 'published' || session.status === 'completed') && !!onManage;
+    const showEditPrimary = !showManage && session.status !== 'completed' && !!onEdit;
+
+    debugLog('🎯 DASHBOARD RoundCard (redesign):', { registeredCount, status: session.status });
+
     return (
       <>
-        <Card 
+        <div
           className={isHighlighted ? 'animate-highlight-fade' : ''}
+          style={{ overflow: 'hidden', background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, boxShadow: '0 10px 26px rgba(75,29,81,.06)' }}
         >
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between">
-              <CardTitle className="text-lg leading-tight">{session.name}</CardTitle>
-              <div className="flex items-center gap-2">
-                {(session.status === 'draft' || session.status === 'scheduled') && (
-                  <Button 
-                    variant="outline"
-                    size="sm" 
-                    onClick={onEdit}
-                    className="h-8"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
+          <div style={{ height: 4, background: st.fg }} />
+          <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Header — title + status pill */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <h3 style={{ margin: 0, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 21, letterSpacing: '-.025em', color: C.purpleDeep, lineHeight: 1.05 }}>{session.name}</h3>
+              <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 11px', borderRadius: 999, background: st.bg, border: `1px solid ${st.bd}`, color: st.fg, fontFamily: C.fontMono, fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: st.fg }} />{st.label}
+              </span>
+            </div>
+            {/* Meta — date / time / meeting point */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              <CMeta icon={ICON.cal}>{dateStr}</CMeta>
+              <CMeta icon={ICON.clock}>{timeStr}</CMeta>
+              <CMeta icon={ICON.pin}>{pointStr}</CMeta>
+            </div>
+            {/* Footer — registered count + actions */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 14, borderTop: `1px solid ${C.hair}` }}>
+              {registeredCount > 0
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, color: C.ink, opacity: .7, fontFamily: C.fontBody }}><span style={{ color: 'rgba(75,29,81,.45)', display: 'inline-flex' }}><CIcon d={ICON.users} size={15} /></span>{registeredCount} registered</span>
+                : <span style={{ fontSize: 13, color: C.ink, opacity: .45, fontFamily: C.fontBody }}>No registrations yet</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {showManage && (
+                  <span onClick={onManage} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.purpleDeep, cursor: 'pointer', fontFamily: C.fontBody }}>Manage <CIcon d={ICON.arrow} size={14} /></span>
                 )}
-                {!hideReportButton && (session.status === 'published' || session.status === 'completed') && (
-                  <Button 
-                    variant="outline"
-                    size="sm" 
-                    onClick={onManage}
-                    className="h-8"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Report
-                  </Button>
+                {showEditPrimary && (
+                  <span onClick={onEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.purpleDeep, cursor: 'pointer', fontFamily: C.fontBody }}>Edit <CIcon d={ICON.arrow} size={14} /></span>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                    <button aria-label="More actions" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 9, border: `1px solid ${C.hairStrong}`, background: '#fff', color: C.purpleDeep, cursor: 'pointer' }}>
                       <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                   {!hideReportButton && (
@@ -460,27 +519,8 @@ export function SessionDisplayCard({
                 </DropdownMenu>
               </div>
             </div>
-            {getStatusLabel(session.status) && (
-              <Badge 
-                variant={getStatusColor(session.status)} 
-                className="w-fit"
-              >
-                {getStatusLabel(session.status)}
-              </Badge>
-            )}
-          </CardHeader>
-          
-          {/* Use SessionDetailCard for consistent rendering */}
-          {debugLog('🎯 DASHBOARD using SessionDetailCard')}
-          <SessionDetailCard 
-            session={session}
-            showTitle={false}
-            showStatus={false}
-            variant="default"
-            className="space-y-3"
-            noWrapper={true}
-          />
-        </Card>
+          </div>
+        </div>
 
         {/* Admin dialogs */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

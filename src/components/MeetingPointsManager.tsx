@@ -1,14 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { MeetingPoint } from '../App';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card } from './ui/card';
-import { Checkbox } from './ui/checkbox';
-import { MapPin, X, Upload, Image as ImageIcon, Loader2, Plus, Video, Building2 } from 'lucide-react';
+import { X, Image as ImageIcon, Loader2, Plus, Video, Building2, Check } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { C } from './redesign/organizerAtoms';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface MeetingPointsManagerProps {
@@ -19,10 +15,10 @@ interface MeetingPointsManagerProps {
 export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsManagerProps) {
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [expandedPhotos, setExpandedPhotos] = useState<Set<string>>(new Set());
-  
+
   // Keep a ref to the latest meetingPoints to avoid stale closure issues
   const meetingPointsRef = useRef<MeetingPoint[]>(meetingPoints);
-  
+
   useEffect(() => {
     meetingPointsRef.current = meetingPoints;
   }, [meetingPoints]);
@@ -94,7 +90,7 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
     const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif'];
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
     const isValidType = file.type.startsWith('image/') || validExtensions.includes(fileExtension);
-    
+
     if (!isValidType) {
       toast.error('Please select a valid image file');
       return;
@@ -119,10 +115,10 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
       // Upload to server with auto token refresh
       const { supabase } = await import('../utils/supabase/client');
       const { apiBaseUrl } = await import('../utils/supabase/info');
-      
+
       // Get fresh session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       debugLog('=== SESSION CHECK FOR UPLOAD ===');
       debugLog('Session data:', {
         hasSession: !!session,
@@ -131,19 +127,19 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
         sessionKeys: session ? Object.keys(session) : null,
         hasAccessToken: !!session?.access_token
       });
-      
+
       if (sessionError) {
         errorLog('Session error object:', sessionError);
         toast.error(`Session error: ${sessionError.message}`);
         return;
       }
-      
+
       if (!session?.access_token) {
         errorLog('❌ No session found');
         toast.error('Not authenticated. Please sign in again.');
         return;
       }
-      
+
       const accessToken = session.access_token;
       debugLog('✅ Using token from Supabase session');
       debugLog('Upload config:', {
@@ -195,10 +191,10 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
         }
         return point;
       });
-      
+
       const updated = [...currentPoints];
-      updated[index] = { 
-        ...updated[index], 
+      updated[index] = {
+        ...updated[index],
         imageUrl: data.imageUrl,
         originalImageUrl: data.originalImageUrl
       };
@@ -215,8 +211,8 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
 
   const removeImage = (index: number) => {
     const updated = [...normalizedPoints];
-    updated[index] = { 
-      ...updated[index], 
+    updated[index] = {
+      ...updated[index],
       imageUrl: undefined,
       originalImageUrl: undefined
     };
@@ -235,77 +231,82 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
     });
   };
 
+  // ── styling helpers (mock: editable list / round-form field language) ──
+  const fieldInput: React.CSSProperties = {
+    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+    fontFamily: C.fontBody, fontSize: 14, color: C.ink, minWidth: 0,
+  };
+  const lbl: React.CSSProperties = {
+    fontFamily: C.fontBody, fontSize: 11.5, fontWeight: 700, letterSpacing: '.08em',
+    color: C.purpleDeep, textTransform: 'uppercase',
+  };
+
   return (
-    <div className="space-y-3">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {normalizedPoints.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Loading...
-        </p>
+        <p style={{ fontSize: 13, color: C.ink, opacity: 0.6 }}>Loading...</p>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {normalizedPoints.map((point, index) => (
-            <Card key={point.id} className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="e.g. By the tree at main lobby, Table 1, ..."
-                      value={point.name}
-                      onChange={(e) => updateMeetingPointName(index, e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
+            <div key={point.id} style={{ border: `1px solid ${C.hair}`, borderRadius: 14, padding: 14, background: '#fff' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Name row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, border: `1px solid ${C.hair}`, borderRadius: 11, background: C.cream }}>
+                  <input
+                    placeholder="e.g. By the tree at main lobby, Table 1, ..."
+                    value={point.name}
+                    onChange={(e) => updateMeetingPointName(index, e.target.value)}
+                    style={fieldInput}
+                  />
+                  <span
                     onClick={() => removeMeetingPoint(index)}
-                    className="h-10 w-10 flex-shrink-0"
+                    role="button"
+                    aria-label="Remove meeting point"
+                    style={{ color: '#c0392b', cursor: 'pointer', display: 'inline-flex', flexShrink: 0 }}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
+                    <X width={15} height={15} />
+                  </span>
                 </div>
 
                 {/* Type toggle: Physical / Virtual */}
-                <div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
-                  <button
-                    type="button"
-                    onClick={() => updateMeetingPointType(index, 'physical')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      (!point.type || point.type === 'physical')
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Building2 className="h-3.5 w-3.5" />
-                    Physical
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateMeetingPointType(index, 'virtual')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      point.type === 'virtual'
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Video className="h-3.5 w-3.5" />
-                    Virtual
-                  </button>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: 3, background: 'rgba(76,25,77,.06)', borderRadius: 10, width: 'fit-content' }}>
+                  {([
+                    { key: 'physical' as const, icon: <Building2 width={14} height={14} />, label: 'Physical', active: (!point.type || point.type === 'physical') },
+                    { key: 'virtual' as const, icon: <Video width={14} height={14} />, label: 'Virtual', active: point.type === 'virtual' },
+                  ]).map((seg) => (
+                    <button
+                      key={seg.key}
+                      type="button"
+                      onClick={() => updateMeetingPointType(index, seg.key)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                        borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: C.fontBody,
+                        fontSize: 13, fontWeight: 600,
+                        background: seg.active ? '#fff' : 'transparent',
+                        color: seg.active ? C.purpleDeep : 'rgba(58,46,52,.55)',
+                        boxShadow: seg.active ? '0 1px 3px rgba(75,29,81,.12)' : 'none',
+                      }}
+                    >
+                      {seg.icon}
+                      {seg.label}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Video call URL (virtual only) */}
                 {point.type === 'virtual' && (
-                  <div className="space-y-1">
-                    <Label htmlFor={`video-url-${point.id}`} className="text-sm">
-                      Video call link
-                    </Label>
-                    <Input
-                      id={`video-url-${point.id}`}
-                      placeholder="e.g. https://meet.google.com/abc-defg-hij"
-                      value={point.videoCallUrl || ''}
-                      onChange={(e) => updateMeetingPointVideoUrl(index, e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label htmlFor={`video-url-${point.id}`} style={lbl}>Video call link</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11, background: '#fff', border: `1.5px solid ${C.hairStrong}` }}>
+                      <input
+                        id={`video-url-${point.id}`}
+                        placeholder="e.g. https://meet.google.com/abc-defg-hij"
+                        value={point.videoCallUrl || ''}
+                        onChange={(e) => updateMeetingPointVideoUrl(index, e.target.value)}
+                        style={fieldInput}
+                      />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 11.5, color: C.ink, opacity: 0.6 }}>
                       Participants will see this link instead of a physical location
                     </p>
                   </div>
@@ -313,99 +314,112 @@ export function MeetingPointsManager({ meetingPoints, onChange }: MeetingPointsM
 
                 {/* Image upload section (physical only) */}
                 {(!point.type || point.type === 'physical') && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`add-photo-${point.id}`}
-                      checked={expandedPhotos.has(point.id)}
-                      onCheckedChange={() => togglePhotoExpanded(point.id)}
-                    />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <label
                       htmlFor={`add-photo-${point.id}`}
-                      className="text-sm cursor-pointer select-none"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', fontSize: 13.5, color: C.ink, width: 'fit-content' }}
                     >
+                      <span
+                        id={`add-photo-${point.id}`}
+                        onClick={() => togglePhotoExpanded(point.id)}
+                        role="checkbox"
+                        aria-checked={expandedPhotos.has(point.id)}
+                        style={{
+                          width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          background: expandedPhotos.has(point.id) ? C.orange : '#fff',
+                          border: `1.5px solid ${expandedPhotos.has(point.id) ? C.orange : C.hairStrong}`,
+                          color: '#fff',
+                        }}
+                      >
+                        {expandedPhotos.has(point.id) && <Check width={12} height={12} strokeWidth={3.2} />}
+                      </span>
                       Add photo
                     </label>
-                  </div>
-                  
-                  {expandedPhotos.has(point.id) && (
-                    <>
-                      {point.imageUrl ? (
-                        <div className="relative">
-                          <div className="w-full aspect-video overflow-hidden rounded-lg bg-muted flex items-center justify-center">
-                            <ImageWithFallback
-                              src={point.imageUrl}
-                              alt={point.name || 'Meeting point'}
-                              className="w-full h-auto"
-                            />
+
+                    {expandedPhotos.has(point.id) && (
+                      <>
+                        {point.imageUrl ? (
+                          <div style={{ position: 'relative' }}>
+                            <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', borderRadius: 11, background: C.cream, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <ImageWithFallback
+                                src={point.imageUrl}
+                                alt={point.name || 'Meeting point'}
+                                className="w-full h-auto"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              aria-label="Remove image"
+                              style={{
+                                position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: 8,
+                                border: 'none', cursor: 'pointer', background: '#c0392b', color: '#fff',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              }}
+                            >
+                              <X width={16} height={16} />
+                            </button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-2 right-2 h-8 w-8"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageUpload(index, file);
-                              }
-                            }}
-                            className="hidden"
-                            id={`meeting-point-image-${index}`}
-                            disabled={uploadingIndex === index}
-                          />
-                          <label
-                            htmlFor={`meeting-point-image-${index}`}
-                            className={`flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-accent/50 transition-colors ${
-                              uploadingIndex === index ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                          >
-                            {uploadingIndex === index ? (
-                              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
-                            ) : (
-                              <>
-                                <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                                <p className="text-sm text-muted-foreground">
-                                  Click to upload photo
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  JPG, PNG, WEBP, GIF, HEIC • Max 10MB
-                                </p>
-                              </>
-                            )}
-                          </label>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
+                        ) : (
+                          <div style={{ position: 'relative' }}>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleImageUpload(index, file);
+                                }
+                              }}
+                              style={{ display: 'none' }}
+                              id={`meeting-point-image-${index}`}
+                              disabled={uploadingIndex === index}
+                            />
+                            <label
+                              htmlFor={`meeting-point-image-${index}`}
+                              style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                width: '100%', aspectRatio: '16 / 9', border: `2px dashed ${C.hairStrong}`, borderRadius: 11,
+                                cursor: uploadingIndex === index ? 'not-allowed' : 'pointer',
+                                background: C.cream, opacity: uploadingIndex === index ? 0.5 : 1,
+                              }}
+                            >
+                              {uploadingIndex === index ? (
+                                <Loader2 width={32} height={32} className="animate-spin" style={{ color: 'rgba(58,46,52,.5)' }} />
+                              ) : (
+                                <>
+                                  <ImageIcon width={32} height={32} style={{ color: 'rgba(58,46,52,.5)', marginBottom: 8 }} />
+                                  <p style={{ margin: 0, fontSize: 13.5, color: C.ink, opacity: 0.7 }}>Click to upload photo</p>
+                                  <p style={{ margin: '4px 0 0', fontSize: 11.5, color: C.ink, opacity: 0.5 }}>JPG, PNG, WEBP, GIF, HEIC • Max 10MB</p>
+                                </>
+                              )}
+                            </label>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
 
-      <Button
+      <button
         type="button"
-        variant="outline"
-        size="sm"
         onClick={addMeetingPoint}
-        className="w-full"
+        style={{
+          width: '100%', padding: '11px 14px', background: 'transparent', borderRadius: 11,
+          border: `1.5px solid ${C.hairStrong}`, color: C.purpleDeep, fontSize: 13.5, fontWeight: 600,
+          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+          fontFamily: C.fontBody,
+        }}
       >
-        <Plus className="h-4 w-4 mr-2" />
+        <Plus width={15} height={15} />
         Add meeting point
-      </Button>
+      </button>
     </div>
   );
 }

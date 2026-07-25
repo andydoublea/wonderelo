@@ -158,7 +158,7 @@ export function AccountSettingsView({
     // nav={false}: the route (AccountSettingsRoute) and AdminPagePreview already
     // render their own top nav — a second OrgNav here would double the chrome.
     <div className="wonderelo">
-      <PageShell nav={false} navActive="Account">
+      <PageShell nav={false} footer={false} navActive="Account">
         <PageHead eyebrow="Your account" title={<>Account <Italic>settings</Italic></>} />
 
         <div style={{ maxWidth: 760 }}>

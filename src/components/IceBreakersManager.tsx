@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Badge } from './ui/badge';
-import { Checkbox } from './ui/checkbox';
-import { Label } from './ui/label';
-import { Loader2, MessageSquare, Shuffle } from 'lucide-react';
+import { IceBreaker } from '../App';
+import { RefreshCw } from 'lucide-react';
+import { C } from './redesign/organizerAtoms';
 import { errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 
@@ -51,17 +47,17 @@ export function IceBreakersManager({ iceBreakers, onChange }: IceBreakersManager
     if (availableIceBreakers.length === 0) {
       return '';
     }
-    
+
     const available = availableIceBreakers.filter(
       (q) => !excludeQuestions.includes(q)
     );
-    
+
     if (available.length === 0) {
       // If all questions are already used, pick from all
       const randomIndex = Math.floor(Math.random() * availableIceBreakers.length);
       return availableIceBreakers[randomIndex];
     }
-    
+
     const randomIndex = Math.floor(Math.random() * available.length);
     return available[randomIndex];
   };
@@ -71,9 +67,9 @@ export function IceBreakersManager({ iceBreakers, onChange }: IceBreakersManager
     const otherQuestions = iceBreakers
       .filter((_, i) => i !== index)
       .map(ib => ib.question);
-    
+
     const newQuestion = getRandomIceBreaker(otherQuestions);
-    
+
     // Only update if we got a valid question
     if (newQuestion && newQuestion.trim() !== '') {
       const updated = [...iceBreakers];
@@ -88,33 +84,45 @@ export function IceBreakersManager({ iceBreakers, onChange }: IceBreakersManager
     onChange(updated);
   };
 
+  const regenDisabled = isLoading || availableIceBreakers.length === 0;
+
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ margin: 0, fontSize: 12.5, color: C.ink, opacity: 0.65, lineHeight: 1.5 }}>
         Strong connections happen when people talk about deep topics — their views, values, and stories. Help them skip the weather talk with our ice breakers or add your own.
       </p>
 
-      <div className="space-y-3">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {iceBreakers.map((iceBreaker, index) => (
-          <div key={iceBreaker.id} className="flex items-center gap-3 p-3 border rounded-lg">
-            <Input
+          <div
+            key={iceBreaker.id}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, border: `1px solid ${C.hair}`, borderRadius: 11, background: C.cream }}
+          >
+            <input
               placeholder="e.g. What's a skill you'd like to learn?"
               value={iceBreaker.question}
               onChange={(e) => updateIceBreaker(index, e.target.value)}
-              className="flex-1"
               maxLength={60}
+              style={{
+                flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                fontFamily: C.fontBody, fontSize: 14, color: C.ink, minWidth: 0,
+              }}
             />
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
               onClick={() => shuffleIceBreaker(index)}
-              className="h-8 w-8 p-0 shrink-0"
               title="Get random ice breaker"
-              disabled={isLoading || availableIceBreakers.length === 0}
+              aria-label="Get random ice breaker"
+              disabled={regenDisabled}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                width: 32, height: 32, borderRadius: 9, cursor: regenDisabled ? 'not-allowed' : 'pointer',
+                background: 'rgba(221,83,28,.08)', border: '1.5px solid rgba(221,83,28,.3)',
+                color: C.orange, opacity: regenDisabled ? 0.5 : 1,
+              }}
             >
-              <Shuffle className="h-4 w-4" />
-            </Button>
+              <RefreshCw width={15} height={15} />
+            </button>
           </div>
         ))}
       </div>

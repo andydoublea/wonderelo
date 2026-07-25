@@ -23,7 +23,7 @@ import { AuthenticatedNav } from './components/AuthenticatedNav';
 import { SessionAdministration } from './components/SessionAdministration';
 import { RoundFormPage } from './components/RoundFormPage';
 import { Dashboard } from './components/Dashboard';
-import { Footer } from './components/Footer';
+import { StudioFooter } from './components/redesign/organizerAtoms';
 import { NetworkingDashboard } from './components/NetworkingDashboard';
 import { AccountSettings } from './components/AccountSettings';
 import { EventPageSettings } from './components/EventPageSettings';
@@ -474,7 +474,7 @@ function RoundFormPageRoute() {
     }
 
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <AuthenticatedNav
           currentView="rounds"
           currentUser={currentUser}
@@ -488,12 +488,12 @@ function RoundFormPageRoute() {
           onSignOut={handleSignOut}
         />
 
-        <div className="container mx-auto p-6">
-          <SessionAdministration
-            session={session}
-            onBack={() => navigate('/rounds')}
-          />
-        </div>
+        <SessionAdministration
+          session={session}
+          onBack={() => navigate('/rounds')}
+        />
+
+        <StudioFooter />
       </div>
     );
   }
@@ -525,7 +525,7 @@ function RoundFormPageRoute() {
         userSlug={eventSlug}
       />
 
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
@@ -595,7 +595,7 @@ function RoundsRoute() {
         />
       </div>
 
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
@@ -643,7 +643,7 @@ function AccountSettingsRoute() {
           debugLog('Profile updated in AppRouter:', updates);
         }}
       />
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
@@ -695,7 +695,7 @@ function EventPageSettingsRoute() {
           debugLog('Event page settings updated in AppRouter:', updates);
         }}
       />
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
@@ -740,7 +740,7 @@ function BillingSettingsRoute() {
         onSignOut={handleSignOut}
       />
       <BillingSettings accessToken={accessToken} />
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
