@@ -82,53 +82,18 @@ export const loadAndApplyTheme = async (): Promise<void> => {
   }
 };
 
-export const applyTheme = (colors: ThemeColors): void => {
-  const root = document.documentElement;
-
-  // Map theme colors to CSS custom properties
-  const colorMap: Record<string, string> = {
-    'primary': colors.primary,
-    'primary-foreground': colors.primaryForeground,
-    'secondary': colors.secondary,
-    'secondary-foreground': colors.secondaryForeground,
-    'accent': colors.accent,
-    'accent-foreground': colors.accentForeground,
-    'background': colors.background,
-    'foreground': colors.foreground,
-    'card': colors.card,
-    'card-foreground': colors.cardForeground,
-    'popover': colors.popover,
-    'popover-foreground': colors.popoverForeground,
-    'muted': colors.muted,
-    'muted-foreground': colors.mutedForeground,
-    'border': colors.border,
-    'input': colors.input,
-    'ring': colors.ring,
-    'destructive': colors.destructive,
-    'destructive-foreground': colors.destructiveForeground,
-  };
-
-  // Apply colors to root element
-  Object.entries(colorMap).forEach(([key, value]) => {
-    root.style.setProperty(`--${key}`, `hsl(${value})`);
-  });
-
-  debugLog('Theme colors applied to document');
+export const applyTheme = (_colors: ThemeColors): void => {
+  // Per-organizer colour theming has been removed alongside skin-switching — the app is a
+  // single FIXED Wonderelo brand. The palette now lives in wonderelo-brand.css (:root),
+  // so this is a no-op: we must NOT let a saved server theme override the fixed brand.
+  debugLog('Theme colours ignored — fixed Wonderelo brand');
 };
 
-export const applyVisualStyle = (styleId: string): void => {
-  const root = document.documentElement;
-
-  // Remove any existing visual style classes
-  VISUAL_STYLES.forEach(style => {
-    root.classList.remove(`vs-${style.id}`);
-  });
-
-  // Apply the new visual style class
-  if (styleId && styleId !== 'none') {
-    root.classList.add(`vs-${styleId}`);
-    debugLog('Visual style applied:', styleId);
-  }
+export const applyVisualStyle = (_styleId?: string): void => {
+  // Skin-switching has been removed — the app is a single fixed Wonderelo brand.
+  // This is now a no-op that only strips any stale `vs-*` class, so every existing
+  // caller (server theme load + localhost fallback) stops re-skinning the document.
+  removeVisualStyle();
 };
 
 export const removeVisualStyle = (): void => {

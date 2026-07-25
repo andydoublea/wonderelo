@@ -48,9 +48,12 @@
 /* ─────────────────────────────────────────────────────────────
    Brand scope — re-route the app's shadcn tokens to the new brand.
    Tailwind v4 maps `--color-*` → `var(--<token>)`, so overriding the base
-   token inside `.wonderelo` is enough for `bg-primary`, `text-foreground`,
-   `border-border`, etc. to pick up the brand within this subtree.
+   token routes `bg-primary`, `text-foreground`, `border-border`, etc. to the brand.
+   Applied to `:root` (global) now that the app is a single FIXED Wonderelo brand —
+   this recolours the not-yet-redesigned shadcn pages (sign-in, admin) with the brand
+   palette instead of the plain shadcn default. `.wonderelo` is kept for clarity/parity.
    ───────────────────────────────────────────────────────────── */
+:root,
 .wonderelo {
   --background:            var(--w-paper);
   --foreground:            var(--w-ink);
