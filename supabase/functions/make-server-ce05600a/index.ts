@@ -2577,44 +2577,7 @@ app.delete('/make-server-ce05600a/admin/blog/posts/:postId', async (c) => {
 // Theme management
 // ============================================================
 
-// Admin: Get theme settings
-app.get('/make-server-ce05600a/admin/theme', async (c) => {
-  try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-
-    const theme = await db.getAdminSetting('theme');
-    return c.json({ theme: theme || null });
-  } catch (error) {
-    errorLog('Error getting theme:', error);
-    return c.json({ error: 'Failed to get theme' }, 500);
-  }
-});
-
-// Admin: Save theme settings (colors + visual style)
-app.post('/make-server-ce05600a/admin/theme', async (c) => {
-  try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-
-    const body = await c.req.json();
-    const { theme } = body;
-
-    if (!theme) {
-      return c.json({ error: 'Theme data required' }, 400);
-    }
-
-    await db.setAdminSetting('theme', theme);
-    return c.json({ success: true });
-  } catch (error) {
-    errorLog('Error saving theme:', error);
-    return c.json({ error: 'Failed to save theme' }, 500);
-  }
-});
+// (Theme settings routes removed — the app is a single fixed Wonderelo brand.)
 
 // Public: Lead magnet submission (no auth required)
 app.post('/make-server-ce05600a/public/lead-magnet', async (c) => {
@@ -2655,17 +2618,6 @@ app.get('/make-server-ce05600a/admin/leads', async (c) => {
   } catch (error) {
     errorLog('Error getting lead submissions:', error);
     return c.json({ error: 'Failed to get submissions' }, 500);
-  }
-});
-
-// Public: Get theme for event pages (no auth required)
-app.get('/make-server-ce05600a/public/theme', async (c) => {
-  try {
-    const theme = await db.getAdminSetting('theme');
-    return c.json({ theme: theme || null });
-  } catch (error) {
-    errorLog('Error getting public theme:', error);
-    return c.json({ error: 'Failed to get theme' }, 500);
   }
 });
 
