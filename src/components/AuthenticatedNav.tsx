@@ -89,7 +89,10 @@ export function AuthenticatedNav({
   const eventPageActive = currentView === 'event-page-settings';
   const adminActive = currentView === 'admin';
 
+  // Person name (organizerName = "Your name") drives the user chip + avatar initials.
+  // Event name (eventName) drives the separate green event pill — design keeps them distinct.
   const organizerName = currentUser?.organizerName || 'Your name';
+  const eventName = currentUser?.eventName || '';
   const initials = (organizerName || '')
     .trim()
     .split(/\s+/)
@@ -189,6 +192,20 @@ export function AuthenticatedNav({
     </div>
   );
 
+  // ── Event chip (green dot + event name) — design shows this between the plan pill and the user chip.
+  const EventPill = eventName ? (
+    <div
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 10px',
+        borderRadius: 999, border: `1px solid ${C.hairStrong}`, background: 'rgba(255,255,255,.5)',
+        fontSize: 12, fontWeight: 600, color: C.purpleDeep, fontFamily: C.fontBody, whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 0 3px rgba(74,222,128,.18)' }} />
+      {eventName}
+    </div>
+  ) : null;
+
   return (
     <div
       style={{
@@ -211,15 +228,13 @@ export function AuthenticatedNav({
           <div style={{ display: 'flex', gap: 4, justifySelf: 'center' }}>
             <Tab label="Rounds" active={roundsActive} onClick={run(onNavigateToRounds)} />
             <Tab label="Event page" active={eventPageActive} onClick={run(onNavigateToEventPageSettings)} />
-            {isAdminUser && !isImpersonating && (
-              <Tab label="Admin panel" active={adminActive} onClick={run(onNavigateToAdmin)} />
-            )}
           </div>
         )}
 
         {isDesktop ? (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', position: 'relative' }} ref={menuRef}>
             {PlanPill}
+            {EventPill}
 
             {isImpersonating && (
               <button
@@ -258,6 +273,9 @@ export function AuthenticatedNav({
                 <MenuItem icon={<IconAccount />} active={currentView === 'account-settings'} onClick={run(onNavigateToAccountSettings)}>Account settings</MenuItem>
                 <MenuItem icon={<IconEventPage />} active={eventPageActive} onClick={run(onNavigateToEventPageSettings)}>Event page</MenuItem>
                 <MenuItem icon={<IconBilling />} active={currentView === 'billing'} onClick={run(onNavigateToBilling)}>Billing</MenuItem>
+                {isAdminUser && !isImpersonating && (
+                  <MenuItem icon={<IconAccount />} active={adminActive} onClick={run(onNavigateToAdmin)}>Admin panel</MenuItem>
+                )}
                 <div style={{ height: 1, background: C.hair, margin: '4px 0' }} />
                 <MenuItem icon={<IconHome />} onClick={run(() => navigate('/'))}>Go to homepage</MenuItem>
                 <div style={{ height: 1, background: C.hair, margin: '4px 0' }} />
@@ -289,12 +307,12 @@ export function AuthenticatedNav({
         <div style={{ borderTop: `1px solid ${C.hair}`, background: 'rgba(251,246,236,.98)', padding: '12px 16px' }}>
           <MobileItem label="Rounds" active={roundsActive} onClick={run(onNavigateToRounds)} />
           <MobileItem label="Event page" icon={<IconEventPage />} active={eventPageActive} onClick={run(onNavigateToEventPageSettings)} />
-          {isAdminUser && !isImpersonating && (
-            <MobileItem label="Admin panel" active={adminActive} onClick={run(onNavigateToAdmin)} />
-          )}
           <div style={{ height: 1, background: C.hair, margin: '8px 0' }} />
           <MobileItem label="Account settings" icon={<IconAccount />} active={currentView === 'account-settings'} onClick={run(onNavigateToAccountSettings)} />
           <MobileItem label="Billing" icon={<IconBilling />} active={currentView === 'billing'} onClick={run(onNavigateToBilling)} />
+          {isAdminUser && !isImpersonating && (
+            <MobileItem label="Admin panel" icon={<IconAccount />} active={adminActive} onClick={run(onNavigateToAdmin)} />
+          )}
           <MobileItem label="Go to homepage" icon={<IconHome />} onClick={run(() => navigate('/'))} />
           {isImpersonating && (
             <>

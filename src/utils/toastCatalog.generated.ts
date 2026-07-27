@@ -35,10 +35,10 @@ export type ToastCatalogEntry = {
 
 export const TOAST_CATALOG: ToastCatalogEntry[] = [
   {
-    "id": "src/components/AccountSettings.tsx:301",
+    "id": "src/components/AccountSettings.tsx:307",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 301,
+    "line": 307,
     "component": "AccountSettings",
     "type": "error",
     "message": "Failed to load settings: ${response.status}",
@@ -48,10 +48,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:305",
+    "id": "src/components/AccountSettings.tsx:311",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 305,
+    "line": 311,
     "component": "AccountSettings",
     "type": "error",
     "message": "Error loading settings. Please try again.",
@@ -61,10 +61,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:314",
+    "id": "src/components/AccountSettings.tsx:320",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 314,
+    "line": 320,
     "component": "AccountSettings",
     "type": "error",
     "message": "Organizer name is required",
@@ -74,10 +74,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:340",
+    "id": "src/components/AccountSettings.tsx:346",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 340,
+    "line": 346,
     "component": "AccountSettings",
     "type": "success",
     "message": "Settings saved successfully",
@@ -87,10 +87,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:357",
+    "id": "src/components/AccountSettings.tsx:363",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 357,
+    "line": 363,
     "component": "AccountSettings",
     "type": "error",
     "message": "Failed to save settings: ${response.status}",
@@ -100,10 +100,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:361",
+    "id": "src/components/AccountSettings.tsx:367",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 361,
+    "line": 367,
     "component": "AccountSettings",
     "type": "error",
     "message": "Error saving settings. Please try again.",
@@ -113,10 +113,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:370",
+    "id": "src/components/AccountSettings.tsx:376",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 370,
+    "line": 376,
     "component": "AccountSettings",
     "type": "error",
     "message": "All password fields are required",
@@ -126,10 +126,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:374",
+    "id": "src/components/AccountSettings.tsx:380",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 374,
+    "line": 380,
     "component": "AccountSettings",
     "type": "error",
     "message": "New password must be at least 6 characters",
@@ -139,10 +139,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:378",
+    "id": "src/components/AccountSettings.tsx:384",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 378,
+    "line": 384,
     "component": "AccountSettings",
     "type": "error",
     "message": "New password and confirm password do not match",
@@ -152,10 +152,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:403",
+    "id": "src/components/AccountSettings.tsx:409",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 403,
+    "line": 409,
     "component": "AccountSettings",
     "type": "success",
     "message": "Password changed successfully",
@@ -165,10 +165,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:415",
+    "id": "src/components/AccountSettings.tsx:421",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 415,
+    "line": 421,
     "component": "AccountSettings",
     "type": "error",
     "message": "Error changing password. Please try again.",
@@ -178,10 +178,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:424",
+    "id": "src/components/AccountSettings.tsx:430",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 424,
+    "line": 430,
     "component": "AccountSettings",
     "type": "error",
     "message": "All fields are required",
@@ -191,10 +191,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:428",
+    "id": "src/components/AccountSettings.tsx:434",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 428,
+    "line": 434,
     "component": "AccountSettings",
     "type": "error",
     "message": "Invalid email format",
@@ -204,10 +204,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:454",
+    "id": "src/components/AccountSettings.tsx:460",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 454,
+    "line": 460,
     "component": "AccountSettings",
     "type": "success",
     "message": "Verification email sent",
@@ -217,10 +217,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/AccountSettings.tsx:468",
+    "id": "src/components/AccountSettings.tsx:474",
     "kind": "direct",
     "filePath": "src/components/AccountSettings.tsx",
-    "line": 468,
+    "line": 474,
     "component": "AccountSettings",
     "type": "error",
     "message": "Error changing email. Please try again.",
@@ -230,10 +230,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/BillingSettings.tsx:555",
+    "id": "src/components/BillingSettings.tsx:557",
     "kind": "direct",
     "filePath": "src/components/BillingSettings.tsx",
-    "line": 555,
+    "line": 557,
     "component": "BillingSettings",
     "type": "success",
     "message": "Payment completed successfully!",
@@ -243,10 +243,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/BillingSettings.tsx:559",
+    "id": "src/components/BillingSettings.tsx:561",
     "kind": "direct",
     "filePath": "src/components/BillingSettings.tsx",
-    "line": 559,
+    "line": 561,
     "component": "BillingSettings",
     "type": "error",
     "message": "Payment was cancelled",
@@ -256,10 +256,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/BillingSettings.tsx:563",
+    "id": "src/components/BillingSettings.tsx:565",
     "kind": "direct",
     "filePath": "src/components/BillingSettings.tsx",
-    "line": 563,
+    "line": 565,
     "component": "BillingSettings",
     "type": "success",
     "message": "Billing details updated",
@@ -269,10 +269,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/BillingSettings.tsx:593",
+    "id": "src/components/BillingSettings.tsx:595",
     "kind": "direct",
     "filePath": "src/components/BillingSettings.tsx",
-    "line": 593,
+    "line": 595,
     "component": "BillingSettings",
     "type": "error",
     "message": "Failed to load subscription information",
@@ -282,10 +282,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/BillingSettings.tsx:705",
+    "id": "src/components/BillingSettings.tsx:707",
     "kind": "direct",
     "filePath": "src/components/BillingSettings.tsx",
-    "line": 705,
+    "line": 707,
     "component": "BillingSettings",
     "type": "error",
     "message": "Please enter a valid email address",
@@ -295,10 +295,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/BillingSettings.tsx:727",
+    "id": "src/components/BillingSettings.tsx:729",
     "kind": "direct",
     "filePath": "src/components/BillingSettings.tsx",
-    "line": 727,
+    "line": 729,
     "component": "BillingSettings",
     "type": "success",
     "message": "Invoice email updated",
@@ -308,10 +308,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/PricingPanel.tsx:64",
+    "id": "src/components/PricingPanel.tsx:67",
     "kind": "direct",
     "filePath": "src/components/PricingPanel.tsx",
-    "line": 64,
+    "line": 67,
     "component": "PricingPanel",
     "type": "error",
     "message": "Please enter a gift card code",
@@ -321,10 +321,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/PricingPanel.tsx:87",
+    "id": "src/components/PricingPanel.tsx:90",
     "kind": "direct",
     "filePath": "src/components/PricingPanel.tsx",
-    "line": 87,
+    "line": 90,
     "component": "PricingPanel",
     "type": "success",
     "message": "Gift card applied: ${data.giftCard.discountType === 'percentage' ? ",
@@ -334,10 +334,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/PricingPanel.tsx:92",
+    "id": "src/components/PricingPanel.tsx:95",
     "kind": "direct",
     "filePath": "src/components/PricingPanel.tsx",
-    "line": 92,
+    "line": 95,
     "component": "PricingPanel",
     "type": "error",
     "message": "Failed to validate gift card",
@@ -347,10 +347,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Account & Billing"
   },
   {
-    "id": "src/components/PricingPanel.tsx:101",
+    "id": "src/components/PricingPanel.tsx:104",
     "kind": "direct",
     "filePath": "src/components/PricingPanel.tsx",
-    "line": 101,
+    "line": 104,
     "component": "PricingPanel",
     "type": "info",
     "message": "Gift card removed",
@@ -958,10 +958,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Blog"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:306",
+    "id": "src/components/EventPageSettings.tsx:347",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 306,
+    "line": 347,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Failed to load settings: ${response.status}",
@@ -971,10 +971,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:310",
+    "id": "src/components/EventPageSettings.tsx:351",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 310,
+    "line": 351,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Error loading settings. Please try again.",
@@ -984,10 +984,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:406",
+    "id": "src/components/EventPageSettings.tsx:447",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 406,
+    "line": 447,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Please select a valid image file",
@@ -997,10 +997,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:413",
+    "id": "src/components/EventPageSettings.tsx:454",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 413,
+    "line": 454,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Image size must be less than 10MB",
@@ -1010,10 +1010,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:466",
+    "id": "src/components/EventPageSettings.tsx:507",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 466,
+    "line": 507,
     "component": "EventPageSettings",
     "type": "success",
     "message": "Image uploaded (${savingsPercent}% size reduction)",
@@ -1023,10 +1023,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:477",
+    "id": "src/components/EventPageSettings.tsx:518",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 477,
+    "line": 518,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Failed to upload image. Please try again.",
@@ -1036,10 +1036,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:488",
+    "id": "src/components/EventPageSettings.tsx:529",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 488,
+    "line": 529,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Error uploading image. Please try again.",
@@ -1049,10 +1049,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:533",
+    "id": "src/components/EventPageSettings.tsx:574",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 533,
+    "line": 574,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Event page URL must be at least 3 characters",
@@ -1062,10 +1062,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:538",
+    "id": "src/components/EventPageSettings.tsx:579",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 538,
+    "line": 579,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Please choose an available URL",
@@ -1075,10 +1075,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:567",
+    "id": "src/components/EventPageSettings.tsx:608",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 567,
+    "line": 608,
     "component": "EventPageSettings",
     "type": "success",
     "message": "Settings saved successfully",
@@ -1088,10 +1088,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:594",
+    "id": "src/components/EventPageSettings.tsx:635",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 594,
+    "line": 635,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Failed to save settings: ${response.status}",
@@ -1101,10 +1101,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:598",
+    "id": "src/components/EventPageSettings.tsx:639",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 598,
+    "line": 639,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Error saving settings. Please try again.",
@@ -1114,10 +1114,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:607",
+    "id": "src/components/UserPublicPage.tsx:614",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 607,
+    "line": 614,
     "component": "UserPublicPage",
     "type": "error",
     "message": "Please enter a valid email",
@@ -1127,10 +1127,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:633",
+    "id": "src/components/UserPublicPage.tsx:640",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 633,
+    "line": 640,
     "component": "UserPublicPage",
     "type": "success",
     "message": "Test verification email sent! Check your inbox (or andy.double.a@gmail.com if in testing mode)",
@@ -1140,10 +1140,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:642",
+    "id": "src/components/UserPublicPage.tsx:649",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 642,
+    "line": 649,
     "component": "UserPublicPage",
     "type": "error",
     "message": "Failed to send test email",
@@ -1153,10 +1153,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:650",
+    "id": "src/components/UserPublicPage.tsx:657",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 650,
+    "line": 657,
     "component": "UserPublicPage",
     "type": "error",
     "message": "Please enter a valid phone number",
@@ -1166,10 +1166,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:676",
+    "id": "src/components/UserPublicPage.tsx:683",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 676,
+    "line": 683,
     "component": "UserPublicPage",
     "type": "success",
     "message": "Test SMS sent! Message SID: ${data.messageSid}",
@@ -1179,10 +1179,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:685",
+    "id": "src/components/UserPublicPage.tsx:692",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 685,
+    "line": 692,
     "component": "UserPublicPage",
     "type": "error",
     "message": "Failed to send test SMS",
@@ -1192,10 +1192,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:693",
+    "id": "src/components/UserPublicPage.tsx:700",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 693,
+    "line": 700,
     "component": "UserPublicPage",
     "type": "error",
     "message": "Please enter a valid email",
@@ -1205,10 +1205,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:724",
+    "id": "src/components/UserPublicPage.tsx:731",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 724,
+    "line": 731,
     "component": "UserPublicPage",
     "type": "error",
     "message": "No registrations found for this email",
@@ -1218,10 +1218,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:733",
+    "id": "src/components/UserPublicPage.tsx:740",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 733,
+    "line": 740,
     "component": "UserPublicPage",
     "type": "success",
     "message": "Magic link (dev mode - check console)",
@@ -1231,10 +1231,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:741",
+    "id": "src/components/UserPublicPage.tsx:748",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 741,
+    "line": 748,
     "component": "UserPublicPage",
     "type": "success",
     "message": "Check your email for the magic link!",
@@ -1244,10 +1244,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:750",
+    "id": "src/components/UserPublicPage.tsx:757",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 750,
+    "line": 757,
     "component": "UserPublicPage",
     "type": "error",
     "message": "Failed to send magic link",
@@ -1257,10 +1257,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:801",
+    "id": "src/components/UserPublicPage.tsx:808",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 801,
+    "line": 808,
     "component": "UserPublicPage",
     "type": "success",
     "message": "Logged out successfully",
@@ -1270,10 +1270,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:985",
+    "id": "src/components/UserPublicPage.tsx:992",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 985,
+    "line": 992,
     "component": "UserPublicPage",
     "type": "success",
     "message": "Logged out successfully",
@@ -1283,10 +1283,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/UserPublicPage.tsx:1103",
+    "id": "src/components/UserPublicPage.tsx:1110",
     "kind": "direct",
     "filePath": "src/components/UserPublicPage.tsx",
-    "line": 1103,
+    "line": 1110,
     "component": "UserPublicPage",
     "type": "success",
     "message": "Logged out successfully",
@@ -1569,10 +1569,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Hooks"
   },
   {
-    "id": "src/components/MatchInfo.tsx:315",
+    "id": "src/components/MatchInfo.tsx:360",
     "kind": "direct",
     "filePath": "src/components/MatchInfo.tsx",
-    "line": 315,
+    "line": 360,
     "component": "MatchInfo",
     "type": "error",
     "message": "Check-in failed, but you can still proceed",
@@ -1751,10 +1751,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/MeetingPointsManager.tsx:95",
+    "id": "src/components/MeetingPointsManager.tsx:105",
     "kind": "direct",
     "filePath": "src/components/MeetingPointsManager.tsx",
-    "line": 95,
+    "line": 105,
     "component": "MeetingPointsManager",
     "type": "error",
     "message": "Please select a valid image file",
@@ -1764,10 +1764,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/MeetingPointsManager.tsx:100",
+    "id": "src/components/MeetingPointsManager.tsx:110",
     "kind": "direct",
     "filePath": "src/components/MeetingPointsManager.tsx",
-    "line": 100,
+    "line": 110,
     "component": "MeetingPointsManager",
     "type": "error",
     "message": "Image size must be less than 10MB",
@@ -1777,10 +1777,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/MeetingPointsManager.tsx:133",
+    "id": "src/components/MeetingPointsManager.tsx:143",
     "kind": "direct",
     "filePath": "src/components/MeetingPointsManager.tsx",
-    "line": 133,
+    "line": 143,
     "component": "MeetingPointsManager",
     "type": "error",
     "message": "Session error: ${sessionError.message}",
@@ -1790,10 +1790,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/MeetingPointsManager.tsx:139",
+    "id": "src/components/MeetingPointsManager.tsx:149",
     "kind": "direct",
     "filePath": "src/components/MeetingPointsManager.tsx",
-    "line": 139,
+    "line": 149,
     "component": "MeetingPointsManager",
     "type": "error",
     "message": "Not authenticated. Please sign in again.",
@@ -1803,10 +1803,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/MeetingPointsManager.tsx:203",
+    "id": "src/components/MeetingPointsManager.tsx:213",
     "kind": "direct",
     "filePath": "src/components/MeetingPointsManager.tsx",
-    "line": 203,
+    "line": 213,
     "component": "MeetingPointsManager",
     "type": "success",
     "message": "Image uploaded successfully",
@@ -1829,10 +1829,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:250",
+    "id": "src/components/NetworkingDashboard.tsx:218",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 250,
+    "line": 218,
     "component": "NetworkingDashboard",
     "type": "success",
     "message": "Session duplicated successfully",
@@ -1842,10 +1842,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:253",
+    "id": "src/components/NetworkingDashboard.tsx:221",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 253,
+    "line": 221,
     "component": "NetworkingDashboard",
     "type": "error",
     "message": "Failed to duplicate session",
@@ -1855,10 +1855,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:368",
+    "id": "src/components/NetworkingDashboard.tsx:305",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 368,
+    "line": 305,
     "component": "NetworkingDashboard",
     "type": "success",
     "message": "Event link copied",
@@ -1868,10 +1868,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:370",
+    "id": "src/components/NetworkingDashboard.tsx:307",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 370,
+    "line": 307,
     "component": "NetworkingDashboard",
     "type": "error",
     "message": "Could not copy link",
@@ -2037,10 +2037,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/redesign/PublicNav.tsx:178",
+    "id": "src/components/redesign/PublicNav.tsx:211",
     "kind": "direct",
     "filePath": "src/components/redesign/PublicNav.tsx",
-    "line": 178,
+    "line": 211,
     "component": "PublicNav",
     "type": "success",
     "message": "Logged out successfully",
@@ -2167,10 +2167,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:239",
+    "id": "src/components/ParticipantDashboard.tsx:250",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 239,
+    "line": 250,
     "component": "ParticipantDashboard",
     "type": "success",
     "message": "Link copied",
@@ -2180,10 +2180,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:752",
+    "id": "src/components/ParticipantDashboard.tsx:772",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 752,
+    "line": 772,
     "component": "ParticipantDashboard",
     "type": "success",
     "message": "You're in! 🎉",
@@ -2193,10 +2193,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1133",
+    "id": "src/components/ParticipantDashboard.tsx:1153",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1133,
+    "line": 1153,
     "component": "ParticipantDashboard",
     "type": "info",
     "message": "Redirecting to updated link...",
@@ -2206,10 +2206,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1261",
+    "id": "src/components/ParticipantDashboard.tsx:1281",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1261,
+    "line": 1281,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Failed to load data",
@@ -2219,10 +2219,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1333",
+    "id": "src/components/ParticipantDashboard.tsx:1353",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1333,
+    "line": 1353,
     "component": "ParticipantDashboard",
     "type": "success",
     "message": "Unregistered from ${round.name}",
@@ -2232,10 +2232,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1343",
+    "id": "src/components/ParticipantDashboard.tsx:1363",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1343,
+    "line": 1363,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Failed to unregister",
@@ -2245,10 +2245,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1356",
+    "id": "src/components/ParticipantDashboard.tsx:1376",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1356,
+    "line": 1376,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Not authenticated",
@@ -2258,10 +2258,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1363",
+    "id": "src/components/ParticipantDashboard.tsx:1383",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1363,
+    "line": 1383,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Registration not found",
@@ -2271,10 +2271,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1376",
+    "id": "src/components/ParticipantDashboard.tsx:1396",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1376,
+    "line": 1396,
     "component": "ParticipantDashboard",
     "type": "info",
     "message": "You already confirmed attendance for this round",
@@ -2284,10 +2284,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1449",
+    "id": "src/components/ParticipantDashboard.tsx:1469",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1449,
+    "line": 1469,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Failed to confirm: ${errorMessage}${statusInfo}",
@@ -2297,10 +2297,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1472",
+    "id": "src/components/ParticipantDashboard.tsx:1492",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1472,
+    "line": 1492,
     "component": "ParticipantDashboard",
     "type": "success",
     "message": "Attendance confirmed! You will be matched at the start time.",
@@ -2310,10 +2310,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1490",
+    "id": "src/components/ParticipantDashboard.tsx:1510",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1490,
+    "line": 1510,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Network error: ${error instanceof Error ? error.message : 'Unknown error'}",
@@ -2323,10 +2323,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1535",
+    "id": "src/components/ParticipantDashboard.tsx:1555",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1535,
+    "line": 1555,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Please select a group first",
@@ -2336,10 +2336,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1542",
+    "id": "src/components/ParticipantDashboard.tsx:1562",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1542,
+    "line": 1562,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Please select at least one topic first",
@@ -2349,10 +2349,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1547",
+    "id": "src/components/ParticipantDashboard.tsx:1567",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1547,
+    "line": 1567,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Please select a topic first",
@@ -2362,10 +2362,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1582",
+    "id": "src/components/ParticipantDashboard.tsx:1602",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1582,
+    "line": 1602,
     "component": "ParticipantDashboard",
     "type": "success",
     "message": "Registered for ${round.name}",
@@ -2375,10 +2375,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/components/ParticipantDashboard.tsx:1595",
+    "id": "src/components/ParticipantDashboard.tsx:1615",
     "kind": "direct",
     "filePath": "src/components/ParticipantDashboard.tsx",
-    "line": 1595,
+    "line": 1615,
     "component": "ParticipantDashboard",
     "type": "error",
     "message": "Failed to update registration",
@@ -2479,10 +2479,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Participant"
   },
   {
-    "id": "src/AppRouter.tsx:1569",
+    "id": "src/AppRouter.tsx:1578",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1569,
+    "line": 1578,
     "component": "AppRouter",
     "type": "error",
     "message": "Error creating round",
@@ -2492,10 +2492,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1583",
+    "id": "src/AppRouter.tsx:1592",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1583,
+    "line": 1592,
     "component": "AppRouter",
     "type": "success",
     "message": "${session.name} created successfully",
@@ -2505,10 +2505,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1601",
+    "id": "src/AppRouter.tsx:1610",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1601,
+    "line": 1610,
     "component": "AppRouter",
     "type": "error",
     "message": "Participant limit exceeded",
@@ -2518,10 +2518,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1606",
+    "id": "src/AppRouter.tsx:1615",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1606,
+    "line": 1615,
     "component": "AppRouter",
     "type": "error",
     "message": "Error creating round",
@@ -2531,10 +2531,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1653",
+    "id": "src/AppRouter.tsx:1662",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1653,
+    "line": 1662,
     "component": "AppRouter",
     "type": "success",
     "message": "${sessionName} updated successfully",
@@ -2544,10 +2544,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1670",
+    "id": "src/AppRouter.tsx:1679",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1670,
+    "line": 1679,
     "component": "AppRouter",
     "type": "error",
     "message": "Participant limit exceeded",
@@ -2557,10 +2557,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1675",
+    "id": "src/AppRouter.tsx:1684",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1675,
+    "line": 1684,
     "component": "AppRouter",
     "type": "error",
     "message": "Error updating round",
@@ -2570,10 +2570,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1719",
+    "id": "src/AppRouter.tsx:1728",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1719,
+    "line": 1728,
     "component": "AppRouter",
     "type": "success",
     "message": "${sessionName} deleted successfully",
@@ -2583,10 +2583,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1722",
+    "id": "src/AppRouter.tsx:1731",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1722,
+    "line": 1731,
     "component": "AppRouter",
     "type": "error",
     "message": "Error deleting round",
@@ -2596,10 +2596,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1729",
+    "id": "src/AppRouter.tsx:1738",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1729,
+    "line": 1738,
     "component": "AppRouter",
     "type": "error",
     "message": "Error deleting round",
@@ -2609,10 +2609,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Routing"
   },
   {
-    "id": "src/AppRouter.tsx:1735",
+    "id": "src/AppRouter.tsx:1744",
     "kind": "direct",
     "filePath": "src/AppRouter.tsx",
-    "line": 1735,
+    "line": 1744,
     "component": "AppRouter",
     "type": "success",
     "message": "${sessionName} deleted successfully",
@@ -2752,10 +2752,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionDisplayCard.tsx:748",
+    "id": "src/components/SessionDisplayCard.tsx:703",
     "kind": "direct",
     "filePath": "src/components/SessionDisplayCard.tsx",
-    "line": 748,
+    "line": 703,
     "component": "SessionDisplayCard",
     "type": "success",
     "message": "Round completed",
@@ -2804,10 +2804,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionForm.tsx:804",
+    "id": "src/components/SessionForm.tsx:810",
     "kind": "direct",
     "filePath": "src/components/SessionForm.tsx",
-    "line": 804,
+    "line": 810,
     "component": "SessionForm",
     "type": "error",
     "message": "Please set date and time before scheduling",
@@ -2817,10 +2817,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionForm.tsx:809",
+    "id": "src/components/SessionForm.tsx:815",
     "kind": "direct",
     "filePath": "src/components/SessionForm.tsx",
-    "line": 809,
+    "line": 815,
     "component": "SessionForm",
     "type": "error",
     "message": "Date cannot be in the past",
@@ -2830,10 +2830,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionForm.tsx:814",
+    "id": "src/components/SessionForm.tsx:820",
     "kind": "direct",
     "filePath": "src/components/SessionForm.tsx",
-    "line": 814,
+    "line": 820,
     "component": "SessionForm",
     "type": "error",
     "message": "Please fix time validation errors",
@@ -2843,10 +2843,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionForm.tsx:842",
+    "id": "src/components/SessionForm.tsx:848",
     "kind": "direct",
     "filePath": "src/components/SessionForm.tsx",
-    "line": 842,
+    "line": 848,
     "component": "SessionForm",
     "type": "error",
     "message": "Please set date and time",
@@ -2856,10 +2856,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:421",
+    "id": "src/components/SessionRegistration.tsx:424",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 421,
+    "line": 424,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Signed in successfully! Complete your registration below.",
@@ -2869,10 +2869,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:881",
+    "id": "src/components/SessionRegistration.tsx:884",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 881,
+    "line": 884,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Not logged in",
@@ -2882,10 +2882,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:907",
+    "id": "src/components/SessionRegistration.tsx:910",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 907,
+    "line": 910,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Attendance confirmed! You will be matched at the start time.",
@@ -2895,10 +2895,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:915",
+    "id": "src/components/SessionRegistration.tsx:918",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 915,
+    "line": 918,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Failed to confirm attendance",
@@ -2908,10 +2908,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:922",
+    "id": "src/components/SessionRegistration.tsx:925",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 922,
+    "line": 925,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Not logged in",
@@ -2921,10 +2921,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:955",
+    "id": "src/components/SessionRegistration.tsx:958",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 955,
+    "line": 958,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Unregistered from \"${roundName}\"",
@@ -2934,10 +2934,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:962",
+    "id": "src/components/SessionRegistration.tsx:965",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 962,
+    "line": 965,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Failed to unregister",
@@ -2947,10 +2947,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:968",
+    "id": "src/components/SessionRegistration.tsx:971",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 968,
+    "line": 971,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Please enter a valid email",
@@ -2960,10 +2960,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:998",
+    "id": "src/components/SessionRegistration.tsx:1001",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 998,
+    "line": 1001,
     "component": "SessionRegistration",
     "type": "error",
     "message": "No account found with this email. Please create an account instead.",
@@ -2973,10 +2973,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1008",
+    "id": "src/components/SessionRegistration.tsx:1011",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1008,
+    "line": 1011,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Magic link sent! Check console in dev mode",
@@ -2986,10 +2986,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1013",
+    "id": "src/components/SessionRegistration.tsx:1016",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1013,
+    "line": 1016,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Magic link sent! Check your email to continue.",
@@ -2999,10 +2999,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1020",
+    "id": "src/components/SessionRegistration.tsx:1023",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1020,
+    "line": 1023,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Failed to send magic link",
@@ -3012,10 +3012,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1072",
+    "id": "src/components/SessionRegistration.tsx:1075",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1072,
+    "line": 1075,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Please accept the Terms of service to continue",
@@ -3025,10 +3025,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1088",
+    "id": "src/components/SessionRegistration.tsx:1091",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1088,
+    "line": 1091,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Please select a team for \"${selectedRound.roundName}\"",
@@ -3038,10 +3038,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1098",
+    "id": "src/components/SessionRegistration.tsx:1101",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1098,
+    "line": 1101,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Please select at least one topic for \"${selectedRound.roundName}\"",
@@ -3051,10 +3051,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1104",
+    "id": "src/components/SessionRegistration.tsx:1107",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1104,
+    "line": 1107,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Please select a topic for \"${selectedRound.roundName}\"",
@@ -3064,10 +3064,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1178",
+    "id": "src/components/SessionRegistration.tsx:1181",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1178,
+    "line": 1181,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Calendar file downloaded!",
@@ -3077,10 +3077,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1183",
+    "id": "src/components/SessionRegistration.tsx:1186",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1183,
+    "line": 1186,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Your browser does not support notifications",
@@ -3090,10 +3090,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1248",
+    "id": "src/components/SessionRegistration.tsx:1251",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1248,
+    "line": 1251,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Notification permission denied",
@@ -3103,10 +3103,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1252",
+    "id": "src/components/SessionRegistration.tsx:1255",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1252,
+    "line": 1255,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Failed to enable notifications",
@@ -3116,10 +3116,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1385",
+    "id": "src/components/SessionRegistration.tsx:1388",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1385,
+    "line": 1388,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Verification email re-sent. Check your inbox.",
@@ -3129,10 +3129,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1391",
+    "id": "src/components/SessionRegistration.tsx:1394",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1391,
+    "line": 1394,
     "component": "SessionRegistration",
     "type": "error",
     "message": "Network error. Please try again.",
@@ -3142,10 +3142,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionRegistration.tsx:1778",
+    "id": "src/components/SessionRegistration.tsx:1781",
     "kind": "direct",
     "filePath": "src/components/SessionRegistration.tsx",
-    "line": 1778,
+    "line": 1781,
     "component": "SessionRegistration",
     "type": "success",
     "message": "Link copied to clipboard!",
@@ -4342,5 +4342,5 @@ export const TOAST_CATALOG_STATS = {
   total: 320,
   byType: {"error":178,"success":127,"info":14,"warning":1},
   byPage: {"Account & Billing":25,"Admin":43,"Auth":2,"Blog":1,"Event":26,"Hooks":21,"Match":1,"Other":41,"Participant":28,"Routing":11,"Session":45,"Shared":76},
-  scannedAt: "2026-07-25T08:55:29.081Z",
+  scannedAt: "2026-07-27T05:42:42.091Z",
 };

@@ -12,6 +12,12 @@ interface MissedRoundProps {
   participantToken: string;
   roundId: string;
   roundName?: string;
+  /** Current participant's first name — shown in the nav. */
+  firstName?: string;
+  /** Event name (organizer.event_name) — bold primary in the event row. */
+  eventName?: string;
+  /** Session name (session.name) — light subtitle in the event row. */
+  sessionName?: string;
   onBackToDashboard: () => void;
 }
 
@@ -21,6 +27,9 @@ interface MissedRoundProps {
 
 export interface MissedRoundViewProps {
   roundName?: string;
+  firstName?: string;
+  eventName?: string;
+  sessionName?: string;
   feedback: string;
   isSubmitting: boolean;
   isSubmitted: boolean;
@@ -31,6 +40,9 @@ export interface MissedRoundViewProps {
 
 export function MissedRoundView({
   roundName,
+  firstName,
+  eventName,
+  sessionName,
   feedback,
   isSubmitting,
   isSubmitted,
@@ -42,6 +54,7 @@ export function MissedRoundView({
     <div className="wonderelo pm-page" data-active="missed-round" data-feedback={isSubmitted ? 'sent' : 'form'}>
       <div className="pm-shell">
         <PdNav
+          firstName={firstName}
           onBrandClick={onBackToDashboard}
           onDashboard={onBackToDashboard}
           onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
@@ -50,7 +63,7 @@ export function MissedRoundView({
         <div data-screen="missed-round">
           <div className="pm-band">
             <div className="pm-eventrow">
-              <div className="pm-event"><span className="name">{roundName || 'Your round'}</span><span className="org">Speed networking</span></div>
+              <div className="pm-event"><span className="name">{eventName || sessionName || 'Your round'}</span><span className="org">{sessionName || 'Speed networking'}</span></div>
               <span className="pm-state is-quiet"><span className="dot" /> Round closed</span>
             </div>
             <div className="pm-center" style={{ paddingTop: 4 }}>
@@ -94,7 +107,7 @@ export function MissedRoundView({
 // Container
 // ============================================================
 
-export function MissedRound({ participantToken, roundId, roundName, onBackToDashboard }: MissedRoundProps) {
+export function MissedRound({ participantToken, roundId, roundName, firstName, eventName, sessionName, onBackToDashboard }: MissedRoundProps) {
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -128,6 +141,9 @@ export function MissedRound({ participantToken, roundId, roundName, onBackToDash
   return (
     <MissedRoundView
       roundName={roundName}
+      firstName={firstName}
+      eventName={eventName}
+      sessionName={sessionName}
       feedback={feedback}
       isSubmitting={isSubmitting}
       isSubmitted={isSubmitted}

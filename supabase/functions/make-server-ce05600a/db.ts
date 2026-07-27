@@ -31,6 +31,7 @@ export async function getOrganizerById(id: string) {
     userId: data.id,
     email: data.email,
     organizerName: data.organizer_name,
+    eventName: data.event_name,
     urlSlug: data.url_slug,
     role: data.role,
     phone: data.phone,
@@ -56,6 +57,7 @@ export async function getOrganizerBySlug(slug: string) {
     userId: data.id,
     email: data.email,
     organizerName: data.organizer_name,
+    eventName: data.event_name,
     urlSlug: data.url_slug,
     role: data.role,
     phone: data.phone,
@@ -111,6 +113,7 @@ export async function updateOrganizerProfile(
   id: string,
   updates: Partial<{
     organizerName: string;
+    eventName: string;
     urlSlug: string;
     role: string;
     phone: string;
@@ -122,6 +125,7 @@ export async function updateOrganizerProfile(
 ) {
   const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
   if (updates.organizerName !== undefined) dbUpdates.organizer_name = updates.organizerName;
+  if (updates.eventName !== undefined) dbUpdates.event_name = updates.eventName;
   if (updates.urlSlug !== undefined) dbUpdates.url_slug = updates.urlSlug;
   if (updates.role !== undefined) dbUpdates.role = updates.role;
   if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
@@ -141,6 +145,7 @@ export async function updateOrganizerProfile(
     userId: data.id,
     email: data.email,
     organizerName: data.organizer_name,
+    eventName: data.event_name,
     urlSlug: data.url_slug,
     role: data.role,
     phone: data.phone,
@@ -1333,7 +1338,7 @@ export async function getParticipantDashboardData(token: string) {
       *,
       sessions!inner(id, name, date, status, user_id, meeting_points, teams, topics, enable_teams, enable_topics),
       rounds!inner(id, name, date, start_time, duration, group_size, meeting_points, status),
-      organizer_profiles!inner(id, organizer_name, url_slug, profile_image_url)
+      organizer_profiles!inner(id, organizer_name, event_name, url_slug, profile_image_url)
     `)
     .eq('participant_id', participant.participantId)
     .order('registered_at', { ascending: false });
@@ -1351,6 +1356,7 @@ export async function getParticipantDashboardData(token: string) {
     duration: r.rounds?.duration,
     roundStatus: r.rounds?.status,
     organizerName: r.organizer_profiles?.organizer_name,
+    eventName: r.organizer_profiles?.event_name,
     organizerUrlSlug: r.organizer_profiles?.url_slug,
   }));
 

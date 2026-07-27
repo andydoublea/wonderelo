@@ -221,7 +221,9 @@ export function BillingSettingsView({
                           Up to {PRICING_TIERS[subscription.capacityTier].capacity} participants · {formatPrice(PRICING_TIERS[subscription.capacityTier].premiumMonthlyPrice)}/month
                         </p>
 
-                        {isCancelled ? (
+                        {/* HIDDEN (kept): "Your subscription has been cancelled" banner —
+                            not in the design; the next-billing row is always shown instead. */}
+                        {false && isCancelled && (
                           <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(221,83,28,.08)', border: '1px solid rgba(221,83,28,.25)' }}>
                             <span style={{ color: C.orange, display: 'inline-flex', marginTop: 1 }}><Ico d={warnIco} size={16} /></span>
                             <div>
@@ -231,13 +233,13 @@ export function BillingSettingsView({
                               </p>
                             </div>
                           </div>
-                        ) : (
-                          <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.ink, opacity: .7 }}>
-                            <Ico d={calIco} size={15} /> Next billing date: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                          </div>
                         )}
+                        <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.ink, opacity: .7 }}>
+                          <Ico d={calIco} size={15} /> Next billing: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                        </div>
 
-                        {subscription.status === 'past_due' && (
+                        {/* HIDDEN (kept): "Payment failed" past-due banner — not in the design. */}
+                        {false && subscription.status === 'past_due' && (
                           <div style={{ marginTop: 12, display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.25)' }}>
                             <span style={{ color: '#c0392b', display: 'inline-flex', marginTop: 1 }}><Ico d={warnIco} size={16} /></span>
                             <div>
@@ -287,11 +289,9 @@ export function BillingSettingsView({
               </Card>
             )}
 
-            {/* 2 · Choose a plan — PricingPanel kept for the no-subscription case
-                (the plan-hero card above stands in for it once subscribed). */}
-            {!subscription && (
-              <PricingPanel accessToken={accessToken} hasSubscription={!!subscription} />
-            )}
+            {/* 2 · Change / Choose a plan — always rendered. Design shows the plan
+                chooser even when subscribed, titled "Change plan". */}
+            <PricingPanel accessToken={accessToken} hasSubscription={!!subscription} title={subscription ? 'Change plan' : 'Choose a plan'} />
 
             {/* 3 · Invoices / Credit history */}
             <Card>
@@ -467,7 +467,8 @@ export function BillingSettingsView({
               </Body>
             </Card>
 
-            {/* FAQ */}
+            {/* HIDDEN (kept): "Frequently asked questions" card — not in the design. */}
+            {false && (
             <Card>
               <CardHead>Frequently asked questions</CardHead>
               <Body>
@@ -486,6 +487,7 @@ export function BillingSettingsView({
                 </div>
               </Body>
             </Card>
+            )}
           </>
         )}
       </PageShell>
@@ -494,17 +496,17 @@ export function BillingSettingsView({
       {showCancelDialog && (
         <div onClick={() => onShowCancelDialog(false)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(45,17,51,.45)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '100%', background: '#fff', borderRadius: 18, border: `1px solid ${C.hairStrong}`, boxShadow: '0 30px 70px rgba(75,29,81,.30)', padding: 28 }}>
+            {/* HIDDEN (kept): warning icon on the dialog title — not in the design. */}
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 22, letterSpacing: '-.02em', color: C.purpleDeep }}>
-              <span style={{ color: '#c0392b', display: 'inline-flex' }}><Ico d={warnIco} size={20} /></span>
+              {false && <span style={{ color: '#c0392b', display: 'inline-flex' }}><Ico d={warnIco} size={20} /></span>}
               Cancel subscription?
             </h3>
             <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.55, color: C.ink, opacity: .78 }}>
-              Are you sure you want to cancel your subscription? You will retain access until the end of your current billing period
-              {subscription?.currentPeriodEnd && <> ({new Date(subscription.currentPeriodEnd).toLocaleDateString()})</>}.
+              You'll keep full access to <strong style={{ color: C.purpleDeep }}>Unlimited events</strong> until <strong style={{ color: C.purpleDeep }}>{subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'the end of your billing period'}</strong>. After that your account moves to the Free plan (events up to 5 participants). Any single-event credits you own stay available.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
               <button type="button" onClick={() => onShowCancelDialog(false)} style={{ fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, padding: '11px 16px', borderRadius: 12, cursor: 'pointer', background: C.orange, color: '#fff', border: 'none', boxShadow: '0 6px 16px rgba(221,83,28,.22)' }}>Keep subscription</button>
-              <button type="button" onClick={onCancelSubscription} style={{ fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, padding: '11px 16px', borderRadius: 12, cursor: 'pointer', background: 'transparent', color: '#c0392b', border: '1.5px solid rgba(192,57,43,.4)' }}>Yes, cancel subscription</button>
+              <button type="button" onClick={onCancelSubscription} style={{ fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, padding: '11px 16px', borderRadius: 12, cursor: 'pointer', background: 'transparent', color: '#c0392b', border: '1.5px solid rgba(192,57,43,.4)' }}>Cancel subscription</button>
             </div>
           </div>
         </div>

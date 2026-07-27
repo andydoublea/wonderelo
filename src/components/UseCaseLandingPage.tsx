@@ -12,9 +12,21 @@ interface UseCaseData {
   title: string;
   subtitle: string;
   heroHeadline: string;
+  // Optional design-authored hero markup (em-dashes, italic <span>, <br>). When
+  // present it renders in place of the plain heroHeadline string.
+  heroHeadlineHtml?: string;
   heroDescription: string;
+  // `title`/`description` may carry inline <em> markup to match the design cards.
   benefits: Array<{ icon: any; title: string; description: string }>;
   howItWorks: string[];
+  // Optional design "How it works" steps: short heading (may contain <em>) + a
+  // supporting paragraph. Falls back to `howItWorks` (heading only) when absent.
+  steps?: Array<{ heading: string; body: string }>;
+  // Optional breadcrumb label (defaults to title minus "Wonderelo for ").
+  crumb?: string;
+  // Optional noun for the final CTA italic (design uses singular "conference").
+  // Defaults to the lowercased label.
+  ctaNoun?: string;
   cta: string;
 }
 
@@ -23,19 +35,28 @@ const useCases: Record<string, UseCaseData> = {
     slug: 'conferences',
     title: 'Wonderelo for Conferences',
     subtitle: 'Conference Networking',
-    heroHeadline: 'Give your attendees what they actually came for – connections',
-    heroDescription: 'Most conference-goers say networking is their #1 reason for attending, yet most of them leave without a single meaningful new contact. Wonderelo changes that with structured 1-on-1 or small-group matching during breaks.',
+    crumb: 'Conferences & barcamps',
+    ctaNoun: 'conference',
+    heroHeadline: 'Give your attendees what they actually came for — connections',
+    heroHeadlineHtml: 'Give your attendees<br/>what they actually came for —<br/><span class="w-italic">connections</span>',
+    heroDescription: 'Most conference-goers say networking is the #1 reason they showed up — yet most leave without a single meaningful new contact. Wonderelo runs structured 1-on-1 and small-group rounds during breaks, so every attendee walks out with a handful.',
     benefits: [
-      { icon: Users, title: 'Break the bubble', description: 'Attendees meet people outside their usual circle – across industries, departments, and experience levels.' },
-      { icon: Zap, title: 'Zero friction', description: 'No profiles to fill, no apps to download. Scan a QR code, get matched, meet at a meeting point – done.' },
-      { icon: MapPin, title: 'Uses your venue', description: 'Place meeting point signs around your venue. Participants find each other at designated spots – tables, stands, or rollups.' },
-      { icon: Star, title: 'Memorable experience', description: 'Attendees remember the conversations, not the slides. Structured networking makes your event stand out.' },
+      { icon: Users, title: 'Break the <em>bubble</em>', description: 'Attendees meet people outside their usual circle — across industries, departments, and experience levels. The hallway conversations that "just happen" at small events finally happen at scale.' },
+      { icon: Zap, title: 'Zero <em>friction</em>', description: 'No profiles, no apps to download, no AI guessing. Scan a QR code, get matched, meet at the assigned meeting point — done. Even your most introverted attendee will play.' },
+      { icon: MapPin, title: 'Use the venue you <em>already</em> have', description: 'Place printed meeting-point signs around your venue — tables, stands, roll-ups. Participants find each other at named spots. No new tech, no extra staff.' },
+      { icon: Star, title: 'The <em>moment</em> people remember', description: 'Attendees forget which keynote opened the day. They remember the conversation that turned into a co-founder, a customer, a friend. Wonderelo creates that moment, on purpose.' },
     ],
     howItWorks: [
       'Display the QR code on a slide, screen, or rollup banner',
       'Attendees scan and register in seconds – name and email only',
       'At round start, each participant gets a match + meeting point',
       'They meet, talk, and optionally exchange contacts after',
+    ],
+    steps: [
+      { heading: 'Put the QR on a <em>slide</em>', body: 'Display the code on a stage screen, roll-up, or table card. Each event gets a custom URL too.' },
+      { heading: 'Attendees register in <em>seconds</em>', body: 'Name and email only — no profile to fill, no download. Most people are in within 20 seconds.' },
+      { heading: 'The round goes <em>live</em>', body: 'At the time you set, everyone gets a match plus a named meeting point: "Coffee bar · A".' },
+      { heading: 'They meet. They <em>talk</em>', body: 'Optional ice-breaker prompts, a timer, and an easy way to exchange contacts after if they want to.' },
     ],
     cta: 'Add networking to your conference',
   },
@@ -328,7 +349,7 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
         {/* Crumb + sibling switcher */}
         <div className="uc-crumb">
           <a className="uc-crumb-link" href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Who's it for</a>{' '}
-          <span className="sep">/</span> <span>{data.title.replace('Wonderelo for ', '')}</span>
+          <span className="sep">/</span> <span>{data.crumb || data.title.replace('Wonderelo for ', '')}</span>
           <div className="case-row">
             {siblings.map((slug) => (
               <a
@@ -352,7 +373,9 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
           <div className="uc-hero-grid">
             <div>
               <span className="uc-tag"><span className="w-diamond" /> {heroTag(activeSlug)}</span>
-              <h1 className="w-display">{data.heroHeadline}</h1>
+              {data.heroHeadlineHtml
+                ? <h1 className="w-display" dangerouslySetInnerHTML={{ __html: data.heroHeadlineHtml }} />
+                : <h1 className="w-display">{data.heroHeadline}</h1>}
               <p className="lede">{data.heroDescription}</p>
               <div className="actions">
                 <a className="w-btn w-btn-primary w-btn-lg" href="#" onClick={(e) => { e.preventDefault(); onGetStarted(); }}>
@@ -431,7 +454,7 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
                 <div className="ico-wrap">
                   {benefitIcons[i] || benefitIcons[benefitIcons.length - 1]}
                 </div>
-                <h3>{benefit.title}</h3>
+                <h3 dangerouslySetInnerHTML={{ __html: benefit.title }} />
                 <p>{benefit.description}</p>
               </article>
             ))}
@@ -446,10 +469,11 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
             <h2 className="w-h1">Four steps. Six <span className="w-italic">minutes</span></h2>
           </div>
           <div className="uc-steps">
-            {data.howItWorks.map((step, i) => (
+            {(data.steps || data.howItWorks.map((h) => ({ heading: h, body: '' }))).map((step, i) => (
               <div key={i} className="uc-step">
                 <div className="num-circle">{String(i + 1).padStart(2, '0')}</div>
-                <h4>{step}</h4>
+                <h4 dangerouslySetInnerHTML={{ __html: step.heading }} />
+                {step.body && <p>{step.body}</p>}
               </div>
             ))}
           </div>
@@ -504,7 +528,7 @@ export function UseCaseLandingPage({ onGetStarted, onSignIn }: UseCaseLandingPag
           <span className="deco-1" />
           <span className="deco-2" />
           <span className="deco-italic">go</span>
-          <h2>Add networking to your <span className="w-italic">{label.toLowerCase()}</span> — in the next six minutes</h2>
+          <h2>Add networking to your <span className="w-italic">{data.ctaNoun || label.toLowerCase()}</span> — in the next six minutes</h2>
           <p>Free for events up to 5 participants — perfect for testing before you commit. No card, no sales call, no integration.</p>
           <div className="actions">
             <a className="w-btn w-btn-ghost w-btn-lg" href="#" onClick={(e) => e.preventDefault()}>Talk to us first</a>

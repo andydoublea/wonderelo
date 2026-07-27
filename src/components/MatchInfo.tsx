@@ -27,10 +27,44 @@ function MatchNav({ firstName, onBackToDashboard }: { firstName?: string; onBack
   );
 }
 
+// Reads the cached dashboard to recover the event name (organizer.event_name)
+// and session name (session.name) for the matching-flow event row. The live
+// match endpoint carries sessionName but not the event name, so we backfill the
+// event name from the cache the dashboard already populated on its way here.
+// Recover the current participant's first name from the profile the dashboard
+// cached on its way here — used for the nav on match-flow states that have no
+// live participant payload (e.g. the no-match screen).
+export function cachedFirstName(token?: string): string {
+  try {
+    const raw = token ? localStorage.getItem(`participant_profile_${token}`) : null;
+    if (raw) return JSON.parse(raw)?.firstName || '';
+  } catch { /* ignore */ }
+  return '';
+}
+
+export function cachedRoundNames(token?: string, roundId?: string): { event: string; session: string } {
+  try {
+    const raw = token ? localStorage.getItem(`participant_dashboard_${token}`) : null;
+    if (raw) {
+      const d = JSON.parse(raw);
+      const regs = d.registrations || [];
+      const reg = (roundId && regs.find((r: any) => r.roundId === roundId)) || regs[0];
+      if (reg) return { event: reg.eventName || reg.sessionName || '', session: reg.sessionName || '' };
+    }
+  } catch { /* ignore */ }
+  return { event: '', session: '' };
+}
+
 export interface MatchData {
   matchId: string;
   roundId?: string;
   roundName?: string;
+  /** Event name (organizer.event_name) — bold primary in the event row. */
+  eventName?: string;
+  /** Session name (session.name) — light subtitle in the event row. */
+  sessionName?: string;
+  /** Current participant's first name — shown in the nav. */
+  myName?: string;
   sessionId?: string;
   status?: string;
   meetingPointName: string;
@@ -69,15 +103,18 @@ export function MatchInfoMatchedView({
   const walkSecs = matchData.walkingDeadline
     ? Math.max(0, Math.floor((new Date(matchData.walkingDeadline).getTime() - Date.now()) / 1000))
     : null;
-  const isVirtual = matchData.meetingPointType === 'virtual';
+  // Virtual / "Join the call" meeting-point variant is not in the v06 design — force
+  // the physical variant. Original logic preserved for when the design covers it:
+  // const isVirtual = matchData.meetingPointType === 'virtual';
+  const isVirtual = false;
   return (
     <div className="wonderelo pm-page" data-active="meeting-point">
       <div className="pm-shell">
-        <MatchNav firstName={matchData.participants?.[0]?.firstName} onBackToDashboard={onBackToDashboard} />
+        <MatchNav firstName={matchData.myName || matchData.participants?.[0]?.firstName} onBackToDashboard={onBackToDashboard} />
         <div data-screen="meeting-point">
           <div className="pm-band">
             <div className="pm-eventrow">
-              <div className="pm-event"><span className="name">{matchData.roundName || 'Your round'}</span><span className="org">Live round</span></div>
+              <div className="pm-event"><span className="name">{matchData.eventName || matchData.sessionName || 'Your round'}</span><span className="org">{matchData.sessionName || 'Speed networking'}</span></div>
               <span className="pm-state"><span className="dot" /> Live</span>
             </div>
             <div className="pm-focusbox">
@@ -114,19 +151,22 @@ export function MatchInfoMatchedView({
 }
 
 export interface MatchInfoNoMatchViewProps {
+  firstName?: string;
+  eventName?: string;
+  sessionName?: string;
   onBackToDashboard: () => void;
   onBackToEventPage: () => void;
 }
 
-export function MatchInfoNoMatchView({ onBackToDashboard, onBackToEventPage }: MatchInfoNoMatchViewProps) {
+export function MatchInfoNoMatchView({ firstName, eventName, sessionName, onBackToDashboard, onBackToEventPage }: MatchInfoNoMatchViewProps) {
   return (
     <div className="wonderelo pm-page" data-active="no-match">
       <div className="pm-shell">
-        <MatchNav onBackToDashboard={onBackToDashboard} />
+        <MatchNav firstName={firstName} onBackToDashboard={onBackToDashboard} />
         <div data-screen="no-match">
           <div className="pm-band">
             <div className="pm-eventrow">
-              <div className="pm-event"><span className="name">Your round</span><span className="org">Speed networking</span></div>
+              <div className="pm-event"><span className="name">{eventName || 'Your round'}</span><span className="org">{sessionName || 'Speed networking'}</span></div>
               <span className="pm-state is-quiet"><span className="dot" /> Round closed</span>
             </div>
             <div className="pm-center" style={{ paddingTop: 6 }}>
@@ -195,7 +235,12 @@ export function MatchInfo() {
 
       const data = await response.json();
       debugLog('[MatchInfo] Match data loaded:', data);
-      setMatchData(data.matchData);
+      const names = cachedRoundNames(token, data.matchData?.roundId);
+      setMatchData({
+        ...data.matchData,
+        eventName: data.matchData?.eventName || names.event,
+        sessionName: data.matchData?.sessionName || names.session,
+      });
       setIsLoading(false);
       setIsWaitingForMatch(false);
 
@@ -358,8 +403,12 @@ export function MatchInfo() {
   }
 
   if (error === 'no-match') {
+    const noMatchNames = cachedRoundNames(token);
     return (
       <MatchInfoNoMatchView
+        firstName={cachedFirstName(token)}
+        eventName={noMatchNames.event}
+        sessionName={noMatchNames.session}
         onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
         onBackToEventPage={() => {
           // Pull organizer slug from cached dashboard data
@@ -397,18 +446,20 @@ export function MatchInfo() {
     );
   }
 
-  // Walking deadline expired and participant never checked in — show MissedRound
+  // Walking deadline expired and participant never checked in — show MissedRound.
+  // MissedRound is a full-screen pm-page with its own nav, so render it directly
+  // (no WondereloHeader wrapper — that would double up the nav).
   if (isDeadlineExpired && matchData.status !== 'checked-in' && matchData.status !== 'met') {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <MissedRound
-          participantToken={token!}
-          roundId={matchData.roundId || ''}
-          roundName={matchData.roundName}
-          onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
-        />
-      </div>
+      <MissedRound
+        participantToken={token!}
+        roundId={matchData.roundId || ''}
+        roundName={matchData.roundName}
+        firstName={matchData.myName}
+        eventName={matchData.eventName}
+        sessionName={matchData.sessionName}
+        onBackToDashboard={() => navigate(`/p/${token}?from=match`)}
+      />
     );
   }
 

@@ -90,12 +90,13 @@ function InlineForm({ children }: { children: ReactNode }) {
 
 // Controlled input styled to match the mock's <Field>. Focus state is real
 // (drives the orange ring), unlike the static `focused` prop in the mock.
-function TextField({ value, onChange, placeholder, type = 'text', disabled = false }: {
+function TextField({ value, onChange, placeholder, type = 'text', disabled = false, onBlur }: {
   value?: string;
   onChange?: (v: string) => void;
   placeholder?: string;
   type?: string;
   disabled?: boolean;
+  onBlur?: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   const active = focused && !disabled;
@@ -115,7 +116,7 @@ function TextField({ value, onChange, placeholder, type = 'text', disabled = fal
         disabled={disabled}
         placeholder={placeholder}
         onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onBlur={() => { setFocused(false); onBlur?.(); }}
         style={{
           flex: 1, border: 'none', outline: 'none', background: 'transparent',
           fontFamily: C.fontBody, fontSize: 14, color: disabled ? 'rgba(58,46,52,.55)' : C.ink, minWidth: 0,
@@ -180,7 +181,8 @@ export function AccountSettingsView({
                 {/* Your name */}
                 <div style={{ maxWidth: 380 }}>
                   <FieldLabel>Your name</FieldLabel>
-                  <TextField value={organizerName} onChange={onOrganizerNameChange} placeholder="John Doe" />
+                  <TextField value={organizerName} onChange={onOrganizerNameChange} placeholder="John Doe" onBlur={() => { if (organizerName.trim()) onSave(); }} />
+                  <Hint>Saves automatically</Hint>
                 </div>
 
                 {/* Email — disabled, with collapsible change form (prop-driven toggle) */}
@@ -243,14 +245,18 @@ export function AccountSettingsView({
                   )}
                 </div>
 
-                {/* Save (persists the organizer name via onSave — preserves original logic) */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
-                  <button type="button" onClick={onSave} disabled={isSaving} style={{
-                    fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, cursor: isSaving ? 'default' : 'pointer',
-                    padding: '11px 20px', borderRadius: 12, border: '1px solid transparent',
-                    background: C.orange, color: '#fff', boxShadow: '0 6px 16px rgba(221,83,28,.25)', opacity: isSaving ? .7 : 1,
-                  }}>{isSaving ? 'Saving…' : 'Save changes'}</button>
-                </div>
+                {/* HIDDEN (kept): explicit "Save changes" button. Design autosaves the
+                    name (see the "Saves automatically" hint + onBlur→onSave above), so
+                    the button is not rendered. Handler (onSave) is still wired. */}
+                {false && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+                    <button type="button" onClick={onSave} disabled={isSaving} style={{
+                      fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, cursor: isSaving ? 'default' : 'pointer',
+                      padding: '11px 20px', borderRadius: 12, border: '1px solid transparent',
+                      background: C.orange, color: '#fff', boxShadow: '0 6px 16px rgba(221,83,28,.25)', opacity: isSaving ? .7 : 1,
+                    }}>{isSaving ? 'Saving…' : 'Save changes'}</button>
+                  </div>
+                )}
 
               </div>
             )}

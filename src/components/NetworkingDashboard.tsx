@@ -5,12 +5,10 @@ import { toast } from 'sonner@2.0.3';
 import { NetworkingSession } from '../types';
 import { SessionForm } from './SessionForm';
 import { SessionDisplayCard } from './SessionDisplayCard';
-import { CalendarView } from './CalendarView';
 import { SessionSuccessPage } from './SessionSuccessPage';
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
-import { Calendar, Users, Copy, Edit, LayoutGrid, Table as TableIcon, MoreVertical, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { debugLog, errorLog } from '../utils/debug';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { errorLog } from '../utils/debug';
 import { ServiceType } from '../App';
 import { C, Btn, Italic } from './redesign/organizerAtoms';
 import { hasRunningRounds, isRoundRunning, getRoundStatus } from '../utils/sessionStatus';
@@ -37,14 +35,7 @@ const DI = {
   arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
   layers:'<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
   pin:   '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
-};
-
-// Session status badge palette (screen-dashboard-merged.jsx · STATUS)
-const STATUS_STYLE: Record<string, { fg: string; bg: string; bd: string }> = {
-  published: { fg: C.orange,  bg: 'rgba(221,83,28,.10)',  bd: 'rgba(221,83,28,.30)' },
-  scheduled: { fg: C.purple,  bg: 'rgba(92,34,119,.10)',  bd: 'rgba(92,34,119,.28)' },
-  draft:     { fg: '#9a8478', bg: 'rgba(154,132,120,.14)', bd: 'rgba(154,132,120,.34)' },
-  completed: { fg: '#1f8a4d', bg: 'rgba(31,138,77,.10)',  bd: 'rgba(31,138,77,.28)' },
+  slide: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
 };
 
 // Rounds-list status filter pill (screen-dashboard-merged.jsx · Pill)
@@ -58,16 +49,6 @@ const StatusPill = ({ label, count, active, onClick }: { label: string; count: n
     {label}
     <span style={{ fontFamily: C.fontMono, fontSize: 11.5, fontWeight: 700, padding: '1px 7px', borderRadius: 999, background: active ? 'rgba(255,255,255,.2)' : 'rgba(76,25,77,.07)', color: active ? '#fff' : C.purpleDeep }}>{count}</span>
   </button>
-);
-
-// Small brand-styled icon toggle for the view switch (grid / table / calendar)
-const ViewToggle = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) => (
-  <button type="button" onClick={onClick} style={{
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40,
-    borderRadius: 11, cursor: 'pointer',
-    background: active ? C.purpleDeep : '#fff', color: active ? '#fff' : C.purpleDeep,
-    border: `1.5px solid ${active ? C.purpleDeep : C.hairStrong}`,
-  }}>{children}</button>
 );
 
 // Live-round countdown ring (screen-live-round.jsx "highest-value addition").
@@ -133,6 +114,7 @@ interface NetworkingDashboardProps {
   eventSlug: string;
   userEmail?: string;
   organizerName?: string;
+  eventName?: string;
   profileImageUrl?: string;
   onAddSession: (session: Omit<NetworkingSession, 'id'>) => Promise<void>;
   onUpdateSession: (id: string, updates: Partial<NetworkingSession>) => Promise<void>;
@@ -149,6 +131,7 @@ export function NetworkingDashboard({
   eventSlug,
   userEmail,
   organizerName,
+  eventName,
   profileImageUrl,
   onAddSession,
   onUpdateSession,
@@ -159,7 +142,6 @@ export function NetworkingDashboard({
 }: NetworkingDashboardProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [currentView, setCurrentView] = useState<'list' | 'calendar'>('list');
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [editingSession, setEditingSession] = useState<NetworkingSession | null>(null);
   // Initialize success page state from sessionStorage BEFORE first render
@@ -184,23 +166,14 @@ export function NetworkingDashboard({
     }
     return null;
   });
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc'>('date-desc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Check URL params for view, status filter, and success page
+  // Check URL params for status filter and success page
   useEffect(() => {
-    const view = searchParams.get('view');
-    if (view === 'calendar') {
-      setCurrentView('calendar');
-    } else {
-      setCurrentView('list');
-    }
-
     // Set filter status from URL parameter
     const status = searchParams.get('status');
     if (status && ['draft', 'scheduled', 'published', 'completed'].includes(status)) {
@@ -214,7 +187,7 @@ export function NetworkingDashboard({
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus, sortBy]);
+  }, [searchQuery, filterStatus]);
 
   const handleAddSession = async (session: Omit<NetworkingSession, 'id'>) => {
     try {
@@ -236,11 +209,6 @@ export function NetworkingDashboard({
     } catch (error) {
       errorLog('Error updating session:', error);
     }
-  };
-
-  const handleEditSession = (session: NetworkingSession) => {
-    setEditingSession(session);
-    setShowSessionForm(true);
   };
 
   const handleDuplicateSession = async (session: NetworkingSession) => {
@@ -298,51 +266,19 @@ export function NetworkingDashboard({
     return true;
   });
 
-  // Sort sessions
+  // Default stable ordering — newest first (design shows no sort control).
   const sortedSessions = [...filteredSessions].sort((a, b) => {
-    debugLog('Sorting with sortBy:', sortBy); // DEBUG
-    switch (sortBy) {
-      case 'date-asc': {
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateA === dateB) {
-          // Sort by first round startTime if dates are equal
-          const aTime = a.rounds?.[0]?.startTime || '';
-          const bTime = b.rounds?.[0]?.startTime || '';
-          return aTime.localeCompare(bTime);
-        }
-        return dateA - dateB;
-      }
-      case 'date-desc': {
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateA === dateB) {
-          const aTime = a.rounds?.[0]?.startTime || '';
-          const bTime = b.rounds?.[0]?.startTime || '';
-          return bTime.localeCompare(aTime);
-        }
-        return dateB - dateA;
-      }
-      case 'status-asc':
-        return (a.status || '').localeCompare(b.status || '');
-      case 'status-desc':
-        return (b.status || '').localeCompare(a.status || '');
-      case 'name-asc':
-        return a.name.localeCompare(b.name);
-      case 'name-desc':
-        return b.name.localeCompare(a.name);
-      default:
-        return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    if (dateA === dateB) {
+      const aTime = a.rounds?.[0]?.startTime || '';
+      const bTime = b.rounds?.[0]?.startTime || '';
+      return bTime.localeCompare(aTime);
     }
+    return dateB - dateA;
   });
-
-  debugLog('Current sortBy state:', sortBy); // DEBUG
-  debugLog('Sorted sessions count:', sortedSessions.length); // DEBUG
-  debugLog('Sorted sessions order:', sortedSessions.map(s => ({ name: s.name, date: s.date }))); // DEBUG
 
   // Pagination
   const totalPages = Math.ceil(sortedSessions.length / ITEMS_PER_PAGE);
@@ -358,10 +294,11 @@ export function NetworkingDashboard({
   /* ── Redesign render pieces (shared by the list + calendar views) ── */
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const eventUrl = `${origin}/${eventSlug}`;
-  const eventLabel = (organizerName || 'Your event').trim();
+  const eventLabel = (eventName || 'Your event').trim();
   const greetingName = (organizerName || '').trim().split(/\s+/)[0] || 'there';
 
   const openEventPage = () => window.open(`/${eventSlug}`, '_blank');
+  const openPromo = () => navigate('/event-promo');
   const copyEventLink = () => {
     try {
       navigator.clipboard?.writeText(eventUrl);
@@ -395,12 +332,11 @@ export function NetworkingDashboard({
           <span style={{ fontFamily: C.fontMono, fontSize: 14, color: '#fff' }}>{`wonderelo.com/${eventSlug}`}</span>
           <span style={{ display: 'inline-flex', gap: 8 }}>
             <span onClick={copyEventLink} title="Copy link" style={{ color: 'rgba(255,255,255,.85)', display: 'inline-flex', cursor: 'pointer' }}><DIcon d={DI.copy} size={16} /></span>
+            <span onClick={openPromo} title="Event QR" style={{ color: 'rgba(255,255,255,.85)', display: 'inline-flex', cursor: 'pointer' }}><DIcon d={DI.qr} size={16} /></span>
           </span>
         </div>
         <span onClick={openEventPage} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, color: '#fff', opacity: .9, cursor: 'pointer' }}>View event page <DIcon d={DI.ext} size={14} /></span>
-        {onEditUrl && (
-          <span onClick={onEditUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, color: 'rgba(255,255,255,.9)', cursor: 'pointer' }}>Edit URL</span>
-        )}
+        <span onClick={openPromo} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fff', color: C.purpleDeep, fontFamily: C.fontBody, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}><DIcon d={DI.slide} size={15} /> Slide</span>
       </div>
     </div>
   );
@@ -449,7 +385,7 @@ export function NetworkingDashboard({
     );
   }
 
-  // Shared toolbar — search + status filter pills + sort + view toggles.
+  // Shared toolbar — search + status filter pills (design has no sort / view controls).
   const toolbar = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
       <div style={{ width: 260, maxWidth: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderRadius: 999, background: '#fff', border: `1.5px solid ${C.hairStrong}` }}>
@@ -461,29 +397,12 @@ export function NetworkingDashboard({
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: C.fontBody, fontSize: 13.5, color: C.ink, minWidth: 0 }}
         />
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
         <StatusPill label="All" count={sessions.length} active={filterStatus === 'all'} onClick={() => setFilterStatus('all')} />
         <StatusPill label="Published" count={statusCount('published')} active={filterStatus === 'published'} onClick={() => setFilterStatus('published')} />
         <StatusPill label="Scheduled" count={statusCount('scheduled')} active={filterStatus === 'scheduled'} onClick={() => setFilterStatus('scheduled')} />
         <StatusPill label="Draft" count={statusCount('draft')} active={filterStatus === 'draft'} onClick={() => setFilterStatus('draft')} />
         <StatusPill label="Completed" count={statusCount('completed')} active={filterStatus === 'completed'} onClick={() => setFilterStatus('completed')} />
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center' }}>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          style={{ padding: '9px 14px', borderRadius: 11, background: '#fff', border: `1.5px solid ${C.hairStrong}`, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: 'pointer' }}
-        >
-          <option value="date-desc">Date (newest first)</option>
-          <option value="date-asc">Date (oldest first)</option>
-          <option value="name-asc">Name (A → Z)</option>
-          <option value="name-desc">Name (Z → A)</option>
-          <option value="status-asc">Status (A → Z)</option>
-          <option value="status-desc">Status (Z → A)</option>
-        </select>
-        <ViewToggle active={currentView === 'list' && viewMode === 'grid'} onClick={() => { setViewMode('grid'); setCurrentView('list'); }}><LayoutGrid className="h-4 w-4" /></ViewToggle>
-        <ViewToggle active={currentView === 'list' && viewMode === 'table'} onClick={() => { setViewMode('table'); setCurrentView('list'); }}><TableIcon className="h-4 w-4" /></ViewToggle>
-        <ViewToggle active={currentView === 'calendar'} onClick={() => setCurrentView('calendar')}><Calendar className="h-4 w-4" /></ViewToggle>
       </div>
     </div>
   );
@@ -530,22 +449,6 @@ export function NetworkingDashboard({
     );
   }
 
-  // Show different views
-  if (currentView === 'calendar') {
-    return (
-      <div className="wonderelo" style={{ fontFamily: C.fontBody, color: C.ink }}>
-        {hero}
-        {liveMonitor}
-        {roundsHeader}
-        {toolbar}
-        <CalendarView
-          sessions={sortedSessions}
-          onSessionClick={handleEditSession}
-        />
-      </div>
-    );
-  }
-
   // Main list view
   return (
     <div className="wonderelo" style={{ fontFamily: C.fontBody, color: C.ink }}>
@@ -556,7 +459,7 @@ export function NetworkingDashboard({
 
       {/* Sessions list */}
       {isLoadingSessions ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
           {[1, 2, 3].map((i) => (
             <div key={i} style={{ background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, padding: 22, boxShadow: '0 10px 26px rgba(75,29,81,.06)' }}>
               <div style={{ height: 22, width: '70%', borderRadius: 8, background: 'rgba(76,25,77,.10)', marginBottom: 16 }} />
@@ -580,8 +483,8 @@ export function NetworkingDashboard({
             </span>
           )}
         </div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
           {paginatedSessions.map((session, index) => (
             <SessionDisplayCard
               key={`${session.id}-${index}`}
@@ -595,69 +498,6 @@ export function NetworkingDashboard({
               onManage={() => handleManageSession(session)}
             />
           ))}
-        </div>
-      ) : (
-        <div style={{ background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, overflow: 'hidden', boxShadow: '0 10px 26px rgba(75,29,81,.06)' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: C.cream }}>
-                  {['Name', 'Date', 'Time', 'Status', 'Participants', ''].map((h, i) => (
-                    <th key={i} style={{ textAlign: i === 5 ? 'right' : 'left', padding: '13px 18px', fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.purple, opacity: .8 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedSessions.map((session, index) => {
-                  const st = STATUS_STYLE[session.status] || STATUS_STYLE.draft;
-                  return (
-                    <tr key={`${session.id}-${index}`} style={{ borderTop: `1px solid ${C.hair}` }}>
-                      <td style={{ padding: '14px 18px', fontFamily: C.fontDisplay, fontWeight: 700, fontSize: 14, color: C.purpleDeep }}>{session.name}</td>
-                      <td style={{ padding: '14px 18px', fontSize: 13.5, color: C.ink, opacity: .8 }}>{session.date}</td>
-                      <td style={{ padding: '14px 18px', fontSize: 13.5, color: C.ink, opacity: .8 }}>{session.startTime}</td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 11px', borderRadius: 999, background: st.bg, border: `1px solid ${st.bd}`, color: st.fg, fontFamily: C.fontMono, fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: st.fg }} />{session.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 18px', fontSize: 13.5, color: C.ink, opacity: .8 }}>{(session as unknown as { participants?: unknown[] }).participants?.length || 0}</td>
-                      <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditFromList(session)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleManageSession(session)}>
-                              <Users className="h-4 w-4 mr-2" />
-                              Manage
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDuplicateSession(session)}>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteSession(session.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 

@@ -12,6 +12,9 @@ interface PricingPanelProps {
   hasSubscription?: boolean;
   /** Title override */
   title?: string;
+  /** Show the "Events up to 5 participants free…" free-tier notice.
+      Design shows it in the Billing plan-chooser but NOT on the standalone Pricing page. */
+  showFreeTierNotice?: boolean;
 }
 
 // ── Inline icons (match the mock's SVG weights verbatim) ──────────────
@@ -32,7 +35,7 @@ const euro = (cents: number) => (
   <><span className="currency">€</span>{grp(cents / 100)}</>
 );
 
-export function PricingPanel({ accessToken, hasSubscription, title }: PricingPanelProps) {
+export function PricingPanel({ accessToken, hasSubscription, title, showFreeTierNotice = true }: PricingPanelProps) {
   const [selectedCapacity, setSelectedCapacity] = useState(50);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('annual');
   const [creditQuantity, setCreditQuantity] = useState(1);
@@ -195,11 +198,13 @@ export function PricingPanel({ accessToken, hasSubscription, title }: PricingPan
 
   return (
     <>
-      {/* ── Free-tier notice ─────────────────────────────────────────── */}
-      <div className="pr-free-pill">
-        <span className="w-diamond" />
-        Events up to 5 participants free for testing purposes
-      </div>
+      {/* ── Free-tier notice — design shows this in Billing's plan chooser but NOT on the standalone Pricing page ── */}
+      {showFreeTierNotice && (
+        <div className="pr-free-pill">
+          <span className="w-diamond" />
+          Events up to 5 participants free for testing purposes
+        </div>
+      )}
 
       {/* ── Capacity selector (data: CAPACITY_OPTIONS) ───────────────── */}
       <div className="pr-cap" data-component="CapacitySelector">

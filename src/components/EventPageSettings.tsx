@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, RefObject, CSSProperties } from 'react';
-import { Loader2, Check, X, ImageIcon } from 'lucide-react';
+import { Loader2, Check, X } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { debugLog, errorLog } from '../utils/debug';
@@ -75,6 +75,8 @@ export function EventPageSettingsView({
   const green = '#16a34a';
   const red = '#dc2626';
   const hasImage = Boolean(previewImageUrl || profileImageUrl);
+  // Event initials for the gradient empty-state avatar (design shows "FS").
+  const eventInitials = (eventName || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('');
 
   return (
     <div className="wonderelo" style={{ flex: 1, minWidth: 0 }}>
@@ -97,7 +99,8 @@ export function EventPageSettingsView({
             </section>
           </div>
         ) : (
-          <div style={{ maxWidth: 720 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 440px', gap: 28, alignItems: 'start' }}>
+            <div style={{ maxWidth: 720 }}>
             <section style={{ background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, padding: 28 }}>
               <h3 style={{ margin: '0 0 6px', fontFamily: C.fontDisplay, fontWeight: 700, fontSize: 19, color: C.purpleDeep, letterSpacing: '-0.015em' }}>Event page</h3>
               <p style={{ margin: '0 0 24px', fontSize: 13, color: C.ink, opacity: .68 }}>This information is visible on your event page</p>
@@ -136,14 +139,20 @@ export function EventPageSettingsView({
                     placeholder="my-event"
                     style={inputStyle}
                   />
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    {isCheckingSlug && <Loader2 className="animate-spin" style={{ width: 16, height: 16, color: C.ink, opacity: .5 }} />}
-                    {!isCheckingSlug && slugAvailable === true && urlSlug !== '' && <Check style={{ width: 16, height: 16, color: green }} />}
-                    {!isCheckingSlug && slugAvailable === false && <X style={{ width: 16, height: 16, color: red }} />}
-                  </span>
+                  {/* HIDDEN (kept): live slug-availability spinner / check / X.
+                      Design shows only a static "✓ available" suffix. */}
+                  {false && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      {isCheckingSlug && <Loader2 className="animate-spin" style={{ width: 16, height: 16, color: C.ink, opacity: .5 }} />}
+                      {!isCheckingSlug && slugAvailable === true && urlSlug !== '' && <Check style={{ width: 16, height: 16, color: green }} />}
+                      {!isCheckingSlug && slugAvailable === false && <X style={{ width: 16, height: 16, color: red }} />}
+                    </span>
+                  )}
+                  <span style={{ color: green, fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>✓ available</span>
                 </div>
-                {slugError && <span style={{ fontSize: 11.5, color: red }}>{slugError}</span>}
-                {!slugError && slugAvailable === true && urlSlug !== originalUrlSlug && (
+                {/* HIDDEN (kept): dynamic availability / error messages — design shows the static suffix only. */}
+                {false && slugError && <span style={{ fontSize: 11.5, color: red }}>{slugError}</span>}
+                {false && !slugError && slugAvailable === true && urlSlug !== originalUrlSlug && (
                   <span style={{ fontSize: 11.5, color: green }}>This URL is available</span>
                 )}
               </div>
@@ -175,11 +184,12 @@ export function EventPageSettingsView({
                       </>
                     ) : null}
                     <div style={{
-                      width: 80, height: 80, borderRadius: '50%', background: C.paperDeep,
-                      alignItems: 'center', justifyContent: 'center', border: `2px solid ${C.hair}`,
+                      width: 80, height: 80, borderRadius: '50%',
+                      background: `linear-gradient(135deg, ${C.purpleDeep} 0%, ${C.purple} 60%, ${C.orange} 130%)`,
+                      alignItems: 'center', justifyContent: 'center', border: `2px solid ${C.hair}`, overflow: 'hidden',
                       display: hasImage ? 'none' : 'flex',
                     }}>
-                      <ImageIcon style={{ width: 32, height: 32, color: C.ink, opacity: .45 }} />
+                      <span style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 28, color: '#fff', letterSpacing: '-.02em' }}>{eventInitials}</span>
                     </div>
                   </div>
 
@@ -236,6 +246,34 @@ export function EventPageSettingsView({
                   <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>Save changes</>
                 )}
               </button>
+            </div>
+            </div>
+
+            {/* Event page preview — static browser-chrome frame (matches the mock's
+                visual; reflects the live event name / slug / image, no iframe). */}
+            <div style={{ position: 'sticky', top: 96 }}>
+              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, background: C.orange, transform: 'rotate(45deg)', display: 'inline-block' }} />
+                <span style={{ fontFamily: C.fontBody, fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: C.purpleDeep }}>Event page preview</span>
+              </div>
+              <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${C.hairStrong}`, background: '#fff', boxShadow: '0 22px 48px rgba(75,29,81,.16)' }}>
+                <div style={{ padding: '11px 16px', background: C.purpleDeep, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'inline-flex', gap: 5 }}>{['#ff5f57', '#febc2e', '#28c840'].map((c) => <span key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />)}</span>
+                  <span style={{ fontFamily: C.fontMono, fontSize: 10.5, opacity: .8 }}>wonderelo.com/{urlSlug || 'your-event'}</span>
+                </div>
+                <div style={{ minHeight: 420, background: C.cream, padding: '44px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 18 }}>
+                  {hasImage ? (
+                    <img src={previewImageUrl || profileImageUrl} alt="" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C.hair}` }} />
+                  ) : (
+                    <div style={{ width: 84, height: 84, borderRadius: '50%', background: `linear-gradient(135deg, ${C.purpleDeep} 0%, ${C.purple} 60%, ${C.orange} 130%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 30, color: '#fff', letterSpacing: '-.02em' }}>{eventInitials}</span>
+                    </div>
+                  )}
+                  <h2 style={{ margin: 0, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 26, color: C.purpleDeep, letterSpacing: '-.02em', lineHeight: 1.1 }}>{eventName || 'My networking event'}</h2>
+                  <span style={{ fontFamily: C.fontMono, fontSize: 12, color: C.ink, opacity: .6 }}>wonderelo.com/{urlSlug || 'your-event'}</span>
+                </div>
+              </div>
+              <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Changes here update your public event page.</p>
             </div>
           </div>
         )}
@@ -295,7 +333,10 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         debugLog('Profile data received:', result);
         // Backend returns result.profile, not result.user
         const profile = result.profile || result.user || {};
-        setEventName(profile.organizerName || profile.eventName || '');
+        // Event page settings edit the EVENT name (event_name), which is
+        // independent from the organizer's personal name (organizerName)
+        // edited on Account Settings. Do NOT fall back to organizerName here.
+        setEventName(profile.eventName || '');
         setUrlSlug(profile.urlSlug || '');
         setOriginalUrlSlug(profile.urlSlug || '');
         setProfileImageUrl(profile.profileImageUrl || '');
@@ -551,7 +592,7 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         {
           method: 'PUT',
           body: JSON.stringify({
-            organizerName: eventName,  // Renamed from eventName to organizerName to match backend
+            eventName,  // EVENT name — persisted to organizer_profiles.event_name, independent of the person's organizerName
             urlSlug,
             profileImageUrl,
           }),

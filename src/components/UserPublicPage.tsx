@@ -93,7 +93,8 @@ export function UserPublicPageView({
 }: UserPublicPageViewProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const firstName = participantProfile?.firstName || '';
-  const eventName = userProfile?.eventName || userProfile?.organizerName || '';
+  // Banner shows the EVENT name only (never the organizer/person name).
+  const eventName = userProfile?.eventName || '';
   const initials = String(firstName ? firstName[0] : (participantProfile?.email?.[0] || 'A')).toUpperCase();
 
   useEffect(() => {
@@ -107,7 +108,7 @@ export function UserPublicPageView({
     <SessionRegistration
       sessions={availableSessions}
       userSlug={userSlug}
-      eventName={userProfile?.eventName || userProfile?.organizerName || ''}
+      eventName={userProfile?.eventName || ''}
       registeredRoundIds={registeredRoundIds}
       registeredRoundsMap={registeredRoundsMap}
       registeredRoundsPerSession={registeredRoundsPerSession}
@@ -181,7 +182,7 @@ export function UserPublicPageView({
                 : <span className="lbl">photo</span>}
             </div>
             <div className="ev-event-name">{eventName}</div>
-            <button className="ev-how-link" type="button" onClick={() => onHowItWorksDialogOpenChange(true)}>
+            <button className="ev-how-link" type="button" onClick={() => { window.location.hash = 'round-rules'; }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               How rounds work
             </button>
@@ -254,6 +255,11 @@ export function UserPublicPageView({
         </DialogContent>
       </Dialog>
 
+      {/* HIDDEN (design parity): the bespoke 4-step "How rounds work" dialog is not in
+          Claude Design v06. The "How rounds work" link now opens the design's Round Rules
+          bottom-sheet (rendered by SessionRegistration → EventModals) via the #round-rules
+          hash. Code preserved below but guarded off so the UI matches the design 1:1. */}
+      {false && (
       <Dialog open={howItWorksDialogOpen} onOpenChange={onHowItWorksDialogOpenChange}>
         <DialogContent className="max-w-md" aria-describedby={undefined}>
           <DialogHeader>
@@ -295,6 +301,7 @@ export function UserPublicPageView({
           </div>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { WondereloHeader } from './WondereloHeader';
 import { PdNav } from './redesign/PdNav';
 import { PmFooter } from './redesign/PmFooter';
+import { cachedRoundNames } from './MatchInfo';
 
 export const FEEDBACK_OPTIONS = [
   { id: 'nice-talk', label: 'Nice talk', icon: '💬' },
@@ -32,6 +33,8 @@ interface NetworkingData {
   matchId: string;
   partners: Partner[];
   myContactSharing: Record<string, boolean>;
+  /** Current participant's first name — shown in the nav. */
+  myName?: string;
 }
 
 type Page = 'partner-feedback' | 'wonderelo-feedback';
@@ -41,6 +44,9 @@ type Page = 'partner-feedback' | 'wonderelo-feedback';
 // ============================================================
 
 export interface ContactSharingPartnerFeedbackViewProps {
+  firstName?: string;
+  eventName?: string;
+  sessionName?: string;
   partners: ContactSharingPartner[];
   feedback: Record<string, string[]>;
   customFeedback: Record<string, string>;
@@ -52,6 +58,9 @@ export interface ContactSharingPartnerFeedbackViewProps {
 }
 
 export function ContactSharingPartnerFeedbackView({
+  firstName,
+  eventName,
+  sessionName,
   partners,
   feedback,
   customFeedback,
@@ -66,13 +75,14 @@ export function ContactSharingPartnerFeedbackView({
     <div className="wonderelo pm-page" data-active="contact-sharing">
       <div className="pm-shell">
         <PdNav
+          firstName={firstName}
           onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
           onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
         />
         <div data-screen="contact-sharing">
           <div className="pm-warm">
             <div className="pm-band">
-              <div className="pm-eventrow"><div className="pm-event"><span className="name">Your round</span><span className="org">Speed networking</span></div><span className="pm-state is-quiet"><span className="dot" /> Round done</span></div>
+              <div className="pm-eventrow"><div className="pm-event"><span className="name">{eventName || 'Your round'}</span><span className="org">{sessionName || 'Speed networking'}</span></div><span className="pm-state is-quiet"><span className="dot" /> Round done</span></div>
             </div>
             <div className="pm-center" style={{ paddingTop: 4 }}>
               <div className="eyebrow" style={{ color: 'var(--w-orange)' }}>Time is up!</div>
@@ -108,6 +118,9 @@ export function ContactSharingPartnerFeedbackView({
 }
 
 export interface ContactSharingWondereloFeedbackViewProps {
+  firstName?: string;
+  eventName?: string;
+  sessionName?: string;
   wondereloRating: string | null;
   wondereloFeedback: string;
   isSubmitting: boolean;
@@ -118,6 +131,9 @@ export interface ContactSharingWondereloFeedbackViewProps {
 }
 
 export function ContactSharingWondereloFeedbackView({
+  firstName,
+  eventName,
+  sessionName,
   wondereloRating,
   wondereloFeedback,
   isSubmitting,
@@ -135,6 +151,7 @@ export function ContactSharingWondereloFeedbackView({
     <div className="wonderelo pm-page" data-active="wonderelo-feedback">
       <div className="pm-shell">
         <PdNav
+          firstName={firstName}
           onBrandClick={onBack}
           onDashboard={onBack}
           onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
@@ -143,7 +160,7 @@ export function ContactSharingWondereloFeedbackView({
         <div data-screen="wonderelo-feedback">
           <div className="pm-warm">
             <div className="pm-band">
-              <div className="pm-eventrow"><div className="pm-event"><span className="name">Your round</span><span className="org">Speed networking</span></div><span className="pm-state is-quiet"><span className="dot" /> Last step</span></div>
+              <div className="pm-eventrow"><div className="pm-event"><span className="name">{eventName || 'Your round'}</span><span className="org">{sessionName || 'Speed networking'}</span></div><span className="pm-state is-quiet"><span className="dot" /> Last step</span></div>
             </div>
             <div className="pm-focuscard" style={{ marginTop: 6, padding: '22px 18px', textAlign: 'left' }}>
               <span className="eyebrow">Last step</span>
@@ -387,9 +404,14 @@ export function ContactSharing() {
     );
   }
 
+  const names = cachedRoundNames(token);
+
   if (currentPage === 'partner-feedback') {
     return (
       <ContactSharingPartnerFeedbackView
+        firstName={networkingData?.myName}
+        eventName={names.event}
+        sessionName={names.session}
         partners={networkingData.partners}
         feedback={feedback}
         customFeedback={customFeedback}
@@ -406,6 +428,9 @@ export function ContactSharing() {
 
   return (
     <ContactSharingWondereloFeedbackView
+      firstName={networkingData?.myName}
+      eventName={names.event}
+      sessionName={names.session}
       wondereloRating={wondereloRating}
       wondereloFeedback={wondereloFeedback}
       isSubmitting={isSubmitting}

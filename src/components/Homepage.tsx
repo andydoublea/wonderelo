@@ -1902,7 +1902,7 @@ function LeadMagnetSection({
 /* ─────────────────────────────────────────────────────────────
    11. FOOTER (dark)
    ───────────────────────────────────────────────────────────── */
-function FooterSection({ onNavigate }: { onNavigate: (p: string) => void }) {
+export function FooterSection({ onNavigate }: { onNavigate: (p: string) => void }) {
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   const cols: Array<{ title: string; links: Array<{ label: string; action: () => void }> }> = [

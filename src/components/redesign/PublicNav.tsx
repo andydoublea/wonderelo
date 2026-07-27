@@ -63,6 +63,17 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
     setParticipantToken(token);
   }, []);
 
+  // Homepage section anchors (mirrors the homepage nav). If already on "/",
+  // smooth-scroll to the section; otherwise route to "/#<id>".
+  const goToHash = (id: string) => {
+    setMobileMenuOpen(false);
+    if (window.location.pathname === '/') {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      navigate(`/#${id}`);
+    }
+  };
+
   return (
     <nav className="w-nav">
       <div className="w-nav-inner">
@@ -77,74 +88,96 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
           <div className="w-word">wonderelo</div>
         </a>
 
-        {/* Center links (desktop) */}
+        {/* Center links (desktop) — mirror the homepage nav exactly:
+            3 flat links "Who is it for? / How it works / Pricing".
+            The who-is-it-for hover dropdown (7 `/for/:slug` items) and the
+            "Our story" / "Blog" links are intentionally NOT rendered here to
+            match the design 1:1 — their code is preserved just below, guarded
+            by `false`. */}
         <div className="w-nav-links">
-          {/* Who is it for? — hover dropdown */}
-          <div
-            className="relative"
-            style={{ position: 'relative' }}
-            onMouseEnter={() => setWhoIsItForOpen(true)}
-            onMouseLeave={() => setWhoIsItForOpen(false)}
-          >
-            <button type="button" className="w-nav-link">
-              {t('nav.whoIsItFor', 'Who is it for?')}
-              <Caret open={whoIsItForOpen} />
-            </button>
-            {whoIsItForOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 4, zIndex: 60 }}>
-                <div
-                  style={{
-                    background: 'var(--w-paper)',
-                    border: '1px solid var(--w-hairline)',
-                    borderRadius: 'var(--w-r-md)',
-                    boxShadow: 'var(--w-shadow-soft)',
-                    padding: '10px 0',
-                    minWidth: 300,
-                  }}
-                >
-                  {whoIsItForItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setWhoIsItForOpen(false); }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                          padding: '10px 22px', fontSize: 14, fontWeight: 600,
-                          fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)',
-                          textAlign: 'left', background: 'transparent', border: 'none',
-                          cursor: 'pointer', whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.06)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <Icon className="h-4 w-4 flex-shrink-0" style={{ opacity: 0.65 }} />
-                        {t(item.key, item.fallback)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
+          <button type="button" className="w-nav-link" onClick={() => goToHash('who-is-it-for')}>
+            {t('nav.whoIsItFor', 'Who is it for?')}
+          </button>
+          <button type="button" className="w-nav-link" onClick={() => goToHash('how-it-works')}>
+            {t('homepage.nav.howItWorks', 'How it works')}
+          </button>
           <button type="button" className="w-nav-link" onClick={() => navigate('/pricing')}>
             {t('nav.pricing', 'Pricing')}
           </button>
-          <button type="button" className="w-nav-link" onClick={() => navigate('/our-story')}>
-            {t('nav.ourStory', 'Our story')}
-          </button>
-          <button type="button" className="w-nav-link" onClick={() => navigate('/blog')}>
-            {t('nav.blog', 'Blog')}
-          </button>
+
+          {/* HIDDEN — who-is-it-for hover dropdown (7 `/for/:slug` items).
+              Preserved for later; not part of the design nav. */}
+          {false && (
+            <div
+              className="relative"
+              style={{ position: 'relative' }}
+              onMouseEnter={() => setWhoIsItForOpen(true)}
+              onMouseLeave={() => setWhoIsItForOpen(false)}
+            >
+              <button type="button" className="w-nav-link">
+                {t('nav.whoIsItFor', 'Who is it for?')}
+                <Caret open={whoIsItForOpen} />
+              </button>
+              {whoIsItForOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 4, zIndex: 60 }}>
+                  <div
+                    style={{
+                      background: 'var(--w-paper)',
+                      border: '1px solid var(--w-hairline)',
+                      borderRadius: 'var(--w-r-md)',
+                      boxShadow: 'var(--w-shadow-soft)',
+                      padding: '10px 0',
+                      minWidth: 300,
+                    }}
+                  >
+                    {whoIsItForItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => { navigate(item.path); setWhoIsItForOpen(false); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                            padding: '10px 22px', fontSize: 14, fontWeight: 600,
+                            fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)',
+                            textAlign: 'left', background: 'transparent', border: 'none',
+                            cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.06)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
+                          <Icon className="h-4 w-4 flex-shrink-0" style={{ opacity: 0.65 }} />
+                          {t(item.key, item.fallback)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* HIDDEN — "Our story" / "Blog" center links (not in design nav). */}
+          {false && (
+            <>
+              <button type="button" className="w-nav-link" onClick={() => navigate('/our-story')}>
+                {t('nav.ourStory', 'Our story')}
+              </button>
+              <button type="button" className="w-nav-link" onClick={() => navigate('/blog')}>
+                {t('nav.blog', 'Blog')}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Right actions */}
         <div className="w-nav-right">
-          {/* Language switcher (desktop) — styled as `.w-lang` host */}
-          <span className="w-lang" style={{ padding: 0, display: 'inline-flex' }}>
-            <LanguageSwitcher />
-          </span>
+          {/* HIDDEN — LanguageSwitcher (not in design nav). Code preserved. */}
+          {false && (
+            <span className="w-lang" style={{ padding: 0, display: 'inline-flex' }}>
+              <LanguageSwitcher />
+            </span>
+          )}
 
           {/* Mobile hamburger */}
           <button
@@ -192,7 +225,7 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
               )}
               {onGetStarted && (
                 <button type="button" className="w-btn w-btn-primary" onClick={onGetStarted}>
-                  {t('nav.getStarted', 'Get started')}
+                  {t('homepage.nav.cta', 'Start for free')}
                 </button>
               )}
             </>
@@ -209,40 +242,25 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
             </SheetTitle>
           </SheetHeader>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto', padding: '0.5rem 0' }}>
-            {/* Language switcher (mobile) */}
-            <div style={{ padding: '0.5rem 1.5rem' }}>
-              <LanguageSwitcher />
-            </div>
-
-            {/* Who is it for — expandable */}
-            <div>
-              <button
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
-                onClick={() => setMobileWhoOpen(!mobileWhoOpen)}
-              >
-                {t('nav.whoIsItFor', 'Who is it for?')}
-                <Caret open={mobileWhoOpen} />
-              </button>
-              {mobileWhoOpen && (
-                <div style={{ paddingBottom: '0.25rem' }}>
-                  {whoIsItForItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.625rem 1.5rem 0.625rem 2.25rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'var(--w-font-body)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--w-ink)', opacity: 0.75 }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <Icon style={{ width: '1rem', height: '1rem', flexShrink: 0 }} />
-                        {t(item.key, item.fallback)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {/* Mobile links mirror the homepage nav: Who is it for? / How it works / Pricing.
+                LanguageSwitcher + who-is-it-for sublist + Our story/Blog are hidden to
+                match the design (code preserved below, guarded by `false`). */}
+            <button
+              style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              onClick={() => goToHash('who-is-it-for')}
+            >
+              {t('nav.whoIsItFor', 'Who is it for?')}
+            </button>
+            <button
+              style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              onClick={() => goToHash('how-it-works')}
+            >
+              {t('homepage.nav.howItWorks', 'How it works')}
+            </button>
             <button
               style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
@@ -251,22 +269,55 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
             >
               {t('nav.pricing', 'Pricing')}
             </button>
-            <button
-              style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              onClick={() => { navigate('/our-story'); setMobileMenuOpen(false); }}
-            >
-              {t('nav.ourStory', 'Our story')}
-            </button>
-            <button
-              style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              onClick={() => { navigate('/blog'); setMobileMenuOpen(false); }}
-            >
-              {t('nav.blog', 'Blog')}
-            </button>
+
+            {/* HIDDEN — LanguageSwitcher + who-is-it-for sublist + Our story/Blog. */}
+            {false && (
+              <>
+                <div style={{ padding: '0.5rem 1.5rem' }}>
+                  <LanguageSwitcher />
+                </div>
+                <div>
+                  <button
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
+                    onClick={() => setMobileWhoOpen(!mobileWhoOpen)}
+                  >
+                    {t('nav.whoIsItFor', 'Who is it for?')}
+                    <Caret open={mobileWhoOpen} />
+                  </button>
+                  {mobileWhoOpen && (
+                    <div style={{ paddingBottom: '0.25rem' }}>
+                      {whoIsItForItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.625rem 1.5rem 0.625rem 2.25rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'var(--w-font-body)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--w-ink)', opacity: 0.75 }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            <Icon style={{ width: '1rem', height: '1rem', flexShrink: 0 }} />
+                            {t(item.key, item.fallback)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <button
+                  style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+                  onClick={() => { navigate('/our-story'); setMobileMenuOpen(false); }}
+                >
+                  {t('nav.ourStory', 'Our story')}
+                </button>
+                <button
+                  style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+                  onClick={() => { navigate('/blog'); setMobileMenuOpen(false); }}
+                >
+                  {t('nav.blog', 'Blog')}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Sign in / Get started */}
@@ -279,7 +330,7 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
               )}
               {onGetStarted && (
                 <button type="button" className="w-btn w-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { onGetStarted(); setMobileMenuOpen(false); }}>
-                  {t('nav.getStarted', 'Get started')}
+                  {t('homepage.nav.cta', 'Start for free')}
                 </button>
               )}
             </div>

@@ -105,12 +105,48 @@ export function EventPromoPageView({
     return () => clearInterval(id);
   }, []);
 
+  // Live 1s ticker driving the top-bar round countdown.
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const step = STEPS[activeStep];
   const slug = displaySlug || eventSlug;
   const host = (typeof window !== 'undefined' && window.location?.host)
     ? window.location.host.replace(/^www\./, '')
     : 'wonderelo.com';
-  const roundCount = publishedSessions.length;
+
+  // Next upcoming round across all published sessions — drives the live
+  // "Round NN starts in MM:SS" pill. Data-dependent: when nothing is upcoming
+  // the pill is hidden entirely (no event-name substitute, per the design).
+  const nextRound: { number: number; startMs: number } | null = (() => {
+    let best: { number: number; startMs: number } | null = null;
+    for (const s of publishedSessions) {
+      const rounds = s.rounds || [];
+      rounds.forEach((r, i) => {
+        if (!r?.date || !r?.startTime) return;
+        const [hh, mm] = r.startTime.split(':').map(Number);
+        const d = new Date(r.date);
+        if (isNaN(d.getTime())) return;
+        d.setHours(hh || 0, mm || 0, 0, 0);
+        const startMs = d.getTime();
+        if (startMs > nowTs && (!best || startMs < best.startMs)) {
+          best = { number: i + 1, startMs };
+        }
+      });
+    }
+    return best;
+  })();
+  const countdown: string | null = nextRound
+    ? (() => {
+        const totalSec = Math.max(0, Math.floor((nextRound.startMs - nowTs) / 1000));
+        const mm = Math.floor(totalSec / 60);
+        const ss = totalSec % 60;
+        return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+      })()
+    : null;
 
   return (
     <div
@@ -152,20 +188,19 @@ export function EventPromoPageView({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <Logo size={42} dark />
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 14,
-            padding: '14px 22px', borderRadius: 999,
-            background: 'rgba(255,255,255,.10)', border: '1px solid rgba(255,255,255,.18)',
-            fontFamily: C.fontMono, fontSize: 18, fontWeight: 600,
-          }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 0 4px rgba(74,222,128,.18)' }} />
-            <strong style={{ color: '#fff', fontWeight: 700, fontFamily: C.fontDisplay, letterSpacing: '-0.01em' }}>{displayName}</strong>
-            {roundCount > 0 && (
-              <span style={{ color: C.orangeBright, fontWeight: 700 }}>
-                · {roundCount} round{roundCount === 1 ? '' : 's'}
-              </span>
-            )}
-          </div>
+          {/* Live round countdown — shown only when a round is genuinely
+              upcoming (data-dependent). Otherwise the pill is hidden. */}
+          {nextRound && countdown && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 14,
+              padding: '14px 22px', borderRadius: 999,
+              background: 'rgba(255,255,255,.10)', border: '1px solid rgba(255,255,255,.18)',
+              fontFamily: C.fontMono, fontSize: 18, fontWeight: 600,
+            }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 0 4px rgba(74,222,128,.18)' }} />
+              Round {String(nextRound.number).padStart(2, '0')} starts in <strong style={{ color: C.orangeBright, fontWeight: 700 }}>{countdown}</strong>
+            </div>
+          )}
         </div>
 
         {/* Big body — split layout */}

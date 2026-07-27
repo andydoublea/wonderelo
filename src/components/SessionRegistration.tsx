@@ -355,6 +355,9 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
       if (hash === '#meeting-points') {
         setShowMeetingPoints(true);
       } else if (hash === '#round-rules') {
+        // Event-wide entry (e.g. the organizer banner's "How rounds work" link):
+        // clear any session filter so the sheet shows the event-level context chip.
+        setModalSessionName('');
         setShowRoundRules(true);
       }
     };

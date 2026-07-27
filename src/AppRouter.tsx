@@ -223,7 +223,7 @@ function NotFoundRoute() {
 // Route wrapper components that use navigate
 function HomepageRoute() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, currentUser } = useApp();
 
   // Don't redirect here - let Homepage handle its own redirect logic
   // This allows Homepage to properly handle participant token checks
@@ -234,7 +234,7 @@ function HomepageRoute() {
       onGetStarted={() => navigate('/signup')}
       onSignIn={() => navigate('/signin')}
       onResetPassword={() => navigate('/reset-password')}
-      isOrganizerAuthenticated={isAuthenticated}
+      isOrganizerAuthenticated={isAuthenticated && !!currentUser}
     />
   );
 }
@@ -246,15 +246,19 @@ function SignUpRoute() {
     setEventSlug,
     setIsAuthenticated,
     setCurrentUser,
-    isAuthenticated
+    isAuthenticated,
+    currentUser
   } = useApp();
 
   useEffect(() => {
-    // If user is already authenticated, redirect to dashboard
-    if (isAuthenticated) {
+    // If user is already authenticated (with a loaded profile), redirect to dashboard.
+    // Require currentUser too, matching ProtectedRoute's guard — otherwise a
+    // half-authenticated state (isAuthenticated true, currentUser null) ping-pongs
+    // between this redirect and ProtectedRoute's redirect back to /signin.
+    if (isAuthenticated && currentUser) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, currentUser, navigate]);
 
   const handleSignUpComplete = (signUpData: SignUpData) => {
     debugLog('Sign up completed:', signUpData);
@@ -299,15 +303,19 @@ function SignInRoute() {
     setCurrentUser,
     setAccessToken,
     loadSessions,
-    isAuthenticated
+    isAuthenticated,
+    currentUser
   } = useApp();
 
   useEffect(() => {
-    // If user is already authenticated, redirect to dashboard
-    if (isAuthenticated) {
+    // If user is already authenticated (with a loaded profile), redirect to dashboard.
+    // Require currentUser too, matching ProtectedRoute's guard — otherwise a
+    // half-authenticated state (isAuthenticated true, currentUser null) ping-pongs
+    // between this redirect and ProtectedRoute's redirect back to /signin.
+    if (isAuthenticated && currentUser) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, currentUser, navigate]);
 
   const handleSignInComplete = async (userData: any, sessionData?: any) => {
     debugLog('=== SIGN IN COMPLETE ===');
@@ -581,7 +589,8 @@ function RoundsRoute() {
           serviceType={serviceType}
           eventSlug={eventSlug}
           userEmail={currentUser?.email}
-          organizerName={currentUser?.eventName || currentUser?.organizerName}
+          organizerName={currentUser?.organizerName}
+          eventName={currentUser?.eventName}
           profileImageUrl={currentUser?.profileImageUrl}
           onAddSession={addSession}
           onUpdateSession={updateSession}

@@ -312,6 +312,7 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
     // Get organizer name from first registration
     const firstReg = enrichedRegistrations[0];
     const organizerName = firstReg?.organizerName || 'Organizer';
+    const eventName = firstReg?.eventName || '';
     const organizerSlug = firstReg?.organizerUrlSlug || '';
 
     // Apply background status updates asynchronously
@@ -347,6 +348,7 @@ export async function getParticipantDashboard(token: string, getCurrentTime: (c:
       registrations: enrichedRegistrations,
       sessions,
       organizerName,
+      eventName,
       organizerSlug
     };
 

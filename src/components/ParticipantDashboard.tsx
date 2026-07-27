@@ -36,6 +36,7 @@ export interface Registration {
   roundName: string;
   organizerId?: string;
   organizerName: string;
+  eventName?: string;
   organizerUrlSlug: string;
   status: string;
   currentStatus?: string;
@@ -233,9 +234,19 @@ export function ParticipantDashboardView({
     || '';
 
   const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://wonderelo.com';
+  // Event name (bold primary) — used in the share copy, mirrors the design.
+  const shareEventName = heroOrgReg?.eventName
+    || registrations[0]?.eventName
+    || hero?.session.name
+    || registrations[0]?.sessionName
+    || upcomingSessions[0]?.session.name
+    || pastSessions[0]?.session.name
+    || '';
   const doShare = (kind: string) => {
     const u = encodeURIComponent(shareUrl);
-    const text = encodeURIComponent('Break your bubble, meet new people on Wonderelo');
+    const text = encodeURIComponent(shareEventName
+      ? `Join me at ${shareEventName} — networking that actually works.`
+      : 'Networking that actually works — join me on Wonderelo.');
     if (kind === 'copy') { navigator.clipboard?.writeText(shareUrl).then(() => toast.success('Link copied')); return; }
     const urls: Record<string, string> = {
       x: `https://twitter.com/intent/tweet?url=${u}&text=${text}`,
@@ -260,6 +271,13 @@ export function ParticipantDashboardView({
 
   const avatarClass = (i: number) => (i % 3 === 0 ? 'pd-av is-orange' : i % 3 === 2 ? 'pd-av is-cream' : 'pd-av');
   const initialsOf = (c: { firstName: string; lastName: string }) => `${(c.firstName || '?')[0] || ''}${(c.lastName || '')[0] || ''}`.toUpperCase();
+  // Design copy: "Pairs of 2" for a group size of 2, "Groups of N" otherwise.
+  const groupLabel = (n: number) => (n === 2 ? 'Pairs of 2' : `Groups of ${n}`);
+  const hasTopics = (s: NetworkingSession) => !!(s.enableTopics || (s.topics && s.topics.length > 0));
+  // Message icon used by the "Topic" session-meta indicator.
+  const TopicMeta = () => (
+    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Topic</span>
+  );
 
   return (
     <div className={`wonderelo pd-page${justRegistered ? ' is-just-registered' : ''}`} data-variant={variant} data-hero-state={heroState}>
@@ -296,7 +314,7 @@ export function ParticipantDashboardView({
             {hero && (
               <div className="pd-hero-greet">
                 <div className="pd-hero-event">
-                  <span className="name">{heroOrgReg?.organizerName || hero.session.name}</span>
+                  <span className="name">{heroOrgReg?.eventName || hero.session.name}</span>
                   <span className="org">{hero.session.name}</span>
                 </div>
                 {heroState === 'pre-confirm' && <span className="pd-hero-state"><span className="dot" /> Upcoming</span>}
@@ -392,7 +410,7 @@ export function ParticipantDashboardView({
                 <div className="pd-rd-head"><span className="pd-rd-title">Your <em>round</em></span></div>
                 <div className="pd-hero-session-meta">
                   <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {hero.round.duration || hero.session.roundDuration || 5} min round</span>
-                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Groups of {hero.session.groupSize || 2}</span>
+                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> {groupLabel(hero.session.groupSize || 2)}</span>
                 </div>
                 {(heroSel.topic || (heroSel.topics && heroSel.topics.length) || heroSel.team) && (
                   <div className="pd-rd-fields">
@@ -497,11 +515,12 @@ export function ParticipantDashboardView({
               <div className="pd-event-head">
                 <div className="pd-event-org" aria-hidden="true" />
                 <div className="pd-event-meta">
-                  <div className="pd-event-name">{org?.organizerName || session.name}</div>
+                  <div className="pd-event-name">{org?.eventName || session.name}</div>
                   <div className="pd-event-org-name">{session.name}</div>
                   <div className="pd-session-meta">
                     <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {session.roundDuration || 5} min rounds</span>
-                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Groups of {session.groupSize || 2}</span>
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> {groupLabel(session.groupSize || 2)}</span>
+                    {hasTopics(session) && <TopicMeta />}
                   </div>
                 </div>
               </div>
@@ -553,11 +572,12 @@ export function ParticipantDashboardView({
                 <div className="pd-event-head">
                   <div className="pd-event-org" aria-hidden="true" />
                   <div className="pd-event-meta">
-                    <div className="pd-event-name">{org?.organizerName || session.name}</div>
+                    <div className="pd-event-name">{org?.eventName || session.name}</div>
                     <div className="pd-event-org-name">{session.name}</div>
                     <div className="pd-session-meta">
                       <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {session.roundDuration || 5} min rounds</span>
-                      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Groups of {session.groupSize || 2}</span>
+                      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> {groupLabel(session.groupSize || 2)}</span>
+                      {hasTopics(session) && <TopicMeta />}
                     </div>
                   </div>
                 </div>

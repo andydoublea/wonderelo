@@ -9,6 +9,7 @@ import { PdNav } from './redesign/PdNav';
 import { PmFooter } from './redesign/PmFooter';
 import { FlipClock } from './redesign/FlipClock';
 import { Geoid } from './redesign/Geoid';
+import { cachedRoundNames } from './MatchInfo';
 
 export interface Partner {
   id: string;
@@ -23,6 +24,11 @@ export interface Partner {
 
 export interface MatchPartnerData {
   matchId: string;
+  /** Event name (organizer.event_name) — bold primary in the event row. */
+  eventName?: string;
+  /** Session name (session.name) — light subtitle in the event row. */
+  sessionName?: string;
+  roundName?: string;
   myIdentificationNumber: string;
   myName: string;
   backgroundImageUrl?: string;
@@ -75,7 +81,7 @@ export function MatchPartnerView({
         <div data-screen="find-each-other">
           <div className="pm-fe-grad">
             <div className="pm-band">
-              <div className="pm-eventrow"><div className="pm-event"><span className="name">Your round</span><span className="org">Live round</span></div><span className="pm-state"><span className="dot" /> Live</span></div>
+              <div className="pm-eventrow"><div className="pm-event"><span className="name">{matchData.eventName || matchData.sessionName || 'Your round'}</span><span className="org">{matchData.sessionName || 'Speed networking'}</span></div><span className="pm-state"><span className="dot" /> Live</span></div>
               <div className="pm-focusbox">
                 <h1 className="pm-h1 pm-center" style={{ fontSize: 23, color: '#fff' }}>Show this to your <em style={{ color: '#ff8855' }}>match</em></h1>
                 <div className="pm-idframe"><Geoid num={matchData.myIdentificationNumber} size="lg" /></div>
@@ -88,7 +94,10 @@ export function MatchPartnerView({
                 {matchData.partners.map((partner) => {
                   const options = getOptionsForPartner(partner);
                   const isWrong = wrongGuessPartnerId === partner.id;
-                  const partnerMissed = !partner.isCheckedIn && !!matchData.walkingDeadline && Date.now() > new Date(matchData.walkingDeadline).getTime();
+                  // Per-partner "Didn't make it / missed" state is not in the v06 design — force off.
+                  // Original logic preserved for when the design covers it:
+                  // const partnerMissed = !partner.isCheckedIn && !!matchData.walkingDeadline && Date.now() > new Date(matchData.walkingDeadline).getTime();
+                  const partnerMissed = false;
                   const state = partner.isNumberConfirmed ? 'done' : partner.isCheckedIn ? (isWrong ? 'wrong' : 'choosing') : (partnerMissed ? 'missed' : 'way');
                   return (
                     <div className="pm-match" key={partner.id} data-state={state}>
@@ -118,7 +127,8 @@ export function MatchPartnerView({
                           </div>
                         </div>
                       )}
-                      {state === 'way' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>Hang tight — you'll pick their number once they arrive.{inlineCountdown && <> ({inlineCountdown} left)</>}</p>}
+                      {/* Inline "({countdown} left)" appended to the waiting helper is not in the v06 design — hidden (kept for logic). */}
+                      {state === 'way' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>Hang tight — you'll pick their number once they arrive.{false && inlineCountdown && <> ({inlineCountdown} left)</>}</p>}
                       {state === 'missed' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>They didn't make it to the meeting point in time.</p>}
                       {state === 'done' && <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}><span className="pm-muted" style={{ fontSize: 13 }}>You found each other — <strong style={{ color: 'var(--w-purple-deep)', fontWeight: 700 }}>good job!</strong></span></div>}
                     </div>
@@ -188,7 +198,12 @@ export function MatchPartner() {
       const data = await response.json();
       debugLog('[MatchPartner] Match partner data loaded:', data);
 
-      setMatchData(data);
+      const names = cachedRoundNames(token, data?.roundId);
+      setMatchData({
+        ...data,
+        eventName: data?.eventName || names.event,
+        sessionName: data?.sessionName || names.session,
+      });
       setIsLoading(false);
 
       // Check if all partners have checked in or if networking time has started

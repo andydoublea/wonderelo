@@ -9,7 +9,7 @@ import { Switch } from './ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
-import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle, Sparkles, Loader2, Coins, CreditCard } from 'lucide-react';
+import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle, Sparkles, Loader2, Coins, CreditCard, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -749,14 +749,20 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       const creditsList = Array.isArray(credData.credits) ? credData.credits.filter((c: any) => c.balance > 0) : [];
       const totalCredits = creditsList.reduce((sum: number, c: any) => sum + c.balance, 0);
 
+      const requiredTier = getTierForCapacity(maxParticipants);
+
       if (hasActiveSub) {
-        // Has subscription — publish directly, no credit needed
-        onSubmit(sessionData);
-        setShowCreditDialog(false);
+        // Has subscription — show the dialog with the subscription-covered
+        // confirmation state (design shows this instead of skipping the dialog).
+        setCreditInfo({
+          hasSubscription: true,
+          credits: creditsList,
+          totalCredits,
+          requiredTier,
+          eventCapacity: maxParticipants,
+        });
         return;
       }
-
-      const requiredTier = getTierForCapacity(maxParticipants);
 
       setCreditInfo({
         hasSubscription: false,
@@ -1475,8 +1481,9 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
               </div>
             )}
 
-          {/* Custom Round Times Editor */}
-          {useCustomTimes && formData.rounds.length > 0 && (
+          {/* Custom Round Times Editor — HIDDEN to match design (only the toggle
+              is shown, no editor body). Logic preserved via the false guard. */}
+          {false && useCustomTimes && formData.rounds.length > 0 && (
             <div className="space-y-3 pt-2">
               <Label>Round start times</Label>
               <div className="space-y-2">
@@ -1594,8 +1601,9 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
               help="Useful if you have a dedicated table or meeting room for each group"
               on={!!formData.limitGroups}
               onChange={(checked) => setFormData({ ...formData, limitGroups: checked })}
-              disabled={formData.roundsMode === 'triggered'}
-              note={formData.roundsMode === 'triggered' ? 'Automatically enabled for triggered rounds' : undefined}
+              // HIDDEN to match design: triggered-rounds disabled state + note. Logic preserved.
+              // disabled={formData.roundsMode === 'triggered'}
+              // note={formData.roundsMode === 'triggered' ? 'Automatically enabled for triggered rounds' : undefined}
             />
             {formData.limitGroups && (
               <div style={{ marginTop: 16 }}>
@@ -1605,7 +1613,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                   min={1}
                   max={100}
                   width={200}
-                  disabled={formData.roundsMode === 'triggered'}
+                  // HIDDEN to match design: triggered-rounds disabled state. Logic preserved.
+                  // disabled={formData.roundsMode === 'triggered'}
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value === '') {
@@ -1618,7 +1627,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                     }
                   }}
                 />
-                {formData.roundsMode === 'triggered' && (
+                {/* HIDDEN to match design: triggered-rounds note. Logic preserved. */}
+                {false && formData.roundsMode === 'triggered' && (
                   <p style={{ margin: '8px 0 0', fontSize: 12, color: '#b45309' }}>Maximum groups is set to 1 for triggered rounds and cannot be changed</p>
                 )}
               </div>
@@ -1756,7 +1766,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         <DialogHeader>
           <DialogTitle>Schedule making live</DialogTitle>
           <DialogDescription>
-            Choose when this session should become visible on the event page. Time must be at least {systemParams?.minimalTimeToFirstRound || 10} minutes in the future to give participants time to register.
+            Choose when this round becomes visible on the event page. Time must be at least {systemParams?.minimalTimeToFirstRound || 10} minutes in the future to give participants time to register.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -1807,10 +1817,20 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       <DialogContent style={{ maxWidth: '420px' }}>
         <DialogHeader>
           <DialogTitle>Publish event</DialogTitle>
+          <DialogDescription>
+            {formData.name?.trim() || 'This round'} will go live on your event page.
+          </DialogDescription>
         </DialogHeader>
         {creditCheckLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : creditInfo?.hasSubscription ? (
+          <div style={{ display: 'flex', gap: 11, padding: '14px 16px', borderRadius: 12, background: 'rgba(31,138,77,.08)', border: '1px solid rgba(31,138,77,.25)' }}>
+            <Check className="h-[17px] w-[17px]" style={{ color: '#1f8a4d', flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.5 }}>
+              <strong style={{ color: C.purpleDeep }}>Unlimited events</strong> — your subscription covers this round. No credit needed.
+            </div>
           </div>
         ) : creditInfo ? (() => {
           const requiredTierCapacity = PRICING_TIERS[creditInfo.requiredTier].capacity;
@@ -1904,7 +1924,11 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           }}>
             Cancel
           </Button>
-          {creditInfo && (() => {
+          {creditInfo?.hasSubscription ? (
+            <Button onClick={handleConfirmPublish}>
+              Publish
+            </Button>
+          ) : creditInfo && (() => {
             const requiredCap = PRICING_TIERS[creditInfo.requiredTier].capacity;
             const exactMatch = creditInfo.credits.some(c => c.capacityTier === creditInfo.requiredTier && c.balance > 0);
             const hasUsable = creditInfo.credits.some(c => {

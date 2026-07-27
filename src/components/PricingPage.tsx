@@ -122,7 +122,7 @@ export function PricingPage({ onGetStarted, onSignIn }: PricingPageProps) {
 
         {/* ───────── Capacity selector + plan cards ───────── */}
         <section className="w-shell">
-          <PricingPanel accessToken={accessToken} />
+          <PricingPanel accessToken={accessToken} showFreeTierNotice={false} />
         </section>
 
         {/* ───────── Comparison table ───────── */}

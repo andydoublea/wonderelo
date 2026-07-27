@@ -310,6 +310,43 @@ function LockIcon() {
   );
 }
 
+/* External-link glyph — the design "Open Gmail" CTA leading icon (auth-screens.jsx:242-244). */
+function ExternalLinkIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+  );
+}
+
+function CheckMini({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+  );
+}
+
+/* "Remember me" checkbox (mock `Checkbox`, auth-screens.jsx:77-89) — self-managed. */
+function RememberMe({ label = 'Remember me', disabled }: { label?: string; disabled?: boolean }) {
+  const [checked, setChecked] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => setChecked((v) => !v)}
+      disabled={disabled}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 10, background: 'transparent', border: 'none',
+        padding: 0, cursor: disabled ? 'default' : 'pointer', fontFamily: C.fontBody, fontSize: 13, color: C.ink, opacity: 0.85,
+      }}
+    >
+      <span style={{
+        width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+        background: checked ? C.orange : 'transparent', color: '#fff',
+        border: checked ? 'none' : `1.5px solid ${C.hairStrong}`,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      }}>{checked && <CheckMini size={11} />}</span>
+      {label}
+    </button>
+  );
+}
+
 export function SignInFlowView({
   activeTab,
   onTabChange,
@@ -397,16 +434,6 @@ export function SignInFlowView({
             value={password}
             onChange={(e) => onPasswordChange(e.target.value)}
             disabled={isLoading}
-            headerRight={
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                disabled={isLoading}
-                style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
-              >
-                Forgot password?
-              </button>
-            }
             trailing={
               <button
                 type="button"
@@ -419,30 +446,37 @@ export function SignInFlowView({
               </button>
             }
           />
+          {/* Bottom row — Remember me + Forgot password (design OISignIn auth-screens.jsx:332-335) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -4 }}>
+            <RememberMe disabled={isLoading} />
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              disabled={isLoading}
+              style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
+            >
+              Forgot password?
+            </button>
+          </div>
           <Btn type="submit" variant="primary" full loading={isLoading} disabled={!isFormValid} trailingIcon={<ArrowRightIcon size={16} />}>
             {isLoading ? 'Signing in…' : 'Sign in'}
           </Btn>
         </form>
       )}
 
-      {/* Footer */}
-      <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
-        {isParticipant ? (
-          <>
-            Are you an organizer?{' '}
-            <button type="button" onClick={() => onTabChange('organizer')} disabled={isLoading || participantLoading} style={footerLinkStyle}>
-              Sign in here →
-            </button>
-          </>
-        ) : (
-          <>
-            Need an account?{' '}
-            <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
-              Sign up for free →
-            </button>
-          </>
-        )}
-      </div>
+      {/* Footer — organizer only. Participant (design PIEmail) has no footer.
+          HIDDEN participant footer "Are you an organizer? Sign in here →":
+          {isParticipant && (
+            <>Are you an organizer? <button onClick={() => onTabChange('organizer')}>Sign in here →</button></>
+          )} */}
+      {!isParticipant && (
+        <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
+          Need an account?{' '}
+          <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+            Sign up for free →
+          </button>
+        </div>
+      )}
     </AuthShell>
   );
 }
@@ -762,10 +796,12 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
           </>
         ) : (
           <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* HIDDEN (design OIForgot is a centered card with no logo / no back link):
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Logo onClick={onBack} />
               <button type="button" onClick={handleBackToSignIn} disabled={resetLoading} style={{ ...footerLinkStyle, fontFamily: C.fontMono, opacity: 0.7 }}>← Back to sign in</button>
             </div>
+            */}
             <div style={{ textAlign: 'center' }}>
               <BigIcon badge={C.purple}><LockIcon /></BigIcon>
               <Eyebrow>Reset password</Eyebrow>
@@ -790,12 +826,14 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
             <Btn type="submit" variant="primary" full loading={resetLoading} disabled={!resetEmail} leadingIcon={<MailMini />}>
               {resetLoading ? 'Sending email…' : 'Send reset link'}
             </Btn>
+            {/* HIDDEN (design OIForgot has no signup footer):
             <div style={{ paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
               Don't have an account?{' '}
               <button type="button" onClick={onSwitchToSignUp} disabled={resetLoading} style={footerLinkStyle}>
                 Sign up for free →
               </button>
             </div>
+            */}
           </form>
         )}
       </AuthShell>
@@ -816,11 +854,11 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
             Check your <Italic>inbox</Italic>
           </h1>
           <p style={{ margin: '0 auto', maxWidth: 360, fontSize: 14.5, lineHeight: 1.55, color: C.ink, opacity: 0.82 }}>
-            We emailed a magic link to <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>{participantEmail}</strong>. Click it on this device and you're in.
+            We emailed a magic link to <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>{participantEmail}</strong>. Click it on this device and you're back in.
           </p>
         </div>
-        <Btn variant="primary" full onClick={onBack} trailingIcon={<ArrowRightIcon size={16} />}>
-          Done
+        <Btn variant="primary" full onClick={() => window.open('https://mail.google.com', '_blank', 'noopener')} leadingIcon={<ExternalLinkIcon size={16} />}>
+          Open Gmail
         </Btn>
         <div style={{ padding: 16, borderRadius: 12, background: 'rgba(76,25,77,.04)', border: `1px solid ${C.hair}`, fontSize: 13, color: C.ink, opacity: 0.82, textAlign: 'center' }}>
           <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>Wrong email?</strong>{' '}
@@ -881,8 +919,9 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
             No password needed. We email you a link that signs you straight in.
           </p>
 
-          {/* Quick test logins — dev/staging only */}
-          {showTestLogins && (
+          {/* HIDDEN (not in design) — dev/staging participant quick test logins.
+              Logic preserved; guarded to never render. */}
+          {false && showTestLogins && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16, borderTop: `1px solid ${C.hair}` }}>
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: C.ink, opacity: 0.5, fontFamily: C.fontBody }}>Quick test logins</span>
               <Btn type="button" variant="ghost" full onClick={() => navigate('/p/tok-alice-001')} disabled={participantLoading} style={{ fontSize: 13, padding: '11px 18px' }}>
@@ -916,16 +955,6 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
             value={formData.password}
             onChange={(e) => updateFormData('password', e.target.value)}
             disabled={isLoading}
-            headerRight={
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                disabled={isLoading}
-                style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
-              >
-                Forgot password?
-              </button>
-            }
             trailing={
               <button
                 type="button"
@@ -938,12 +967,25 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
               </button>
             }
           />
+          {/* Bottom row — Remember me + Forgot password (design OISignIn auth-screens.jsx:332-335) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -4 }}>
+            <RememberMe disabled={isLoading} />
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={isLoading}
+              style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontBody, fontSize: 13, color: C.purpleDeep, fontWeight: 600, cursor: isLoading ? 'default' : 'pointer' }}
+            >
+              Forgot password?
+            </button>
+          </div>
           <Btn type="submit" variant="primary" full loading={isLoading} disabled={!isFormValid()} trailingIcon={<ArrowRightIcon size={16} />}>
             {isLoading ? 'Signing in…' : 'Sign in'}
           </Btn>
 
-          {/* Quick test login — dev/staging only */}
-          {showTestLogins && (
+          {/* HIDDEN (not in design) — dev/staging organizer quick test login.
+              Logic preserved; guarded to never render. */}
+          {false && showTestLogins && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16, borderTop: `1px solid ${C.hair}` }}>
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: C.ink, opacity: 0.5, fontFamily: C.fontBody }}>Quick test login</span>
               <Btn
@@ -967,24 +1009,19 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
         </form>
       )}
 
-      {/* Footer */}
-      <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
-        {activeTab === 'participant' ? (
-          <>
-            Are you an organizer?{' '}
-            <button type="button" onClick={() => setActiveTab('organizer')} disabled={isLoading || participantLoading} style={footerLinkStyle}>
-              Sign in here →
-            </button>
-          </>
-        ) : (
-          <>
-            Need an account?{' '}
-            <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
-              Sign up for free →
-            </button>
-          </>
-        )}
-      </div>
+      {/* Footer — organizer only. Participant (design PIEmail) has no footer.
+          HIDDEN participant footer "Are you an organizer? Sign in here →":
+          {activeTab === 'participant' && (
+            <>Are you an organizer? <button onClick={() => setActiveTab('organizer')}>Sign in here →</button></>
+          )} */}
+      {activeTab === 'organizer' && (
+        <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
+          Need an account?{' '}
+          <button type="button" onClick={onSwitchToSignUp} disabled={isLoading || participantLoading} style={footerLinkStyle}>
+            Sign up for free →
+          </button>
+        </div>
+      )}
     </AuthShell>
   );
 }

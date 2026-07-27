@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router';
 import { PublicNav } from './redesign/PublicNav';
 import { PublicFooter } from './redesign/PublicFooter';
-import { AuthorSignature } from './AuthorSignature';
 
 interface OurStoryPageProps {
   onGetStarted?: () => void;
@@ -136,8 +135,16 @@ export function OurStoryPage({ onGetStarted, onSignIn }: OurStoryPageProps) {
 
 
         {/* ───────── Author + signature ───────── */}
+        {/* Design `.st-author` = avatar + handwritten sig-name + `.who` line.
+            The shared <AuthorSignature/> (LinkedIn icon, "Founder & CEO", <hr>,
+            49-countries bio) is intentionally NOT rendered here to match the mock
+            1:1 — component code preserved in ./AuthorSignature.tsx. */}
         <section className="st-author">
-          <AuthorSignature />
+          <div className="avatar"><img src="/Andy-Abel-Wonderelo.jpg" alt="Andy Abel" /></div>
+          <div>
+            <div className="sig-name">Andy Abel</div>
+            <div className="who"><strong>Founder, Wonderelo.</strong> Lives in Slovakia in the heart of Europe. Loves design, golf and meeting new people. Still throws good parties.</div>
+          </div>
         </section>
 
         {/* ───────── Final CTA ───────── */}

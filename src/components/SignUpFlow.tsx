@@ -39,7 +39,7 @@ interface SignUpFlowProps {
 
 const companySizeOptions = [
   { value: '1', label: 'Just me' },
-  { value: '2-10', label: '2-10 employees' },
+  { value: '2-10', label: '2–10 employees' },
   { value: '11-50', label: '11-50 employees' },
   { value: '51-200', label: '51-200 employees' },
   { value: '201-500', label: '201-500 employees' },
@@ -47,7 +47,7 @@ const companySizeOptions = [
 ];
 
 const roleOptions = [
-  { value: 'founder', label: 'Founder/Co-founder' },
+  { value: 'founder', label: 'Founder / Co-founder' },
   { value: 'ceo', label: 'CEO/Executive' },
   { value: 'marketing', label: 'Marketing manager' },
   { value: 'events', label: 'Events manager' },
@@ -77,9 +77,14 @@ const discoveryOptions = [
   { value: 'referral', label: 'Friend/colleague referral' },
   { value: 'conference', label: 'Conference/event' },
   { value: 'blog', label: 'Blog/article' },
+  // HIDDEN (not in design — design has 6 discovery options): Partner/integration.
+  // Kept in code; filtered out of the rendered list via `visibleDiscoveryOptions`.
   { value: 'partner', label: 'Partner/integration' },
   { value: 'other', label: 'Other' }
 ];
+
+// Design shows 6 options; the 'partner' option is preserved above but not rendered.
+const visibleDiscoveryOptions = discoveryOptions.filter((o) => o.value !== 'partner');
 
 /* ─────────────────────────────────────────────────────────────
    Brand palette + inlined atoms — verbatim from the design bundle
@@ -167,6 +172,43 @@ function Spinner({ size = 16 }: { size?: number }) {
         <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" />
       </g>
     </svg>
+  );
+}
+
+/* Eyebrow label (auth-screens.jsx `Eyebrow`). */
+function Eyebrow({ children, color = C.orange }: { children: ReactNode; color?: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color, fontSize: 10, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase', fontFamily: C.fontBody }}>
+      <span style={{ width: 18, height: 1, background: color }} />
+      {children}
+    </span>
+  );
+}
+
+/* Large framed icon (auth-screens.jsx `BigIcon`). */
+function BigIcon({ children, badge = C.orange }: { children: ReactNode; badge?: string }) {
+  return (
+    <div style={{
+      width: 88, height: 88, borderRadius: 22, margin: '0 auto 22px',
+      background: `linear-gradient(140deg, #fff, ${C.cream})`, border: `1px solid ${C.hair}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+    }}>
+      <Diamond size={10} color={badge} style={{ position: 'absolute', top: -6, right: -6 }} />
+      {children}
+    </div>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={C.purpleDeep} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 5L2 7" /></svg>
+  );
+}
+
+/* External-link glyph — the design "Open Gmail" CTA leading icon. */
+function ExternalLinkIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
   );
 }
 
@@ -446,6 +488,52 @@ function SelectField({
   );
 }
 
+/* Organizer email-verification screen (auth-screens.jsx `OSVerify`).
+   Rendered as the post-signup state. The backend pre-confirms the account
+   (`admin.createUser({ email_confirm: true })`) and sends no verification email,
+   so the primary CTA continues straight to the dashboard via `onContinue`
+   (→ onComplete → /rounds) — otherwise signup would dead-end here. The re-send
+   countdown is cosmetic; "Use a different email →" returns to step 1. */
+function OrganizerVerifyScreen({ email, onContinue, onDifferentEmail }: { email: string; onContinue: () => void; onDifferentEmail: () => void }) {
+  return (
+    <div
+      className="wonderelo"
+      style={{
+        minHeight: '100vh', width: '100%', boxSizing: 'border-box',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '48px 20px', background: C.cream,
+        fontFamily: C.fontBody, color: C.ink, position: 'relative', overflow: 'hidden',
+      }}
+    >
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'radial-gradient(rgba(76,25,77,.6) 1px, transparent 1px)', backgroundSize: '4px 4px', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%' }}>
+        <DesktopCard width={480}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}><Logo symbolScale={1.42} /></div>
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <BigIcon><MailIcon /></BigIcon>
+            <Eyebrow>Almost there</Eyebrow>
+            <h1 style={{ margin: '14px 0 12px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, lineHeight: 1.08, letterSpacing: '-0.025em', color: C.purpleDeep }}>
+              Verify your <Italic>email</Italic>
+            </h1>
+            <p style={{ margin: '0 auto', maxWidth: 360, fontSize: 14.5, lineHeight: 1.55, color: C.ink, opacity: 0.82 }}>
+              Your account for <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>{email}</strong> is ready. Continue to open your dashboard.
+            </p>
+          </div>
+          <Btn variant="primary" size="lg" full onClick={onContinue} trailingIcon={<ExternalLinkIcon size={16} />}>
+            Continue to dashboard
+          </Btn>
+          <div style={{ padding: 16, borderRadius: 12, background: 'rgba(76,25,77,.04)', border: `1px solid ${C.hair}`, fontFamily: C.fontMono, fontSize: 11, color: C.ink, opacity: 0.6 }}>
+            Re-sending in 0:23 ·{' '}
+            <button type="button" onClick={onDifferentEmail} style={{ background: 'transparent', border: 'none', padding: 0, fontFamily: C.fontMono, fontSize: 11, color: C.purpleDeep, fontWeight: 600, cursor: 'pointer' }}>
+              Use a different email →
+            </button>
+          </div>
+        </DesktopCard>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // Pure view component (shared with AdminPagePreview)
 // ============================================================
@@ -604,7 +692,7 @@ export function SignUpFlowView({
           )}
 
           {currentStep === 2 && (
-            <RadioList options={discoveryOptions} value={discoverySource} onChange={onDiscoverySourceChange} />
+            <RadioList options={visibleDiscoveryOptions} value={discoverySource} onChange={onDiscoverySourceChange} />
           )}
 
           {currentStep === 3 && (
@@ -616,7 +704,9 @@ export function SignUpFlowView({
                 placeholder="Select event type"
                 options={eventTypeOptions}
               />
-              {eventType === 'other' && (
+              {/* HIDDEN (not in design) — conditional "Describe your event type" field
+                  shown when eventType === 'other'. Logic preserved; guarded to never render. */}
+              {false && eventType === 'other' && (
                 <Field
                   label="Describe your event type"
                   value={eventTypeOther}
@@ -676,6 +766,9 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  // After account creation the design shows an email-verification screen (OSVerify)
+  // instead of redirecting straight to the dashboard.
+  const [accountCreated, setAccountCreated] = useState(false);
   const [slugCheckStatus, setSlugCheckStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [emailCheckStatus, setEmailCheckStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const emailTimeoutRef = useRef<NodeJS.Timeout>();
@@ -881,7 +974,11 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       case 2:
         return formData.discoverySource;
       case 3:
-        const eventTypeValid = formData.eventType && (formData.eventType !== 'other' || formData.eventTypeOther.trim().length > 0);
+        // The "Describe your event type" field is hidden (not in design), so we no
+        // longer require eventTypeOther — otherwise picking "Other" would dead-end the
+        // wizard. Original gate preserved for reference:
+        //   const eventTypeValid = formData.eventType && (formData.eventType !== 'other' || formData.eventTypeOther.trim().length > 0);
+        const eventTypeValid = !!formData.eventType;
         return formData.companySize && formData.userRole && eventTypeValid;
       default:
         return false;
@@ -912,7 +1009,10 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       if (response.ok && result.success) {
         // Use the backend-generated slug instead of any frontend value
         localStorage.setItem('slug_auto_generated', 'true');
-        onComplete({ ...formData, urlSlug: result.urlSlug || formData.urlSlug });
+        // Persist the backend slug so the OSVerify "Continue" handoff carries it.
+        setFormData((prev) => ({ ...prev, urlSlug: result.urlSlug || prev.urlSlug }));
+        // Show the design's post-signup verification screen (OSVerify).
+        setAccountCreated(true);
       } else {
         setError(result.error || 'Failed to create account');
       }
@@ -957,6 +1057,22 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
   // Keep the container's slug-check machinery referenced (verify handoff / draft).
   void removeDiacritics;
   void slugCheckStatus;
+
+  // Post-signup: show the organizer email-verification screen (design OSVerify).
+  // The backend creates the account with `email_confirm: true` (admin.createUser),
+  // so the user is pre-confirmed and NO verification email is ever sent (any env).
+  // OSVerify must therefore offer a real way forward — its primary CTA continues to
+  // the dashboard via onComplete (→ /rounds) rather than dead-ending on "check your
+  // email". "Use a different email" still returns to step 1 to correct a typo.
+  if (accountCreated) {
+    return (
+      <OrganizerVerifyScreen
+        email={formData.email}
+        onContinue={() => onComplete({ ...formData })}
+        onDifferentEmail={() => { setAccountCreated(false); setCurrentStep(1); }}
+      />
+    );
+  }
 
   return (
     <SignUpFlowView

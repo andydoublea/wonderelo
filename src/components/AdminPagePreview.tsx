@@ -298,6 +298,7 @@ function PreviewParticipantDashboard() {
       sessionName: mockPublishedSession.name,
       roundName: mockRound.name,
       organizerName: 'Andyho konfera',
+      eventName: 'Andyho konfera',
       organizerUrlSlug: 'andyconf',
       status: 'registered',
       currentStatus: 'registered',
@@ -313,6 +314,7 @@ function PreviewParticipantDashboard() {
       sessionName: pastSession.name,
       roundName: 'Round 1',
       organizerName: 'Andyho konfera',
+      eventName: 'Andyho konfera',
       organizerUrlSlug: 'andyconf',
       status: 'met',
       currentStatus: 'met',
@@ -479,6 +481,9 @@ function _PreviewParticipantDashboardLegacy() {
 function PreviewMeetingPoint() {
   const mockMatchData: MatchData = {
     matchId: 'preview-match-1',
+    eventName: 'Tech Meetup Prague',
+    sessionName: 'Welcome mixer',
+    myName: 'Sarah',
     meetingPointName: 'Lobby Bar',
     meetingPointType: 'physical',
     meetingPointImageUrl: '',
@@ -500,12 +505,14 @@ function PreviewMeetingPoint() {
 }
 
 function PreviewNoMatch() {
-  return <MatchInfoNoMatchView onBackToDashboard={() => {}} onBackToEventPage={() => {}} />;
+  return <MatchInfoNoMatchView firstName="Sarah" eventName="Tech Meetup Prague" sessionName="Welcome mixer" onBackToDashboard={() => {}} onBackToEventPage={() => {}} />;
 }
 
 function PreviewMatchPartner() {
   const mockData: MatchPartnerData = {
     matchId: 'preview-match-1',
+    eventName: 'Tech Meetup Prague',
+    sessionName: 'Welcome mixer',
     myIdentificationNumber: '42',
     myName: 'Sarah',
     findingDeadline: new Date(Date.now() + 5 * 60000).toISOString(),
@@ -554,7 +561,9 @@ function PreviewMatchPartner() {
 function PreviewNetworking() {
   const mockData: NetworkingData = {
     matchId: 'preview-match-1',
-    roundName: 'Round 1',
+    eventName: 'Tech Meetup Prague',
+    sessionName: 'Welcome mixer',
+    myName: 'Sarah',
     networkingEndTime: new Date(Date.now() + 15 * 60000).toISOString(),
     partners: [
       { id: 'p2', firstName: 'Marcus', lastName: 'Rivera' },
@@ -577,6 +586,9 @@ function PreviewContactSharing() {
   const partner = MOCK_PARTICIPANTS[1];
   return (
     <ContactSharingPartnerFeedbackView
+      firstName="Sarah"
+      eventName="Tech Meetup Prague"
+      sessionName="Welcome mixer"
       partners={[{ id: partner.id, firstName: partner.firstName, lastName: partner.lastName, email: partner.email }]}
       feedback={feedback}
       customFeedback={customFeedback}
@@ -606,6 +618,9 @@ function PreviewWondereloFeedback() {
   const [wondereloFeedback, setWondereloFeedback] = useState('');
   return (
     <ContactSharingWondereloFeedbackView
+      firstName="Sarah"
+      eventName="Tech Meetup Prague"
+      sessionName="Welcome mixer"
       wondereloRating={wondereloRating}
       wondereloFeedback={wondereloFeedback}
       isSubmitting={false}
@@ -659,7 +674,9 @@ function PreviewMissedRound() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   return (
     <MissedRoundView
-      roundName="Round 1 - Tech Meetup Prague"
+      firstName="Sarah"
+      eventName="Tech Meetup Prague"
+      sessionName="Welcome mixer"
       feedback={feedback}
       isSubmitting={false}
       isSubmitted={isSubmitted}

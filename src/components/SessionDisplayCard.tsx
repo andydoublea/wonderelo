@@ -426,9 +426,8 @@ export function SessionDisplayCard({
     const roundsLabel = roundCount === 1 ? '1 round' : `${roundCount} rounds`;
     const timeStr = startStr ? `${startStr} · ${roundsLabel}` : (roundCount ? roundsLabel : 'Time to be set');
     const points = session.meetingPoints || [];
-    const fp: any = points[0];
-    const firstPoint = fp ? (typeof fp === 'string' ? fp : fp.name) : '';
-    const pointStr = firstPoint ? (points.length > 1 ? `${firstPoint} +${points.length - 1}` : firstPoint) : 'Not set';
+    const pointNames = points.map((p: any) => (typeof p === 'string' ? p : p.name)).filter(Boolean);
+    const pointStr = pointNames.length ? pointNames.join(' · ') : 'Not set';
 
     // Registered count — mirror the dashboard list view (session.participants) with a
     // rounds.registeredCount fallback so the number is never under-reported.
@@ -436,9 +435,10 @@ export function SessionDisplayCard({
     const roundReg = session.rounds?.reduce((s, r) => s + (r.registeredCount || 0), 0) || 0;
     const registeredCount = Math.max(partLen, roundReg);
 
-    // Primary footer action — Manage (report) for live/finished rounds, else Edit.
-    const showManage = !hideReportButton && (session.status === 'published' || session.status === 'completed') && !!onManage;
-    const showEditPrimary = !showManage && session.status !== 'completed' && !!onEdit;
+    // Primary footer action — the design shows a single "Manage →" on every card
+    // regardless of status. Route it to the report/manage handler when present,
+    // otherwise fall back to edit (drafts/scheduled have no report yet).
+    const primaryAction = !hideReportButton ? (onManage || onEdit) : undefined;
 
     debugLog('🎯 DASHBOARD RoundCard (redesign):', { registeredCount, status: session.status });
 
@@ -469,54 +469,9 @@ export function SessionDisplayCard({
                 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, color: C.ink, opacity: .7, fontFamily: C.fontBody }}><span style={{ color: 'rgba(75,29,81,.45)', display: 'inline-flex' }}><CIcon d={ICON.users} size={15} /></span>{registeredCount} registered</span>
                 : <span style={{ fontSize: 13, color: C.ink, opacity: .45, fontFamily: C.fontBody }}>No registrations yet</span>}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {showManage && (
-                  <span onClick={onManage} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.purpleDeep, cursor: 'pointer', fontFamily: C.fontBody }}>Manage <CIcon d={ICON.arrow} size={14} /></span>
+                {primaryAction && (
+                  <span onClick={primaryAction} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.purpleDeep, cursor: 'pointer', fontFamily: C.fontBody }}>Manage <CIcon d={ICON.arrow} size={14} /></span>
                 )}
-                {showEditPrimary && (
-                  <span onClick={onEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.purpleDeep, cursor: 'pointer', fontFamily: C.fontBody }}>Edit <CIcon d={ICON.arrow} size={14} /></span>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button aria-label="More actions" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 9, border: `1px solid ${C.hairStrong}`, background: '#fff', color: C.purpleDeep, cursor: 'pointer' }}>
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                  {!hideReportButton && (
-                    <>
-                      <DropdownMenuItem onClick={onManage}>
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        Report
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  {session.status !== 'completed' && (
-                    <DropdownMenuItem onClick={onEdit}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={onDuplicate}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  {session.status === 'published' && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setShowCompleteDialog(true)}>
-                        <Square className="mr-2 h-4 w-4" />
-                        Complete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
           </div>

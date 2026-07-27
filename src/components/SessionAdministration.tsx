@@ -546,7 +546,9 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
   };
 
   // ── derived presentation for the session card (real NetworkingSession data) ──
-  const published = session.status !== 'draft';
+  // Design models a 2-state published/draft. A 'scheduled' round is NOT yet
+  // live, so it shows the "Round preview · not published" state (not "Published").
+  const published = session.status === 'published';
   const statusLabel = published ? 'Published' : 'Draft';
 
   const sessionDateLabel = (() => {
@@ -566,10 +568,11 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
     return `${pts.slice(0, 2).join(', ')} +${pts.length - 2} more`;
   })();
 
+  // Design meta line: "{matching mode} · {group format}" e.g. "Across groups · pairs".
   const modeLine = (() => {
-    const size = session.groupSize === 2 ? 'Pairs' : `Groups of ${session.groupSize}`;
-    const extras = [session.enableTeams ? 'Teams' : null, session.enableTopics ? 'Topics' : null].filter(Boolean);
-    return extras.length ? `${size} · ${extras.join(' · ')}` : size;
+    const matchMode = session.matchingType === 'within-team' ? 'Within groups' : 'Across groups';
+    const format = session.groupSize === 2 ? 'pairs' : `groups of ${session.groupSize}`;
+    return `${matchMode} · ${format}`;
   })();
 
   // ── participant statistics rows (data from sessionStats, styling from the mock) ──
@@ -627,9 +630,12 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          {/* Hidden to match design (header has only Refresh). Logic preserved. */}
+          {false && (
           <button type="button" onClick={exportRegistrations} style={headerBtnBase} onMouseEnter={onHeaderBtnEnter} onMouseLeave={onHeaderBtnLeave}>
             <Ico d={I.download} size={15} /> Export CSV
           </button>
+          )}
           <button type="button" onClick={handleRefresh} style={headerBtnBase} onMouseEnter={onHeaderBtnEnter} onMouseLeave={onHeaderBtnLeave}>
             <Ico d={I.refresh} size={15} /> Refresh
           </button>

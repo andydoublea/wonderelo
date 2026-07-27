@@ -54,7 +54,7 @@ export const Logo = ({ size = 120, wordmark = 32, dark = false }: { size?: numbe
   <div style={{ display: 'inline-flex', alignItems: 'center', gap: Math.max(8, (size - 40) / 2 + 4), cursor: 'pointer' }}>
     <div style={{ position: 'relative', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <img
-        src="assets/Wonderelo-logo-symbol.png" alt=""
+        src="/Wonderelo-logo-symbol.png" alt=""
         style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) rotate(-6deg)', width: size, height: size, objectFit: 'contain' }}
       />
     </div>
@@ -253,7 +253,7 @@ export function StudioFooter() {
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr repeat(4, 1fr)', gap: 60, marginBottom: 60 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <img src="assets/Wonderelo-logo-symbol.png" alt="" style={{ width: 96, height: 96, transform: 'rotate(-6deg)' }} />
+              <img src="/Wonderelo-logo-symbol.png" alt="" style={{ width: 96, height: 96, transform: 'rotate(-6deg)' }} />
               <span style={{ fontFamily: C.fontDisplay, fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', color: '#fff' }}>wonderelo</span>
             </div>
           </div>

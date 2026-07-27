@@ -7,11 +7,18 @@ import { WondereloHeader } from './WondereloHeader';
 import { PdNav } from './redesign/PdNav';
 import { PmFooter } from './redesign/PmFooter';
 import { FlipClock } from './redesign/FlipClock';
+import { cachedRoundNames } from './MatchInfo';
 
 export interface NetworkingData {
   matchId: string;
   roundId?: string;
   roundName: string;
+  /** Event name (organizer.event_name) — bold primary in the event row. */
+  eventName?: string;
+  /** Session name (session.name) — light subtitle in the event row. */
+  sessionName?: string;
+  /** Current participant's first name — shown in the nav. */
+  myName?: string;
   networkingEndTime: string;
   partners: { id: string; firstName: string; lastName: string; }[];
   iceBreakers: any[];
@@ -39,7 +46,7 @@ export function MatchNetworkingView({
     <div className="wonderelo pm-page" data-active="networking">
       <div className="pm-shell">
         <PdNav
-          firstName={networkingData.partners?.[0]?.firstName}
+          firstName={networkingData.myName || networkingData.partners?.[0]?.firstName}
           onBrandClick={onBackToDashboard}
           onDashboard={onBackToDashboard}
           onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
@@ -48,7 +55,7 @@ export function MatchNetworkingView({
         <div data-screen="networking">
           <div className="pm-band">
             <div className="pm-eventrow">
-              <div className="pm-event"><span className="name">{networkingData.roundName || 'Your round'}</span><span className="org">Live round</span></div>
+              <div className="pm-event"><span className="name">{networkingData.eventName || networkingData.sessionName || 'Your round'}</span><span className="org">{networkingData.sessionName || 'Speed networking'}</span></div>
               <span className="pm-state"><span className="dot" /> Live</span>
             </div>
             <div className="pm-focusbox" style={{ textAlign: 'center' }}>
@@ -116,7 +123,12 @@ export function MatchNetworking() {
       const data = await response.json();
       debugLog('[MatchNetworking] Networking data loaded:', data);
 
-      setNetworkingData(data);
+      const names = cachedRoundNames(token, data?.roundId);
+      setNetworkingData({
+        ...data,
+        eventName: data?.eventName || names.event,
+        sessionName: data?.sessionName || names.session,
+      });
       setIsLoading(false);
     } catch (err) {
       errorLog('[MatchNetworking] Error loading networking data:', err);

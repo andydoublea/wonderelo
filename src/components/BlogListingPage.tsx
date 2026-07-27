@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { PublicNav } from './redesign/PublicNav';
-import { PublicFooter } from './redesign/PublicFooter';
+import { FooterSection } from './Homepage';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import '../styles/wonderelo-public.css';
@@ -29,12 +29,12 @@ const fallbackPosts: BlogPost[] = [
     id: '6',
     slug: 'meeting-points-guide',
     title: 'Meeting points: the secret ingredient of great networking rounds',
-    excerpt: 'Why designated meeting spots make networking less awkward, more efficient, and way more fun for everyone involved.',
+    excerpt: 'Why designated meeting spots make networking less awkward, more efficient, and way more fun for everyone involved. With practical examples from three real events.',
     content: '',
     imageUrl: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&h=400&fit=crop',
     readTime: '5 min read',
-    createdAt: '2025-01-30T00:00:00Z',
-    updatedAt: '2025-01-30T00:00:00Z',
+    createdAt: '2026-01-30T00:00:00Z',
+    updatedAt: '2026-01-30T00:00:00Z',
   },
   {
     id: '5',
@@ -72,7 +72,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '2',
     slug: 'speed-dating-format',
-    title: 'Why the speed dating format works for networking',
+    title: 'Why the speed-dating format works for networking',
     excerpt: 'Discover the psychology behind structured networking and why it beats traditional mingling.',
     content: '',
     imageUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=400&fit=crop',
@@ -83,13 +83,24 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '3',
     slug: 'hybrid-events',
-    title: 'How to run successful networking at hybrid events',
+    title: 'Running networking at hybrid events',
     excerpt: 'Bridge the gap between online and in-person attendees with these proven strategies.',
     content: '',
     imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop',
     readTime: '6 min read',
     createdAt: '2025-01-05T00:00:00Z',
     updatedAt: '2025-01-05T00:00:00Z',
+  },
+  {
+    id: '7',
+    slug: 'techfuture-2025-case-study',
+    title: 'TechFuture 2025: 1 600 attendees, 18 rounds',
+    excerpt: "How Europe's largest design conference used Wonderelo to make sure no one left without a handful of new contacts.",
+    content: '',
+    imageUrl: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=400&fit=crop',
+    readTime: '9 min read',
+    createdAt: '2024-12-28T00:00:00Z',
+    updatedAt: '2024-12-28T00:00:00Z',
   },
 ];
 
@@ -316,8 +327,10 @@ export function BlogListingPage() {
 
       </main>
 
-      {/* Footer */}
-      <PublicFooter />
+      {/* Footer — Blog.html uses the dark social-icon footer (unlike the other
+          public pages, which use the light `.w-footer`/PublicFooter). Reuse the
+          homepage FooterSection, which is that exact dark footer. */}
+      <FooterSection onNavigate={(p) => navigate(p)} />
     </div>
   );
 }

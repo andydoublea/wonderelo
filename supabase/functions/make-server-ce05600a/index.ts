@@ -1163,7 +1163,7 @@ app.put('/make-server-ce05600a/profile', async (c) => {
     }
     
     const body = await c.req.json();
-    const { organizerName, urlSlug, phone, website, description, profileImageUrl, onboardingCompletedAt } = body;
+    const { organizerName, eventName, urlSlug, phone, website, description, profileImageUrl, onboardingCompletedAt } = body;
 
     const currentProfile = await db.getOrganizerById(user.id);
 
@@ -1191,6 +1191,7 @@ app.put('/make-server-ce05600a/profile', async (c) => {
 
     const updatedProfile = await db.updateOrganizerProfile(user.id, {
       organizerName: organizerName || currentProfile.organizerName,
+      eventName: eventName !== undefined ? eventName : currentProfile.eventName,
       urlSlug: urlSlug || currentProfile.urlSlug,
       phone: phone !== undefined ? phone : currentProfile.phone,
       website: website !== undefined ? website : currentProfile.website,
