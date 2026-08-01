@@ -271,7 +271,6 @@ export function AuthenticatedNav({
                 }}
               >
                 <MenuItem icon={<IconAccount />} active={currentView === 'account-settings'} onClick={run(onNavigateToAccountSettings)}>Account settings</MenuItem>
-                <MenuItem icon={<IconEventPage />} active={eventPageActive} onClick={run(onNavigateToEventPageSettings)}>Event page</MenuItem>
                 <MenuItem icon={<IconBilling />} active={currentView === 'billing'} onClick={run(onNavigateToBilling)}>Billing</MenuItem>
                 {isAdminUser && !isImpersonating && (
                   <MenuItem icon={<IconAccount />} active={adminActive} onClick={run(onNavigateToAdmin)}>Admin panel</MenuItem>

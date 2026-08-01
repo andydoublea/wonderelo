@@ -90,7 +90,7 @@ export function MissedRoundView({
                 <div className="pm-badge is-ok">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <h2 className="pm-h1 is-sent" style={{ marginTop: 16 }}>Thanks for letting us know</h2>
+                <h2 className="pm-h1 is-sent" style={{ marginTop: 16, fontSize: 22 }}>Thanks for letting us know</h2>
                 <p className="pm-muted" style={{ margin: '10px auto 0', maxWidth: 300, fontSize: '13.5px', lineHeight: 1.55 }}>We've passed your note to the organizer. Your spot for the next round is still open — please try to arrive on time.</p>
                 <div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard} style={{ marginTop: 18 }}>Back to dashboard</button></div>
               </div>

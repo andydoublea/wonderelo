@@ -860,7 +860,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
         <Btn variant="primary" full onClick={() => window.open('https://mail.google.com', '_blank', 'noopener')} leadingIcon={<ExternalLinkIcon size={16} />}>
           Open Gmail
         </Btn>
-        <div style={{ padding: 16, borderRadius: 12, background: 'rgba(76,25,77,.04)', border: `1px solid ${C.hair}`, fontSize: 13, color: C.ink, opacity: 0.82, textAlign: 'center' }}>
+        <div style={{ padding: 16, borderRadius: 12, background: 'rgba(76,25,77,.04)', border: `1px solid ${C.hair}`, fontSize: 13, color: C.ink, opacity: 0.82 }}>
           <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>Wrong email?</strong>{' '}
           <button
             type="button"

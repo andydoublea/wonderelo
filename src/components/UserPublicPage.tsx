@@ -53,6 +53,7 @@ export interface UserPublicPageViewProps {
   registeredRoundIds: string[];
   registeredRoundsMap: Map<string, string>;
   registeredRoundsPerSession: Map<string, Set<string>>;
+  registeredRoundSelections: Map<string, { team?: string; topic?: string; topics?: string[] }>;
   participantStatusMap: Map<string, string>;
   registrationStep: 'select-rounds' | 'auth-choice' | 'meeting-points' | 'email-verification-waiting' | 'confirmation';
   magicLinkDialogOpen: boolean;
@@ -77,6 +78,7 @@ export function UserPublicPageView({
   registeredRoundIds,
   registeredRoundsMap,
   registeredRoundsPerSession,
+  registeredRoundSelections,
   participantStatusMap,
   registrationStep,
   magicLinkDialogOpen,
@@ -112,6 +114,7 @@ export function UserPublicPageView({
       registeredRoundIds={registeredRoundIds}
       registeredRoundsMap={registeredRoundsMap}
       registeredRoundsPerSession={registeredRoundsPerSession}
+      registeredRoundSelections={registeredRoundSelections}
       participantProfile={participantProfile}
       participantToken={participantToken}
       participantStatusMap={participantStatusMap}
@@ -327,6 +330,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
   const [registeredRoundIds, setRegisteredRoundIds] = useState<string[]>([]);
   const [registeredRoundsMap, setRegisteredRoundsMap] = useState<Map<string, string>>(new Map());
   const [registeredRoundsPerSession, setRegisteredRoundsPerSession] = useState<Map<string, Set<string>>>(new Map());
+  const [registeredRoundSelections, setRegisteredRoundSelections] = useState<Map<string, { team?: string; topic?: string; topics?: string[] }>>(new Map());
   const [participantProfile, setParticipantProfile] = useState<any>(() => {
     try {
       const token = localStorage.getItem('participant_token');
@@ -510,7 +514,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       debugLog('🔍 Full token (for debugging):', token);
       
       const response = await fetch(
-        `${apiBaseUrl}/participant/${token}`,
+        `${apiBaseUrl}/p/${token}`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -552,31 +556,44 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
         const roundsMap: Map<string, string> = new Map();
         const roundsPerSession: Map<string, Set<string>> = new Map();
         const participantStatusMap: Map<string, string> = new Map();
+        const roundSelections: Map<string, { team?: string; topic?: string; topics?: string[] }> = new Map();
         if (data.registrations && Array.isArray(data.registrations)) {
           data.registrations.forEach((round: any) => {
             if (round.roundId) {
               roundIds.push(round.roundId);
               roundsMap.set(round.roundId, round.status);
               debugLog('  📝 Round:', round.roundName, '| Status:', round.status, '| RoundId:', round.roundId);
-              
+
               if (round.sessionId) {
                 if (!roundsPerSession.has(round.sessionId)) {
                   roundsPerSession.set(round.sessionId, new Set());
                 }
                 roundsPerSession.get(round.sessionId)?.add(round.roundId);
               }
-              
+
               if (round.status) {
                 participantStatusMap.set(round.roundId, round.status);
+              }
+
+              // Preserve the participant's stored group/topic choices so a revisited
+              // registered round restores its selected chips + within-group match note.
+              const topics = Array.isArray(round.topics) ? round.topics : undefined;
+              if (round.team || (topics && topics.length)) {
+                roundSelections.set(round.roundId, {
+                  team: round.team ?? undefined,
+                  topic: topics?.[0],
+                  topics,
+                });
               }
             }
           });
         }
-        
+
         debugLog('📝 Registered round IDs:', roundIds);
         setRegisteredRoundIds(roundIds);
         setRegisteredRoundsMap(roundsMap);
         setRegisteredRoundsPerSession(roundsPerSession);
+        setRegisteredRoundSelections(roundSelections);
         setParticipantStatusMap(participantStatusMap);
       } else {
         debugLog('Failed to fetch participant registrations:', response.status);
@@ -1096,6 +1113,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       registeredRoundIds={registeredRoundIds}
       registeredRoundsMap={registeredRoundsMap}
       registeredRoundsPerSession={registeredRoundsPerSession}
+      registeredRoundSelections={registeredRoundSelections}
       participantStatusMap={participantStatusMap}
       registrationStep={registrationStep}
       magicLinkDialogOpen={magicLinkDialogOpen}

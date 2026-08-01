@@ -36,7 +36,8 @@ const euro = (cents: number) => (
 );
 
 export function PricingPanel({ accessToken, hasSubscription, title, showFreeTierNotice = true }: PricingPanelProps) {
-  const [selectedCapacity, setSelectedCapacity] = useState(50);
+  // Design defaults the capacity slider to the 200-participant tier (Pricing.html idx=2).
+  const [selectedCapacity, setSelectedCapacity] = useState(200);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('annual');
   const [creditQuantity, setCreditQuantity] = useState(1);
   const [actionLoading, setActionLoading] = useState(false);

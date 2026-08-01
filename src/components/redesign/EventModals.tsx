@@ -82,7 +82,9 @@ export function EventModals({ eventName, sessionName, meetingPointsOpen, roundRu
           {contextEl}
           {sessionsWithMeetingPoints.map((session) => (
             <div className="ev-mp-session-block" key={session.sessionId}>
-              <div className="ev-mp-session">{session.sessionName}</div>
+              {/* Design shows the session name once (via the context chip) when a single
+                  session is visible; the per-block header only appears with multiple sessions. */}
+              {sessionsWithMeetingPoints.length > 1 ? <div className="ev-mp-session">{session.sessionName}</div> : null}
               <div className="ev-mp-list">
                 {session.meetingPoints.map((point) => (
                   <div className="ev-mp-card" key={point.id}>

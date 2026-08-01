@@ -143,6 +143,25 @@ export function ParticipantDashboardView({
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 10000); return () => clearInterval(t); }, []);
 
+  // Which round rows have their inline topic-prefs picker revealed (Edit → Done toggle).
+  // Pure UI state, mirrors the design's `.is-editing` class on `.pd-round-prefs`.
+  const [editingPrefs, setEditingPrefs] = useState<Set<string>>(new Set());
+  const togglePrefsEditing = (roundId: string, on: boolean) =>
+    setEditingPrefs((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(roundId); else next.delete(roundId);
+      return next;
+    });
+  // Topics the participant already chose for a round (stored on the registration record).
+  const storedTopicsForRound = (roundId: string): string[] => {
+    const reg = registrations.find((r) => r.roundId === roundId) as any;
+    if (Array.isArray(reg?.topics) && reg.topics.length) return reg.topics;
+    const sel = roundSelections.get(roundId);
+    if (sel?.topics && sel.topics.length) return sel.topics;
+    if (sel?.topic) return [sel.topic];
+    return [];
+  };
+
   const justRegistered = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).get('just-registered') === '1';
 
@@ -527,6 +546,9 @@ export function ParticipantDashboardView({
               <div className="pd-rounds">
                 {rounds.map((round) => {
                   const st = registrationStatusMap?.get(round.id);
+                  const showPrefs = hasTopics(session);
+                  const roundTopics = showPrefs ? storedTopicsForRound(round.id) : [];
+                  const isEditing = editingPrefs.has(round.id);
                   return (
                     <div className="pd-round" key={round.id}>
                       <div className="pd-round-line">
@@ -535,6 +557,28 @@ export function ParticipantDashboardView({
                         <button className="pd-round-cancel-inline" type="button" onClick={() => onRoundToggle(session, round, true, st)}>Cancel</button>
                         <span className={`pd-status${st === 'confirmed' ? ' is-confirmed' : ' is-pending'}`}>{st === 'confirmed' ? 'Confirmed' : 'Registered'}</span>
                       </div>
+                      {showPrefs && (
+                        <div className="pd-round-expand">
+                          <div className={`pd-round-prefs${isEditing ? ' is-editing' : ''}`}>
+                            <div className="pd-round-prefs-summary">
+                              <p className="pd-round-prefs-text">
+                                You'll talk about <strong data-topic-summary>{roundTopics.length ? roundTopics.join(', ') : 'nothing in particular'}</strong>.<button className="pd-round-prefs-edit" type="button" onClick={() => togglePrefsEditing(round.id, true)}>Edit</button>
+                              </p>
+                            </div>
+                            <div className="pd-round-prefs-picker">
+                              <div className="pd-expand-section" data-field="topic">
+                                <div className="pd-expand-label">I want to <em>talk about</em></div>
+                                <div className="pd-chips" role="group">
+                                  {(session.topics || []).map((t: string) => (
+                                    <button type="button" key={t} className={`pd-chip is-topic${roundTopics.includes(t) ? ' is-active' : ''}`}>{t}</button>
+                                  ))}
+                                </div>
+                              </div>
+                              <button className="picker-done" type="button" onClick={() => togglePrefsEditing(round.id, false)}>Done</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

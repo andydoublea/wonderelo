@@ -35,6 +35,7 @@ interface SessionRegistrationProps {
   registeredRoundIds?: string[]; // IDs of rounds the participant is registered for
   registeredRoundsMap?: Map<string, string>; // roundId -> status ('registered' | 'pending_verification')
   registeredRoundsPerSession?: Map<string, Set<string>>; // sessionId -> Set<roundId>
+  registeredRoundSelections?: Map<string, { team?: string; topic?: string; topics?: string[] }>; // roundId -> stored team/topic selections for already-registered rounds
   participantProfile?: any; // Existing participant profile if they have a token
   participantToken?: string | null; // Participant token if logged in
   participantStatusMap?: Map<string, string>; // roundId -> participantStatus (for registered rounds)
@@ -292,7 +293,7 @@ export function SessionRegistrationSelectRoundsView({
   );
 }
 
-export function SessionRegistration({ sessions, userSlug, eventName, registeredRoundIds = [], registeredRoundsMap = new Map(), registeredRoundsPerSession = new Map(), participantProfile, participantToken, participantStatusMap = new Map(), noWrapper = false, hideStickyBar = false, onStepChange }: SessionRegistrationProps) {
+export function SessionRegistration({ sessions, userSlug, eventName, registeredRoundIds = [], registeredRoundsMap = new Map(), registeredRoundsPerSession = new Map(), registeredRoundSelections = new Map(), participantProfile, participantToken, participantStatusMap = new Map(), noWrapper = false, hideStickyBar = false, onStepChange }: SessionRegistrationProps) {
   const navigate = useNavigate();
   const { getCurrentTime } = useTime();
   const [selectedSessions, setSelectedSessions] = useState<SelectedSession[]>([]);
@@ -476,28 +477,48 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     
     if (registeredRoundsPerSession.size > 0 && sessions.length > 0) {
       const newSelectedRounds = new Map<string, Set<string>>();
-      
+      const newRoundSelections = new Map<string, { team?: string; topic?: string; topics?: string[] }>();
+
       // Group registered rounds by session
       sessions.forEach(session => {
         const registeredRoundIdsForSession = registeredRoundsPerSession.get(session.id) || new Set();
         const sessionRegisteredRounds = session.rounds
           .filter(round => registeredRoundIdsForSession.has(round.id))
           .map(round => round.id);
-        
+
         debugLog(`  Session "${session.name}": ${sessionRegisteredRounds.length} registered rounds`);
-        
+
         if (sessionRegisteredRounds.length > 0) {
           newSelectedRounds.set(session.id, new Set(sessionRegisteredRounds));
         }
+
+        // Restore the participant's stored group/topic choices for each already-registered
+        // round so the chips render pre-selected and the within-group match note shows.
+        sessionRegisteredRounds.forEach(roundId => {
+          const stored = registeredRoundSelections.get(roundId);
+          if (stored && (stored.team || (stored.topics && stored.topics.length) || stored.topic)) {
+            const topics = stored.topics && stored.topics.length ? stored.topics : undefined;
+            newRoundSelections.set(roundId, {
+              team: stored.team,
+              // Single-topic mode reads `topic`; multi-topic mode reads `topics`.
+              topic: stored.topic ?? topics?.[0],
+              topics,
+            });
+          }
+        });
       });
-      
+
       debugLog('  ✅ Setting selectedRounds with', newSelectedRounds.size, 'sessions');
       setSelectedRounds(newSelectedRounds);
+      if (newRoundSelections.size > 0) {
+        debugLog('  ✅ Restoring roundSelections for', newRoundSelections.size, 'registered rounds');
+        setRoundSelections(newRoundSelections);
+      }
       setHasInitialized(true); // Mark as initialized
     } else {
       debugLog('  ℹ️ No registered rounds to initialize');
     }
-  }, [registeredRoundsPerSession, sessions, hasInitialized]);
+  }, [registeredRoundsPerSession, registeredRoundSelections, sessions, hasInitialized]);
 
 
   // Calculate next upcoming registered round (for showing countdown)
