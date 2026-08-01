@@ -43,3 +43,24 @@ Formát: čo zmeniť · kde v mocku · prečo.
 - **Čo:** V mocku doplniť do popoverov pickerov pomocné tlačidlá: **DateField** → riadok „Today · Clear" pod kalendárom; **TimeField** → „As soon as possible · Clear" popri „Done".
 - **Kde v mocku:** `design/v06/project/pages/screen-round-form.jsx` — `DateField` (~154–176) a `TimeField` (~181–216) popovery.
 - **Prečo:** Praktické skratky (skok na dnešok, vyčistiť pole, čas „čo najskôr"). Zamýšľané.
+
+---
+
+## 6. DONAVRHNÚŤ: loading / error / timeout stavy (v mocku úplne chýbajú)
+
+Claude Design navrhol len **happy-path** obrazovky. **Loading, error a timeout stavy nie sú navrhnuté** — appka ich preto renderuje starým generickým UI (`min-h-screen bg-background` wrapper + shadcn `animate-spin` spinner / žltý ⚠️ emoji + generický „Error"/„Loading" text). Treba ich donavrhnúť v brand štýle (referencia: auth error-pattern — BigIcon + eyebrow + správa + ghost tlačidlo), potom sa zapracujú do appky.
+
+**A. Matching flow — loading + error/timeout stavy** (`Participant Matching.html` má len 7 happy-path stavov):
+- `MatchInfo`: loading spinner + error „Matching is taking longer than expected. Please go back and try again." (timeout).
+- `MatchNetworking`: loading „Loading networking session…" + ⚠️ error.
+- `MatchPartner`: loading spinner + ⚠️ error.
+- `ContactSharing`: loading spinner + error.
+- (MissedRound je OK.)
+
+**B. Participant dashboard** (`Participant Dashboard.html`) — **loading stav** pred načítaním dát (aktuálne starý spinner).
+
+**C. Event stránka** (`Event Page.html` → `UserPublicPage` / `SessionRegistration`) — **loading + error/empty stavy** (napr. token bez registrácií, výpadok backendu). Pozn.: časť starého kódu je mŕtva (`if(false)`) z portu — pri redizajne vyčistiť.
+
+**D. `ParticipantRoundDetail`** (route `/p/:token/r/:roundId`) — **celá stránka je neredizajnovaná** a navyše **osirelá** (nič v appke na ňu nenaviguje; žije len v admin preview). Rozhodnúť: zmazať alebo redizajnovať + znovu zapojiť.
+
+**Mimo scope** (nikdy neboli v Claude Design, netreba): celý Admin panel (`Admin*`), CRM (`crm/*`), `ErrorBoundary`, `ProtectedRoute`, `QRScanner`, `ui/LoadingSpinner`, `RegistrationFlow` (mŕtvy kód), `DemoPage`, debug nástroje.
