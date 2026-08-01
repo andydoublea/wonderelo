@@ -64,3 +64,28 @@ Claude Design navrhol len **happy-path** obrazovky. **Loading, error a timeout s
 **D. `ParticipantRoundDetail`** (route `/p/:token/r/:roundId`) — **celá stránka je neredizajnovaná** a navyše **osirelá** (nič v appke na ňu nenaviguje; žije len v admin preview). Rozhodnúť: zmazať alebo redizajnovať + znovu zapojiť.
 
 **Mimo scope** (nikdy neboli v Claude Design, netreba): celý Admin panel (`Admin*`), CRM (`crm/*`), `ErrorBoundary`, `ProtectedRoute`, `QRScanner`, `ui/LoadingSpinner`, `RegistrationFlow` (mŕtvy kód), `DemoPage`, debug nástroje.
+
+Do tejto kategórie (donavrhnúť) patria aj:
+- **404 / „Page not found" stránka** (`AppRouter.tsx` NotFound) — teraz staré generické shadcn („404 / Page not found", `min-h-screen bg-background`).
+- **App-level loading stavy** (celoobrazovkové „Loading…" pri štarte / medzi routami) — teraz generický spinner + „Loading…".
+
+---
+
+## 7. VYJASNIŤ: dva rôzne dizajny Event Promo slide
+
+- **Čo:** V bundli sú **dva odlišné promo dizajny**: `Event Promo Slide.html` (svetlý „paper" stage, QR vľavo, „Break your bubble, meet new people", kroky 01–03) **vs** `screen-event-promo.jsx` (tmavý slide, „Spot your match in the crowd", Wonderimage). **Appka implementuje ten tmavý** (`EventPromoPage` → `screen-event-promo.jsx`).
+- **Treba:** rozhodnúť, ktorý je kanonický. Ak svetlý (`Event Promo Slide.html`), celý promo slide v appke je off-design a treba ho prerobiť.
+
+---
+
+## 8. VYJASNIŤ: „pro" varianty dashboardu / rounds
+
+- **Čo:** V bundli sú `screen-dashboard-pro.jsx` a `screen-rounds-pro.jsx` (alternatívne „pro" verzie). Appka používa **zlúčený** dashboard (`screen-dashboard-merged.jsx`).
+- **Treba:** potvrdiť, že „pro" varianty sú **zámerne vypustené** (nahradené merged verziou), alebo či majú byť samostatný režim.
+
+---
+
+## 9. Mobilné / responzívne layouty (pozn. — skôr app-úloha)
+
+- **Čo:** Bundle má mobilné mocky: `home/Homepage Mobile*.html`, `screen-mobile-studio*.jsx`, `screen-mobile-roundform.jsx`. Redizajn bol **desktop-first**. Participant obrazovky sú mobile-native (OK), ale **organizer studio + round form + homepage** neboli overené/zladené voči týmto mobilným mockom.
+- **Treba (v appke):** responzívny pass — zladiť organizer/homepage mobil s existujúcimi mobilnými mockmi. (Mocky už existujú, takže nie je to nový dizajn, ale app-implementácia.)

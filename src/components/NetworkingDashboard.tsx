@@ -457,7 +457,7 @@ export function NetworkingDashboard({
   }
 
   // ── Welcome-modal size config. `compact` fits the whole card on a 13" MacBook ──
-  const compact = typeof window !== 'undefined' && window.innerHeight < 820;
+  const compact = typeof window !== 'undefined' && (window.innerHeight < 820 || window.innerWidth < 560);
   const wz = compact
     ? { modalW: 468, photoH: 126, pad: '15px 30px 17px', h2: 20, body: 12.75, lh: 1.45, gap: 7, mtBody: 9,
         callPad: '10px 14px', callFs: 12.75, callMt: 11, avatar: 46, name: 19, role: 11, rowMt: 11,
@@ -471,8 +471,8 @@ export function NetworkingDashboard({
   const arrowHead = `M266 ${faceY} L 279 ${faceY + 3} M266 ${faceY} L 267 ${faceY + 13}`;
 
   const welcomeModal = welcome ? (
-    <div onClick={closeWelcome} style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(45,17,51,.55)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: wz.modalW, maxWidth: '100%', maxHeight: '92vh', overflow: 'auto', background: '#fff', borderRadius: 24, border: `1px solid ${C.hairStrong}`, boxShadow: '0 40px 100px rgba(45,17,51,.45)', position: 'relative' }}>
+    <div onClick={closeWelcome} style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(45,17,51,.55)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, boxSizing: 'border-box' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: wz.modalW, boxSizing: 'border-box', maxHeight: '92vh', overflow: 'auto', background: '#fff', borderRadius: 24, border: `1px solid ${C.hairStrong}`, boxShadow: '0 40px 100px rgba(45,17,51,.45)', position: 'relative' }}>
         <button onClick={closeWelcome} aria-label="Close" style={{ position: 'absolute', top: 16, right: 16, zIndex: 3, width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,.92)', color: C.purpleDeep, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.18)' }}>
           <DIcon d="<line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>" size={18} />
         </button>
