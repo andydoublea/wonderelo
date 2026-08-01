@@ -168,6 +168,13 @@ export function NetworkingDashboard({
   });
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  // First-login "Welcome from the founder" modal — shown once per organizer,
+  // gated purely by a localStorage flag (not any server/onboarding field).
+  const [welcome, setWelcome] = useState(() => !localStorage.getItem('oliwonder_founder_welcome_seen'));
+  const closeWelcome = () => {
+    try { localStorage.setItem('oliwonder_founder_welcome_seen', '1'); } catch { /* ignore */ }
+    setWelcome(false);
+  };
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -449,9 +456,72 @@ export function NetworkingDashboard({
     );
   }
 
+  // ── Welcome-modal size config. `compact` fits the whole card on a 13" MacBook ──
+  const compact = typeof window !== 'undefined' && window.innerHeight < 820;
+  const wz = compact
+    ? { modalW: 468, photoH: 126, pad: '15px 30px 17px', h2: 20, body: 12.75, lh: 1.45, gap: 7, mtBody: 9,
+        callPad: '10px 14px', callFs: 12.75, callMt: 11, avatar: 46, name: 19, role: 11, rowMt: 11,
+        btnPad: '10px 18px', btnFs: 13.5, btnMt: 12, eyebrowFs: 9.5, lblFs: 20 }
+    : { modalW: 540, photoH: 264, pad: '26px 36px 28px', h2: 29, body: 15, lh: 1.58, gap: 12, mtBody: 15,
+        callPad: '15px 18px', callFs: 15, callMt: 16, avatar: 74, name: 27, role: 12.5, rowMt: 18,
+        btnPad: '14px 20px', btnFs: 15, btnMt: 20, eyebrowFs: 11, lblFs: 26 };
+  // Arrow tip tracks the founder's face as the crop height changes.
+  const faceY = Math.round(-22 + 0.38 * wz.photoH);
+  const arrowPath = `M${266 + 66} ${faceY + 60} C ${266 + 42} ${faceY + 36}, ${266 + 18} ${faceY + 14}, 266 ${faceY}`;
+  const arrowHead = `M266 ${faceY} L 279 ${faceY + 3} M266 ${faceY} L 267 ${faceY + 13}`;
+
+  const welcomeModal = welcome ? (
+    <div onClick={closeWelcome} style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(45,17,51,.55)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: wz.modalW, maxWidth: '100%', maxHeight: '92vh', overflow: 'auto', background: '#fff', borderRadius: 24, border: `1px solid ${C.hairStrong}`, boxShadow: '0 40px 100px rgba(45,17,51,.45)', position: 'relative' }}>
+        <button onClick={closeWelcome} aria-label="Close" style={{ position: 'absolute', top: 16, right: 16, zIndex: 3, width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,.92)', color: C.purpleDeep, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.18)' }}>
+          <DIcon d="<line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>" size={18} />
+        </button>
+        {/* Photo from the founder's 30th birthday party — the night Wonderelo began */}
+        <div style={{ position: 'relative', borderRadius: '24px 24px 0 0', overflow: 'hidden', background: C.cream, height: wz.photoH }}>
+          <img src="/Andy-birthday-30-Wonderelo.png" alt="Andy's 30th birthday party — the night Wonderelo began" style={{ display: 'block', width: '100%', height: wz.photoH, objectFit: 'cover', objectPosition: '50% 38%' }} />
+          {/* "That's me!" founder annotation — hand label + drawn arrow to his face */}
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none' }}>
+            <svg viewBox={`0 0 540 ${wz.photoH}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.45))' }}>
+              <path d={arrowPath} stroke="#fff" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+              <path d={arrowHead} stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+            <span style={{ position: 'absolute', left: '63%', top: `${faceY + 56}px`, fontFamily: C.fontHand, fontWeight: 700, fontSize: wz.lblFs, lineHeight: .92, color: '#fff', transform: 'rotate(-7deg)', whiteSpace: 'nowrap', filter: 'drop-shadow(0 1px 4px rgba(0,0,0,.55))' }}>That&rsquo;s me!</span>
+          </div>
+        </div>
+        <div style={{ padding: wz.pad }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: C.orange, fontSize: wz.eyebrowFs, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase', fontFamily: C.fontBody }}>
+            <span style={{ width: 22, height: 1, background: C.orange }} />Welcome from the founder
+          </span>
+          <h2 style={{ margin: '14px 0 0', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: wz.h2, lineHeight: 1.08, letterSpacing: '-.03em', color: C.purpleDeep }}>
+            How I made my birthday <Italic color={C.orange}>unforgettable</Italic>
+          </h2>
+          <div style={{ marginTop: wz.mtBody, display: 'flex', flexDirection: 'column', gap: wz.gap, fontSize: wz.body, lineHeight: wz.lh, color: C.ink, opacity: .85 }}>
+            <p style={{ margin: 0 }}>On my thirtieth birthday, seventy-five guests packed the room — university friends, colleagues, people from every corner of my life — and most of them were locked in their own bubbles. I wanted them to leave as friends.</p>
+            <p style={{ margin: 0 }}>So I&rsquo;d asked a friend to build an app that paired two random guests every few minutes and sent them off to meet for one drink. Ninety minutes later the room was full of friendships — many of them last till today — that never would have happened on their own.</p>
+            <p style={{ margin: 0 }}>That night, it wasn&rsquo;t only my birthday we celebrated: <strong style={{ color: C.purpleDeep, fontWeight: 700 }}>Wonderelo</strong> was born too.</p>
+          </div>
+          <div style={{ marginTop: wz.callMt, padding: wz.callPad, borderRadius: 14, background: 'rgba(221,83,28,.06)', border: '1px solid rgba(221,83,28,.22)', fontSize: wz.callFs, lineHeight: 1.55, color: C.purpleDeep }}>
+            Now it&rsquo;s your turn. I hope Wonderelo helps you bring your people together — and makes your event truly <Italic color={C.orange}>unforgettable</Italic>.
+          </div>
+          <div style={{ marginTop: wz.rowMt, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <img src="/Andy-Abel-Wonderelo.jpg" alt="Andy Abel" style={{ width: wz.avatar, height: wz.avatar, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C.hair}` }} />
+            <div>
+              <div style={{ fontFamily: C.fontHand, fontWeight: 700, fontSize: wz.name, color: C.purpleDeep, lineHeight: 1 }}>Andy Abel</div>
+              <div style={{ marginTop: 3, fontSize: wz.role, color: C.ink, opacity: .6 }}>Founder of Wonderelo</div>
+            </div>
+          </div>
+          <button onClick={closeWelcome} style={{ marginTop: wz.btnMt, width: '100%', padding: wz.btnPad, borderRadius: 12, border: 'none', background: C.orange, color: '#fff', fontFamily: C.fontBody, fontWeight: 700, fontSize: wz.btnFs, cursor: 'pointer', boxShadow: '0 8px 20px rgba(221,83,28,.28)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            Let&rsquo;s make your event unforgettable <DIcon d={DI.arrow} size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   // Main list view
   return (
     <div className="wonderelo" style={{ fontFamily: C.fontBody, color: C.ink }}>
+      {welcomeModal}
       {hero}
       {liveMonitor}
       {roundsHeader}

@@ -158,7 +158,7 @@ export function AuthenticatedNav({
         <img
           src="/Wonderelo-logo-symbol.png"
           alt=""
-          style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) rotate(-6deg)', width: 120, height: 120, objectFit: 'contain' }}
+          style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) rotate(-6deg)', width: 120, height: 120, maxWidth: 'none', objectFit: 'contain' }}
         />
       </div>
       <div style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 32, letterSpacing: '-0.03em', color: C.purpleDeep, lineHeight: 1 }}>

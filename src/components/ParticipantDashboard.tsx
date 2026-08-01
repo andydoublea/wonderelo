@@ -99,6 +99,7 @@ export interface ParticipantDashboardViewProps {
   onCancelUnregister: () => void;
   onConfirmUnregister: () => void;
   onRoundToggle: (session: NetworkingSession, round: Round, isCurrentlyRegistered: boolean, status?: string) => void;
+  onToggleRoundTopic: (session: NetworkingSession, round: Round, topic: string) => void;
   onConfirmAttendance: (roundId: string) => void;
   onConfirmationWindowExpired: () => void;
   onClearDebugLogs: () => void;
@@ -134,6 +135,7 @@ export function ParticipantDashboardView({
   onCancelUnregister,
   onConfirmUnregister,
   onRoundToggle,
+  onToggleRoundTopic,
   onConfirmAttendance,
   onConfirmationWindowExpired,
   onClearDebugLogs,
@@ -570,7 +572,7 @@ export function ParticipantDashboardView({
                                 <div className="pd-expand-label">I want to <em>talk about</em></div>
                                 <div className="pd-chips" role="group">
                                   {(session.topics || []).map((t: string) => (
-                                    <button type="button" key={t} className={`pd-chip is-topic${roundTopics.includes(t) ? ' is-active' : ''}`}>{t}</button>
+                                    <button type="button" key={t} className={`pd-chip is-topic${roundTopics.includes(t) ? ' is-active' : ''}`} onClick={() => onToggleRoundTopic(session, round, t)}>{t}</button>
                                   ))}
                                 </div>
                               </div>
@@ -1696,6 +1698,70 @@ export function ParticipantDashboard() {
     });
   };
 
+  // Toggle a chosen topic on an already-registered round (dashboard inline editor).
+  // Respects the session's single vs multiple topic rule, optimistically updates
+  // local state, then persists to the participant topics endpoint.
+  const handleToggleRoundTopic = async (session: NetworkingSession, round: Round, topic: string) => {
+    if (!token) {
+      toast.error('Not authenticated');
+      return;
+    }
+
+    // Current chosen topics for this round (registration is source of truth,
+    // falling back to any pending local selection).
+    const reg = registrations.find((r) => r.roundId === round.id && r.sessionId === session.id) as any;
+    const current: string[] = (Array.isArray(reg?.topics) && reg.topics.length)
+      ? reg.topics
+      : (roundSelections.get(round.id)?.topics || []);
+
+    const allowMultiple = (session as any).allowMultipleTopics === true;
+    let next: string[];
+    if (allowMultiple) {
+      next = current.includes(topic) ? current.filter((t) => t !== topic) : [...current, topic];
+    } else {
+      // Single-topic: clicking the active chip clears it, otherwise replace.
+      next = current.includes(topic) ? [] : [topic];
+    }
+
+    // Optimistic update — registrations (source of truth for the summary) + roundSelections.
+    setRegistrations((prev) => prev.map((r) =>
+      (r.roundId === round.id && r.sessionId === session.id)
+        ? ({ ...r, topics: next } as Registration)
+        : r
+    ));
+    setRoundSelections((prev) => {
+      const newMap = new Map(prev);
+      const cur = newMap.get(round.id) || {};
+      newMap.set(round.id, { ...cur, topics: next });
+      return newMap;
+    });
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/p/${token}/round/${round.id}/topics`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ topics: next, sessionId: session.id }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        toast.error(error.error || 'Failed to save topics');
+        // Revert optimistic update on error
+        fetchData();
+      }
+    } catch (error) {
+      debugLog('Error saving round topics:', error);
+      toast.error('Failed to save topics');
+      fetchData();
+    }
+  };
+
   const generateRoundTimeDisplay = (startTime: string, duration: number) => {
     if (!startTime || startTime === 'To be set' || startTime === 'TBD') {
       return `To be set`;
@@ -1885,6 +1951,7 @@ export function ParticipantDashboard() {
       }}
       onConfirmUnregister={confirmUnregister}
       onRoundToggle={handleRoundToggle}
+      onToggleRoundTopic={handleToggleRoundTopic}
       onConfirmAttendance={handleConfirmAttendance}
       onConfirmationWindowExpired={handleConfirmationWindowExpired}
       onClearDebugLogs={() => setDebugLogs([])}
