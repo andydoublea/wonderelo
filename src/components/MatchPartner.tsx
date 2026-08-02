@@ -1,8 +1,7 @@
 import { useParams, useNavigate } from 'react-router';
-import { useEffect, useState, useRef, ReactNode } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
-import { CountdownTimer } from './CountdownTimer';
 import { GeometricIdentification } from './GeometricIdentification';
 import { WondereloHeader } from './WondereloHeader';
 import { PdNav } from './redesign/PdNav';
@@ -49,11 +48,6 @@ export interface MatchPartnerViewProps {
   getOptionsForPartner: (partner: Partner) => number[];
   onNumberSelect: (partnerId: string, num: number) => void;
   onBackToDashboard: () => void;
-  /**
-   * Rendered inline next to each "is on the way..." partner status.
-   * Container passes a live countdown component; preview passes a static span.
-   */
-  inlineCountdown?: ReactNode;
 }
 
 export function MatchPartnerView({
@@ -63,7 +57,6 @@ export function MatchPartnerView({
   getOptionsForPartner,
   onNumberSelect,
   onBackToDashboard,
-  inlineCountdown,
 }: MatchPartnerViewProps) {
   const walkSecs = matchData.walkingDeadline
     ? Math.max(0, Math.floor((new Date(matchData.walkingDeadline).getTime() - Date.now()) / 1000))
@@ -127,8 +120,7 @@ export function MatchPartnerView({
                           </div>
                         </div>
                       )}
-                      {/* Inline "({countdown} left)" appended to the waiting helper is not in the v06 design — hidden (kept for logic). */}
-                      {state === 'way' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>Hang tight — you'll pick their number once they arrive.{false && inlineCountdown && <> ({inlineCountdown} left)</>}</p>}
+                      {state === 'way' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>Hang tight — you'll pick their number once they arrive.</p>}
                       {state === 'missed' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>They didn't make it to the meeting point in time.</p>}
                       {state === 'done' && <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}><span className="pm-muted" style={{ fontSize: 13 }}>You found each other — <strong style={{ color: 'var(--w-purple-deep)', fontWeight: 700 }}>good job!</strong></span></div>}
                     </div>
@@ -338,17 +330,6 @@ export function MatchPartner() {
   return (
     <MatchPartnerView
       matchData={matchData}
-      inlineCountdown={
-        matchData.findingDeadline ? (
-          <CountdownTimer
-            targetDate={matchData.findingDeadline}
-            className=""
-            onComplete={() => {
-              debugLog('[MatchPartner] Finding time expired');
-            }}
-          />
-        ) : undefined
-      }
       isSubmitting={isSubmitting}
       wrongGuessPartnerId={wrongGuessPartnerId}
       getOptionsForPartner={getOptionsForPartner}

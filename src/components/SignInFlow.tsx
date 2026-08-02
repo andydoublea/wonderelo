@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import type { ReactNode, CSSProperties } from 'react';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, Loader2, X } from 'lucide-react';
-import { apiBaseUrl, publicAnonKey, projectId } from '../utils/supabase/info';
+import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
 
 interface SignInData {
@@ -464,11 +464,7 @@ export function SignInFlowView({
         </form>
       )}
 
-      {/* Footer — organizer only. Participant (design PIEmail) has no footer.
-          HIDDEN participant footer "Are you an organizer? Sign in here →":
-          {isParticipant && (
-            <>Are you an organizer? <button onClick={() => onTabChange('organizer')}>Sign in here →</button></>
-          )} */}
+      {/* Footer — organizer only. Participant (design PIEmail) has no footer. */}
       {!isParticipant && (
         <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
           Need an account?{' '}
@@ -498,10 +494,6 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
   });
   const formDataRef = useRef(formData);
   formDataRef.current = formData;
-  
-  // Show quick test logins only on dev/staging (not production)
-  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const showTestLogins = isLocalhost || projectId !== 'tpsgnnrkwgvgnsktuicr';
 
   // Participant magic link state
   const [participantEmail, setParticipantEmail] = useState('');
@@ -918,20 +910,6 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
           <p style={{ margin: 0, fontSize: 12.5, color: C.ink, opacity: 0.65, textAlign: 'center', lineHeight: 1.5 }}>
             No password needed. We email you a link that signs you straight in.
           </p>
-
-          {/* HIDDEN (not in design) — dev/staging participant quick test logins.
-              Logic preserved; guarded to never render. */}
-          {false && showTestLogins && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16, borderTop: `1px solid ${C.hair}` }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: C.ink, opacity: 0.5, fontFamily: C.fontBody }}>Quick test logins</span>
-              <Btn type="button" variant="ghost" full onClick={() => navigate('/p/tok-alice-001')} disabled={participantLoading} style={{ fontSize: 13, padding: '11px 18px' }}>
-                Alice Novak
-              </Btn>
-              <Btn type="button" variant="ghost" full onClick={() => navigate('/p/tok-bob-001')} disabled={participantLoading} style={{ fontSize: 13, padding: '11px 18px' }}>
-                Bob Kovac
-              </Btn>
-            </div>
-          )}
         </form>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -982,38 +960,10 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
           <Btn type="submit" variant="primary" full loading={isLoading} disabled={!isFormValid()} trailingIcon={<ArrowRightIcon size={16} />}>
             {isLoading ? 'Signing in…' : 'Sign in'}
           </Btn>
-
-          {/* HIDDEN (not in design) — dev/staging organizer quick test login.
-              Logic preserved; guarded to never render. */}
-          {false && showTestLogins && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16, borderTop: `1px solid ${C.hair}` }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: C.ink, opacity: 0.5, fontFamily: C.fontBody }}>Quick test login</span>
-              <Btn
-                type="button"
-                variant="ghost"
-                full
-                disabled={isLoading}
-                onClick={() => {
-                  const newData = { email: 'andy.double.a+org@gmail.com', password: 'Rukuku' };
-                  setFormData(newData);
-                  formDataRef.current = newData;
-                  setError('');
-                  handleSubmit();
-                }}
-                style={{ fontSize: 13, padding: '11px 18px' }}
-              >
-                andy.double.a+org@gmail.com
-              </Btn>
-            </div>
-          )}
         </form>
       )}
 
-      {/* Footer — organizer only. Participant (design PIEmail) has no footer.
-          HIDDEN participant footer "Are you an organizer? Sign in here →":
-          {activeTab === 'participant' && (
-            <>Are you an organizer? <button onClick={() => setActiveTab('organizer')}>Sign in here →</button></>
-          )} */}
+      {/* Footer — organizer only. Participant (design PIEmail) has no footer. */}
       {activeTab === 'organizer' && (
         <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
           Need an account?{' '}

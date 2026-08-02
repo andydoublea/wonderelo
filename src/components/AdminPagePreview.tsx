@@ -548,7 +548,6 @@ function PreviewMatchPartner() {
   return (
     <MatchPartnerView
       matchData={mockData}
-      inlineCountdown={<>04:23</>}
       isSubmitting={false}
       wrongGuessPartnerId={null}
       getOptionsForPartner={getOptions}
@@ -1133,7 +1132,6 @@ function PreviewPublicEventPage() {
   };
   const [magicLinkDialogOpen, setMagicLinkDialogOpen] = useState(false);
   const [magicLinkEmail, setMagicLinkEmail] = useState('');
-  const [howItWorksDialogOpen, setHowItWorksDialogOpen] = useState(false);
   return (
     <UserPublicPageView
       userSlug="andyconf"
@@ -1149,13 +1147,11 @@ function PreviewPublicEventPage() {
       magicLinkDialogOpen={magicLinkDialogOpen}
       magicLinkEmail={magicLinkEmail}
       isSendingMagicLink={false}
-      howItWorksDialogOpen={howItWorksDialogOpen}
       onNavigate={noop}
       onLogout={noop}
       onMagicLinkDialogOpenChange={setMagicLinkDialogOpen}
       onMagicLinkEmailChange={setMagicLinkEmail}
       onSendMagicLink={noop}
-      onHowItWorksDialogOpenChange={setHowItWorksDialogOpen}
       onRegistrationStepChange={noop}
     />
   );

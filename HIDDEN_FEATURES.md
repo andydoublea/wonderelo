@@ -1,60 +1,58 @@
 # Hidden features — design-parity pass (v06)
 
-During the "design is the single source of truth" pass, real app features that the **static design mocks don't depict** were **hidden in code (not deleted)** — each is wrapped in `{false && …}` or an equivalent guard, so it can be restored by flipping one condition. Decide per item whether to add it to the Claude Design mocks (then re-enable) or drop it.
+During the "design is the single source of truth" pass, real app features that the **static design mocks don't depict** were **hidden in code (not deleted)** — each is wrapped in `{false && …}` or an equivalent guard, so it can be restored by flipping one condition.
 
-## Public site nav (`redesign/PublicNav.tsx`)
-1. **"Who is it for?" dropdown** — 7 `/for/:slug` landing-page links (now a flat link like homepage).
-2. **Language switcher** (SK/EN) in the public nav.
-3. **"Our story" + "Blog"** center nav links (still reachable via footer).
+A follow-up cleanup then **permanently deleted** the dead code for the features we decided to drop (see "Deleted" below). The features listed under **"Still hidden"** are the ones we intend to re-enable after they are added to the Claude Design mocks — leave their guards in place.
 
-## Organizer dashboard (`NetworkingDashboard.tsx`, `SessionDisplayCard.tsx`)
-4. **Round card ⋮ menu** → Duplicate / Complete / Delete round (design card shows only "Manage →"). ⚠️ These actions now have **no home on the dashboard** — only Edit/Report via "Manage".
-5. **Sort dropdown** (Date newest first, etc.).
-6. **Table view + Calendar view** toggles.
+## Still hidden (KEEP — re-enable after redesign)
 
-## Round form (`SessionForm.tsx`, `MeetingPointsManager.tsx`, `IceBreakersManager.tsx`)
-7. Meeting point **Physical/Virtual type** toggle.
-8. Meeting point **Video call link** field.
-9. Meeting point **"Add photo" / image upload**.
-10. Ice breakers **intro paragraph**.
-11. Per-round **Custom Round Times editor**.
-12. Advanced **"Limit number of groups" triggered-rounds** disabled state + note.
-13. **Maximum groups** triggered-rounds note.
+### Public site nav (`redesign/PublicNav.tsx`)
+1. **"Who is it for?" dropdown** — 7 `/for/:slug` landing-page links (desktop hover dropdown + mobile sublist), guarded by `false`.
 
-## Live round / report (`SessionAdministration.tsx`)
-14. **"Export CSV"** button (header now shows only Refresh).
+### Organizer dashboard (`SessionDisplayCard.tsx`)
+2. **Round card ⋮ menu** → Duplicate / Complete / Delete round (design card shows only "Manage →").
 
-## Event page settings (`EventPageSettings.tsx`)
-15. **Live URL-availability** spinner / check / X + "This URL is available" / error text (design shows a static "✓ available").
+### Round form (`SessionForm.tsx`)
+3. Per-round **Custom Round Times editor** (only the "Custom round times" toggle is shown; the editor body is guarded off).
 
-## Account settings (`AccountSettings.tsx`)
-16. **"Save changes" button** (replaced by autosave-on-blur + "Saves automatically" hint).
+### Event page settings (`EventPageSettings.tsx`)
+4. **Live URL-availability** spinner / check / X + "This URL is available" / error text (design shows a static "✓ available").
 
-## Billing (`BillingSettings.tsx`)
-17. **"Subscription cancelled"** banner.
-18. **"Payment failed" / past-due** banner.
-19. **"Frequently asked questions"** card.
-20. **Cancel-dialog warning icon**.
+### Account settings (`AccountSettings.tsx`)
+5. **"Save changes" button** (replaced by autosave-on-blur + "Saves automatically" hint).
 
-## Auth (`SignInFlow.tsx`, `SignUpFlow.tsx`)
-21. Participant **"Quick test logins"** (Alice / Bob) — dev only.
-22. Organizer **"Quick test login"** — dev only.
-23. Participant footer **"Are you an organizer? Sign in here →"**.
-24. Forgot-password top **Logo + "← Back to sign in"** link.
-25. Forgot-password **"Don't have an account? Sign up for free →"** footer.
-26. Sign-up discovery option **"Partner/integration"** (list now 6, design has 6).
-27. Sign-up **"Describe your event type"** field (when "Other").
+### Billing (`BillingSettings.tsx`)
+6. **"Subscription cancelled"** banner.
+7. **"Payment failed" / past-due** banner.
+8. **"Frequently asked questions"** card.
 
-## Event page (`UserPublicPage.tsx`)
-28. Bespoke **4-step "How rounds work" dialog** (replaced by the design's Round Rules bottom-sheet).
+### Auth (`SignInFlow.tsx`, `SignUpFlow.tsx`)
+9. Forgot-password top **Logo + "← Back to sign in"** link, and the forgot-password **"Don't have an account? Sign up for free →"** footer.
+10. Sign-up discovery option **"Partner/integration"** and the **"Describe your event type"** field (when "Other").
 
-## Participant / matching (`MatchInfo.tsx`, `MatchPartner.tsx`)
-29. **Virtual "Join the call"** meeting-point variant.
-30. Per-partner **"Didn't make it / missed"** state.
-31. Inline **"({countdown} left)"** in the waiting helper.
+### Participant / matching (`MatchPartner.tsx`)
+11. Per-partner **"Didn't make it / missed"** state (forced off via `partnerMissed = false`).
 
-## Marketing (`AuthorSignature.tsx`)
-32. **Author signature block** (LinkedIn link, "Founder & CEO at Wonderelo", the "49 countries… Justin Timberlake" bio) — replaced by the design's shorter `.st-author` / `.bp-author` markup. The `AuthorSignature.tsx` component is now unreferenced.
+---
+
+## Deleted (dropped — dead code removed permanently)
+
+These hidden/guarded features were removed entirely, along with any state/handlers/imports they left unused:
+
+- Language switcher (SK/EN) in `PublicNav.tsx`. (The shared `i18n/LanguageSwitcher.tsx` component stays — still used by the legacy `Navigation.tsx`.)
+- "Our story" + "Blog" center nav links — `PublicNav.tsx`.
+- Sort dropdown; Table view + Calendar view toggles — `NetworkingDashboard.tsx` (already gone before this pass).
+- Meeting point Physical/Virtual type toggle, Video call link field, and Add-photo / image upload — `MeetingPointsManager.tsx`.
+- Ice breakers intro paragraph — `IceBreakersManager.tsx` (already gone).
+- Advanced "Limit number of groups" + "Maximum groups" triggered-rounds disabled states / notes — `SessionForm.tsx`.
+- "Export CSV" button + its `exportRegistrations` handler — `SessionAdministration.tsx`.
+- Cancel-dialog warning icon — `BillingSettings.tsx`.
+- Participant + organizer "Quick test logins" (dev only) — `SignInFlow.tsx`.
+- Participant footer "Are you an organizer? Sign in here →" — `SignInFlow.tsx`.
+- Bespoke 4-step "How rounds work" shadcn Dialog — `UserPublicPage.tsx` (the `UserPublicPageView` copy; the design's Round Rules bottom-sheet replaces it).
+- Virtual "Join the call" meeting-point variant (eyebrow, video link, "I have joined the call" CTA) — `MatchInfo.tsx`.
+- Inline "({countdown} left)" waiting helper — `MatchPartner.tsx`.
+- Author signature block — `AuthorSignature.tsx` file deleted (was unreferenced).
 
 ---
 

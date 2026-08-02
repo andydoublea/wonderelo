@@ -1601,9 +1601,6 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
               help="Useful if you have a dedicated table or meeting room for each group"
               on={!!formData.limitGroups}
               onChange={(checked) => setFormData({ ...formData, limitGroups: checked })}
-              // HIDDEN to match design: triggered-rounds disabled state + note. Logic preserved.
-              // disabled={formData.roundsMode === 'triggered'}
-              // note={formData.roundsMode === 'triggered' ? 'Automatically enabled for triggered rounds' : undefined}
             />
             {formData.limitGroups && (
               <div style={{ marginTop: 16 }}>
@@ -1613,8 +1610,6 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                   min={1}
                   max={100}
                   width={200}
-                  // HIDDEN to match design: triggered-rounds disabled state. Logic preserved.
-                  // disabled={formData.roundsMode === 'triggered'}
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value === '') {
@@ -1627,10 +1622,6 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                     }
                   }}
                 />
-                {/* HIDDEN to match design: triggered-rounds note. Logic preserved. */}
-                {false && formData.roundsMode === 'triggered' && (
-                  <p style={{ margin: '8px 0 0', fontSize: 12, color: '#b45309' }}>Maximum groups is set to 1 for triggered rounds and cannot be changed</p>
-                )}
               </div>
             )}
 

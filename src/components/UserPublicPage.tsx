@@ -59,13 +59,11 @@ export interface UserPublicPageViewProps {
   magicLinkDialogOpen: boolean;
   magicLinkEmail: string;
   isSendingMagicLink: boolean;
-  howItWorksDialogOpen: boolean;
   onNavigate: (path: string) => void;
   onLogout: () => void;
   onMagicLinkDialogOpenChange: (open: boolean) => void;
   onMagicLinkEmailChange: (email: string) => void;
   onSendMagicLink: () => void;
-  onHowItWorksDialogOpenChange: (open: boolean) => void;
   onRegistrationStepChange: (step: 'select-rounds' | 'auth-choice' | 'meeting-points' | 'email-verification-waiting' | 'confirmation') => void;
 }
 
@@ -84,13 +82,11 @@ export function UserPublicPageView({
   magicLinkDialogOpen,
   magicLinkEmail,
   isSendingMagicLink,
-  howItWorksDialogOpen,
   onNavigate,
   onLogout,
   onMagicLinkDialogOpenChange,
   onMagicLinkEmailChange,
   onSendMagicLink,
-  onHowItWorksDialogOpenChange,
   onRegistrationStepChange,
 }: UserPublicPageViewProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -258,53 +254,6 @@ export function UserPublicPageView({
         </DialogContent>
       </Dialog>
 
-      {/* HIDDEN (design parity): the bespoke 4-step "How rounds work" dialog is not in
-          Claude Design v06. The "How rounds work" link now opens the design's Round Rules
-          bottom-sheet (rendered by SessionRegistration → EventModals) via the #round-rules
-          hash. Code preserved below but guarded off so the UI matches the design 1:1. */}
-      {false && (
-      <Dialog open={howItWorksDialogOpen} onOpenChange={onHowItWorksDialogOpenChange}>
-        <DialogContent className="max-w-md" aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5" />
-              How rounds work
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="mt-4 space-y-4">
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">1</div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Register to rounds</p>
-                <p className="text-sm text-muted-foreground">Choose times when you are available to meet and give us your contacts</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">2</div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Confirm attendance</p>
-                <p className="text-sm text-muted-foreground">You will get a reminder 5 minutes before the round to confirm you are in. Stay close to meeting points.</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">3</div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Meet someone new</p>
-                <p className="text-sm text-muted-foreground">We will pick a match for you with a meeting place. You have 3 minutes to meeting with your match.</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">4</div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Exchange contacts... or not</p>
-                <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().defaultRoundDuration || 10} minutes after the meeting.</p>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-      )}
     </div>
   );
 }
@@ -1119,7 +1068,6 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       magicLinkDialogOpen={magicLinkDialogOpen}
       magicLinkEmail={magicLinkEmail}
       isSendingMagicLink={isSendingMagicLink}
-      howItWorksDialogOpen={howItWorksDialogOpen}
       onNavigate={(path) => navigate(path)}
       onLogout={() => {
         localStorage.removeItem('participant_token');
@@ -1131,7 +1079,6 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
       onMagicLinkDialogOpenChange={setMagicLinkDialogOpen}
       onMagicLinkEmailChange={setMagicLinkEmail}
       onSendMagicLink={handleSendMagicLink}
-      onHowItWorksDialogOpenChange={setHowItWorksDialogOpen}
       onRegistrationStepChange={setRegistrationStep}
     />
   );

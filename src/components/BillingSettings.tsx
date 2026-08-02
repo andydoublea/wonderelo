@@ -496,9 +496,7 @@ export function BillingSettingsView({
       {showCancelDialog && (
         <div onClick={() => onShowCancelDialog(false)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(45,17,51,.45)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: '100%', background: '#fff', borderRadius: 18, border: `1px solid ${C.hairStrong}`, boxShadow: '0 30px 70px rgba(75,29,81,.30)', padding: 28 }}>
-            {/* HIDDEN (kept): warning icon on the dialog title — not in the design. */}
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 22, letterSpacing: '-.02em', color: C.purpleDeep }}>
-              {false && <span style={{ color: '#c0392b', display: 'inline-flex' }}><Ico d={warnIco} size={20} /></span>}
               Cancel subscription?
             </h3>
             <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: 1.55, color: C.ink, opacity: .78 }}>

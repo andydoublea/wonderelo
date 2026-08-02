@@ -103,10 +103,6 @@ export function MatchInfoMatchedView({
   const walkSecs = matchData.walkingDeadline
     ? Math.max(0, Math.floor((new Date(matchData.walkingDeadline).getTime() - Date.now()) / 1000))
     : null;
-  // Virtual / "Join the call" meeting-point variant is not in the v06 design — force
-  // the physical variant. Original logic preserved for when the design covers it:
-  // const isVirtual = matchData.meetingPointType === 'virtual';
-  const isVirtual = false;
   return (
     <div className="wonderelo pm-page" data-active="meeting-point">
       <div className="pm-shell">
@@ -118,14 +114,10 @@ export function MatchInfoMatchedView({
               <span className="pm-state"><span className="dot" /> Live</span>
             </div>
             <div className="pm-focusbox">
-              <div className="eyebrow">{isVirtual ? 'Join the call' : 'Now go to'}</div>
+              <div className="eyebrow">Now go to</div>
               <div className="place">{matchData.meetingPointName}</div>
               <div className="photo">
-                {isVirtual && matchData.meetingPointVideoCallUrl ? (
-                  <a href={matchData.meetingPointVideoCallUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                  </a>
-                ) : matchData.meetingPointImageUrl ? (
+                {matchData.meetingPointImageUrl ? (
                   <img src={matchData.meetingPointImageUrl} alt={matchData.meetingPointName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -139,7 +131,7 @@ export function MatchInfoMatchedView({
           <div className="pm-sticky">
             <button className="pm-btn is-primary" type="button" onClick={onImHere} disabled={isSubmitting}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              {isSubmitting ? 'Checking in…' : (isVirtual ? 'I have joined the call' : `I am at ${matchData.meetingPointName}`)}
+              {isSubmitting ? 'Checking in…' : `I am at ${matchData.meetingPointName}`}
             </button>
             <div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard} style={{ marginTop: 12 }}>Back to dashboard</button></div>
           </div>

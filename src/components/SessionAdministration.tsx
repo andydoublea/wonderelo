@@ -49,7 +49,6 @@ const Ico = ({ d, size = 16, sw = 2 }: { d: string; size?: number; sw?: number }
 );
 const I = {
   refresh:  '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
-  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
   userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>',
   minus:    '<circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>',
   check:    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
@@ -319,73 +318,6 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
     return `${formattedStart} - ${formattedEnd}`;
   };
 
-  const exportRegistrations = () => {
-    if (registrations.length === 0) {
-      toast.error('No registrations to export');
-      return;
-    }
-
-    const csvData: any[] = [];
-
-    registrations.forEach(reg => {
-      // Find the session for this specific session
-      const sessionReg = reg.sessions.find(s => s.sessionId === session.id);
-      if (sessionReg) {
-        const rounds = sessionReg.rounds || [];
-        const fullName = `${reg.participant.firstName} ${reg.participant.lastName}`.trim();
-
-        if (Array.isArray(rounds) && rounds.length > 0) {
-          // Export each round as a separate row with full participant data
-          rounds.forEach(round => {
-            csvData.push({
-              'Name': fullName,
-              'Email': reg.participant.email,
-              'Phone': reg.participant.phone,
-              'Registration Date': new Date(reg.registeredAt).toLocaleDateString(),
-              'Round Name': round.roundName,
-              'Round Time': round.startTime,
-              'Round Duration': `${round.duration} min`,
-              'Round Status': round.status,
-              'Status Updated': round.statusUpdatedAt ? new Date(round.statusUpdatedAt).toLocaleDateString() : 'N/A'
-            });
-          });
-        } else {
-          // Fallback for registrations without rounds
-          csvData.push({
-            'Name': fullName,
-            'Email': reg.participant.email,
-            'Phone': reg.participant.phone,
-            'Registration Date': new Date(reg.registeredAt).toLocaleDateString(),
-            'Round Name': 'N/A',
-            'Round Time': 'N/A',
-            'Round Duration': 'N/A',
-            'Round Status': 'N/A',
-            'Status Updated': 'N/A'
-          });
-        }
-      }
-    });
-
-    const headers = Object.keys(csvData[0]);
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => headers.map(header => `"${row[header as keyof typeof row]}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${session.name}-registrations.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success('Registrations exported successfully!');
-    }
-  };
-
   const filteredRegistrations = registrations.filter(reg => {
     const sessionReg = reg.sessions.find(s => s.sessionId === session.id);
     if (!sessionReg) return false;
@@ -630,12 +562,6 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-          {/* Hidden to match design (header has only Refresh). Logic preserved. */}
-          {false && (
-          <button type="button" onClick={exportRegistrations} style={headerBtnBase} onMouseEnter={onHeaderBtnEnter} onMouseLeave={onHeaderBtnLeave}>
-            <Ico d={I.download} size={15} /> Export CSV
-          </button>
-          )}
           <button type="button" onClick={handleRefresh} style={headerBtnBase} onMouseEnter={onHeaderBtnEnter} onMouseLeave={onHeaderBtnLeave}>
             <Ico d={I.refresh} size={15} /> Refresh
           </button>
