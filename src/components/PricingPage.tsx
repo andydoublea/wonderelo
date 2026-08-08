@@ -17,9 +17,12 @@ const COMPARE: CompareSection[] = [
   {
     section: 'Core engine',
     rows: [
-      { feature: 'Random & topic-based matching', free: true, single: true, unlimited: true },
-      { feature: 'Custom round duration & group size', free: true, single: true, unlimited: true },
-      { feature: 'Meeting points & ice-breakers', free: true, single: true, unlimited: true },
+      { feature: 'Random matching', free: true, single: true, unlimited: true },
+      { feature: 'Topic-based matching', free: true, single: true, unlimited: true },
+      { feature: 'Custom round duration', free: true, single: true, unlimited: true },
+      { feature: 'Custom group size', free: true, single: true, unlimited: true },
+      { feature: 'Meeting points', free: true, single: true, unlimited: true },
+      { feature: 'Ice-breakers', free: true, single: true, unlimited: true },
     ],
   },
   {
@@ -31,17 +34,9 @@ const COMPARE: CompareSection[] = [
     ],
   },
   {
-    section: 'Branding & promotion',
-    rows: [
-      { feature: 'Custom event page', free: false, single: true, unlimited: true },
-      { feature: 'QR code & promo slide', free: false, single: true, unlimited: true },
-      { feature: 'Remove Wonderelo branding', free: false, single: false, unlimited: true },
-    ],
-  },
-  {
     section: 'Support',
     rows: [
-      { feature: 'Email support', free: true, single: true, unlimited: 'Priority · 24h', unlimitedAccent: true },
+      { feature: 'Email support', free: false, single: true, unlimited: 'Priority · 24h', unlimitedAccent: true },
     ],
   },
 ];
@@ -130,7 +125,7 @@ export function PricingPage({ onGetStarted, onSignIn }: PricingPageProps) {
           <div className="pr-compare-head">
             <span className="w-eyebrow">Compare</span>
             <h2 className="w-h1">What's <span className="w-italic">included</span></h2>
-            <p className="w-lede" style={{ maxWidth: 580, margin: '18px auto 0' }}>Every plan ships with the full networking engine — what differs is capacity, branding, and how often you run.</p>
+            <p className="w-lede" style={{ maxWidth: 580, margin: '18px auto 0' }}>Every plan ships with the full networking engine — what differs is capacity, support, and how often you run.</p>
           </div>
 
           <div className="pr-table-wrap" style={{ overflowX: 'auto' }}>
@@ -140,7 +135,7 @@ export function PricingPage({ onGetStarted, onSignIn }: PricingPageProps) {
                 <th style={{ width: '38%' }}>Feature</th>
                 <th>Free</th>
                 <th>Single event</th>
-                <th className="is-featured">Unlimited</th>
+                <th className="is-featured">Unlimited events</th>
               </tr>
             </thead>
             <tbody>

@@ -3,12 +3,12 @@ import { useEffect, useState, useRef } from 'react';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { GeometricIdentification } from './GeometricIdentification';
-import { WondereloHeader } from './WondereloHeader';
 import { PdNav } from './redesign/PdNav';
 import { PmFooter } from './redesign/PmFooter';
 import { FlipClock } from './redesign/FlipClock';
 import { Geoid } from './redesign/Geoid';
 import { cachedRoundNames } from './MatchInfo';
+import { StatePlaceholder, Skeleton, SkeletonRow, Spinner, StateButton, RefreshIcon, Italic } from './redesign/StatePlaceholder';
 
 export interface Partner {
   id: string;
@@ -87,21 +87,19 @@ export function MatchPartnerView({
                 {matchData.partners.map((partner) => {
                   const options = getOptionsForPartner(partner);
                   const isWrong = wrongGuessPartnerId === partner.id;
-                  // Per-partner "Didn't make it / missed" state is not in the v06 design — force off.
-                  // Original logic preserved for when the design covers it:
-                  // const partnerMissed = !partner.isCheckedIn && !!matchData.walkingDeadline && Date.now() > new Date(matchData.walkingDeadline).getTime();
-                  const partnerMissed = false;
+                  // Per-partner "Didn't make it" no-show state — covered by the v07 design.
+                  const partnerMissed = !partner.isCheckedIn && !!matchData.walkingDeadline && Date.now() > new Date(matchData.walkingDeadline).getTime();
                   const state = partner.isNumberConfirmed ? 'done' : partner.isCheckedIn ? (isWrong ? 'wrong' : 'choosing') : (partnerMissed ? 'missed' : 'way');
                   return (
-                    <div className="pm-match" key={partner.id} data-state={state}>
+                    <div className={`pm-match${state === 'missed' ? ' pm-noshow' : ''}`} key={partner.id} data-state={state} style={state === 'missed' ? { background: 'rgba(138,107,98,.05)' } : undefined}>
                       <div className="pm-match-head">
-                        <div className="pm-name-big" style={{ fontSize: 24 }}>{partner.firstName}</div>
+                        <div className="pm-name-big" style={{ fontSize: 24, ...(state === 'missed' ? { opacity: .55 } : {}) }}>{partner.firstName}</div>
                         {state === 'done' ? (
                           <span className="pm-mstat is-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}><polyline points="20 6 9 17 4 12" /></svg> Matched</span>
                         ) : state === 'choosing' || state === 'wrong' ? (
                           <span className="pm-mstat is-here"><span className="d" /> Already at the spot</span>
                         ) : state === 'missed' ? (
-                          <span className="pm-mstat is-way"><span className="d" /> Didn't make it</span>
+                          <span className="pm-mstat is-gone" style={{ color: '#8a6b62' }}><span className="d" style={{ background: 'rgba(138,107,98,.55)', boxShadow: '0 0 0 3px rgba(138,107,98,.14)' }} /> Didn't make it</span>
                         ) : (
                           <span className="pm-mstat is-way"><span className="d" /> On the way</span>
                         )}
@@ -121,7 +119,15 @@ export function MatchPartnerView({
                         </div>
                       )}
                       {state === 'way' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>Hang tight — you'll pick their number once they arrive.</p>}
-                      {state === 'missed' && <p className="pm-muted" style={{ margin: '8px 0 2px', fontSize: '12.5px' }}>They didn't make it to the meeting point in time.</p>}
+                      {state === 'missed' && (
+                        <>
+                          <p className="pm-muted" style={{ margin: '8px 0 0', fontSize: '12.5px' }}>They didn't make it to the meeting point in time, so we closed this pairing. It happens — nothing to do on your side.</p>
+                          <div className="pm-noshow-foot" style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed rgba(138,107,98,.28)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: '11.5px', color: 'rgba(43,24,16,.6)' }}>
+                            <span>Your other matches are still open.</span>
+                            <button type="button" className="pm-noshow-report" style={{ padding: '7px 12px', borderRadius: 999, border: '1.5px solid var(--w-hairline-strong)', background: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: 'var(--w-purple-deep)', cursor: 'pointer' }}>Report a no-show</button>
+                          </div>
+                        </>
+                      )}
                       {state === 'done' && <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}><span className="pm-muted" style={{ fontSize: 13 }}>You found each other — <strong style={{ color: 'var(--w-purple-deep)', fontWeight: 700 }}>good job!</strong></span></div>}
                     </div>
                   );
@@ -292,14 +298,29 @@ export function MatchPartner() {
     return overriddenOptionsRef.current[partner.id] || partner.identificationOptions || [];
   };
 
+  const backToDashboard = () => navigate(`/p/${token}`);
+  const handleRetry = () => {
+    setError(null);
+    setIsLoading(true);
+    loadMatchPartnerData();
+  };
+
+  // Loading state — skeleton in the shape of the "find each other" identity card.
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading match details...</p>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell" style={{ paddingTop: 40, paddingBottom: 40 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Skeleton width="62%" height={26} />
+            <Skeleton height={180} radius={18} />
+            <SkeletonRow />
+          </div>
+          <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Spinner />
+            <span style={{ fontFamily: 'var(--w-font-mono)', fontSize: 12.5, fontWeight: 700, letterSpacing: '.02em', color: 'var(--w-ink)', opacity: 0.72 }}>Loading your match…</span>
+          </div>
+          <div style={{ marginTop: 22, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
+            <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
           </div>
         </div>
       </div>
@@ -308,20 +329,21 @@ export function MatchPartner() {
 
   if (error || !matchData) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <div className="text-center">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-6">{error || 'Failed to load match partner data'}</p>
-            <button
-              onClick={() => navigate(`/p/${token}`)}
-              className="text-muted-foreground hover:text-foreground underline transition-colors"
-            >
-              Back to dashboard
-            </button>
-          </div>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell">
+          <StatePlaceholder
+            variant="error"
+            glyphSize={74}
+            glyph={<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
+            eyebrow="Something went wrong"
+            title={<>We couldn't load <Italic>your match</Italic></>}
+            body="This is on us. Try again — your match and meeting point are still saved."
+            actions={<>
+              <StateButton variant="primary" leadingIcon={<RefreshIcon />} onClick={handleRetry}>Try again</StateButton>
+              <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
+            </>}
+            errorId="error · matchpartner"
+          />
         </div>
       </div>
     );

@@ -15,7 +15,6 @@ import { Calendar, Clock, Users, MapPin, CheckCircle } from 'lucide-react';
 import type { MatchData } from './MatchInfo';
 import type { MatchPartnerData, Partner as MatchPartnerPartner } from './MatchPartner';
 import type { NetworkingData } from './MatchNetworking';
-import type { RoundDetail } from './ParticipantRoundDetail';
 import type { Contact } from './AddressBook';
 import type { ParticipantProfileFormData } from '../pages/ParticipantProfile';
 import type { Registration, SessionWithRounds } from './ParticipantDashboard';
@@ -49,7 +48,6 @@ const EmailVerificationWaitingView = lazyNamed(() => import('./EmailVerification
 const MissedRoundView = lazyNamed(() => import('./MissedRound'), 'MissedRoundView');
 const RegistrationSuccessView = lazyNamed(() => import('./RegistrationSuccess'), 'RegistrationSuccessView');
 const SessionSuccessView = lazyNamed(() => import('./SessionSuccessPage'), 'SessionSuccessView');
-const ParticipantRoundDetailView = lazyNamed(() => import('./ParticipantRoundDetail'), 'ParticipantRoundDetailView');
 const AddressBookView = lazyNamed(() => import('./AddressBook'), 'AddressBookView');
 const ParticipantProfileView = lazyNamed(() => import('../pages/ParticipantProfile'), 'ParticipantProfileView');
 const ParticipantDashboardView = lazyNamed(() => import('./ParticipantDashboard'), 'ParticipantDashboardView');
@@ -161,7 +159,6 @@ type PreviewPage =
   | 'email-waiting'
   | 'registration-success'
   | 'missed-round'
-  | 'round-detail'
   | 'organizer-dashboard'
   | 'account-settings'
   | 'event-page-settings'
@@ -199,7 +196,6 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
       { id: 'participant-dashboard', label: 'Dashboard', description: 'Participant\'s main dashboard with upcoming rounds' },
       { id: 'participant-profile', label: 'Profile', description: 'Participant edits their contact info and social links' },
       { id: 'address-book', label: 'Address Book', description: 'Contacts shared after networking rounds' },
-      { id: 'round-detail', label: 'Round detail', description: 'Detail page for a single registered round' },
     ],
   },
   {
@@ -682,50 +678,6 @@ function PreviewMissedRound() {
       onFeedbackChange={setFeedback}
       onSubmitFeedback={() => setIsSubmitted(true)}
       onBackToDashboard={() => {}}
-    />
-  );
-}
-
-function PreviewRoundDetail() {
-  const mockRoundDetail: RoundDetail = {
-    registration: { notificationsEnabled: false },
-    session: {
-      id: 's1',
-      name: 'Tech Meetup Prague',
-      date: mockSession.date,
-      location: 'Impact Hub Bratislava',
-      meetingPoints: [
-        { name: 'Lobby Bar' },
-        { name: 'Rooftop Terrace' },
-      ],
-    },
-    round: {
-      id: 'r1',
-      name: 'Round 1',
-      startTime: mockRound.startTime,
-      duration: 20,
-      groupSize: 2,
-      iceBreakers: MOCK_ICE_BREAKERS,
-      date: mockSession.date,
-    },
-    organizer: {
-      name: 'Andyho konfera',
-      urlSlug: 'andyconf',
-    },
-  };
-  return (
-    <ParticipantRoundDetailView
-      roundDetail={mockRoundDetail}
-      isUpcoming={true}
-      isInProgress={false}
-      isCompleted={false}
-      countdown="2h 14m 32s"
-      formattedDateTime={new Date(`${mockSession.date}T${mockRound.startTime}:00`).toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-      })}
-      notificationsEnabled={false}
-      onBack={() => {}}
-      onEnableNotifications={() => {}}
     />
   );
 }
@@ -1461,7 +1413,6 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
       case 'email-waiting': return <PreviewEmailWaiting />;
       case 'registration-success': return <PreviewRegistrationSuccess />;
       case 'missed-round': return <PreviewMissedRound />;
-      case 'round-detail': return <PreviewRoundDetail />;
       case 'participant-profile': return <PreviewProfile />;
       case 'session-registration': return <PreviewRegistration />;
       case 'session-success': return <PreviewSessionSuccess />;

@@ -41,6 +41,10 @@ const IconSignOut = () => (
 const UserGlyph = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M5 21v-1a7 7 0 0 1 14 0v1" /></svg>
 );
+// Admin panel — shield-with-person glyph (design/v07 OrgNav dropdown spec).
+const IconAdmin = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><circle cx="12" cy="10" r="2.2" /><path d="M8.6 15.2a4 4 0 0 1 6.8 0" /></svg>
+);
 
 export function AuthenticatedNav({
   currentView,
@@ -114,21 +118,28 @@ export function AuthenticatedNav({
   };
 
   // ── Center tab (Rounds / Event page / Admin panel) ─────────────────────────
-  const Tab = ({ label, active, onClick }: { label: string; active: boolean; onClick?: () => void }) => (
-    <div
-      onClick={onClick}
-      style={{
-        padding: '8px 14px', borderRadius: 9, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-        color: active ? C.purpleDeep : C.ink,
-        opacity: active ? 1 : 0.65,
-        background: active ? 'rgba(76,25,77,.08)' : 'transparent',
-        display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: C.fontBody,
-      }}
-    >
-      {active && <Diamond size={6} />}
-      {label}
-    </div>
-  );
+  // Hover lifts inactive tabs to full opacity with a soft wash (design/v07 NavTab).
+  const Tab = ({ label, active, onClick }: { label: string; active: boolean; onClick?: () => void }) => {
+    const [hov, setHov] = useState(false);
+    return (
+      <div
+        onClick={onClick}
+        onMouseEnter={() => setHov(true)}
+        onMouseLeave={() => setHov(false)}
+        style={{
+          padding: '8px 14px', borderRadius: 9, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+          color: active || hov ? C.purpleDeep : C.ink,
+          opacity: active || hov ? 1 : 0.65,
+          background: active ? 'rgba(76,25,77,.08)' : (hov ? 'rgba(76,25,77,.05)' : 'transparent'),
+          transition: 'background-color .16s ease, opacity .16s ease, color .16s ease',
+          display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: C.fontBody,
+        }}
+      >
+        {active && <Diamond size={6} />}
+        {label}
+      </div>
+    );
+  };
 
   // ── Desktop dropdown menu item ─────────────────────────────────────────────
   const MenuItem = ({ icon, children, onClick, danger, active }: {
@@ -209,9 +220,9 @@ export function AuthenticatedNav({
   return (
     <div
       style={{
-        position: 'sticky', top: 0, zIndex: 50,
+        position: 'sticky', top: 0, zIndex: 60,
         borderBottom: `1px solid ${C.hair}`, background: 'rgba(251,246,236,.92)',
-        backdropFilter: 'saturate(180%) blur(6px)',
+        backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
       }}
     >
       <div
@@ -273,7 +284,7 @@ export function AuthenticatedNav({
                 <MenuItem icon={<IconAccount />} active={currentView === 'account-settings'} onClick={run(onNavigateToAccountSettings)}>Account settings</MenuItem>
                 <MenuItem icon={<IconBilling />} active={currentView === 'billing'} onClick={run(onNavigateToBilling)}>Billing</MenuItem>
                 {isAdminUser && !isImpersonating && (
-                  <MenuItem icon={<IconAccount />} active={adminActive} onClick={run(onNavigateToAdmin)}>Admin panel</MenuItem>
+                  <MenuItem icon={<IconAdmin />} active={adminActive} onClick={run(onNavigateToAdmin)}>Admin panel</MenuItem>
                 )}
                 <div style={{ height: 1, background: C.hair, margin: '4px 0' }} />
                 <MenuItem icon={<IconHome />} onClick={run(() => navigate('/'))}>Go to homepage</MenuItem>
@@ -310,7 +321,7 @@ export function AuthenticatedNav({
           <MobileItem label="Account settings" icon={<IconAccount />} active={currentView === 'account-settings'} onClick={run(onNavigateToAccountSettings)} />
           <MobileItem label="Billing" icon={<IconBilling />} active={currentView === 'billing'} onClick={run(onNavigateToBilling)} />
           {isAdminUser && !isImpersonating && (
-            <MobileItem label="Admin panel" icon={<IconAccount />} active={adminActive} onClick={run(onNavigateToAdmin)} />
+            <MobileItem label="Admin panel" icon={<IconAdmin />} active={adminActive} onClick={run(onNavigateToAdmin)} />
           )}
           <MobileItem label="Go to homepage" icon={<IconHome />} onClick={run(() => navigate('/'))} />
           {isImpersonating && (

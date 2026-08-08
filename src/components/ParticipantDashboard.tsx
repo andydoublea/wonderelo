@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner@2.0.3';
-import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Calendar, Clock, Users, Loader2, X, CheckCircle, BookUser } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, BookUser } from 'lucide-react';
 import { ParticipantLayout } from './ParticipantLayout';
 import { RoundItem } from './RoundItem';
 import { ServiceType, NetworkingSession, Round } from '../App';
@@ -28,6 +27,8 @@ import { useTime } from '../contexts/TimeContext';
 import { PdNav } from './redesign/PdNav';
 import { FlipClock } from './redesign/FlipClock';
 import { matchNote } from './redesign/EventSessionsView';
+import { C } from './redesign/organizerAtoms';
+import { StatePlaceholder, Skeleton, SkeletonRow, Spinner, StateButton, RefreshIcon, Italic } from './redesign/StatePlaceholder';
 
 export interface Registration {
   roundId: string;
@@ -1783,37 +1784,51 @@ export function ParticipantDashboard() {
     return `${formattedStart} - ${formattedEnd}`;
   };
 
-  if (isLoading) {
+  // Loading + error states (Claude Design v07 · Participant Dashboard.html `.pd-statewrap`).
+  // Keep the nav + footer MOUNTED; render the state *instead of* the content region.
+  if (isLoading || error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  // Show error state if there was an error loading data
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-destructive mb-4">
-                <X className="h-12 w-12 mx-auto" />
-              </div>
-              <h3 className="mb-2">Failed to load dashboard</h3>
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={() => window.location.reload()}>
-                  Try again
-                </Button>
-                <Button variant="outline" onClick={() => { localStorage.removeItem('participant_token'); navigate('/'); }}>
-                  Go to homepage
-                </Button>
+      <div className="pd-shell">
+        <PdNav
+          firstName={firstName}
+          lastName={lastName}
+          onBrandClick={() => navigate('/')}
+          onDashboard={() => fetchData()}
+          onProfile={() => token && navigate(`/p/${token}/address-book`)}
+          onAddressBook={() => token && navigate(`/p/${token}/address-book`)}
+          onHome={() => navigate('/')}
+        />
+        <div className="pd-statewrap" style={{ padding: '4px 0 40px' }}>
+          {isLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Skeleton height={208} radius={24} style={{ marginBottom: 18 }} />
+              <SkeletonRow />
+              <SkeletonRow style={{ marginTop: 10 }} />
+              <SkeletonRow style={{ marginTop: 10 }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 22, fontSize: 13, color: C.ink, opacity: 0.6 }}>
+                <Spinner /> Loading your rounds…
               </div>
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <StatePlaceholder
+              variant="error"
+              glyphSize={74}
+              glyph={<svg viewBox="0 0 24 24" width={30} height={30} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
+              eyebrow="Something went wrong"
+              title={<>We couldn't load <Italic>your rounds</Italic></>}
+              body="This is on us — your registrations are safe. Try again in a moment."
+              actions={<>
+                <StateButton variant="primary" leadingIcon={<RefreshIcon />} onClick={() => fetchData()}>Try again</StateButton>
+                <StateButton variant="ghost" href="mailto:hello@wonderelo.com">Contact support</StateButton>
+              </>}
+            />
+          )}
+        </div>
+        <footer className="pd-footer">
+          <a className="pd-brand" role="button" tabIndex={0} onClick={() => navigate('/')}><span className="mark"><span className="inner" /></span><span className="word">wond<em>e</em>relo</span></a>
+          <p className="tagline">Break your bubble, meet new people</p>
+          <p className="copy">© 2026 Wonderelo</p>
+        </footer>
       </div>
     );
   }

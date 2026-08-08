@@ -206,6 +206,8 @@
     padding: 22px 24px;
   }
   .wonderelo .pr-table thead th.is-featured { color: var(--w-orange); }
+  /* Plan columns are centred to sit over their centred cells */
+  .wonderelo .pr-table thead th:not(:first-child) { text-align: center; }
   .wonderelo .pr-table tbody tr:last-child td { border-bottom: none; }
   .wonderelo .pr-table tbody td:first-child { font-weight: 500; color: var(--w-purple-deep); }
   .wonderelo .pr-table tbody td.is-cell { text-align: center; }
@@ -258,6 +260,9 @@
 
   /* Final CTA */
   .wonderelo .pr-cta {
+    /* margin-bottom omitted: the shared .w-footer keeps its 120px margin-top,
+       so the CTA→footer gap already matches the v07 design (which instead moved
+       the gap onto .pr-cta after dropping the footer's margin-top). */
     margin-top: 120px;
     background: var(--w-purple-deep); color: #fff;
     border-radius: var(--w-r-xl); padding: 64px 56px;

@@ -788,12 +788,11 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
           </>
         ) : (
           <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* HIDDEN (design OIForgot is a centered card with no logo / no back link):
+            {/* v07 OIForgot: TopRow — logo (→ home) + "← Back to sign in". */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Logo onClick={onBack} />
               <button type="button" onClick={handleBackToSignIn} disabled={resetLoading} style={{ ...footerLinkStyle, fontFamily: C.fontMono, opacity: 0.7 }}>← Back to sign in</button>
             </div>
-            */}
             <div style={{ textAlign: 'center' }}>
               <BigIcon badge={C.purple}><LockIcon /></BigIcon>
               <Eyebrow>Reset password</Eyebrow>
@@ -818,14 +817,13 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
             <Btn type="submit" variant="primary" full loading={resetLoading} disabled={!resetEmail} leadingIcon={<MailMini />}>
               {resetLoading ? 'Sending email…' : 'Send reset link'}
             </Btn>
-            {/* HIDDEN (design OIForgot has no signup footer):
+            {/* v07 OIForgot: DesktopCard footer — "Don't have an account? Sign up for free →". */}
             <div style={{ paddingTop: 16, borderTop: `1px solid ${C.hair}`, fontSize: 12.5, color: C.ink, opacity: 0.72, textAlign: 'center' }}>
               Don't have an account?{' '}
               <button type="button" onClick={onSwitchToSignUp} disabled={resetLoading} style={footerLinkStyle}>
                 Sign up for free →
               </button>
             </div>
-            */}
           </form>
         )}
       </AuthShell>

@@ -292,7 +292,7 @@ export function PageShell({ children, nav = true, navActive, bg = C.paper, foote
   billing?: BillingKind;
 }) {
   return (
-    <div style={{ background: bg, fontFamily: C.fontBody, color: C.ink, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: bg, fontFamily: C.fontBody, color: C.ink, minHeight: '100%', display: 'flex', flexDirection: 'column', overflow: 'visible' }}>
       {nav && <OrgNav active={navActive} billing={billing} />}
       <div style={{ flex: 1, width: '100%', maxWidth: 1240, margin: '0 auto', padding: '40px 32px 64px', boxSizing: 'border-box' }}>
         {children}

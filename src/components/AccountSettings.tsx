@@ -36,6 +36,9 @@ export interface AccountSettingsViewProps {
   onToggleEmailChangeForm: () => void;
   onCancelEmailChange: () => void;
   onSave: () => void;
+  onDiscard: () => void;
+  hasChanges: boolean;
+  lastSavedAt: number | null;
   onPasswordChange: () => void;
   onEmailChange: () => void;
 }
@@ -57,6 +60,14 @@ function FieldLabel({ children }: { children: ReactNode }) {
 
 function Hint({ children }: { children: ReactNode }) {
   return <p style={{ margin: '7px 0 0', fontSize: 11.5, color: C.ink, opacity: .6 }}>{children}</p>;
+}
+
+// "Last saved" indicator formatter — e.g. "12 Feb 2026 · 09:41".
+function formatLastSaved(ts: number): string {
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `${date} · ${time}`;
 }
 
 function LinkBtn({ children, onClick }: { children: ReactNode; onClick: () => void }) {
@@ -148,6 +159,9 @@ export function AccountSettingsView({
   onToggleEmailChangeForm,
   onCancelEmailChange,
   onSave,
+  onDiscard,
+  hasChanges,
+  lastSavedAt,
   onPasswordChange,
   onEmailChange,
 }: AccountSettingsViewProps) {
@@ -181,8 +195,7 @@ export function AccountSettingsView({
                 {/* Your name */}
                 <div style={{ maxWidth: 380 }}>
                   <FieldLabel>Your name</FieldLabel>
-                  <TextField value={organizerName} onChange={onOrganizerNameChange} placeholder="John Doe" onBlur={() => { if (organizerName.trim()) onSave(); }} />
-                  <Hint>Saves automatically</Hint>
+                  <TextField value={organizerName} onChange={onOrganizerNameChange} placeholder="John Doe" />
                 </div>
 
                 {/* Email — disabled, with collapsible change form (prop-driven toggle) */}
@@ -245,18 +258,25 @@ export function AccountSettingsView({
                   )}
                 </div>
 
-                {/* HIDDEN (kept): explicit "Save changes" button. Design autosaves the
-                    name (see the "Saves automatically" hint + onBlur→onSave above), so
-                    the button is not rendered. Handler (onSave) is still wired. */}
-                {false && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+                {/* Explicit save — matches v07 screen-account-billing.jsx (SF5).
+                    Replaces the previous autosave-on-blur. Save/Discard wired to
+                    the real profile update logic; "Last saved" reflects the last
+                    successful save this session. */}
+                <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.hair}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12.5, color: C.ink, opacity: .6 }}>{lastSavedAt ? `Last saved ${formatLastSaved(lastSavedAt)}` : ''}</span>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button type="button" onClick={onDiscard} disabled={!hasChanges} style={{
+                      fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, padding: '11px 16px', borderRadius: 12,
+                      cursor: hasChanges ? 'pointer' : 'default', background: 'transparent', color: C.purpleDeep,
+                      border: `1.5px solid ${C.hairStrong}`, opacity: hasChanges ? 1 : .5,
+                    }}>Discard</button>
                     <button type="button" onClick={onSave} disabled={isSaving} style={{
-                      fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, cursor: isSaving ? 'default' : 'pointer',
-                      padding: '11px 20px', borderRadius: 12, border: '1px solid transparent',
-                      background: C.orange, color: '#fff', boxShadow: '0 6px 16px rgba(221,83,28,.25)', opacity: isSaving ? .7 : 1,
+                      fontFamily: C.fontBody, fontWeight: 700, fontSize: 14, padding: '11px 20px', borderRadius: 12,
+                      cursor: isSaving ? 'default' : 'pointer', background: C.orange, color: '#fff', border: 'none',
+                      boxShadow: '0 8px 20px rgba(221,83,28,.26)', opacity: isSaving ? .7 : 1,
                     }}>{isSaving ? 'Saving…' : 'Save changes'}</button>
                   </div>
-                )}
+                </div>
 
               </div>
             )}
@@ -269,6 +289,8 @@ export function AccountSettingsView({
 
 export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdate }: AccountSettingsProps) {
   const [organizerName, setOrganizerName] = useState('');
+  const [savedName, setSavedName] = useState('');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -300,7 +322,9 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         const result = await response.json();
         debugLog('Profile data received:', result);
         debugLog('Organizer name:', result.profile?.organizerName);
-        setOrganizerName(result.profile?.organizerName || '');
+        const loadedName = result.profile?.organizerName || '';
+        setOrganizerName(loadedName);
+        setSavedName(loadedName);
       } else {
         const errorText = await response.text();
         errorLog('Failed to load settings:', response.status, errorText);
@@ -344,7 +368,9 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         const result = await response.json();
         debugLog('Save successful:', result);
         toast.success('Settings saved successfully');
-        
+        setSavedName(organizerName);
+        setLastSavedAt(Date.now());
+
         // Update current user in localStorage
         const currentUser = localStorage.getItem('oliwonder_current_user');
         if (currentUser) {
@@ -504,6 +530,9 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         setEmailChangePassword('');
       }}
       onSave={handleSave}
+      onDiscard={() => setOrganizerName(savedName)}
+      hasChanges={organizerName !== savedName}
+      lastSavedAt={lastSavedAt}
       onPasswordChange={handlePasswordChange}
       onEmailChange={handleEmailChange}
     />

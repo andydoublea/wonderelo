@@ -1,15 +1,12 @@
 import { useParams, useNavigate } from 'react-router';
 import { useEffect, useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
-import { Switch } from './ui/switch';
-import { Textarea } from './ui/textarea';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { WondereloHeader } from './WondereloHeader';
 import { PdNav } from './redesign/PdNav';
 import { PmFooter } from './redesign/PmFooter';
 import { cachedRoundNames } from './MatchInfo';
+import { StatePlaceholder, Skeleton, SkeletonRow, Spinner, StateButton, RefreshIcon, Italic } from './redesign/StatePlaceholder';
 
 export const FEEDBACK_OPTIONS = [
   { id: 'nice-talk', label: 'Nice talk', icon: '💬' },
@@ -85,7 +82,7 @@ export function ContactSharingPartnerFeedbackView({
               <div className="pm-eventrow"><div className="pm-event"><span className="name">{eventName || 'Your round'}</span><span className="org">{sessionName || 'Speed networking'}</span></div><span className="pm-state is-quiet"><span className="dot" /> Round done</span></div>
             </div>
             <div className="pm-center" style={{ paddingTop: 4 }}>
-              <div className="eyebrow" style={{ color: 'var(--w-orange)' }}>Time is up!</div>
+              <div className="eyebrow" style={{ color: 'var(--w-orange)', justifyContent: 'center' }}>Time is up!</div>
               <h1 className="pm-h1" style={{ marginTop: 10 }}>Enjoyed the conversation? Tell them!</h1>
             </div>
             {partners.map((p) => {
@@ -358,12 +355,31 @@ export function ContactSharing() {
     }
   };
 
+  const backToDashboard = () => navigate(`/p/${token}`);
+  const handleRetry = () => {
+    setError(null);
+    setIsLoading(true);
+    loadData();
+  };
+
+  // Loading state — skeleton in the shape of the partner-feedback list.
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell" style={{ paddingTop: 40, paddingBottom: 40 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Skeleton width="62%" height={26} />
+            <Skeleton width="84%" height={12} />
+            <SkeletonRow />
+            <SkeletonRow />
+          </div>
+          <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Spinner />
+            <span style={{ fontFamily: 'var(--w-font-mono)', fontSize: 12.5, fontWeight: 700, letterSpacing: '.02em', color: 'var(--w-ink)', opacity: 0.72 }}>Loading your partner…</span>
+          </div>
+          <div style={{ marginTop: 22, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
+            <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
+          </div>
         </div>
       </div>
     );
@@ -371,19 +387,21 @@ export function ContactSharing() {
 
   if (error || !networkingData) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-8 text-center">
-              <div className="text-6xl mb-4">⚠️</div>
-              <h2 className="text-2xl font-bold mb-2">Error</h2>
-              <p className="text-muted-foreground mb-6">{error || 'Failed to load data'}</p>
-              <Button onClick={() => navigate(`/p/${token}?from=match`)}>
-                Back to dashboard
-              </Button>
-            </CardContent>
-          </Card>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell">
+          <StatePlaceholder
+            variant="error"
+            glyphSize={74}
+            glyph={<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
+            eyebrow="Something went wrong"
+            title={<>We couldn't load <Italic>contact sharing</Italic></>}
+            body="Nothing was shared yet. Try again — sharing only happens if you both agree."
+            actions={<>
+              <StateButton variant="primary" leadingIcon={<RefreshIcon />} onClick={handleRetry}>Try again</StateButton>
+              <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
+            </>}
+            errorId="error · contactsharing"
+          />
         </div>
       </div>
     );

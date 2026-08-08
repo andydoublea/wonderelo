@@ -87,73 +87,64 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
           <div className="w-word">wonderelo</div>
         </a>
 
-        {/* Center links (desktop) — mirror the homepage nav exactly:
-            3 flat links "Who is it for? / How it works / Pricing".
-            The who-is-it-for hover dropdown (7 `/for/:slug` items) is
-            intentionally NOT rendered here to match the design 1:1 — its code
-            is preserved just below, guarded by `false`. */}
+        {/* Center links (desktop) — mirror the v07 design nav:
+            "Who is it for?" is a hover dropdown (7 `/for/:slug` items), then two
+            flat links "How it works / Pricing". */}
         <div className="w-nav-links">
-          <button type="button" className="w-nav-link" onClick={() => goToHash('who-is-it-for')}>
-            {t('nav.whoIsItFor', 'Who is it for?')}
-          </button>
+          {/* Who is it for? — hover mega-menu (v07 wonderelo-nav.js `has-menu`). */}
+          <div
+            className="relative"
+            style={{ position: 'relative' }}
+            onMouseEnter={() => setWhoIsItForOpen(true)}
+            onMouseLeave={() => setWhoIsItForOpen(false)}
+          >
+            <button type="button" className="w-nav-link">
+              {t('nav.whoIsItFor', 'Who is it for?')}
+              <Caret open={whoIsItForOpen} />
+            </button>
+            {whoIsItForOpen && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 4, zIndex: 60 }}>
+                <div
+                  style={{
+                    background: 'var(--w-paper)',
+                    border: '1px solid var(--w-hairline)',
+                    borderRadius: 'var(--w-r-md)',
+                    boxShadow: 'var(--w-shadow-soft)',
+                    padding: '10px 0',
+                    minWidth: 300,
+                  }}
+                >
+                  {whoIsItForItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => { navigate(item.path); setWhoIsItForOpen(false); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                          padding: '10px 22px', fontSize: 14, fontWeight: 600,
+                          fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)',
+                          textAlign: 'left', background: 'transparent', border: 'none',
+                          cursor: 'pointer', whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.06)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <Icon className="h-4 w-4 flex-shrink-0" style={{ opacity: 0.65 }} />
+                        {t(item.key, item.fallback)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
           <button type="button" className="w-nav-link" onClick={() => goToHash('how-it-works')}>
             {t('homepage.nav.howItWorks', 'How it works')}
           </button>
           <button type="button" className="w-nav-link" onClick={() => navigate('/pricing')}>
             {t('nav.pricing', 'Pricing')}
           </button>
-
-          {/* HIDDEN — who-is-it-for hover dropdown (7 `/for/:slug` items).
-              Preserved for later; not part of the design nav. */}
-          {false && (
-            <div
-              className="relative"
-              style={{ position: 'relative' }}
-              onMouseEnter={() => setWhoIsItForOpen(true)}
-              onMouseLeave={() => setWhoIsItForOpen(false)}
-            >
-              <button type="button" className="w-nav-link">
-                {t('nav.whoIsItFor', 'Who is it for?')}
-                <Caret open={whoIsItForOpen} />
-              </button>
-              {whoIsItForOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 4, zIndex: 60 }}>
-                  <div
-                    style={{
-                      background: 'var(--w-paper)',
-                      border: '1px solid var(--w-hairline)',
-                      borderRadius: 'var(--w-r-md)',
-                      boxShadow: 'var(--w-shadow-soft)',
-                      padding: '10px 0',
-                      minWidth: 300,
-                    }}
-                  >
-                    {whoIsItForItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.path}
-                          onClick={() => { navigate(item.path); setWhoIsItForOpen(false); }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                            padding: '10px 22px', fontSize: 14, fontWeight: 600,
-                            fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)',
-                            textAlign: 'left', background: 'transparent', border: 'none',
-                            cursor: 'pointer', whiteSpace: 'nowrap',
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.06)')}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                        >
-                          <Icon className="h-4 w-4 flex-shrink-0" style={{ opacity: 0.65 }} />
-                          {t(item.key, item.fallback)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Right actions */}
@@ -221,17 +212,36 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
             </SheetTitle>
           </SheetHeader>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto', padding: '0.5rem 0' }}>
-            {/* Mobile links mirror the homepage nav: Who is it for? / How it works / Pricing.
-                The who-is-it-for sublist is hidden to match the design
-                (code preserved below, guarded by `false`). */}
-            <button
-              style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              onClick={() => goToHash('who-is-it-for')}
-            >
-              {t('nav.whoIsItFor', 'Who is it for?')}
-            </button>
+            {/* Mobile links mirror the v07 design nav: "Who is it for?" expands to
+                the 7 `/for/:slug` sub-links, then flat How it works / Pricing. */}
+            <div>
+              <button
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => setMobileWhoOpen(!mobileWhoOpen)}
+              >
+                {t('nav.whoIsItFor', 'Who is it for?')}
+                <Caret open={mobileWhoOpen} />
+              </button>
+              {mobileWhoOpen && (
+                <div style={{ paddingBottom: '0.25rem' }}>
+                  {whoIsItForItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.625rem 1.5rem 0.625rem 2.25rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'var(--w-font-body)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--w-ink)', opacity: 0.75 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <Icon style={{ width: '1rem', height: '1rem', flexShrink: 0 }} />
+                        {t(item.key, item.fallback)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <button
               style={{ padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
@@ -248,38 +258,6 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
             >
               {t('nav.pricing', 'Pricing')}
             </button>
-
-            {/* HIDDEN — who-is-it-for sublist (not in design nav). */}
-            {false && (
-              <div>
-                <button
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.75rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
-                  onClick={() => setMobileWhoOpen(!mobileWhoOpen)}
-                >
-                  {t('nav.whoIsItFor', 'Who is it for?')}
-                  <Caret open={mobileWhoOpen} />
-                </button>
-                {mobileWhoOpen && (
-                  <div style={{ paddingBottom: '0.25rem' }}>
-                    {whoIsItForItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.path}
-                          onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.625rem 1.5rem 0.625rem 2.25rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'var(--w-font-body)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--w-ink)', opacity: 0.75 }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                        >
-                          <Icon style={{ width: '1rem', height: '1rem', flexShrink: 0 }} />
-                          {t(item.key, item.fallback)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Sign in / Get started */}

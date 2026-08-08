@@ -78,6 +78,14 @@ export function EventPageSettingsView({
   // Event initials for the gradient empty-state avatar (design shows "FS").
   const eventInitials = (eventName || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('');
 
+  // Live slug-availability field state (Claude Design v07 · screen-event-settings.jsx UrlField).
+  // Wired to the real /check-slug logic (isCheckingSlug / slugAvailable / slugError).
+  const slugChecking = isCheckingSlug;
+  const slugOk = !isCheckingSlug && slugAvailable === true && urlSlug !== '';
+  const slugBad = !isCheckingSlug && slugAvailable === false;
+  const slugTaken = slugBad && slugError === 'This URL is already taken';
+  const slugBorder = slugBad ? '#c0392b' : (slugOk ? '#1f8a4d' : C.orange);
+
   return (
     <div className="wonderelo" style={{ flex: 1, minWidth: 0 }}>
       <PageShell nav={false} footer={false}>
@@ -124,37 +132,49 @@ export function EventPageSettingsView({
 
               <div style={{ height: 22 }} />
 
-              {/* Event page URL */}
+              {/* Event page URL — live availability check (Claude Design v07 · screen-event-settings.jsx UrlField).
+                  Checks as you type: orange spinner "Checking…", green "available", red X + "already taken" / invalid. */}
               <div ref={urlSlugFieldRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <style>{`@keyframes wz-spin{to{transform:rotate(360deg)}}`}</style>
                 <span style={labelStyle}>Event page URL</span>
-                <div style={fieldBox(focusedField === 'urlSlug')}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11, background: '#fff',
+                  border: `1.5px solid ${slugBorder}`,
+                  boxShadow: `0 0 0 3px ${slugBad ? 'rgba(192,57,43,.10)' : (slugOk ? 'rgba(31,138,77,.10)' : 'rgba(221,83,28,.10)')}`,
+                  transition: 'border-color .15s, box-shadow .15s',
+                }}>
                   <span style={{ color: C.ink, opacity: .6, fontSize: 13.5, fontFamily: C.fontMono, whiteSpace: 'nowrap' }}>wonderelo.com /</span>
                   <input
                     id="urlSlug"
                     type="text"
                     value={urlSlug}
                     onChange={(e) => onSlugChange(e.target.value)}
-                    onFocus={() => setFocusedField('urlSlug')}
-                    onBlur={() => setFocusedField(null)}
                     placeholder="my-event"
+                    spellCheck={false}
                     style={inputStyle}
                   />
-                  {/* HIDDEN (kept): live slug-availability spinner / check / X.
-                      Design shows only a static "✓ available" suffix. */}
-                  {false && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      {isCheckingSlug && <Loader2 className="animate-spin" style={{ width: 16, height: 16, color: C.ink, opacity: .5 }} />}
-                      {!isCheckingSlug && slugAvailable === true && urlSlug !== '' && <Check style={{ width: 16, height: 16, color: green }} />}
-                      {!isCheckingSlug && slugAvailable === false && <X style={{ width: 16, height: 16, color: red }} />}
+                  {slugChecking && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: C.fontMono, fontSize: 11.5, color: C.ink, opacity: .6 }}>
+                      <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(76,25,77,.16)', borderTopColor: C.orange, animation: 'wz-spin .8s linear infinite' }} />Checking…
                     </span>
                   )}
-                  <span style={{ color: green, fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>✓ available</span>
+                  {slugOk && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: C.fontMono, fontSize: 12, fontWeight: 600, color: '#1f8a4d' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>available
+                    </span>
+                  )}
+                  {slugBad && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', color: '#c0392b' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </span>
+                  )}
                 </div>
-                {/* HIDDEN (kept): dynamic availability / error messages — design shows the static suffix only. */}
-                {false && slugError && <span style={{ fontSize: 11.5, color: red }}>{slugError}</span>}
-                {false && !slugError && slugAvailable === true && urlSlug !== originalUrlSlug && (
-                  <span style={{ fontSize: 11.5, color: green }}>This URL is available</span>
-                )}
+                <span style={{ fontSize: 12, lineHeight: 1.5, color: slugBad ? '#c0392b' : C.ink, opacity: slugBad ? 1 : .65 }}>
+                  {slugChecking ? 'Checking availability…'
+                    : slugTaken ? <><strong style={{ fontWeight: 700 }}>wonderelo.com/{urlSlug}</strong> is already taken. Try {urlSlug}-2026.</>
+                    : slugBad ? 'Use at least 3 characters — lowercase letters, numbers and dashes only.'
+                    : 'This is the link you share with attendees.'}
+                </span>
               </div>
 
               <div style={{ height: 24 }} />

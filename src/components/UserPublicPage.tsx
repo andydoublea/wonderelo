@@ -10,16 +10,13 @@ import { isSessionLiveOnEventPage } from '../utils/sessionStatus';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card, CardContent } from './ui/card';
-import { Skeleton } from './ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Users, User, LogOut, LogIn, Calendar, Loader2, HelpCircle } from 'lucide-react';
-import { OrganizerHeader } from './OrganizerHeader';
+import { Loader2 } from 'lucide-react';
 import { SessionRegistration } from './SessionRegistration';
 import { EmailVerification } from './EmailVerification';
-import { ParticipantNav } from './ParticipantNav';
 import { NetworkingSession } from '../App';
+import { C } from './redesign/organizerAtoms';
+import { StatePlaceholder, Skeleton as StateSkeleton, SkeletonRow, Spinner, StateButton, RefreshIcon, Italic } from './redesign/StatePlaceholder';
 
 // Helper function to validate email
 function validateEmail(email: string): boolean {
@@ -90,6 +87,8 @@ export function UserPublicPageView({
   onRegistrationStepChange,
 }: UserPublicPageViewProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // "How rounds work" bottom-sheet (Claude Design v07 · Event Page.html data-modal="howit").
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const firstName = participantProfile?.firstName || '';
   // Banner shows the EVENT name only (never the organizer/person name).
   const eventName = userProfile?.eventName || '';
@@ -101,6 +100,22 @@ export function UserPublicPageView({
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, [menuOpen]);
+
+  // Close the "How rounds work" sheet on Escape.
+  useEffect(() => {
+    if (!howItWorksOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setHowItWorksOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [howItWorksOpen]);
+
+  // Steps mirror the Participant Dashboard "How rounds work" block (v07 handoff).
+  const howSteps = [
+    { n: '01', img: '/how-it-works-3.png', title: 'Confirm attendance', desc: "You'll get an SMS 5 minutes before each round. Tap to confirm you're joining." },
+    { n: '02', img: '/meeting-bar.png', title: 'Go to meeting point', desc: "We'll reveal your spot the moment matching runs — head there once you know where to go." },
+    { n: '03', img: '/how-it-works-4.png', title: 'Find your match', desc: "At the spot, your phone shows a unique image — same as your match's, with a different number. Confirm by entering your partner's number." },
+    { n: '04', img: '/how-it-works-5.png', title: 'Exchange contacts', desc: 'After the round, you can choose to exchange contacts — sharing only happens if both of you agree.' },
+  ];
 
   const registration = (
     <SessionRegistration
@@ -181,7 +196,7 @@ export function UserPublicPageView({
                 : <span className="lbl">photo</span>}
             </div>
             <div className="ev-event-name">{eventName}</div>
-            <button className="ev-how-link" type="button" onClick={() => { window.location.hash = 'round-rules'; }}>
+            <button className="ev-how-link" type="button" onClick={() => setHowItWorksOpen(true)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               How rounds work
             </button>
@@ -253,6 +268,35 @@ export function UserPublicPageView({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* How rounds work — bottom-sheet (Claude Design v07 · Event Page.html data-modal="howit").
+          Mirrors the Participant Dashboard "How rounds work" block; reuses .pd-howit-* styling. */}
+      <div className={`ev-modal-backdrop${howItWorksOpen ? ' is-open' : ''}`} onClick={() => setHowItWorksOpen(false)} />
+      <aside className={`ev-modal${howItWorksOpen ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="How rounds work">
+        <div className="ev-modal-handle" />
+        <header className="ev-modal-head">
+          <div>
+            <div className="title">How rounds <em>work</em></div>
+            <div className="sub">Four quick steps — from the reminder to your match, to swapping contacts after.</div>
+          </div>
+          <button className="ev-modal-close" type="button" onClick={() => setHowItWorksOpen(false)} aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </header>
+        <div className="ev-modal-body">
+          <ol className="pd-howit-list">
+            {howSteps.map((s, i) => (
+              <li className="pd-howit-step" data-step={String(i + 1)} key={s.n}>
+                <span className="pd-howit-num"><img src={s.img} alt="" onError={(e) => { (e.currentTarget.style.display = 'none'); }} /></span>
+                <div className="pd-howit-text">
+                  <span className="pd-howit-title"><span className="pd-howit-step-num">{s.n}</span>{s.title}</span>
+                  <span className="pd-howit-desc">{s.desc}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </aside>
 
     </div>
   );
@@ -726,322 +770,65 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
     }
   };
 
+  // Event-page async states (Claude Design v07 · Event Page.html `.ev-pagestate`).
+  // The brand nav stays mounted; the hero/rounds + sticky CTA bar are replaced by
+  // one centred panel. The sticky bar lives inside the main view below, so it is
+  // never mounted in any of these states.
+  const evStateShell = (content: React.ReactNode) => (
+    <div className={`wonderelo ev-page${participantToken ? ' is-signed-in' : ''}`}>
+      <div className="ev-shell">
+        <nav className="ev-nav">
+          <a className="ev-brand" tabIndex={0} onClick={() => navigate('/')}>
+            <span className="mark"><span className="inner" /></span>
+            <span className="word">wond<em>e</em>relo</span>
+          </a>
+        </nav>
+        <div style={{ padding: '30px 0 46px' }}>{content}</div>
+      </div>
+    </div>
+  );
+
   if (error) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
-          <div className="mb-6">
-            <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h2 className="mb-2">User not found</h2>
-            <p className="text-muted-foreground mb-6">
-              {error === 'User not found' 
-                ? `No user found with the URL slug "${userSlug}"`
-                : error
-              }
-            </p>
-            <Button onClick={() => navigate('/')}>
-              Go to homepage
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Empty state (no published rounds) is now rendered by the redesigned shell below
-  // (UserPublicPageView → EventSessionsView `.ev-empty`), so this old inline branch is
-  // disabled and the empty case falls through to the main return.
-  // (Dead block kept for now — safe to delete through its closing brace.)
-  if (false && userProfile && availableForRegistration.length === 0) {
-    debugLog('🔴 RENDERING EMPTY STATE - No sessions available');
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        {participantToken ? (
-          <ParticipantNav
-            participantToken={participantToken}
-            firstName={participantProfile?.firstName}
-            lastName={participantProfile?.lastName}
-            onLogoClick={() => navigate('/')}
-            onHomeClick={() => navigate('/')}
-            onDashboardClick={() => navigate(`/p/${participantToken}`)}
-            onProfileClick={() => navigate(`/p/${participantToken}/profile`)}
-            onLogout={() => {
-              localStorage.removeItem('participant_token');
-              setParticipantToken(null);
-              setParticipantProfile(null);
-              toast.success('Logged out successfully');
-              navigate('/');
-            }}
-          />
-        ) : (
-          <nav className="border-b border-border">
-            <div className="container mx-auto max-w-4xl px-4 py-4">
-              <div className="flex items-center justify-between">
-                <h2 
-                  className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => navigate('/')}
-                >
-                  Wonderelo
-                </h2>
-                <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={() => setMagicLinkDialogOpen(true)}
-                    variant="outline"
-                    size="sm"
-                    className="btn-hover-white"
-                  >
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Manage my rounds
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </nav>
-        )}
-
-        <OrganizerHeader
-          profileImageUrl={userProfile?.profileImageUrl}
-          eventName={userProfile?.eventName}
-          organizerName={userProfile?.organizerName}
-          variant="banner"
+    // Bad / expired link (unknown slug, no registrations) → not-found; anything else → error.
+    if (error === 'User not found') {
+      return evStateShell(
+        <StatePlaceholder
+          glyphSize={78}
+          glyph={<svg viewBox="0 0 24 24" width={32} height={32} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>}
+          eyebrow="Nothing here"
+          title={<>This event <Italic>link</Italic> doesn't work</>}
+          body="The link may have expired, or the organizer hasn't opened registration yet. Double-check the link you were given."
+          actions={<StateButton variant="ghost" onClick={() => navigate('/')}>Go to Wonderelo</StateButton>}
         />
-
-        <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-          <div className="max-w-md mx-auto w-full">
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setHowItWorksDialogOpen(true)}
-                className="flex items-center gap-1 text-sm text-foreground underline hover:text-primary mx-auto"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-                How rounds work
-              </button>
-            </div>
-          </div>
-
-          <div className="text-center py-12 flex-1">
-            <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">No rounds available</h2>
-            <p className="text-muted-foreground">
-              Please check back later
-            </p>
-          </div>
-
-          <Dialog open={magicLinkDialogOpen} onOpenChange={setMagicLinkDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Access your registrations</DialogTitle>
-                <DialogDescription>
-                  Enter your email to receive a magic link to manage your registered rounds.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="magic-link-email-empty-state">Email</Label>
-                  <Input
-                    id="magic-link-email-empty-state"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={magicLinkEmail}
-                    onChange={(e) => setMagicLinkEmail(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSendMagicLink();
-                      }
-                    }}
-                    disabled={isSendingMagicLink}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    We'll send you a secure link to access your registrations.
-                  </p>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setMagicLinkDialogOpen(false);
-                    setMagicLinkEmail('');
-                  }}
-                  disabled={isSendingMagicLink}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSendMagicLink}
-                  disabled={isSendingMagicLink || !magicLinkEmail}
-                >
-                  {isSendingMagicLink ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    'Send magic link'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={howItWorksDialogOpen} onOpenChange={setHowItWorksDialogOpen}>
-            <DialogContent className="max-w-md" aria-describedby={undefined}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5" />
-                  How rounds work
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="mt-4 space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">1</div>
-                  <div className="flex-1">
-                    <p className="font-medium mb-1">Register to rounds</p>
-                    <p className="text-sm text-muted-foreground">Choose times when you are available to meet and give us your contacts</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">2</div>
-                  <div className="flex-1">
-                    <p className="font-medium mb-1">Confirm attendance</p>
-                    <p className="text-sm text-muted-foreground">You will get a reminder 5 minutes before the round to confirm you are in. Stay close to meeting points.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">3</div>
-                  <div className="flex-1">
-                    <p className="font-medium mb-1">Meet someone new</p>
-                    <p className="text-sm text-muted-foreground">We will pick a match for you with a meeting place. You have 3 minutes to meeting with your match.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">4</div>
-                  <div className="flex-1">
-                    <p className="font-medium mb-1">Exchange contacts... or not</p>
-                    <p className="text-sm text-muted-foreground">If both parties decide to exchange contacts, Wonderelo will display it to you {getParametersOrDefault().defaultRoundDuration || 10} minutes after the meeting.</p>
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-        </div>
-      </div>
+      );
+    }
+    return evStateShell(
+      <StatePlaceholder
+        variant="error"
+        glyphSize={78}
+        glyph={<svg viewBox="0 0 24 24" width={32} height={32} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
+        eyebrow="Something went wrong"
+        title={<>We couldn't load <Italic>this event</Italic></>}
+        body="This is on us. Give it a moment and try again — the event itself is fine."
+        actions={<>
+          <StateButton variant="primary" leadingIcon={<RefreshIcon />} onClick={() => window.location.reload()}>Try again</StateButton>
+          <StateButton variant="ghost" href="mailto:hello@wonderelo.com">Contact the organizer</StateButton>
+        </>}
+      />
     );
   }
 
   if (!userProfile) {
     debugLog('🟡 RENDERING SKELETON - Waiting for userProfile to load');
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        {participantToken ? (
-          <ParticipantNav
-            participantToken={participantToken}
-            firstName={participantProfile?.firstName}
-            lastName={participantProfile?.lastName}
-            onLogoClick={() => navigate('/')}
-            onHomeClick={() => navigate('/')}
-            onDashboardClick={() => navigate(`/p/${participantToken}`)}
-            onProfileClick={() => navigate(`/p/${participantToken}/profile`)}
-            onLogout={() => {
-              localStorage.removeItem('participant_token');
-              setParticipantToken(null);
-              setParticipantProfile(null);
-              toast.success('Logged out successfully');
-              navigate('/');
-            }}
-          />
-        ) : (
-          <nav className="border-b border-border">
-            <div className="container mx-auto max-w-4xl px-4 py-4">
-              <div className="flex items-center justify-between">
-                <h2 
-                  className="text-primary wonderelo-logo cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => navigate('/')}
-                >
-                  Wonderelo
-                </h2>
-                <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={() => setMagicLinkDialogOpen(true)}
-                    variant="outline"
-                    size="sm"
-                    className="btn-hover-white"
-                  >
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Manage my rounds
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </nav>
-        )}
-
-        <div className="bg-muted/30 border-b border-border w-full">
-          <div className="flex flex-col items-center gap-3 px-4" style={{ paddingTop: 20, paddingBottom: 20 }}>
-            <Skeleton className="h-16 w-16 rounded-full" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-8 max-w-4xl flex-1 flex flex-col">
-          <div className="max-w-md mx-auto w-full space-y-4">
-            <div className="text-center">
-              <Skeleton className="h-4 w-28 mx-auto" />
-            </div>
-
-            <div className="text-center pt-4">
-              <Skeleton className="h-8 w-64 mx-auto" />
-            </div>
-
-            <div className="space-y-4 flex-1">
-              {[1, 2].map((i) => (
-                <Card key={i}>
-                  <CardContent className="pt-4 pr-4 pb-6 pl-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <Skeleton className="h-6 w-3/4 mb-2" />
-                        <div className="flex items-center gap-4 mt-1">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-4 w-28" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-sm mb-3">
-                      <Skeleton className="h-4 w-36" />
-                      <Skeleton className="h-4 w-28" />
-                    </div>
-
-                    <div className="space-y-2 mt-4">
-                      {[1, 2, 3].map((j) => (
-                        <div key={j} className="border border-border rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <Skeleton className="h-5 w-40" />
-                            <Skeleton className="h-4 w-24" />
-                          </div>
-                          <Skeleton className="h-4 w-full mb-2" />
-                          <Skeleton className="h-4 w-2/3" />
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="mt-6">
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </div>
+    // Loading (Claude Design v07 · Event Page.html `.ev-pagestate.is-loading`):
+    // skeleton hero + 2 round rows + "Loading the event…". Sticky CTA not mounted.
+    return evStateShell(
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <StateSkeleton height={216} radius={24} style={{ marginBottom: 18 }} />
+        <SkeletonRow />
+        <SkeletonRow style={{ marginTop: 10 }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 24, fontSize: 13.5, color: C.ink, opacity: 0.62 }}>
+          <Spinner /> Loading the event…
         </div>
       </div>
     );

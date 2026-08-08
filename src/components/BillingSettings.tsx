@@ -85,14 +85,33 @@ export interface BillingSettingsViewProps {
 
 type BadgeTone = 'green' | 'dark' | 'amber';
 
-function subStatusBadge(status: string): { label: string; tone: BadgeTone } {
-  const map: Record<string, { label: string; tone: BadgeTone }> = {
-    active: { label: 'Active', tone: 'dark' },
-    cancelling: { label: 'Cancelling', tone: 'amber' },
-    cancelled: { label: 'Cancelled', tone: 'amber' },
-    past_due: { label: 'Past Due', tone: 'amber' },
-  };
-  return map[status] || { label: status, tone: 'green' };
+// Billing FAQ — v07 screen-account-billing.jsx (SF8). Four questions,
+// first one open; accordion with a rotating +/× toggle.
+function BillingFaq() {
+  const QA: [string, string][] = [
+    ['When am I charged?', 'Subscriptions renew on the same date each year (or month). Single-event credits are charged once, at purchase — a credit is only spent when you publish an event of that size.'],
+    ['What happens if I go over my participant limit?', "Your round keeps running. We'll flag the overage on your dashboard and ask you to move up a tier before your next event."],
+    ['Can I switch between plans?', 'Yes. Upgrades take effect immediately and we prorate the difference. Downgrades apply at the end of your current billing period.'],
+    ['How do I get an invoice for my company?', 'Every payment produces a VAT invoice under Invoices above. Add your company name, tax ID and billing email in Billing details and they appear on all future invoices.'],
+  ];
+  const [open, setOpen] = useState(0);
+  return (
+    <div>
+      {QA.map(([q, a], i) => (
+        <div key={q} style={{ borderBottom: i < QA.length - 1 ? `1px solid ${C.hair}` : 'none' }}>
+          <button type="button" onClick={() => setOpen(open === i ? -1 : i)} style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+            padding: '18px 24px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+            fontFamily: C.fontDisplay, fontWeight: 700, fontSize: 15.5, color: C.purpleDeep, letterSpacing: '-.01em',
+          }}>
+            {q}
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={C.orange} strokeWidth="2.4" strokeLinecap="round" style={{ flexShrink: 0, transform: open === i ? 'rotate(45deg)' : 'none', transition: 'transform .2s ease' }}><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+          {open === i && <p style={{ margin: 0, padding: '0 24px 20px', maxWidth: 720, fontSize: 14, lineHeight: 1.6, color: C.ink, opacity: .78 }}>{a}</p>}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function BillingSettingsView({
@@ -170,10 +189,22 @@ export function BillingSettingsView({
   const gearIco = "<circle cx='12' cy='12' r='3'/><path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'/>";
   const pencilIco = "<path d='M12 20h9'/><path d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z'/>";
   const warnIco = "<path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>";
+  const infoIco = "<circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>";
 
   const totalCredits = credits.reduce((s, c) => s + c.balance, 0);
   const hasSub = !!subscription;
   const isCancelled = !!subscription && (subscription.cancelAtPeriodEnd || subscription.status === 'cancelled');
+  // Real subscription lifecycle state, derived from the actual subscription
+  // record (the v07 mock's setSubState toggle was demo-only). Drives the
+  // top-of-card banner, badge and cancel-button gating.
+  const subState: 'active' | 'cancelled' | 'pastdue' = subscription
+    ? (subscription.status === 'past_due' ? 'pastdue'
+      : (subscription.cancelAtPeriodEnd || subscription.status === 'cancelled') ? 'cancelled'
+      : 'active')
+    : 'active';
+  const periodEndStr = subscription ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : '';
+  // Past-due grace deadline: 14 days after the failed billing date.
+  const graceDeadlineStr = subscription ? new Date(new Date(subscription.currentPeriodEnd).getTime() + 14 * 24 * 3600 * 1000).toLocaleDateString() : '';
 
   return (
     <div className="wonderelo" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -207,50 +238,43 @@ export function BillingSettingsView({
                 <Body>
                   <div style={{ display: 'grid', gridTemplateColumns: (hasSub && credits.length > 0) ? '1fr 1fr' : '1fr', gap: 18 }}>
                     {subscription && (
-                      <div style={{ display: 'flex', flexDirection: 'column', borderRadius: 14, border: `1.5px solid ${C.hairStrong}`, padding: 22 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', borderRadius: 14, border: `1.5px solid ${subState === 'pastdue' ? 'rgba(192,57,43,.45)' : C.hairStrong}`, padding: 22 }}>
+                        {/* Lifecycle banner — cancelled / past-due (v07 SF6–7). */}
+                        {subState !== 'active' && (
+                          <div style={{
+                            display: 'flex', alignItems: 'flex-start', gap: 11, marginBottom: 16, padding: '13px 15px', borderRadius: 12,
+                            background: subState === 'pastdue' ? 'rgba(192,57,43,.08)' : 'rgba(154,132,120,.14)',
+                            border: `1px solid ${subState === 'pastdue' ? 'rgba(192,57,43,.28)' : 'rgba(154,132,120,.34)'}`,
+                          }}>
+                            <span style={{ flexShrink: 0, marginTop: 1, color: subState === 'pastdue' ? '#c0392b' : '#8a7469', display: 'inline-flex' }}>
+                              <Ico d={subState === 'pastdue' ? warnIco : infoIco} size={17} />
+                            </span>
+                            <div style={{ fontSize: 13, lineHeight: 1.5, color: C.ink }}>
+                              {subState === 'pastdue' ? (
+                                <><strong style={{ color: '#c0392b', fontWeight: 700 }}>Payment failed.</strong> We couldn't charge your card on <strong style={{ color: C.purpleDeep }}>{periodEndStr}</strong>. Update your payment method by <strong style={{ color: C.purpleDeep }}>{graceDeadlineStr}</strong> or your events will be paused.
+                                  <div style={{ marginTop: 12 }}><OutBtn onClick={onOpenBillingPortal} disabled={portalLoading}>{portalLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Opening...</>) : 'Update payment method'}</OutBtn></div></>
+                              ) : (
+                                <><strong style={{ color: C.purpleDeep, fontWeight: 700 }}>Subscription cancelled.</strong> You keep full access until <strong style={{ color: C.purpleDeep }}>{periodEndStr}</strong>. After that your events switch to the free tier.
+                                  <div style={{ marginTop: 12 }}><OutBtn onClick={onOpenBillingPortal} disabled={portalLoading}>{portalLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Opening...</>) : 'Reactivate subscription'}</OutBtn></div></>
+                              )}
+                            </div>
+                          </div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                           <span style={{ fontFamily: C.fontBody, fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange }}>Subscription</span>
-                          {subscription.cancelAtPeriodEnd ? (
-                            <Badge tone="amber">Cancelled</Badge>
-                          ) : (
-                            <Badge tone={subStatusBadge(subscription.status).tone}>{subStatusBadge(subscription.status).label}</Badge>
-                          )}
+                          <Badge tone={subState === 'pastdue' ? 'amber' : 'dark'}>{subState === 'active' ? 'Active' : subState === 'cancelled' ? `Cancels ${periodEndStr}` : 'Past due'}</Badge>
                         </div>
                         <div style={{ marginTop: 12, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 22, color: C.purpleDeep, letterSpacing: '-0.02em' }}>Unlimited events</div>
                         <p style={{ margin: '6px 0 0', fontSize: 13.5, color: C.ink, opacity: .75 }}>
                           Up to {PRICING_TIERS[subscription.capacityTier].capacity} participants · {formatPrice(PRICING_TIERS[subscription.capacityTier].premiumMonthlyPrice)}/month
                         </p>
 
-                        {/* HIDDEN (kept): "Your subscription has been cancelled" banner —
-                            not in the design; the next-billing row is always shown instead. */}
-                        {false && isCancelled && (
-                          <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(221,83,28,.08)', border: '1px solid rgba(221,83,28,.25)' }}>
-                            <span style={{ color: C.orange, display: 'inline-flex', marginTop: 1 }}><Ico d={warnIco} size={16} /></span>
-                            <div>
-                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.purpleDeep }}>Your subscription has been cancelled</p>
-                              <p style={{ margin: '4px 0 0', fontSize: 12.5, color: C.ink, opacity: .7, lineHeight: 1.5 }}>
-                                You still have access until {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. After that, you can subscribe again or purchase a single event to create events with more than 5 participants.
-                              </p>
-                            </div>
-                          </div>
-                        )}
                         <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.ink, opacity: .7 }}>
                           <Ico d={calIco} size={15} /> Next billing: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                         </div>
 
-                        {/* HIDDEN (kept): "Payment failed" past-due banner — not in the design. */}
-                        {false && subscription.status === 'past_due' && (
-                          <div style={{ marginTop: 12, display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.25)' }}>
-                            <span style={{ color: '#c0392b', display: 'inline-flex', marginTop: 1 }}><Ico d={warnIco} size={16} /></span>
-                            <div>
-                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#c0392b' }}>Payment failed</p>
-                              <p style={{ margin: '4px 0 0', fontSize: 12.5, color: C.ink, opacity: .7, lineHeight: 1.5 }}>Please update your payment method to continue your subscription.</p>
-                            </div>
-                          </div>
-                        )}
-
                         <div style={{ flex: 1, minHeight: 16 }} />
-                        {subscription.status === 'active' && !subscription.cancelAtPeriodEnd && (
+                        {subState === 'active' && (
                           <div style={{ marginTop: 16 }}>
                             <OutBtn onClick={() => onShowCancelDialog(true)} disabled={actionLoading}>
                               {actionLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Cancelling...</>) : 'Cancel subscription'}
@@ -467,27 +491,11 @@ export function BillingSettingsView({
               </Body>
             </Card>
 
-            {/* HIDDEN (kept): "Frequently asked questions" card — not in the design. */}
-            {false && (
+            {/* 5 · Frequently asked questions — v07 accordion (SF8). */}
             <Card>
               <CardHead>Frequently asked questions</CardHead>
-              <Body>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                  {[
-                    ["What's included in the free tier?", "Events with up to 5 participants are completely free and include all features — unlimited rounds, all networking modes, and full event management. It's the same experience as paid tiers, just with a smaller group size."],
-                    ['How does the subscription work?', "With a subscription, you get unlimited events at your chosen capacity. You can choose monthly or annual billing and cancel anytime — you'll keep access until the end of your billing period."],
-                    ['How do I choose the right capacity?', 'The event capacity is set when you create your event and cannot be changed during a round. Choose based on the expected number of participants for your event — for most events, this number is known in advance.'],
-                    ['Can I cancel my subscription?', "Yes, you can cancel anytime. You'll retain access until the end of your current billing period."],
-                  ].map(([q, a]) => (
-                    <div key={q}>
-                      <h4 style={{ margin: 0, fontFamily: C.fontBody, fontWeight: 700, fontSize: 14.5, color: C.purpleDeep }}>{q}</h4>
-                      <p style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.55, color: C.ink, opacity: .7 }}>{a}</p>
-                    </div>
-                  ))}
-                </div>
-              </Body>
+              <Body style={{ padding: 0 }}><BillingFaq /></Body>
             </Card>
-            )}
           </>
         )}
       </PageShell>

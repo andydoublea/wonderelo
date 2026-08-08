@@ -1481,20 +1481,19 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
               </div>
             )}
 
-          {/* Custom Round Times Editor — HIDDEN to match design (only the toggle
-              is shown, no editor body). Logic preserved via the false guard. */}
-          {false && useCustomTimes && formData.rounds.length > 0 && (
-            <div className="space-y-3 pt-2">
-              <Label>Round start times</Label>
-              <div className="space-y-2">
-                {formData.rounds.map((round, idx) => (
-                  <div key={round.id} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium text-muted-foreground w-20">Round {idx + 1}</span>
-                    <Input
+          {/* Custom Round Times Editor — matches v07 screen-round-form.jsx (SF3).
+              Renders when the "Custom round times" toggle is on. */}
+          {useCustomTimes && formData.rounds.length > 0 && (
+            <div style={{ marginTop: 16, borderRadius: 14, border: `1px solid ${C.hair}`, background: C.cream, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {formData.rounds.map((round, idx) => (
+                <div key={round.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 1fr 32px', alignItems: 'center', gap: 12, background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 12, padding: '10px 12px' }}>
+                  <span style={{ fontFamily: C.fontMono, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: C.orange }}>R{idx + 1}</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <span style={{ fontSize: 11.5, color: C.ink, opacity: .6 }}>Starts</span>
+                    <input
                       type="time"
                       value={round.startTime}
-                      className="w-32"
-                      step="300"
+                      step={300}
                       onChange={(e) => {
                         const newTime = e.target.value;
                         setFormData(prev => ({
@@ -1504,48 +1503,48 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                           ),
                         }));
                       }}
+                      style={{ flex: 1, minWidth: 0, padding: '7px 10px', borderRadius: 9, border: `1.5px solid ${C.hairStrong}`, background: '#fff', fontFamily: C.fontBody, fontSize: 14, color: C.ink }}
                     />
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="240"
-                        value={round.duration}
-                        className="w-20 pr-8"
-                        onChange={(e) => {
-                          const dur = parseInt(e.target.value) || formData.roundDuration;
-                          setFormData(prev => ({
-                            ...prev,
-                            rounds: prev.rounds.map((r, i) =>
-                              i === idx ? { ...r, duration: dur } : r
-                            ),
-                          }));
-                        }}
-                      />
-                      <span className="text-xs text-muted-foreground -ml-7">min</span>
-                    </div>
-                    {formData.rounds.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            numberOfRounds: prev.numberOfRounds - 1,
-                            rounds: prev.rounds.filter((_, i) => i !== idx),
-                          }));
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <span style={{ fontSize: 11.5, color: C.ink, opacity: .6 }}>Lasts</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={240}
+                      value={round.duration}
+                      onChange={(e) => {
+                        const dur = parseInt(e.target.value) || formData.roundDuration;
+                        setFormData(prev => ({
+                          ...prev,
+                          rounds: prev.rounds.map((r, i) =>
+                            i === idx ? { ...r, duration: dur } : r
+                          ),
+                        }));
+                      }}
+                      style={{ width: 62, padding: '7px 10px', borderRadius: 9, border: `1.5px solid ${C.hairStrong}`, background: '#fff', fontFamily: C.fontBody, fontSize: 14, color: C.ink }}
+                    />
+                    <span style={{ fontSize: 12, color: C.ink, opacity: .6 }}>min</span>
+                  </label>
+                  <button
+                    type="button"
+                    aria-label={`Remove round ${idx + 1}`}
+                    disabled={formData.rounds.length <= 1}
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        numberOfRounds: prev.numberOfRounds - 1,
+                        rounds: prev.rounds.filter((_, i) => i !== idx),
+                      }));
+                    }}
+                    style={{ width: 30, height: 30, borderRadius: 9, border: 'none', cursor: formData.rounds.length <= 1 ? 'default' : 'pointer', background: 'transparent', color: C.ink, opacity: formData.rounds.length <= 1 ? .25 : .55, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
                 onClick={() => {
                   const lastRound = formData.rounds[formData.rounds.length - 1];
                   const [h, m] = (lastRound?.startTime || '10:00').split(':').map(Number);
@@ -1565,10 +1564,11 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                     }],
                   }));
                 }}
+                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 10, border: `1.5px dashed ${C.hairStrong}`, background: 'transparent', color: C.purpleDeep, fontFamily: C.fontBody, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add round
-              </Button>
+                <Plus size={14} /> Add round
+              </button>
+              <p style={{ margin: '2px 0 0', fontSize: 12, lineHeight: 1.5, color: C.ink, opacity: .6 }}>Each start time must be at least 5 minutes after the previous round ends. Times are rounded to 5 minutes.</p>
             </div>
           )}
           </RfCard>
@@ -1964,7 +1964,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
             <SessionPreview embedded formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
           </div>
         </div>
-        <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Published rounds show up on your public event page.</p>
+        <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Only published rounds show up on your public event page.</p>
       </div>
     )}
       </div>

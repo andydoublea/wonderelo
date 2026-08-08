@@ -331,7 +331,7 @@ export function NetworkingDashboard({
         <span style={{ width: 22, height: 1, background: C.orangeBright }} />{eventLabel}
       </span>
       <h1 style={{ margin: '14px 0 0', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 40, letterSpacing: '-.035em', color: '#fff', lineHeight: 1.04 }}>
-        Let&rsquo;s make your event <Italic color={C.orangeBright}>unforgettable</Italic>, {greetingName}.
+        Let&rsquo;s make your event <Italic color={C.orangeBright}>unforgettable,</Italic> {greetingName}!
       </h1>
       <p style={{ margin: '12px 0 22px', fontSize: 14.5, color: 'rgba(255,255,255,.72)', maxWidth: 460 }}>Share your event link so people can register for your rounds.</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -340,10 +340,11 @@ export function NetworkingDashboard({
           <span style={{ display: 'inline-flex', gap: 8 }}>
             <span onClick={copyEventLink} title="Copy link" style={{ color: 'rgba(255,255,255,.85)', display: 'inline-flex', cursor: 'pointer' }}><DIcon d={DI.copy} size={16} /></span>
             <span onClick={openPromo} title="Event QR" style={{ color: 'rgba(255,255,255,.85)', display: 'inline-flex', cursor: 'pointer' }}><DIcon d={DI.qr} size={16} /></span>
+            {/* View event page — icon only, sits right after the QR icon (design/v07) */}
+            <span onClick={openEventPage} title="View event page" style={{ color: 'rgba(255,255,255,.85)', display: 'inline-flex', cursor: 'pointer' }}><DIcon d={DI.ext} size={16} /></span>
           </span>
         </div>
-        <span onClick={openEventPage} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600, color: '#fff', opacity: .9, cursor: 'pointer' }}>View event page <DIcon d={DI.ext} size={14} /></span>
-        <span onClick={openPromo} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fff', color: C.purpleDeep, fontFamily: C.fontBody, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}><DIcon d={DI.slide} size={15} /> Slide</span>
+        <span onClick={openPromo} title="Show this slide to your attendees" style={{ flexShrink: 0, alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 11, background: '#fff', color: C.purpleDeep, fontFamily: C.fontBody, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}><DIcon d={DI.slide} size={15} /> Slide</span>
       </div>
     </div>
   );

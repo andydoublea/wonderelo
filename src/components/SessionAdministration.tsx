@@ -558,7 +558,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
             <span style={{ width: 24, height: 1, background: published ? C.orange : '#b45309' }} />{published ? 'Live round monitor' : 'Round preview · not published'}
           </span>
           <h1 style={{ margin: '12px 0 0', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 40, lineHeight: 1, letterSpacing: '-0.035em', color: C.purpleDeep }}>
-            Round <Italic>report</Italic><span style={{ color: C.orange, fontFamily: C.fontDisplay, fontWeight: 800, margin: '0 4px 0 1px' }}>:</span>{session.name}
+            Round <Italic>report:</Italic> {session.name}
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>

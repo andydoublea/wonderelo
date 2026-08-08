@@ -187,85 +187,51 @@
 .wonderelo .w-diamond.is-small { width: 7px; height: 7px; }
 .wonderelo .w-diamond.is-large { width: 16px; height: 16px; }
 
-/* ───────── Footer ───────── */
+/* ───────── Footer (matches Homepage FooterSection) ───────── */
 .wonderelo .w-footer {
-  background: var(--w-purple-ink);
-  color: #fff;
-  padding: 100px 40px 40px;
+  background: var(--w-purple-ink, #2d1133);
+  color: rgba(255,255,255,.7);
+  padding: 80px 60px 40px;
   margin-top: 120px;
-  position: relative; overflow: hidden;
+  font-family: var(--w-font-body);
 }
-.wonderelo .w-footer .w-foot-deco {
-  position: absolute; right: -40px; top: 40px;
-  font-family: var(--w-font-serif); font-style: italic; font-size: 320px;
-  color: rgba(255,255,255,.03); line-height: 1; pointer-events: none;
-  user-select: none;
-}
-.wonderelo .w-footer-inner { max-width: 1440px; margin: 0 auto; position: relative; z-index: 1; }
+.wonderelo .w-footer-inner { max-width: 1240px; margin: 0 auto; }
 .wonderelo .w-footer-grid {
-  display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 60px;
-  padding-bottom: 60px; border-bottom: 1px solid rgba(255,255,255,.10);
+  display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: 60px;
+  margin-bottom: 60px;
 }
-.wonderelo .w-foot-brand .w-foot-logo {
-  display: inline-flex; align-items: center; gap: 12px; margin-bottom: 24px;
-}
-.wonderelo .w-foot-brand .w-foot-logo .w-mark {
-  position: relative;
-  width: 34px; height: 34px;
-  background: transparent;
-  flex-shrink: 0;
-  overflow: visible;
-}
-.wonderelo .w-foot-brand .w-foot-logo .w-mark .w-inner {
-  display: block;
-  width: 64px; height: 64px;
-  background: url("/Wonderelo-logo-symbol.png") center / contain no-repeat;
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%) rotate(-6deg);
-  pointer-events: none;
-}
+.wonderelo .w-foot-brand .w-foot-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.wonderelo .w-foot-brand .w-foot-logo img { width: 96px; height: 96px; object-fit: contain; transform: rotate(-6deg); }
 .wonderelo .w-foot-brand .w-foot-logo .w-word {
-  font-family: var(--w-font-display); font-weight: 800; font-size: 22px;
-  letter-spacing: -0.025em; color: #fff;
+  font-family: var(--w-font-display); font-size: 28px; font-weight: 800;
+  letter-spacing: -0.03em; color: #fff;
 }
-.wonderelo .w-foot-brand .w-foot-logo .w-word em {
-  font: inherit; color: inherit; font-style: normal;
-}
-.wonderelo .w-foot-brand p {
-  font-size: 14.5px; line-height: 1.55; color: rgba(255,255,255,.65);
-  max-width: 320px; margin: 0 0 24px;
-}
-.wonderelo .w-foot-brand .w-foot-cta {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-radius: 10px; background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  font-size: 13.5px; font-weight: 600; color: #fff;
-  text-decoration: none;
-}
-.wonderelo .w-foot-brand .w-foot-cta .w-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
 
 .wonderelo .w-foot-col h5 {
-  margin: 0 0 18px; font-family: var(--w-font-display); font-weight: 700;
-  font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--w-orange-bright);
+  margin: 0 0 18px; font-family: var(--w-font-body);
+  font-size: 13px; font-weight: 700; color: #fff;
+  letter-spacing: .08em; text-transform: uppercase;
 }
 .wonderelo .w-foot-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .wonderelo .w-foot-col a {
-  color: rgba(255,255,255,.72); text-decoration: none; font-size: 14.5px;
-  transition: color .15s, transform .15s;
+  color: rgba(255,255,255,.65); text-decoration: none; font-size: 14px;
+  width: fit-content; transition: color .2s ease, transform .2s ease;
   display: inline-block;
 }
 .wonderelo .w-foot-col a:hover { color: #fff; transform: translateX(3px); }
 
 .wonderelo .w-foot-bottom {
-  display: flex; justify-content: space-between; align-items: center; gap: 24px;
-  padding-top: 32px;
-  font-size: 12.5px; color: rgba(255,255,255,.5);
+  border-top: 1px solid rgba(255,255,255,.10); padding-top: 30px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  font-size: 13px; color: rgba(255,255,255,.5);
 }
-.wonderelo .w-foot-bottom .w-foot-legal { display: flex; gap: 24px; }
-.wonderelo .w-foot-bottom .w-foot-legal a { color: inherit; text-decoration: none; }
-.wonderelo .w-foot-bottom .w-foot-legal a:hover { color: #fff; }
+.wonderelo .w-foot-social { display: flex; gap: 18px; align-items: center; }
+.wonderelo .w-foot-social a {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; color: rgba(255,255,255,.6);
+  transition: color .2s ease, transform .2s ease;
+}
+.wonderelo .w-foot-social a:hover { color: #fff; transform: translateY(-3px); }
 
 /* ───────── Utility ───────── */
 .wonderelo .w-shell { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
@@ -275,6 +241,7 @@
   .wonderelo .w-nav-inner { grid-template-columns: auto auto; gap: 16px; padding: 16px 24px; }
   .wonderelo .w-nav-links { display: none; }
   .wonderelo .w-shell, .wonderelo .w-shell-narrow { padding: 0 24px; }
+  .wonderelo .w-footer { padding: 60px 24px 32px; }
   .wonderelo .w-footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
   .wonderelo .w-foot-brand { grid-column: 1 / -1; }
   .wonderelo .w-foot-bottom { flex-direction: column; align-items: flex-start; }

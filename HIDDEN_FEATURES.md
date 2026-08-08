@@ -1,37 +1,24 @@
-# Hidden features — design-parity pass (v06)
+# Hidden features — design-parity pass (v06 → v07)
 
-During the "design is the single source of truth" pass, real app features that the **static design mocks don't depict** were **hidden in code (not deleted)** — each is wrapped in `{false && …}` or an equivalent guard, so it can be restored by flipping one condition.
+During the "design is the single source of truth" pass, real app features that the **v06 static design mocks didn't depict** were **hidden in code (not deleted)** — each wrapped in `{false && …}` or an equivalent guard.
 
-A follow-up cleanup then **permanently deleted** the dead code for the features we decided to drop (see "Deleted" below). The features listed under **"Still hidden"** are the ones we intend to re-enable after they are added to the Claude Design mocks — leave their guards in place.
+A follow-up cleanup then **permanently deleted** the dead code for the features we decided to drop (see "Deleted" below). The remaining 11 were **selected to be added to Claude Design** (CLAUDE_DESIGN_UPDATES_v2.md, SF1–SF11).
 
-## Still hidden (KEEP — re-enable after redesign)
+## Un-hidden — now implemented (v07 designed all 11)
 
-### Public site nav (`redesign/PublicNav.tsx`)
-1. **"Who is it for?" dropdown** — 7 `/for/:slug` landing-page links (desktop hover dropdown + mobile sublist), guarded by `false`.
+The **v07 design export designs all 11**, so during the full v06→v07 diff/port they were **un-hidden and implemented 1:1** to the v07 mocks. None remain guarded off.
 
-### Organizer dashboard (`SessionDisplayCard.tsx`)
-2. **Round card ⋮ menu** → Duplicate / Complete / Delete round (design card shows only "Manage →").
-
-### Round form (`SessionForm.tsx`)
-3. Per-round **Custom Round Times editor** (only the "Custom round times" toggle is shown; the editor body is guarded off).
-
-### Event page settings (`EventPageSettings.tsx`)
-4. **Live URL-availability** spinner / check / X + "This URL is available" / error text (design shows a static "✓ available").
-
-### Account settings (`AccountSettings.tsx`)
-5. **"Save changes" button** (replaced by autosave-on-blur + "Saves automatically" hint).
-
-### Billing (`BillingSettings.tsx`)
-6. **"Subscription cancelled"** banner.
-7. **"Payment failed" / past-due** banner.
-8. **"Frequently asked questions"** card.
-
-### Auth (`SignInFlow.tsx`, `SignUpFlow.tsx`)
-9. Forgot-password top **Logo + "← Back to sign in"** link, and the forgot-password **"Don't have an account? Sign up for free →"** footer.
-10. Sign-up discovery option **"Partner/integration"** and the **"Describe your event type"** field (when "Other").
-
-### Participant / matching (`MatchPartner.tsx`)
-11. Per-partner **"Didn't make it / missed"** state (forced off via `partnerMissed = false`).
+1. **"Who is it for?" dropdown** — `redesign/PublicNav.tsx`: desktop hover mega-menu + mobile expandable, 7 `/for/:slug` items with icons.
+2. **Round card actions** — `SessionDisplayCard.tsx`: "Manage →" is now a **"Manage ▾" dropdown** (Edit round / Round report / Duplicate round / Mark as completed / Delete round).
+3. **Custom Round Times editor** — `SessionForm.tsx`: editor grid renders when the "Custom round times" toggle is on (restyled to v07).
+4. **Live URL-availability** — `EventPageSettings.tsx`: "Checking…" spinner / green "available" / red "taken", wired to the real `/check-slug` endpoint (replaces the static "✓ available").
+5. **Account explicit Save** — `AccountSettings.tsx`: "Save changes" + "Discard" + "Last saved …" (replaces autosave-on-blur).
+6. **"Subscription cancelled"** banner — `BillingSettings.tsx`: gated on real subscription status.
+7. **"Payment failed" / past-due** banner — `BillingSettings.tsx`: gated on real status (period-end + 14-day grace).
+8. **"Frequently asked questions"** card — `BillingSettings.tsx`: v07 accordion, always shown.
+9. Forgot-password **Logo + "← Back to sign in"** toprow + **"Don't have an account? Sign up for free →"** footer — `SignInFlow.tsx`.
+10. Sign-up discovery option **"Partner/integration"** + **"Describe your event type"** field (when "Other", with validation) — `SignUpFlow.tsx`.
+11. Per-partner **"Didn't make it / missed"** state — `MatchPartner.tsx`: re-enabled the real `partnerMissed` trigger (`!isCheckedIn && past walkingDeadline`).
 
 ---
 

@@ -1,17 +1,14 @@
 import { useParams, useNavigate } from 'react-router';
 import { useEffect, useState, useRef, ReactNode } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent } from './ui/card';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
-import { MapPin, Loader2, Video, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import { WondereloHeader } from './WondereloHeader';
 import { MissedRound } from './MissedRound';
 import { PdNav } from './redesign/PdNav';
 import { FlipClock } from './redesign/FlipClock';
 import { PmFooter } from './redesign/PmFooter';
+import { StatePlaceholder, Skeleton, SkeletonRow, Spinner, StateButton, RefreshIcon, Italic } from './redesign/StatePlaceholder';
 
 // Shared participant nav wired for the matching flow (dashboard + logout only;
 // profile/address-book are secondary during a live round).
@@ -187,6 +184,7 @@ export function MatchInfo() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeadlineExpired, setIsDeadlineExpired] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
   const MAX_POLL_ATTEMPTS = 60; // 60 * 2s = 120s max wait
@@ -312,7 +310,16 @@ export function MatchInfo() {
       mounted = false;
       stopPolling();
     };
-  }, [token]);
+  }, [token, retryNonce]);
+
+  // Re-run the whole fetch + poll flow from scratch (used by "Try again").
+  const handleRetry = () => {
+    stopPolling();
+    setError(null);
+    setIsWaitingForMatch(false);
+    setIsLoading(true);
+    setRetryNonce((n) => n + 1);
+  };
 
   const handleImHere = async () => {
     if (!token || !matchData) return;
@@ -354,41 +361,26 @@ export function MatchInfo() {
     }
   };
 
-  // Loading state (initial load)
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-8 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading your match...</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  const backToDashboard = () => navigate(`/p/${token}`);
 
-  // Waiting for match (backend matching in progress)
-  if (isWaitingForMatch) {
+  // Loading state — skeleton in the shape of the meeting-point focus box.
+  // Covers both the initial fetch and the "matching in progress" poll wait.
+  if (isLoading || isWaitingForMatch) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-8 text-center">
-              <Loader2 className="h-16 w-16 text-primary animate-spin mx-auto mb-6" />
-              <h2 className="text-2xl font-bold mb-2">Finding your match...</h2>
-              <p className="text-muted-foreground mb-2">
-                We're pairing you with someone right now.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                This usually takes just a few seconds.
-              </p>
-            </CardContent>
-          </Card>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell" style={{ paddingTop: 40, paddingBottom: 40 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Skeleton height={120} radius={18} />
+            <SkeletonRow />
+            <SkeletonRow />
+          </div>
+          <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Spinner />
+            <span style={{ fontFamily: 'var(--w-font-mono)', fontSize: 12.5, fontWeight: 700, letterSpacing: '.02em', color: 'var(--w-ink)', opacity: 0.72 }}>Finding your meeting point…</span>
+          </div>
+          <div style={{ marginTop: 22, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
+            <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
+          </div>
         </div>
       </div>
     );
@@ -420,19 +412,21 @@ export function MatchInfo() {
 
   if (error || !matchData) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-8 text-center">
-              <div className="text-6xl mb-4">⚠️</div>
-              <h2 className="text-2xl font-bold mb-2">Error</h2>
-              <p className="text-muted-foreground mb-6">{error || 'Failed to load match data'}</p>
-              <Button onClick={() => navigate(`/p/${token}?from=match`)}>
-                Back to dashboard
-              </Button>
-            </CardContent>
-          </Card>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell">
+          <StatePlaceholder
+            variant="error"
+            glyphSize={74}
+            glyph={<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>}
+            eyebrow="Taking too long"
+            title={<>Matching is <Italic>still running</Italic></>}
+            body="Matching is taking longer than expected. Please go back and try again."
+            actions={<>
+              <StateButton variant="primary" leadingIcon={<RefreshIcon />} onClick={handleRetry}>Try again</StateButton>
+              <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
+            </>}
+            errorId="timeout · matchinfo"
+          />
         </div>
       </div>
     );

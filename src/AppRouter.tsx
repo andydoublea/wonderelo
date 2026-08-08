@@ -30,11 +30,11 @@ import { EventPageSettings } from './components/EventPageSettings';
 import { BillingSettings } from './components/BillingSettings';
 import { EmailVerification } from './components/EmailVerification';
 import { ParticipantDashboard } from './components/ParticipantDashboard';
-import { ParticipantRoundDetail } from './components/ParticipantRoundDetail';
 import { MatchInfo } from './components/MatchInfo';
 import { MatchPartner } from './components/MatchPartner';
 import { MatchNetworking } from './components/MatchNetworking';
 import { ContactSharing } from './components/ContactSharing';
+import { BootSplash } from './components/redesign/StatePlaceholder';
 import { UserPublicPage } from './components/UserPublicPage';
 import { EventPromoPage } from './components/EventPromoPage';
 import { BlogListingPage } from './components/BlogListingPage';
@@ -95,15 +95,8 @@ const CrmSegments = lazy(() => import('./components/crm/CrmSegments'));
 const CrmReports = lazy(() => import('./components/crm/CrmReports'));
 const CrmSettings = lazy(() => import('./components/crm/CrmSettings'));
 
-// Loading component for lazy loaded routes
-const RouteLoader = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="text-center">
-      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-      <p className="mt-4 text-muted-foreground">Loading...</p>
-    </div>
-  </div>
-);
+// Loading component for lazy loaded routes — v07 "App boot & route change" splash
+const RouteLoader = () => <BootSplash />;
 
 interface AppContextType {
   isAuthenticated: boolean;
@@ -2145,7 +2138,6 @@ function AppProviderWithRouter() {
             h(Route, { path: '/p/:token/contact-sharing', element: h(ContactSharing) }),
             h(Route, { path: '/p/:token/profile', element: h(ParticipantProfile) }),
             h(Route, { path: '/p/:token/address-book', element: h(AddressBook) }),
-            h(Route, { path: '/p/:token/r/:roundId', element: h(ParticipantRoundDetail) }),
             h(Route, { path: '/bootstrap-admin', element: h(BootstrapAdminRoute) }),
             h(Route, { path: '/pricing', element: h(PricingPageRoute) }),
             h(Route, { path: '/blog', element: h(BlogListingPageRoute) }),

@@ -77,14 +77,10 @@ const discoveryOptions = [
   { value: 'referral', label: 'Friend/colleague referral' },
   { value: 'conference', label: 'Conference/event' },
   { value: 'blog', label: 'Blog/article' },
-  // HIDDEN (not in design — design has 6 discovery options): Partner/integration.
-  // Kept in code; filtered out of the rendered list via `visibleDiscoveryOptions`.
+  // v07 RadioList includes 'Partner/integration'.
   { value: 'partner', label: 'Partner/integration' },
   { value: 'other', label: 'Other' }
 ];
-
-// Design shows 6 options; the 'partner' option is preserved above but not rendered.
-const visibleDiscoveryOptions = discoveryOptions.filter((o) => o.value !== 'partner');
 
 /* ─────────────────────────────────────────────────────────────
    Brand palette + inlined atoms — verbatim from the design bundle
@@ -692,7 +688,7 @@ export function SignUpFlowView({
           )}
 
           {currentStep === 2 && (
-            <RadioList options={visibleDiscoveryOptions} value={discoverySource} onChange={onDiscoverySourceChange} />
+            <RadioList options={discoveryOptions} value={discoverySource} onChange={onDiscoverySourceChange} />
           )}
 
           {currentStep === 3 && (
@@ -704,14 +700,14 @@ export function SignUpFlowView({
                 placeholder="Select event type"
                 options={eventTypeOptions}
               />
-              {/* HIDDEN (not in design) — conditional "Describe your event type" field
-                  shown when eventType === 'other'. Logic preserved; guarded to never render. */}
-              {false && eventType === 'other' && (
+              {/* v07 — when "Other" is selected, reveal a free-text describe field. */}
+              {eventType === 'other' && (
                 <Field
                   label="Describe your event type"
                   value={eventTypeOther}
                   onChange={onEventTypeOtherChange}
-                  placeholder="Please describe your event type"
+                  placeholder="e.g. Alumni reunion, hackathon, community brunch…"
+                  hint="A short description helps us suggest the right round setup."
                 />
               )}
               <SelectField
@@ -974,11 +970,9 @@ export function SignUpFlow({ onComplete, onBack, onSwitchToSignIn }: SignUpFlowP
       case 2:
         return formData.discoverySource;
       case 3:
-        // The "Describe your event type" field is hidden (not in design), so we no
-        // longer require eventTypeOther — otherwise picking "Other" would dead-end the
-        // wizard. Original gate preserved for reference:
-        //   const eventTypeValid = formData.eventType && (formData.eventType !== 'other' || formData.eventTypeOther.trim().length > 0);
-        const eventTypeValid = !!formData.eventType;
+        // v07 re-shows the "Describe your event type" field for "Other", so require a
+        // description when "Other" is selected.
+        const eventTypeValid = !!formData.eventType && (formData.eventType !== 'other' || formData.eventTypeOther.trim().length > 0);
         return formData.companySize && formData.userRole && eventTypeValid;
       default:
         return false;
