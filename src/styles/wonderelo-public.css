@@ -201,7 +201,8 @@
   margin-bottom: 60px;
 }
 .wonderelo .w-foot-brand .w-foot-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.wonderelo .w-foot-brand .w-foot-logo img { width: 96px; height: 96px; object-fit: contain; transform: rotate(-6deg); }
+.wonderelo .w-foot-brand .w-foot-logo img { width: 96px; height: 96px; object-fit: contain; transform: rotate(-6deg); transition: transform .2s ease; }
+.wonderelo .w-foot-brand .w-foot-logo:hover img { transform: rotate(0deg); }
 .wonderelo .w-foot-brand .w-foot-logo .w-word {
   font-family: var(--w-font-display); font-size: 28px; font-weight: 800;
   letter-spacing: -0.03em; color: #fff;

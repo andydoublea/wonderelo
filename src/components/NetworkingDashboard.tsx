@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { errorLog } from '../utils/debug';
 import { ServiceType } from '../App';
 import { C, Btn, Italic } from './redesign/organizerAtoms';
-import { hasRunningRounds, isRoundRunning, getRoundStatus } from '../utils/sessionStatus';
+import { hasRunningRounds, isRoundRunning } from '../utils/sessionStatus';
 import { getParametersOrDefault } from '../utils/systemParameters';
 
 /* ─────────────────────────────────────────────────────────────
@@ -51,61 +51,40 @@ const StatusPill = ({ label, count, active, onClick }: { label: string; count: n
   </button>
 );
 
-// Live-round countdown ring (screen-live-round.jsx "highest-value addition").
-// Driven ENTIRELY by real round timing: start = session.date + round.startTime,
-// total window = walking + finding + networking minutes (system parameters).
-const PHASE_LABEL: Record<string, string> = {
-  walking: 'Walking to meeting points',
-  finding: 'Finding your match',
-  networking: 'Networking',
-};
-function CountdownRing({ startMs, totalMs, phase }: { startMs: number; totalMs: number; phase: string }) {
+// Live-round countdown ring (design/v08 · screen-dashboard-merged.jsx).
+// Counts down to the END OF THE ROUND (round-wide — the one timing fact true for
+// every group). Deliberately carries NO phase label: groups are matched at
+// different moments, so one group can be networking while another still walks.
+// start = session.date + round.startTime; total = walking + finding + duration.
+function CountdownRing({ startMs, totalMs, size = 116 }: { startMs: number; totalMs: number; size?: number }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const elapsed = Math.min(Math.max(now - startMs, 0), totalMs);
-  const remaining = Math.max(totalMs - elapsed, 0);
-  const frac = totalMs > 0 ? remaining / totalMs : 0;
-  const size = 168, stroke = 12, r = (size - stroke) / 2, circ = 2 * Math.PI * r;
-  const dash = circ * frac;
-  const mm = Math.floor(remaining / 60000);
-  const ss = Math.floor((remaining % 60000) / 1000);
+  const remaining = Math.max(startMs + totalMs - now, 0);
+  const frac = totalMs > 0 ? Math.max(0, Math.min(1, remaining / totalMs)) : 0;
+  const r = (size - 12) / 2;
+  const circ = 2 * Math.PI * r;
+  const mm = String(Math.floor(remaining / 60000)).padStart(2, '0');
+  const ss = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(76,25,77,.10)" strokeWidth={stroke} />
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(76,25,77,.12)" strokeWidth="7" />
         <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.orange} strokeWidth={stroke} strokeLinecap="round"
-          strokeDasharray={`${dash} ${circ}`} transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ transition: 'stroke-dasharray 1s linear' }}
+          cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.orange} strokeWidth="7" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - frac)}
+          style={{ transition: 'stroke-dashoffset 1s linear' }}
         />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 34, letterSpacing: '-.03em', color: C.purpleDeep, lineHeight: 1 }}>
-          {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
-        </div>
-        <div style={{ marginTop: 4, fontSize: 10.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange, fontFamily: C.fontBody }}>
-          {phase === 'networking' ? 'Networking' : phase === 'finding' ? 'Finding' : 'Walking'}
-        </div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+        <span style={{ fontFamily: C.fontMono, fontWeight: 700, fontSize: 22, color: C.purpleDeep, letterSpacing: '-.02em', lineHeight: 1 }}>{mm}:{ss}</span>
+        <span style={{ fontFamily: C.fontBody, fontSize: 9, fontWeight: 700, letterSpacing: '.13em', textTransform: 'uppercase', color: C.orange, textAlign: 'center', lineHeight: 1.3 }}>until<br />round ends</span>
       </div>
     </div>
   );
 }
-
-// A single tile in the live-monitor stat strip (one featured/orange card).
-const StatTile = ({ label, value, featured }: { label: string; value: ReactNode; featured?: boolean }) => (
-  <div style={{
-    padding: '16px 18px', borderRadius: 14,
-    background: featured ? C.orange : '#fff',
-    border: `1px solid ${featured ? 'transparent' : C.hair}`,
-    boxShadow: featured ? '0 8px 20px rgba(221,83,28,.22)' : 'none',
-  }}>
-    <div style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 26, letterSpacing: '-.03em', lineHeight: 1, color: featured ? '#fff' : C.purpleDeep }}>{value}</div>
-    <div style={{ marginTop: 6, fontSize: 11.5, fontWeight: 600, letterSpacing: '.02em', color: featured ? 'rgba(255,255,255,.85)' : C.ink, opacity: featured ? 1 : .6 }}>{label}</div>
-  </div>
-);
 
 interface NetworkingDashboardProps {
   sessions: NetworkingSession[];
@@ -168,6 +147,11 @@ export function NetworkingDashboard({
   });
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  // Aggregated per-status participant counts for the currently-live round.
+  // Loaded lazily (see effect below) — null until the fetch resolves.
+  const [liveCounts, setLiveCounts] = useState<{
+    registered: number; confirmed: number; onway: number; met: number; noshow: number; nomatch: number;
+  } | null>(null);
   // First-login "Welcome from the founder" modal — shown once per organizer,
   // gated purely by a localStorage flag (not any server/onboarding field).
   const [welcome, setWelcome] = useState(() => !localStorage.getItem('oliwonder_founder_welcome_seen'));
@@ -319,6 +303,52 @@ export function NetworkingDashboard({
   const liveSession = sessions.find(s => hasRunningRounds(s));
   const liveRound = liveSession?.rounds?.find(r => isRoundRunning(liveSession, r));
 
+  // Aggregate the live round's per-participant statuses into the six breakdown
+  // cells. Source: same endpoint SessionAdministration uses
+  // (`/organizer/:slug/session/:id/participants` → { participants: [{ registrations:
+  // [{ roundId, status }] }] }), filtered to the live round. Runs only while a
+  // round is live; counts render as "—" until this resolves.
+  const liveRoundId = liveRound?.id;
+  const liveSessionId = liveSession?.id;
+  useEffect(() => {
+    if (!liveRoundId || !liveSessionId) { setLiveCounts(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { apiBaseUrl } = await import('../utils/supabase/info');
+        const accessToken = localStorage.getItem('supabase_access_token');
+        if (!accessToken) return;
+        const auth = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+        // Resolve the organizer's URL slug (the participants endpoint is slug-scoped).
+        const profileRes = await fetch(`${apiBaseUrl}/profile`, { headers: auth });
+        if (!profileRes.ok) return;
+        const profile = await profileRes.json();
+        const slug = profile.user?.urlSlug;
+        if (!slug) return;
+        const res = await fetch(`${apiBaseUrl}/organizer/${slug}/session/${liveSessionId}/participants`, { headers: auth });
+        if (!res.ok) return;
+        const data = await res.json();
+        const counts = { registered: 0, confirmed: 0, onway: 0, met: 0, noshow: 0, nomatch: 0 };
+        for (const p of (data.participants || []) as Array<{ registrations?: Array<{ roundId?: string; status?: string }> }>) {
+          for (const reg of p.registrations || []) {
+            if (reg.roundId !== liveRoundId) continue;
+            switch (reg.status) {
+              case 'registered': counts.registered++; break;
+              case 'confirmed': counts.confirmed++; break;
+              case 'matched': case 'checked-in': counts.onway++; break;
+              case 'met': counts.met++; break;
+              case 'missed': counts.noshow++; break;
+              case 'no-match': counts.nomatch++; break;
+              default: break;
+            }
+          }
+        }
+        if (!cancelled) setLiveCounts(counts);
+      } catch { /* leave counts null → cells show "—" */ }
+    })();
+    return () => { cancelled = true; };
+  }, [liveRoundId, liveSessionId]);
+
   const statusCount = (st: NetworkingSession['status']) => sessions.filter(s => s.status === st).length;
 
   const hero = (
@@ -349,45 +379,64 @@ export function NetworkingDashboard({
     </div>
   );
 
-  // Live round monitor — surfaced whenever a round is actually running.
-  // Countdown ring is driven by real timing; the stat strip uses only data
-  // available on the session/round. The full participant report lives in the
-  // Manage view (SessionAdministration), reached via the CTA below.
+  // Live round monitor (design/v08 · screen-dashboard-merged.jsx). Shows what is
+  // true for the WHOLE round: a countdown to the round's END + aggregated
+  // participant counts. NO single phase label — each group is matched at its own
+  // moment, so groups are in different phases at once. Timing is real (session
+  // date + round start; window = walking + finding + duration). The six counts
+  // come from `liveCounts` (fetched above); render "—" until they resolve.
   let liveMonitor: ReactNode = null;
   if (liveSession && liveRound) {
     const params = getParametersOrDefault();
     const startMs = new Date(`${liveRound.date || liveSession.date}T${liveRound.startTime}:00`).getTime();
     const totalMs = ((params.walkingTimeMinutes || 3) + (params.findingTimeMinutes || 1) + (liveRound.duration || 10)) * 60000;
-    const phase = getRoundStatus(liveSession, liveRound);
     const roundIdx = liveSession.rounds.findIndex(r => r.id === liveRound.id);
-    const registered = liveRound.registeredCount ?? (liveSession as unknown as { participants?: unknown[] }).participants?.length ?? 0;
+    const totalRounds = liveSession.numberOfRounds || liveSession.rounds.length;
+    const registeredFallback = liveRound.registeredCount ?? (liveSession as unknown as { participants?: unknown[] }).participants?.length ?? null;
+    const endDate = new Date(startMs + totalMs);
+    const endHHMM = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+    const dash = '—';
+    const cells: Array<[string, string | number, string]> = [
+      ['Registered', liveCounts ? liveCounts.registered : (registeredFallback ?? dash), 'rgba(75,29,81,.45)'],
+      ['Confirmed',  liveCounts ? liveCounts.confirmed  : dash, C.purple],
+      ['On the way', liveCounts ? liveCounts.onway      : dash, C.orange],
+      ['Met',        liveCounts ? liveCounts.met        : dash, '#1f8a4d'],
+      ['No-show',    liveCounts ? liveCounts.noshow     : dash, '#9a8478'],
+      ['No match',   liveCounts ? liveCounts.nomatch    : dash, '#9a8478'],
+    ];
     liveMonitor = (
-      <div style={{ overflow: 'hidden', background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 20, boxShadow: '0 12px 30px rgba(75,29,81,.08)', marginBottom: 26 }}>
-        <div style={{ height: 4, background: C.orange }} />
-        <div style={{ padding: 26 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 26, flexWrap: 'wrap' }}>
-              <CountdownRing startMs={startMs} totalMs={totalMs} phase={phase} />
-              <div>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: C.orange, fontSize: 11, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase', fontFamily: C.fontBody }}>
-                  <span style={{ width: 24, height: 1, background: C.orange }} />Live round monitor
-                </span>
-                <h2 style={{ margin: '12px 0 0', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 30, letterSpacing: '-.03em', color: C.purpleDeep, lineHeight: 1.05 }}>
-                  Round <Italic>report</Italic><span style={{ color: C.orange, fontWeight: 800, margin: '0 4px 0 1px' }}>:</span>{liveSession.name}
-                </h2>
-                <p style={{ margin: '8px 0 0', fontSize: 13.5, color: C.ink, opacity: .7 }}>{PHASE_LABEL[phase] || 'In progress'}</p>
-              </div>
-            </div>
-            <span onClick={() => handleManageSession(liveSession)} style={{ display: 'inline-flex', flexShrink: 0 }}>
-              <Btn variant="primary" trailingIcon={<DIcon d={DI.arrow} size={15} />}>Open live monitor</Btn>
+      <div style={{
+        marginBottom: 26, borderRadius: 20, padding: '24px 26px',
+        border: '1px solid rgba(221,83,28,.30)', background: 'rgba(221,83,28,.05)',
+        display: 'flex', flexDirection: 'column', gap: 20,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          <CountdownRing startMs={startMs} totalMs={totalMs} />
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: C.orange, fontSize: 10.5, fontWeight: 700, letterSpacing: '.22em', textTransform: 'uppercase', fontFamily: C.fontBody }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.orange, boxShadow: '0 0 0 4px rgba(221,83,28,.18)' }} />Live now
             </span>
+            <h2 style={{ margin: '10px 0 0', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 25, letterSpacing: '-.03em', color: C.purpleDeep, lineHeight: 1.1 }}>
+              Round {roundIdx >= 0 ? roundIdx + 1 : 1} of {totalRounds}: <Italic color={C.orange}>{liveRound.name || liveSession.name}</Italic>
+            </h2>
+            <p style={{ margin: '8px 0 0', fontSize: 13.5, color: C.ink, opacity: .68, maxWidth: 440 }}>
+              Ends at {endHHMM}. Groups start at their own pace, so some are still walking while others are already talking.
+            </p>
           </div>
-          <div style={{ marginTop: 22, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-            <StatTile featured label="Current phase" value={phase === 'networking' ? 'Networking' : phase === 'finding' ? 'Finding' : 'Walking'} />
-            <StatTile label="Live round" value={roundIdx >= 0 ? `Round ${roundIdx + 1}` : liveRound.name} />
-            <StatTile label="Registered" value={registered} />
-            <StatTile label="Rounds today" value={liveSession.numberOfRounds || liveSession.rounds.length} />
-          </div>
+          <span onClick={() => handleManageSession(liveSession)} style={{ display: 'inline-flex', flexShrink: 0, cursor: 'pointer' }}>
+            <Btn variant="primary" trailingIcon={<DIcon d={DI.arrow} size={14} />}>Open live monitor</Btn>
+          </span>
+        </div>
+        {/* Live participant breakdown — aggregated across all groups in this round */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1, background: C.hair, borderRadius: 14, overflow: 'hidden', border: `1px solid ${C.hair}` }}>
+          {cells.map(([label, value, dot], i) => (
+            <div key={i} style={{ background: '#fff', padding: '14px 16px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: C.fontMono, fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: C.purple, opacity: .75 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: dot, flexShrink: 0 }} />{label}
+              </span>
+              <div style={{ marginTop: 6, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 22, color: C.purpleDeep, letterSpacing: '-.03em', lineHeight: 1 }}>{value}</div>
+            </div>
+          ))}
         </div>
       </div>
     );

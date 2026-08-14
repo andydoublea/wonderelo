@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { C, Diamond } from './redesign/organizerAtoms';
+import { useApp } from '../AppRouter';
 
 interface AuthenticatedNavProps {
   currentView: string;
@@ -59,6 +60,10 @@ export function AuthenticatedNav({
   onSignOut,
 }: AuthenticatedNavProps) {
   const navigate = useNavigate();
+  // Event-pill status dot is green only while at least one round is published on
+  // the public event page; otherwise the event is live-but-empty → neutral dot.
+  const { sessions } = useApp();
+  const hasPublishedRounds = Array.isArray(sessions) && sessions.some((s: { status?: string }) => s?.status === 'published');
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(
@@ -212,7 +217,10 @@ export function AuthenticatedNav({
         fontSize: 12, fontWeight: 600, color: C.purpleDeep, fontFamily: C.fontBody, whiteSpace: 'nowrap',
       }}
     >
-      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 0 3px rgba(74,222,128,.18)' }} />
+      <span
+        title={hasPublishedRounds ? 'Rounds published on your event page' : 'No rounds published yet'}
+        style={{ width: 7, height: 7, borderRadius: '50%', background: hasPublishedRounds ? '#4ade80' : 'rgba(75,29,81,.28)', boxShadow: hasPublishedRounds ? '0 0 0 3px rgba(74,222,128,.18)' : 'none' }}
+      />
       {eventName}
     </div>
   ) : null;

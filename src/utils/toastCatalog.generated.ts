@@ -1738,10 +1738,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:225",
+    "id": "src/components/NetworkingDashboard.tsx:209",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 225,
+    "line": 209,
     "component": "NetworkingDashboard",
     "type": "success",
     "message": "Session duplicated successfully",
@@ -1751,10 +1751,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:228",
+    "id": "src/components/NetworkingDashboard.tsx:212",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 228,
+    "line": 212,
     "component": "NetworkingDashboard",
     "type": "error",
     "message": "Failed to duplicate session",
@@ -1764,10 +1764,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:312",
+    "id": "src/components/NetworkingDashboard.tsx:296",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 312,
+    "line": 296,
     "component": "NetworkingDashboard",
     "type": "success",
     "message": "Event link copied",
@@ -1777,10 +1777,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/NetworkingDashboard.tsx:314",
+    "id": "src/components/NetworkingDashboard.tsx:298",
     "kind": "direct",
     "filePath": "src/components/NetworkingDashboard.tsx",
-    "line": 314,
+    "line": 298,
     "component": "NetworkingDashboard",
     "type": "error",
     "message": "Could not copy link",
@@ -4186,5 +4186,5 @@ export const TOAST_CATALOG_STATS = {
   total: 308,
   byType: {"error":171,"success":122,"info":14,"warning":1},
   byPage: {"Account & Billing":25,"Admin":43,"Auth":2,"Blog":1,"Event":24,"Hooks":21,"Match":1,"Other":36,"Participant":25,"Routing":11,"Session":43,"Shared":76},
-  scannedAt: "2026-08-08T07:03:57.936Z",
+  scannedAt: "2026-08-14T15:21:01.076Z",
 };
