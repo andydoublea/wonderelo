@@ -112,3 +112,16 @@ export const COUNTRY_CODES: CountryCode[] = [
   { code: 'AU', name: 'Australia', prefix: '+61', placeholder: '412 345 678' },
   { code: 'NZ', name: 'New Zealand', prefix: '+64', placeholder: '21 123 4567' },
 ];
+
+/** Emoji flag for an ISO-3166 alpha-2 country code (e.g. 'SK' → 🇸🇰). */
+export function flagForCode(code?: string): string {
+  if (!code || code.length !== 2) return '';
+  return code.toUpperCase().replace(/./g, (ch) => String.fromCodePoint(0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+/** Emoji flag for a dial prefix (e.g. '+421' → 🇸🇰). Uses the first matching country,
+ *  which is fine here because COUNTRY_CODES lists the priority country first per prefix. */
+export function flagForPrefix(prefix?: string): string {
+  if (!prefix) return '';
+  return flagForCode(COUNTRY_CODES.find((c) => c.prefix === prefix)?.code);
+}

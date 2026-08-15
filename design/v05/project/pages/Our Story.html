@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Our Story page redesign
+  Maps to: src/components/OurStoryPage.tsx
+  Content from: existing OurStoryPage.tsx (editorial narrative, 4 chapters)
+  Shared chrome: Navigation + Footer
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Our Story</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  /* ── Hero ─────────────────────────────────────────────── */
+  .st-hero { padding: 80px 0 56px; position: relative; }
+  .st-hero .deco-1 { position: absolute; left: 9%; top: 100px; width: 14px; height: 14px; background: var(--w-orange); transform: rotate(45deg); }
+  .st-hero .deco-2 { position: absolute; right: 11%; top: 220px; width: 22px; height: 22px; background: var(--w-purple-deep); transform: rotate(45deg); }
+  .st-hero .deco-3 { position: absolute; left: 24%; bottom: 8px; width: 9px; height: 9px; background: var(--w-orange); transform: rotate(45deg); opacity: .6; }
+
+  .st-hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 64px; align-items: end; max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+  .st-hero h1 { margin: 22px 0 0; }
+  .st-hero .st-kicker {
+    font-family: var(--w-font-hand); color: var(--w-orange); font-size: 32px; line-height: 1;
+    display: inline-block; transform: rotate(-2.5deg);
+  }
+  .st-hero .st-stamp {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong);
+    background: rgba(255,255,255,.5);
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple-deep);
+    margin-bottom: 24px;
+  }
+  .st-hero .st-stamp .w-diamond { width: 8px; height: 8px; }
+  .st-hero .st-meta {
+    margin-top: 36px;
+    display: grid; grid-template-columns: repeat(3, auto); gap: 32px;
+    padding-top: 28px; border-top: 1px solid var(--w-hairline);
+  }
+  .st-hero .st-meta .item .l {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .7;
+  }
+  .st-hero .st-meta .item .v {
+    margin-top: 6px; font-family: var(--w-font-display); font-weight: 700;
+    font-size: 16px; color: var(--w-purple-deep);
+  }
+  .st-hero .st-meta .item .v em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+
+  /* Hero photo (placeholder — drop in real birthday-party / portrait shot) */
+  .st-photo {
+    position: relative;
+    aspect-ratio: 4/5; border-radius: var(--w-r-lg); overflow: hidden;
+    background:
+      repeating-linear-gradient(135deg, rgba(76,25,77,.07) 0 1px, transparent 1px 14px),
+      linear-gradient(180deg, var(--w-cream), var(--w-paper-deep));
+    border: 1px solid var(--w-hairline);
+  }
+  .st-photo .ph-cap {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 18px; display: flex; align-items: center; gap: 10px;
+    font-family: var(--w-font-mono); font-size: 11px; letter-spacing: .04em;
+    color: rgba(76,25,77,.65);
+    border-top: 1px dashed var(--w-hairline-strong);
+    background: rgba(247,241,230,.86); backdrop-filter: blur(6px);
+  }
+  .st-photo .ph-tag {
+    position: absolute; top: 16px; left: 16px;
+    padding: 6px 10px; border-radius: 6px;
+    background: var(--w-orange); color: #fff;
+    font-family: var(--w-font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase;
+  }
+  .st-photo .ph-overlay {
+    position: absolute; inset: 22% 18% 30% 18%;
+    border: 1px dashed rgba(76,25,77,.4); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-mono); font-size: 11px; color: rgba(76,25,77,.55);
+    text-align: center; padding: 8px;
+  }
+  /* Real founder birthday-party photo — pan/zoom driven by tweak CSS vars */
+  .st-photo .st-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: var(--story-pos-x, 50%) var(--story-pos-y, 50%);
+    transform: scale(var(--story-scale, 1));
+    transform-origin: var(--story-pos-x, 50%) var(--story-pos-y, 50%);
+  }
+  /* "That's me!" founder annotation — hand label + drawn arrow to his face */
+  .st-photo .st-annot { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .st-photo .st-annot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: translateY(50px); filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
+  .st-photo .st-annot .lbl {
+    position: absolute; left: 56%; top: 62%;
+    font-family: var(--w-font-hand); font-weight: 700;
+    font-size: 31px; line-height: .92; color: #fff;
+    transform: rotate(-7deg); white-space: nowrap;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.55));
+  }
+
+  /* ── Pull-quote intro ─────────────────────────────────── */
+  .st-pull {
+    margin-top: 100px;
+    padding: 80px 0;
+    background: var(--w-cream);
+    border-top: 1px solid var(--w-hairline);
+    border-bottom: 1px solid var(--w-hairline);
+    position: relative; overflow: hidden;
+  }
+  .st-pull .deco-italic {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-family: var(--w-font-serif); font-style: italic; font-size: 520px;
+    color: rgba(76,25,77,.04); line-height: 1; pointer-events: none;
+    white-space: nowrap;
+  }
+  .st-pull blockquote {
+    margin: 0 auto; max-width: 880px; padding: 0 40px;
+    font-family: var(--w-font-serif); font-style: italic;
+    font-size: clamp(28px, 3.8vw, 44px); line-height: 1.25;
+    color: var(--w-purple-deep);
+    text-align: center; text-wrap: balance;
+    position: relative;
+  }
+  .st-pull blockquote .accent { color: var(--w-orange); }
+  .st-pull blockquote::before, .st-pull blockquote::after {
+    content: ""; display: inline-block; width: 28px; height: 1px;
+    background: var(--w-orange); vertical-align: middle; margin: 0 16px;
+  }
+
+  /* ── Chapters ─────────────────────────────────────────── */
+  .st-chapters { max-width: 1440px; margin: 100px auto 0; padding: 0 40px; }
+  .st-chapter {
+    max-width: 740px; margin: 0 auto 96px;
+    position: relative;
+  }
+  .st-chapter:last-child { margin-bottom: 0; }
+  .st-chapter .ch-num {
+    position: absolute; top: -8px; left: -160px;
+    width: 120px;
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 88px; line-height: 1; letter-spacing: -0.04em;
+    color: var(--w-paper-deep);
+    -webkit-text-stroke: 1px var(--w-hairline-strong);
+  }
+  .st-chapter h2 {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: clamp(28px, 3.4vw, 40px); line-height: 1.05; letter-spacing: -0.025em;
+    color: var(--w-purple-deep); margin: 0;
+  }
+  .st-chapter h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .st-chapter .ch-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-orange);
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .st-chapter .ch-label::before { content: ""; width: 28px; height: 1px; background: var(--w-orange); }
+  .st-chapter p {
+    margin: 22px 0 0;
+    font-size: 17.5px; line-height: 1.65; color: var(--w-ink);
+    text-wrap: pretty;
+  }
+  .st-chapter p strong { color: var(--w-purple-deep); font-weight: 600; }
+  .st-chapter p em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; font-size: 1.08em; }
+  .st-chapter .ch-figure {
+    margin: 36px 0 0;
+    padding: 22px 24px;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-md);
+    display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center;
+  }
+  .st-chapter .ch-figure .big {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 56px; line-height: 1; letter-spacing: -0.04em;
+    color: var(--w-orange);
+  }
+  .st-chapter .ch-figure .lbl { font-size: 14px; color: var(--w-ink); line-height: 1.45; }
+  .st-chapter .ch-figure .lbl strong { color: var(--w-purple-deep); }
+
+  /* Drop cap on first chapter */
+  .st-chapter.is-first p:first-of-type::first-letter {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400;
+    font-size: 84px; line-height: 0.85;
+    color: var(--w-orange);
+    float: left; padding: 8px 12px 0 0;
+  }
+
+  /* Inline marginalia / handwritten note */
+  .st-margin {
+    position: absolute; right: -240px; top: 80px;
+    width: 200px;
+    font-family: var(--w-font-hand); font-weight: 500; font-size: 22px; line-height: 1.2;
+    color: var(--w-orange);
+    transform: rotate(-2deg);
+  }
+  .st-margin::before {
+    content: ""; display: block;
+    width: 60px; height: 60px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%23dd531c' stroke-width='1.6' stroke-linecap='round'><path d='M8 8 q20 30 44 44 M40 50 l10 -2 l-2 10'/></svg>") no-repeat center;
+    transform: rotate(20deg);
+    margin-bottom: 8px;
+  }
+
+  /* ── Timeline / mid-page strip ────────────────────────── */
+  .st-timeline {
+    margin: 80px auto 0;
+    max-width: 1100px;
+    padding: 56px 48px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: var(--w-r-xl);
+    position: relative; overflow: hidden;
+  }
+  .st-timeline .deco-italic {
+    position: absolute; right: -50px; bottom: -120px;
+    font-family: var(--w-font-serif); font-style: italic; font-size: 320px;
+    color: rgba(255,255,255,.05); line-height: 1; pointer-events: none;
+  }
+  .st-timeline .w-eyebrow { color: var(--w-orange-bright); }
+  .st-timeline .w-eyebrow::before { background: var(--w-orange-bright); }
+  .st-timeline h2 { color: #fff; margin-top: 14px; }
+  .st-timeline h2 em { color: var(--w-orange-bright); }
+  .st-tl-grid {
+    margin-top: 40px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+    position: relative;
+  }
+  .st-tl-grid::before {
+    content: ""; position: absolute; left: 16px; right: 16px; top: 18px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.20) 8%, rgba(255,255,255,.20) 92%, transparent);
+  }
+  .st-tl-step { position: relative; padding-top: 36px; }
+  .st-tl-step::before {
+    content: ""; position: absolute; top: 13px; left: 0;
+    width: 12px; height: 12px; background: var(--w-orange-bright);
+    transform: rotate(45deg);
+    box-shadow: 0 0 0 6px rgba(45,17,51,1);
+  }
+  .st-tl-step .year {
+    font-family: var(--w-font-mono); font-size: 12px; font-weight: 600;
+    color: var(--w-orange-bright); letter-spacing: .08em;
+  }
+  .st-tl-step h4 {
+    margin: 8px 0 0; font-family: var(--w-font-display); font-weight: 700;
+    font-size: 18px; line-height: 1.25; letter-spacing: -0.015em;
+    color: #fff;
+  }
+  .st-tl-step h4 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange-bright); font-weight: 400; }
+  .st-tl-step p {
+    margin: 8px 0 0; font-size: 13.5px; line-height: 1.55;
+    color: rgba(255,255,255,.65);
+  }
+
+  /* ── Author + signature ───────────────────────────────── */
+  .st-author {
+    margin: 96px auto 0; max-width: 740px; padding: 0 40px;
+    display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center;
+  }
+  .st-author .avatar {
+    width: 128px; height: 128px; border-radius: 50%;
+    overflow: hidden;
+    border: 1.5px solid var(--w-hairline-strong);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .st-author .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .st-author .sig-name {
+    font-family: var(--w-font-hand); font-weight: 700; color: var(--w-orange);
+    font-size: 42px; line-height: 1; transform: rotate(-2deg); display: inline-block;
+  }
+  .st-author .who {
+    margin-top: 8px;
+    font-size: 14px; color: var(--w-ink); opacity: .72;
+  }
+  .st-author .who strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* ── Final CTA ────────────────────────────────────────── */
+  .st-cta {
+    margin-top: 120px; max-width: 1200px; margin-left: auto; margin-right: auto; padding: 0 40px;
+  }
+  .st-cta-inner {
+    background: var(--w-orange); color: #fff;
+    border-radius: var(--w-r-xl); padding: 80px 56px;
+    position: relative; overflow: hidden;
+    text-align: center;
+  }
+  .st-cta-inner .deco-1 { position: absolute; left: 56px; top: 56px; width: 18px; height: 18px; background: #fff; transform: rotate(45deg); opacity: .25; }
+  .st-cta-inner .deco-2 { position: absolute; right: 64px; top: 88px; width: 12px; height: 12px; background: #fff; transform: rotate(45deg); opacity: .4; }
+  .st-cta-inner .deco-3 { position: absolute; right: 120px; bottom: 64px; width: 22px; height: 22px; background: #fff; transform: rotate(45deg); opacity: .15; }
+  .st-cta-inner .deco-italic { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: var(--w-font-serif); font-style: italic; font-size: 360px; color: rgba(255,255,255,.08); line-height: 1; pointer-events: none; }
+  .st-cta-inner h2 {
+    position: relative;
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: clamp(36px, 4.6vw, 60px); line-height: 1.0; letter-spacing: -0.03em;
+    color: #fff; margin: 0 auto; max-width: 720px; text-wrap: balance;
+  }
+  .st-cta-inner h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-purple-deep); }
+  .st-cta-inner p { position: relative; margin: 20px auto 0; max-width: 500px; font-size: 16.5px; line-height: 1.55; color: rgba(255,255,255,.88); }
+  .st-cta-inner .actions { position: relative; margin-top: 36px; display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .st-cta-inner .w-btn-primary { background: var(--w-purple-deep); box-shadow: 0 8px 20px rgba(45,17,51,.30); }
+  .st-cta-inner .w-btn-primary:hover { background: var(--w-purple-ink); }
+  .st-cta-inner .w-btn-ghost { color: #fff; border-color: rgba(255,255,255,.35); }
+  .st-cta-inner .w-btn-ghost:hover { background: rgba(255,255,255,.10); }
+
+  @media (max-width: 980px) {
+    .st-hero-grid { grid-template-columns: 1fr; gap: 32px; }
+    .st-chapter .ch-num { display: none; }
+    .st-margin { display: none; }
+    .st-tl-grid { grid-template-columns: 1fr 1fr; }
+    .st-tl-grid::before { display: none; }
+    .st-pull .deco-italic { font-size: 260px; }
+  }
+</style>
+</head>
+<body data-screen-label="02 Our Story">
+
+<!-- ───────── Nav ───────── -->
+<wonderelo-nav data-screen-label="Public / Nav"></wonderelo-nav>
+
+<main>
+
+  <!-- ───────── Hero ───────── -->
+  <section class="st-hero" data-screen-label="Story / Hero">
+    <span class="deco-1"></span>
+    <span class="deco-2"></span>
+    <span class="deco-3"></span>
+    <div class="st-hero-grid">
+      <div>
+        <span class="st-stamp"><span class="w-diamond"></span> A note from the founder</span>
+        <h1 class="w-display">It started at <span class="w-italic">my 30th</span><br/>birthday party</h1>
+        <p class="w-lede" style="max-width: 520px;">Seventy-five guests, friend groups that didn't know each other, and me — wanting everyone to leave as friends. So I tried a small experiment with a TV above the bar.</p>
+        <div class="st-meta">
+          <div class="item">
+            <div class="l">Year</div>
+            <div class="v">2016 <em>· Slovakia, Europe</em></div>
+          </div>
+          <div class="item">
+            <div class="l">Guests</div>
+            <div class="v">75 <em>· friends & family</em></div>
+          </div>
+          <div class="item">
+            <div class="l">Result</div>
+            <div class="v">A bet on <em>randomness</em></div>
+          </div>
+        </div>
+      </div>
+      <div class="st-photo">
+        <img class="st-img" src="assets/Andy-birthday-30-Wonderelo.png" alt="Andy's 30th birthday party — the night Wonderelo began"/>
+        <div class="st-annot">
+          <svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid meet" fill="none">
+            <path d="M66 63 C 61 55, 56 47, 50.2 42.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+            <path d="M50.2 42.5 L 55.3 44.2 M50.2 42.5 L 49.6 48" stroke="#fff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="lbl">That&rsquo;s me!</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────── Pull-quote ───────── -->
+  <section class="st-pull" data-screen-label="Story / Pull quote">
+    <div class="deco-italic">wonder</div>
+    <blockquote>
+      Nobody remembers the <span class="accent">event.</span><br/>
+      They remember the <span class="accent">people</span> they met there.
+    </blockquote>
+  </section>
+
+  <!-- ───────── Chapter 1 ───────── -->
+  <section class="st-chapters" data-screen-label="Story / Chapters">
+
+    <article class="st-chapter is-first">
+      <div class="ch-num">01</div>
+      <span class="ch-label">The birthday experiment</span>
+      <h2>A TV above the bar, two names at a <span class="w-italic">time</span></h2>
+      <p>
+        I had a problem. My birthday was coming up, and the guest list included people from very different parts of my life — family, university friends, colleagues from the printing studio, and a bunch of international contacts from years of traveling. I already knew how it would play out: everyone sticks with who they came with, a few polite hellos, and that's it.
+      </p>
+      <p>
+        So I had an idea. <strong>What if a TV screen above the bar displayed random pairings every few minutes?</strong> Two names at a time, and each pair had to meet at the bar for a shot... and a talk that could open the door to new friendships.
+      </p>
+      <p>
+        My friend Martin Miko, a developer, programmed it in an evening. The guest list went in, the TV started cycling, and we waited to see what would happen.
+      </p>
+    </article>
+
+    <article class="st-chapter">
+      <div class="ch-num">02</div>
+      <span class="ch-label">What happened next</span>
+      <h2 data-comment-anchor="d858c2e901-h2">A few rounds in, unexpected connections <span class="w-italic">emerged</span></h2>
+      <p>
+        People who would never have approached each other were suddenly standing at the bar together, laughing, sharing stories, discovering unexpected connections. The university mathematician found out that the graphic designer shared his obsession with board games. Two people who'd lived in the same building for three years — but never spoken — realized they had a mutual friend in another country.
+      </p>
+      <p>
+        The energy in the room was electric. Guests kept checking the screen, waiting for their name to appear, excited about who they'd be paired with next. <strong>It wasn't just networking — it was fun.</strong>
+      </p>
+    </article>
+
+    <article class="st-chapter">
+      <div class="ch-num">03</div>
+      <span class="ch-label">Eight years later</span>
+      <h2 data-comment-anchor="a880c4d4dd-h2">Everywhere I went, people needed the same <span class="w-italic">thing</span></h2>
+      <p>
+        The party ended. Life went on. I built a successful printing and branding studio. But the memory of that evening stayed with me. Every time I attended a conference, a meetup, or a corporate event and watched people awkwardly hover near the coffee station, the same thought came back: <em>my birthday socializing app would be perfect for this event!</em>
+      </p>
+      <p>
+        Then, in 2024, the pieces fell into place. I sold the printing studio and had the space to think about what to build next. The world had changed — phones were in every pocket, QR codes were second nature, and after covid pandemic people were hungrier than ever for real, face-to-face connection.
+      </p>
+      <p>
+        The birthday-party hack was ready to become a real product.
+      </p>
+    </article>
+
+    <article class="st-chapter">
+      <div class="ch-num">04</div>
+      <span class="ch-label">Wonderelo today</span>
+      <h2 data-comment-anchor="c4d9f82f00-h2">I rebuilt the party trick for the <span class="w-italic">world</span></h2>
+      <p>
+        What started as a TV above a bar with random names is now a platform any event organizer can use in minutes. No apps to download, no profiles to fill out, no AI trying to guess who you should meet. Just the same serendipity that made seventy-five guests fall in love with each other at a birthday party — packaged so a thousand-person conference can have it too.
+      </p>
+      <p>
+        But the birthday hack couldn't simply be copied. Before it could work for strangers — and for organizers I'd never met — I had to solve two problems that only worked at my party because the party was <em>mine.</em>
+      </p>
+      <p>
+        <strong>First: I knew every name on my guest list. Most organizers don't.</strong> So instead of the organizer entering everyone by hand, we let participants register themselves into the rounds. The list builds itself.
+      </p>
+      <p>
+        <strong>Second: at my party I could see who was actually in the room and ready to meet. At a real event, you can't.</strong> So participants sign up for a round at a specific time and get an SMS reminder five minutes before it starts — so when the pairs appear on screen, the people behind the names are genuinely there, ready to go.
+      </p>
+      <p>
+        I believe the best connections come from <strong>surprise.</strong> And I believe nobody really remembers the event — they remember the people they met there. That's what Wonderelo is for: a little structure, a lot of trust in randomness, and an event no one forgets.
+      </p>
+    </article>
+
+  </section>
+
+
+  <!-- ───────── Author + signature ───────── -->
+  <section class="st-author" data-screen-label="Story / Signature">
+    <div class="avatar"><img src="assets/Andy-Abel-Wonderelo.jpg" alt="Andy Abel" data-comment-anchor="576ea9fc30-img" /></div>
+    <div>
+      <div class="sig-name">Andy Abel</div>
+      <div class="who"><strong>Founder, Wonderelo.</strong> Lives in Slovakia in the heart of Europe. Loves design, golf and meeting new people. Still throws good parties.</div>
+    </div>
+  </section>
+
+  <!-- ───────── Final CTA ───────── -->
+  <section class="st-cta" data-screen-label="Story / CTA">
+    <div class="st-cta-inner">
+      <span class="deco-1"></span>
+      <span class="deco-2"></span>
+      <span class="deco-3"></span>
+      <span class="deco-italic">try it</span>
+      <h2>Try the same trick at <span class="w-italic" data-comment-anchor="0e5590a7ba-span" style="color: var(--w-purple-deep);">your</span> event</h2>
+      <p>Free for up to 5 participants. No card needed. Five minutes from sign-up to your first round.</p>
+      <div class="actions">
+        <a class="w-btn w-btn-ghost w-btn-lg" href="#">Read the blog</a>
+        <a class="w-btn w-btn-primary w-btn-lg" href="#">
+          Start for free
+          <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="w-footer">
+  <span class="w-foot-deco">wonder</span>
+  <div class="w-footer-inner">
+    <div class="w-footer-grid">
+      <div class="w-foot-brand">
+        <div class="w-foot-logo">
+          <div class="w-mark"><div class="w-inner"></div></div>
+          <div class="w-word">wonderelo</div>
+        </div>
+        <p>Speed-networking for events. The room you booked, the people you invited, every introduction worth having.</p>
+        <a class="w-foot-cta" href="#"><span class="w-dot"></span> All systems normal</a>
+      </div>
+      <div class="w-foot-col">
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#">How it works</a></li>
+          <li><a href="#">Features</a></li>
+          <li><a href="#">Pricing</a></li>
+          <li><a href="#">Sign up</a></li>
+        </ul>
+      </div>
+      <div class="w-foot-col">
+        <h5>For</h5>
+        <ul>
+          <li><a href="#">Conferences</a></li>
+          <li><a href="#">Meetups</a></li>
+          <li><a href="#">Weddings</a></li>
+          <li><a href="#">Teams</a></li>
+        </ul>
+      </div>
+      <div class="w-foot-col">
+        <h5>Learn</h5>
+        <ul>
+          <li><a href="#">Our story</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Case studies</a></li>
+          <li><a href="#">Help center</a></li>
+        </ul>
+      </div>
+      <div class="w-foot-col">
+        <h5>Company</h5>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Press kit</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="w-foot-bottom">
+      <span>© 2026 Wonderelo · Made in Bratislava with rounds that don't feel like rounds.</span>
+      <div class="w-foot-legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Cookies</a>
+        <a href="#">GDPR</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ── Founder photo crop tweaks — pan (object-position) + zoom (scale). ──
+  (function () {
+    const DEFAULTS = /*EDITMODE-BEGIN*/{
+      "storyPosX": 50,
+      "storyPosY": 33,
+      "storyScale": 1
+    }/*EDITMODE-END*/;
+
+    const state = Object.assign({}, DEFAULTS);
+    const root = document.documentElement;
+    const cssMap = {
+      storyPosX: ['--story-pos-x', '%'],
+      storyPosY: ['--story-pos-y', '%'],
+      storyScale: ['--story-scale', ''],
+    };
+    function apply() {
+      for (const [k, [prop, suffix]] of Object.entries(cssMap)) {
+        root.style.setProperty(prop, state[k] + suffix);
+      }
+    }
+    apply();
+
+    function row(key, label, min, max, step, unit) {
+      const v = state[key];
+      const display = unit === '×' ? (+v).toFixed(2) : v;
+      return `
+        <label style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;">
+          <span style="font-weight:600;font-size:12px;">${label}</span>
+          <span data-out="${key}" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#4C194D;">${display}${unit}</span>
+          <input type="range" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${v}" style="grid-column:1 / -1;width:100%;accent-color:#dd531c;">
+        </label>
+      `;
+    }
+
+    const panel = document.createElement('div');
+    panel.id = 'tweaks-story-photo';
+    panel.style.cssText = [
+      'position:fixed','right:20px','bottom:20px','z-index:9999',
+      'width:280px','background:#fff','border:1px solid rgba(76,25,77,.18)',
+      'border-radius:14px','box-shadow:0 12px 40px rgba(76,25,77,.18)',
+      'padding:16px 16px 14px','font-family:system-ui,sans-serif',
+      'font-size:13px','color:#2A1538','display:none'
+    ].join(';');
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#4C194D;">Tweaks · Founder photo</div>
+        <button type="button" id="tweaks-story-close" aria-label="Close" style="background:none;border:0;font-size:18px;line-height:1;color:#2A1538;cursor:pointer;padding:2px 6px;">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        ${row('storyPosX','Position X', 0, 100, 1, '%')}
+        ${row('storyPosY','Position Y', 0, 100, 1, '%')}
+        ${row('storyScale','Scale', 1, 3, 0.05, '×')}
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    panel.querySelectorAll('input[type=range]').forEach(input => {
+      input.addEventListener('input', () => {
+        const k = input.dataset.key;
+        const isScale = k.endsWith('Scale');
+        const v = isScale ? parseFloat(input.value) : parseInt(input.value, 10);
+        state[k] = v;
+        const unit = isScale ? '×' : '%';
+        const out = panel.querySelector(`[data-out="${k}"]`);
+        if (out) out.textContent = (isScale ? v.toFixed(2) : v) + unit;
+        apply();
+        try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*'); } catch (e) {}
+      });
+    });
+
+    function show() { panel.style.display = 'block'; }
+    function hide() {
+      panel.style.display = 'none';
+      try { window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*'); } catch (e) {}
+    }
+    panel.querySelector('#tweaks-story-close').addEventListener('click', hide);
+
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.type === '__activate_edit_mode') show();
+      else if (d.type === '__deactivate_edit_mode') panel.style.display = 'none';
+    });
+    try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch (e) {}
+  })();
+</script>
+
+<script src="wonderelo-nav.js"></script>
+</body>
+</html>

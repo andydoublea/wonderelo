@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Participant account pages (logged-in dropdown)
+  Two screens, switchable via ?screen=profile|address-book or #profile / #address-book
+    profile       → src/pages/ParticipantProfile.tsx (ParticipantProfileView)
+    address-book  → src/components/AddressBook.tsx (AddressBookView)
+  Clean white-card UI on paper, purple accents (no vanilla→orange band).
+  Mobile, 432-wide — matches the dashboard + matching chrome.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wonderelo — Account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--w-paper); color: var(--w-ink); font-family: var(--w-font-body); }
+
+  .ac-shell { max-width: 432px; margin: 0 auto; padding: 0 20px 0; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ───── Top nav (mirrors dashboard) ───── */
+  .ac-nav {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(251,246,236,.94); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--w-hairline);
+    margin: 0 -20px; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    overflow: visible;
+  }
+  .ac-brand { display: inline-flex; align-items: center; gap: 52px; cursor: pointer; text-decoration: none; }
+  .ac-brand .mark { position: relative; width: 26px; height: 26px; flex-shrink: 0; overflow: visible; }
+  .ac-brand .mark .inner {
+    display: block; width: 92px; height: 92px;
+    background: url("assets/Wonderelo-logo-symbol.png") center / contain no-repeat;
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(calc(-50% + 16px), -50%) rotate(-6deg); pointer-events: none;
+  }
+  .ac-brand .word { font-family: var(--w-font-display); font-weight: 800; font-size: 17px; letter-spacing: -0.025em; color: var(--w-purple-deep); line-height: 1; }
+  .ac-brand .word em { font: inherit; color: inherit; font-style: normal; }
+  .ac-nav-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--w-hairline-strong);
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    color: var(--w-purple-deep); cursor: pointer; white-space: nowrap;
+  }
+  .ac-nav-cta svg { width: 10px; height: 10px; opacity: .55; }
+  .ac-nav-cta { padding: 4px 12px 4px 4px; gap: 7px; user-select: none; }
+  .ac-nav-cta .av-mini {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 10.5px;
+  }
+  .ac-nav-caret { transition: transform .15s ease; }
+  .ac-nav-cta.is-open .ac-nav-caret { transform: rotate(180deg); }
+  .ac-nav-menu {
+    position: absolute; top: calc(100% + 8px); right: 20px; min-width: 200px;
+    background: #fff; border: 1px solid var(--w-hairline-strong); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(76,25,77,.18); padding: 6px; display: none; z-index: 100;
+  }
+  .ac-nav-menu.is-open { display: block; }
+  .ac-nav-menu-item {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    background: transparent; border: none; border-radius: 8px;
+    font-family: var(--w-font-body); font-weight: 500; font-size: 13.5px;
+    color: var(--w-ink); cursor: pointer; text-align: left; transition: background .12s, color .12s;
+  }
+  .ac-nav-menu-item:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .ac-nav-menu-item svg { width: 14px; height: 14px; color: var(--w-purple); opacity: .65; flex-shrink: 0; }
+  .ac-nav-menu-item:hover svg { opacity: 1; color: var(--w-orange); }
+  .ac-nav-menu-divider { height: 1px; background: var(--w-hairline); margin: 4px 2px; }
+  .ac-nav-menu-item.is-danger { color: rgb(180, 50, 50); }
+  .ac-nav-menu-item.is-danger svg { color: rgb(180, 50, 50); }
+  .ac-nav-menu-item.is-danger:hover { background: rgba(180, 50, 50, 0.06); color: rgb(180, 50, 50); }
+
+  /* ───── Back link + page head ───── */
+  .ac-back {
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 22px;
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-family: var(--w-font-body); font-size: 13px; font-weight: 600; color: rgba(75,29,81,.62);
+  }
+  .ac-back svg { width: 15px; height: 15px; }
+  .ac-back:hover { color: var(--w-purple-deep); }
+
+  .ac-head { margin: 16px 0 0; }
+  .ac-eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--w-font-body); font-weight: 700; font-size: 10px;
+    letter-spacing: .22em; text-transform: uppercase; color: var(--w-purple);
+  }
+  .ac-eyebrow { color: var(--w-orange); }
+  .ac-eyebrow::before { content: ""; width: 16px; height: 1px; background: var(--w-orange); }
+  .ac-title { margin: 12px 0 6px; font-family: var(--w-font-display); font-weight: 800; font-size: 30px; line-height: 1.05; letter-spacing: -.025em; color: var(--w-purple-deep); }
+  .ac-title em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .ac-sub { margin: 0; font-size: 13.5px; color: rgba(43,24,16,.66); line-height: 1.5; }
+
+  /* ───── White cards ───── */
+  .ac-card {
+    margin-top: 18px; padding: 22px 20px; border-radius: 18px;
+    background: #fff; border: 1px solid var(--w-hairline);
+    box-shadow: 0 10px 28px rgba(75,29,81,.07);
+  }
+  .ac-card-title { margin: 0 0 4px; font-family: var(--w-font-display); font-weight: 800; font-size: 16px; letter-spacing: -.01em; color: var(--w-purple-deep); }
+  .ac-card-note { margin: 0 0 18px; font-size: 12.5px; color: rgba(43,24,16,.58); line-height: 1.5; }
+
+  /* ───── Form fields ───── */
+  .ac-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  .ac-field { display: flex; flex-direction: column; gap: 7px; }
+  .ac-field.full { grid-column: 1 / -1; }
+  .ac-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--w-purple-deep); }
+  .ac-label .opt { color: rgba(43,24,16,.4); font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .ac-input {
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px 14px; border-radius: 11px;
+    background: var(--w-paper); border: 1.5px solid var(--w-hairline-strong);
+  }
+  .ac-input.is-focus { border-color: var(--w-orange); background: #fff; box-shadow: 0 0 0 3px rgba(221,83,28,.12); }
+  .ac-input svg { width: 16px; height: 16px; color: rgba(75,29,81,.5); flex-shrink: 0; }
+  .ac-input input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-family: var(--w-font-body); font-size: 14.5px; color: var(--w-ink); min-width: 0;
+  }
+  .ac-input .prefix { font-size: 14px; color: rgba(43,24,16,.6); white-space: nowrap; font-weight: 600; }
+  .ac-hint { font-size: 11.5px; color: rgba(43,24,16,.55); line-height: 1.45; }
+
+  .ac-section-label { margin: 22px 0 2px; font-family: var(--w-font-display); font-weight: 700; font-size: 14px; color: var(--w-purple-deep); }
+
+  /* ───── Buttons ───── */
+  .ac-actions { display: flex; gap: 10px; margin-top: 22px; }
+  .ac-btn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 13px 18px; border-radius: 12px; cursor: pointer;
+    font-family: var(--w-font-body); font-weight: 700; font-size: 14px; border: 1.5px solid transparent;
+  }
+  .ac-btn svg { width: 16px; height: 16px; }
+  .ac-btn.is-primary { background: var(--w-orange); color: #fff; box-shadow: 0 10px 22px rgba(221,83,28,.28); }
+  .ac-btn.is-outline { background: #fff; color: var(--w-purple-deep); border-color: var(--w-hairline-strong); }
+  .ac-btn.is-block { width: 100%; }
+
+  /* ───── Address book ───── */
+  .ab-count {
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 4px;
+    padding: 4px 11px 4px 9px; border-radius: 999px;
+    background: rgba(221,83,28,.10); border: 1px solid rgba(221,83,28,.22);
+    font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--w-orange);
+  }
+  .ab-count .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--w-orange); }
+
+  .ab-list { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  .ab-card {
+    padding: 16px 16px 14px; border-radius: 16px;
+    background: #fff; border: 1px solid var(--w-hairline);
+    box-shadow: 0 8px 22px rgba(75,29,81,.06);
+  }
+  .ab-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .ab-id {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 17px; color: #fff;
+    letter-spacing: -.02em;
+  }
+  .ab-name { font-family: var(--w-font-display); font-weight: 800; font-size: 17px; letter-spacing: -.02em; color: var(--w-purple-deep); line-height: 1.1; }
+  .ab-meta { margin-top: 4px; font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .02em; color: rgba(75,29,81,.55); line-height: 1.5; }
+  .ab-meta .ev { display: block; color: var(--w-purple-deep); font-weight: 600; }
+  .ab-meta .ss { display: block; }
+  .ab-meta .ss b { color: var(--w-orange); font-weight: 600; }
+  .ab-date { font-family: var(--w-font-mono); font-size: 10.5px; color: rgba(75,29,81,.5); white-space: nowrap; flex-shrink: 0; padding-top: 3px; }
+  .ab-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .ab-row { display: flex; align-items: center; gap: 9px; }
+  .ab-row svg { width: 15px; height: 15px; color: rgba(75,29,81,.5); flex-shrink: 0; }
+  .ab-row a, .ab-row span.v { font-size: 13.5px; color: var(--w-purple-deep); text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ab-row .copy { width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: rgba(75,29,81,.45); flex-shrink: 0; }
+  .ab-row .copy:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .ab-socials { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .ab-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: var(--w-cream); border: 1px solid var(--w-hairline); font-size: 11.5px; font-weight: 600; color: var(--w-purple-deep); text-decoration: none; }
+  .ab-chip svg { width: 13px; height: 13px; }
+  .ab-group { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--w-hairline); font-size: 11.5px; color: rgba(43,24,16,.6); }
+  .ab-save { margin-top: 14px; }
+
+  /* Empty state */
+  .ab-empty { margin-top: 26px; padding: 40px 28px; border-radius: 18px; background: #fff; border: 1px solid var(--w-hairline); text-align: center; box-shadow: 0 10px 28px rgba(75,29,81,.06); }
+  .ab-empty .ring { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 16px; background: var(--w-cream); display: flex; align-items: center; justify-content: center; }
+  .ab-empty .ring svg { width: 28px; height: 28px; color: var(--w-purple); opacity: .7; }
+  .ab-empty h3 { margin: 0 0 8px; font-family: var(--w-font-display); font-weight: 800; font-size: 18px; color: var(--w-purple-deep); }
+  .ab-empty p { margin: 0 auto; max-width: 280px; font-size: 13px; color: rgba(43,24,16,.62); line-height: 1.55; }
+
+  /* ───── Footer (mirrors dashboard) ───── */
+  .ac-footer {
+    margin: 40px -20px 0; padding: 40px 20px calc(44px + env(safe-area-inset-bottom));
+    background: #2d1133; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .ac-footer .ac-brand { cursor: default; }
+  .ac-footer .ac-brand .word { color: #fff; }
+  .ac-footer .tagline { margin: 2px 0 0; font-family: var(--w-font-display); font-weight: 500; font-size: 15px; color: rgba(255,255,255,.85); }
+  .ac-footer .copy { margin: 0; font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .04em; color: rgba(255,255,255,.4); }
+
+  /* ───── Screen routing ───── */
+  [data-screen] { display: none; }
+  body[data-active="profile"] [data-screen="profile"],
+  body[data-active="address-book"] [data-screen="address-book"] { display: block; }
+  /* Active screen grows to fill, so the full-bleed footer hugs the bottom
+     even on short pages (no cream gap below it). */
+  .ac-shell > [data-screen] { flex: 1 0 auto; }
+
+  /* Desktop framing — frame the 432px column on wide screens (same as mobile, just wrapped) */
+  @media (min-width: 640px) {
+    body {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(221,83,28,.06), transparent 40%),
+        var(--w-cream);
+    }
+    .ac-shell {
+      margin: 24px auto; min-height: 0; background: var(--w-paper);
+      border: 1px solid var(--w-hairline); border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(76,25,77,.10);
+      overflow: hidden;
+    }
+    .ac-nav { margin: 0 -20px; border-radius: 24px 24px 0 0; }
+    .ac-footer { margin-bottom: 0; }
+  }
+</style>
+</head>
+<body data-active="profile" data-screen-label="Participant account">
+
+<div class="ac-shell">
+
+  <nav class="ac-nav" data-screen-label="Account / Nav">
+    <a class="ac-brand" href="Participant Dashboard.html">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <div class="ac-nav-cta" id="ac-nav-trigger" role="button" tabindex="0">
+      <span class="av-mini">AA</span>
+      <span>Andy</span>
+      <svg class="ac-nav-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <div class="ac-nav-menu" id="ac-nav-menu" role="menu">
+      <button class="ac-nav-menu-item" type="button" role="menuitem" onclick="window.location.href='Participant Dashboard.html'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Dashboard
+      </button>
+      <button class="ac-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+        Profile
+      </button>
+      <button class="ac-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M9 15.5a3 3 0 0 1 6 0"/></svg>
+        Address book
+      </button>
+      <button class="ac-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+        Wonderelo home
+      </button>
+      <div class="ac-nav-menu-divider"></div>
+      <button class="ac-nav-menu-item is-danger" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═════════ Profile settings ═════════ -->
+  <div data-screen="profile" data-screen-label="Account / Profile">
+    <button class="ac-back" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Back to dashboard
+    </button>
+    <div class="ac-head">
+      <span class="ac-eyebrow">Your account</span>
+      <h1 class="ac-title">Profile <em>settings</em></h1>
+      <p class="ac-sub">Update the contact details we use to match you and that you can share with the people you meet.</p>
+    </div>
+
+    <div class="ac-card">
+      <h2 class="ac-card-title">Personal information</h2>
+      <p class="ac-card-note">Your name is shown when we match you with other participants — please use your real name.</p>
+
+      <div class="ac-grid2">
+        <div class="ac-field">
+          <label class="ac-label">First name</label>
+          <div class="ac-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+            <input type="text" value="Andy" readonly />
+          </div>
+        </div>
+        <div class="ac-field">
+          <label class="ac-label">Last name</label>
+          <div class="ac-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+            <input type="text" value="Abel" readonly />
+          </div>
+        </div>
+        <div class="ac-field full">
+          <label class="ac-label">Email address</label>
+          <div class="ac-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+            <input type="email" value="andy.abel@klimas.io" readonly />
+          </div>
+          <span class="ac-hint">You can share this with your match if you choose to.</span>
+        </div>
+        <div class="ac-field full">
+          <label class="ac-label">Phone number</label>
+          <div class="ac-input is-focus">
+            <span class="prefix">🇸🇰 +421</span>
+            <input type="tel" value="903 555 218" readonly />
+          </div>
+          <span class="ac-hint">We send a reminder 5 minutes before the round starts.</span>
+        </div>
+      </div>
+
+      <div class="ac-section-label">Social links <span style="font-weight:500;color:rgba(43,24,16,.45);font-size:12px;">— optional</span></div>
+      <p class="ac-card-note" style="margin-top:4px;">If you add these, they're shared along with your email and phone when you and a partner exchange contacts.</p>
+      <div class="ac-grid2">
+        <div class="ac-field full">
+          <label class="ac-label">LinkedIn</label>
+          <div class="ac-input">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.76-2.05C20.4 8.65 21 11 21 14.1V21h-4v-6.1c0-1.45-.03-3.3-2-3.3s-2.3 1.57-2.3 3.2V21H9z"/></svg>
+            <input type="url" value="linkedin.com/in/andyabel" readonly />
+          </div>
+        </div>
+        <div class="ac-field full">
+          <label class="ac-label">Instagram</label>
+          <div class="ac-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+            <input type="url" placeholder="instagram.com/…" readonly />
+          </div>
+        </div>
+        <div class="ac-field">
+          <label class="ac-label">Website</label>
+          <div class="ac-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>
+            <input type="url" placeholder="https://…" readonly />
+          </div>
+        </div>
+        <div class="ac-field">
+          <label class="ac-label">Other</label>
+          <div class="ac-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+            <input type="text" placeholder="@handle or URL" readonly />
+          </div>
+        </div>
+      </div>
+
+      <div class="ac-actions">
+        <button class="ac-btn is-outline" type="button">Cancel</button>
+        <button class="ac-btn is-primary" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Save changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ Address book ═════════ -->
+  <div data-screen="address-book" data-screen-label="Account / Address book" data-state="full">
+    <button class="ac-back" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Back to dashboard
+    </button>
+    <div class="ac-head">
+      <span class="ac-eyebrow">People you've met</span>
+      <h1 class="ac-title">Address <em>book</em></h1>
+      <span class="ab-count" data-only="full"><span class="dot"></span> 4 contacts from your rounds</span>
+      <p class="ac-sub" data-only="empty" style="margin-top:8px;">People you've exchanged contacts with through Wonderelo.</p>
+    </div>
+
+    <!-- Populated list -->
+    <div class="ab-list" data-only="full">
+      <div class="ab-card">
+        <div class="ab-top">
+          <div style="display:flex;gap:12px;min-width:0;">
+            <span class="ab-id" style="background:linear-gradient(145deg,#2563d6,#7c2db5);">12</span>
+            <div style="min-width:0;">
+              <div class="ab-name">Marek Halahija</div>
+              <div class="ab-meta"><span class="ev">Founder Summit 2026</span><span class="ss">Welcome mixer · <b>14:00</b></span></div>
+            </div>
+          </div>
+          <span class="ab-date">Jun 12, 2026</span>
+        </div>
+        <div class="ab-rows">
+          <div class="ab-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+            <a href="mailto:marek@buildlabs.io">marek@buildlabs.io</a>
+            <button class="copy" type="button" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+          <div class="ab-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <a href="tel:+421905112340">+421 905 112 340</a>
+            <button class="copy" type="button" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+        </div>
+        <div class="ab-socials">
+          <a class="ab-chip" href="#"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.76-2.05C20.4 8.65 21 11 21 14.1V21h-4v-6.1c0-1.45-.03-3.3-2-3.3s-2.3 1.57-2.3 3.2V21H9z"/></svg> LinkedIn</a>
+          <a class="ab-chip" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg> buildlabs.io</a>
+        </div>
+        <button class="ac-btn is-outline is-block ab-save" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save to phone contacts
+        </button>
+      </div>
+
+      <div class="ab-card">
+        <div class="ab-top">
+          <div style="display:flex;gap:12px;min-width:0;">
+            <span class="ab-id" style="background:linear-gradient(145deg,#1f9d57,#0d9488);">07</span>
+            <div style="min-width:0;">
+              <div class="ab-name">Lucia Novák</div>
+              <div class="ab-meta"><span class="ev">Founder Summit 2026</span><span class="ss">Welcome mixer · <b>14:30</b></span></div>
+            </div>
+          </div>
+          <span class="ab-date">Jun 12, 2026</span>
+        </div>
+        <div class="ab-rows">
+          <div class="ab-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+            <a href="mailto:lucia.novak@orbit.studio">lucia.novak@orbit.studio</a>
+            <button class="copy" type="button" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+        </div>
+        <div class="ab-socials">
+          <a class="ab-chip" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg> Instagram</a>
+        </div>
+        <button class="ac-btn is-outline is-block ab-save" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save to phone contacts
+        </button>
+      </div>
+
+      <div class="ab-card">
+        <div class="ab-top">
+          <div style="display:flex;gap:12px;min-width:0;">
+            <span class="ab-id" style="background:linear-gradient(145deg,#e8541c,#db2777);">21</span>
+            <div style="min-width:0;">
+              <div class="ab-name">Tomáš Varga</div>
+              <div class="ab-meta"><span class="ev">Design Meetup BA</span><span class="ss">Spring edition · <b>18:30</b></span></div>
+            </div>
+          </div>
+          <span class="ab-date">May 28, 2026</span>
+        </div>
+        <div class="ab-rows">
+          <div class="ab-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+            <a href="mailto:tomas@vargadesign.sk">tomas@vargadesign.sk</a>
+            <button class="copy" type="button" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+          <div class="ab-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <a href="tel:+421917884512">+421 917 884 512</a>
+            <button class="copy" type="button" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+        </div>
+        <div class="ab-group">Group: Tomáš Varga, Elena Kuric</div>
+        <button class="ac-btn is-outline is-block ab-save" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save to phone contacts
+        </button>
+      </div>
+
+      <div class="ab-card">
+        <div class="ab-top">
+          <div style="display:flex;gap:12px;min-width:0;">
+            <span class="ab-id" style="background:linear-gradient(145deg,#ca8a04,#d62828);">38</span>
+            <div style="min-width:0;">
+              <div class="ab-name">Elena Kuric</div>
+              <div class="ab-meta"><span class="ev">Design Meetup BA</span><span class="ss">Spring edition · <b>19:00</b></span></div>
+            </div>
+          </div>
+          <span class="ab-date">May 28, 2026</span>
+        </div>
+        <div class="ab-rows">
+          <div class="ab-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+            <a href="mailto:elena.kuric@gmail.com">elena.kuric@gmail.com</a>
+            <button class="copy" type="button" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+        </div>
+        <button class="ac-btn is-outline is-block ab-save" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Save to phone contacts
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="ab-empty" data-only="empty">
+      <div class="ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3>No contacts yet</h3>
+      <p>After a round, you and your partner can choose to share contact details. Shared contacts show up here.</p>
+    </div>
+  </div>
+
+  <footer class="ac-footer" data-screen-label="Account / Footer">
+    <a class="ac-brand">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <p class="tagline">Break your bubble, meet new people</p>
+    <p class="copy">© 2026 Wonderelo</p>
+  </footer>
+
+</div>
+
+<script>
+  // ── Screen routing: ?screen=profile|address-book OR #profile / #address-book
+  (function () {
+    var valid = ['profile', 'address-book'];
+    function pick() {
+      var s = new URLSearchParams(window.location.search).get('screen');
+      if (valid.indexOf(s) !== -1) return s;
+      var h = (window.location.hash || '').replace(/^#/, '');
+      h = h.indexOf('screen=') === 0 ? h.slice(7) : h;
+      if (valid.indexOf(h) !== -1) return h;
+      return null;
+    }
+    function apply() { var s = pick(); if (s) document.body.dataset.active = s; }
+    apply();
+    window.addEventListener('hashchange', apply);
+  })();
+
+  // ── Address-book empty/populated state via [data-only]
+  function syncAddressBook() {
+    var ab = document.querySelector('[data-screen="address-book"]');
+    if (!ab) return;
+    var state = ab.dataset.state || 'full';
+    ab.querySelectorAll('[data-only]').forEach(function (el) {
+      el.style.display = (el.dataset.only === state) ? '' : 'none';
+    });
+  }
+  syncAddressBook();
+
+  // Dev toggle relayed from the Overview chip.
+  window.setAddressBook = function (v) {
+    var ab = document.querySelector('[data-screen="address-book"]');
+    if (ab) { ab.dataset.state = (v === 'empty') ? 'empty' : 'full'; syncAddressBook(); }
+  };
+
+  // ── Profile dropdown menu (matches participant journey nav)
+  (function () {
+    var navTrigger = document.getElementById('ac-nav-trigger');
+    var navMenu = document.getElementById('ac-nav-menu');
+    if (!navTrigger || !navMenu) return;
+    navTrigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      navTrigger.classList.toggle('is-open');
+      navMenu.classList.toggle('is-open');
+    });
+    document.addEventListener('click', function (e) {
+      if (navTrigger.contains(e.target) || navMenu.contains(e.target)) return;
+      navTrigger.classList.remove('is-open'); navMenu.classList.remove('is-open');
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { navTrigger.classList.remove('is-open'); navMenu.classList.remove('is-open'); }
+    });
+  })();
+</script>
+
+</body>
+</html>

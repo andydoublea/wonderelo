@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import { PdNav } from './redesign/PdNav';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Users, Mail, Phone, ArrowLeft, Copy, Check, Download, Linkedin, Instagram, Globe } from 'lucide-react';
@@ -35,6 +36,8 @@ export interface AddressBookViewProps {
   isLoading: boolean;
   error: string | null;
   copiedId: string | null;
+  firstName?: string;
+  lastName?: string;
   onBack: () => void;
   onDownloadVCard: (contact: Contact) => void;
   onCopyEmail: (email: string, id: string) => void;
@@ -56,6 +59,8 @@ export function AddressBookView({
   isLoading,
   error,
   copiedId,
+  firstName,
+  lastName,
   onBack,
   onDownloadVCard,
   onCopyEmail,
@@ -72,158 +77,90 @@ export function AddressBookView({
     );
   }
 
+  const GRAD = ['#2563d6,#7c2db5', '#1f9d57,#0d9488', '#e8541c,#db2777', '#7c2db5,#db2777', '#0d9488,#2563d6', '#ca8a04,#d62828'];
+  const ini = (c: Contact) => `${(c.firstName || '?')[0] || ''}${(c.lastName || '')[0] || ''}`.toUpperCase();
+  const fmt = (s: string) => { try { return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; } };
+  const I = {
+    back: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+    mail: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>,
+    phone: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+    copy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+    check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    linkedin: <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.76-2.05C20.4 8.65 21 11 21 14.1V21h-4v-6.1c0-1.45-.03-3.3-2-3.3s-2.3 1.57-2.3 3.2V21H9z"/></svg>,
+    globe: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg>,
+    insta: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>,
+    down: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+    users: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  };
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <div className="mb-6">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to dashboard
-          </Button>
-          <h1 className="text-3xl font-bold mt-4 mb-1">Address Book</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="wonderelo pa-page" data-active="address-book" data-state={contacts.length > 0 ? 'full' : 'empty'}>
+      <div className="ac-shell">
+        <PdNav
+          firstName={firstName}
+          lastName={lastName}
+          onBrandClick={onBack}
+          onDashboard={onBack}
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
+        <div data-screen="address-book">
+          <button className="ac-back" type="button" onClick={onBack}>{I.back}Back to dashboard</button>
+          <div className="ac-head">
+            <span className="ac-eyebrow">People you've met</span>
+            <h1 className="ac-title">Address <em>book</em></h1>
             {contacts.length > 0
-              ? `${contacts.length} contact${contacts.length > 1 ? 's' : ''} from your networking rounds`
-              : 'People you\'ve exchanged contacts with through Wonderelo'}
-          </p>
-        </div>
-
-        {error && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!error && contacts.length === 0 && (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No contacts yet</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                After a networking round, you and your conversation partner can choose to share contact details. Shared contacts will appear here.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {contacts.length > 0 && (
-          <div className="space-y-3">
-            {contacts.map((contact) => (
-              <div
-                key={contact.id}
-                className="border rounded-xl p-4 bg-card hover:border-muted-foreground/30 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="text-base font-semibold leading-tight">
-                      {contact.firstName} {contact.lastName}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {[
-                        contact.organizerName,
-                        contact.sessionName,
-                        contact.roundName,
-                      ].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  {(contact.sessionDate || contact.acquiredAt) && (
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDateStr(contact.sessionDate || contact.acquiredAt)}
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  {contact.email && (
-                    <div className="flex items-center gap-2 group">
-                      <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      <a href={`mailto:${contact.email}`} className="text-sm text-primary hover:underline truncate flex-1">
-                        {contact.email}
-                      </a>
-                      <button
-                        onClick={() => onCopyEmail(contact.email, `email-${contact.id}`)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
-                        title="Copy email"
-                      >
-                        {copiedId === `email-${contact.id}` ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3 text-muted-foreground" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  {contact.phone && (
-                    <div className="flex items-center gap-2 group">
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      <a href={`tel:${contact.phone}`} className="text-sm text-primary hover:underline flex-1">
-                        {contact.phone}
-                      </a>
-                      <button
-                        onClick={() => onCopyPhone(contact.phone!, `phone-${contact.id}`)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded"
-                        title="Copy phone"
-                      >
-                        {copiedId === `phone-${contact.id}` ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3 text-muted-foreground" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {(contact.linkedinUrl || contact.instagramUrl || contact.websiteUrl || contact.otherSocial) && (
-                  <div className="mt-2 space-y-1.5">
-                    {contact.linkedinUrl && (
-                      <div className="flex items-center gap-2">
-                        <Linkedin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">LinkedIn</a>
-                      </div>
-                    )}
-                    {contact.instagramUrl && (
-                      <div className="flex items-center gap-2">
-                        <Instagram className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <a href={contact.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">Instagram</a>
-                      </div>
-                    )}
-                    {contact.websiteUrl && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <a href={contact.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">{contact.websiteUrl.replace(/^https?:\/\//, '')}</a>
-                      </div>
-                    )}
-                    {contact.otherSocial && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <span className="text-sm text-muted-foreground truncate">{contact.otherSocial}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {contact.allPartners && contact.allPartners.length > 1 && (
-                  <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
-                    Group: {contact.allPartners.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
-                  </p>
-                )}
-
-                <div className="mt-3 pt-3 border-t border-border/50">
-                  <Button variant="outline" size="sm" className="w-full" onClick={() => onDownloadVCard(contact)}>
-                    <Download className="h-3.5 w-3.5 mr-2" />
-                    Save to phone contacts
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ? <span className="ab-count"><span className="dot" /> {contacts.length} {contacts.length === 1 ? 'contact' : 'contacts'} from your rounds</span>
+              : <p className="ac-sub" style={{ marginTop: 8 }}>People you've exchanged contacts with through Wonderelo.</p>}
           </div>
-        )}
+          {isLoading ? (
+            <p className="ac-sub">Loading…</p>
+          ) : error ? (
+            <p className="ac-sub" style={{ color: 'var(--w-destructive)' }}>{error}</p>
+          ) : contacts.length === 0 ? (
+            <div className="ab-empty">
+              <div className="ring">{I.users}</div>
+              <h3>No contacts yet</h3>
+              <p>After a round, you and your partner can choose to share contact details. Shared contacts show up here.</p>
+            </div>
+          ) : (
+            <div className="ab-list">
+              {contacts.map((c, i) => (
+                <div className="ab-card" key={c.id}>
+                  <div className="ab-top">
+                    <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
+                      <span className="ab-id" style={{ background: `linear-gradient(145deg,${GRAD[i % GRAD.length]})` }}>{ini(c)}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="ab-name">{c.firstName} {c.lastName}</div>
+                        <div className="ab-meta"><span className="ev">{c.organizerName || c.sessionName}</span><span className="ss">{c.sessionName}{c.roundName ? <> · <b>{c.roundName}</b></> : null}</span></div>
+                      </div>
+                    </div>
+                    <span className="ab-date">{fmt(c.acquiredAt)}</span>
+                  </div>
+                  <div className="ab-rows">
+                    {c.email && <div className="ab-row">{I.mail}<a href={`mailto:${c.email}`}>{c.email}</a><button className="copy" type="button" title="Copy" onClick={() => onCopyEmail(c.email, c.id)}>{copiedId === c.id ? I.check : I.copy}</button></div>}
+                    {c.phone && <div className="ab-row">{I.phone}<a href={`tel:${c.phone}`}>{c.phone}</a><button className="copy" type="button" title="Copy" onClick={() => onCopyPhone(c.phone!, c.id)}>{I.copy}</button></div>}
+                  </div>
+                  {(c.linkedinUrl || c.websiteUrl || c.instagramUrl) && (
+                    <div className="ab-socials">
+                      {c.linkedinUrl && <a className="ab-chip" href={c.linkedinUrl} target="_blank" rel="noopener noreferrer">{I.linkedin} LinkedIn</a>}
+                      {c.websiteUrl && <a className="ab-chip" href={c.websiteUrl} target="_blank" rel="noopener noreferrer">{I.globe} Website</a>}
+                      {c.instagramUrl && <a className="ab-chip" href={c.instagramUrl} target="_blank" rel="noopener noreferrer">{I.insta} Instagram</a>}
+                    </div>
+                  )}
+                  {c.allPartners && c.allPartners.length > 1 && (
+                    <div className="ab-group">Group: {c.allPartners.map((ap) => `${ap.firstName} ${ap.lastName}`.trim()).filter(Boolean).join(', ')}</div>
+                  )}
+                  <button className="ac-btn is-outline is-block ab-save" type="button" onClick={() => onDownloadVCard(c)}>{I.down}Save to phone contacts</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <footer className="ac-footer">
+          <a className="ac-brand"><span className="mark"><span className="inner" /></span><span className="word">wond<em>e</em>relo</span></a>
+          <p className="tagline">Break your bubble, meet new people</p>
+          <p className="copy">© 2026 Wonderelo</p>
+        </footer>
       </div>
     </div>
   );
@@ -325,12 +262,21 @@ export function AddressBook() {
     URL.revokeObjectURL(url);
   };
 
+  // The nav avatar/name is the signed-in participant, which this endpoint doesn't return.
+  // Reuse the profile the dashboard/profile pages cache in localStorage (best-effort; falls
+  // back to the generic "Me" chip when absent).
+  const cachedMe = (() => {
+    try { return JSON.parse(localStorage.getItem(`participant_profile_${token}`) || '{}'); } catch { return {}; }
+  })();
+
   return (
     <AddressBookView
       contacts={contacts}
       isLoading={isLoading}
       error={error}
       copiedId={copiedId}
+      firstName={cachedMe.firstName}
+      lastName={cachedMe.lastName}
       onBack={() => navigate(`/p/${token}`)}
       onDownloadVCard={handleDownloadVCard}
       onCopyEmail={(email, id) => handleCopy(email, id)}

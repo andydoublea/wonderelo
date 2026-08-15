@@ -1,0 +1,2609 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Participant dashboard (mobile-first)
+  Reached from the "View my registrations" CTA on the confirmation screen,
+  and from the persistent participant URL `/p/<token>`.
+
+  Maps to: src/components/ParticipantDashboard.tsx
+            (ParticipantDashboardView)
+           src/components/ParticipantLayout.tsx (nav)
+           src/components/RoundItem.tsx (per-round row)
+
+  Variants exposed via dev toggle:
+    - Default — live + upcoming + past mixed (full demo)
+    - Live now — one round is happening right now
+    - Empty — no registrations yet (post-magic-link, before signup)
+    - Past only — event is over, only completed rounds left
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — My rounds</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  body { background: var(--w-paper); }
+
+  .pd-shell {
+    max-width: 432px; margin: 0 auto;
+    padding: 0 20px 0;
+    min-height: 100vh;
+  }
+
+  /* ───── Top nav (always signed-in here) ───── */
+  .pd-nav {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(251,246,236,.94); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--w-hairline);
+    margin: 0 -20px;
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    overflow: visible;
+  }
+  .pd-brand {
+    display: inline-flex; align-items: center; gap: 52px; cursor: pointer;
+    text-decoration: none;
+  }
+  .pd-brand .mark { position: relative; width: 26px; height: 26px; flex-shrink: 0; overflow: visible; }
+  .pd-brand .mark .inner {
+    display: block; width: 92px; height: 92px;
+    background: url("assets/Wonderelo-logo-symbol.png") center / contain no-repeat;
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(calc(-50% + 16px), -50%) rotate(-6deg);
+    pointer-events: none;
+  }
+  .pd-brand .word {
+    font-family: var(--w-font-display); font-weight: 800; font-size: 17px;
+    letter-spacing: -0.025em; color: var(--w-purple-deep); line-height: 1;
+  }
+  .pd-brand .word em { font: inherit; color: inherit; font-style: normal; }
+  .pd-nav-cta {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 4px 12px 4px 4px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--w-hairline-strong);
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    color: var(--w-purple-deep); cursor: pointer; text-decoration: none;
+    white-space: nowrap;
+  }
+  .pd-nav-cta .av-mini {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 10.5px;
+  }
+
+  /* ───── Just-registered celebration ribbon ───── */
+  .pd-celebration {
+    margin: 0 -20px 0;
+    padding: 22px 20px 22px;
+    background:
+      radial-gradient(circle at 18% 14%, rgba(255,255,255,.30), transparent 55%),
+      linear-gradient(135deg, var(--w-orange) 0%, var(--w-orange-bright) 100%);
+    color: #fff;
+    border-radius: 0;
+    box-shadow: 0 12px 28px rgba(221,83,28,.22);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    position: relative; overflow: hidden;
+    text-align: center;
+  }
+  .pd-celebration::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 2px, transparent 2px 22px);
+    pointer-events: none;
+  }
+  .pd-celebration > * { position: relative; z-index: 1; }
+  .pd-celebration .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 14px 6px 12px;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.40);
+    border-radius: 999px;
+    color: #fff;
+    font-family: var(--w-font-body); font-weight: 700; font-size: 10.5px;
+    letter-spacing: .22em; text-transform: uppercase;
+  }
+  .pd-celebration .badge svg { width: 12px; height: 12px; }
+  .pd-celebration .title {
+    margin: 0;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 34px;
+    line-height: 1.0; letter-spacing: -.03em;
+    color: #fff;
+    text-wrap: balance;
+  }
+  .pd-celebration .title em {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400;
+    color: #fff;
+  }
+
+  .pd-celebration { display: none; }
+  body.is-just-registered .pd-celebration { display: flex; }
+
+  /* Confetti canvas (only painted when just-registered flag is set) */
+  .pd-confetti {
+    position: fixed; inset: 0; z-index: 80;
+    pointer-events: none; display: none;
+  }
+  body.is-just-registered .pd-confetti { display: block; }
+
+  /* ───── Profile dropdown menu ───── */
+  .pd-nav-cta { position: relative; user-select: none; }
+  .pd-nav-menu {
+    position: absolute; top: calc(100% + 8px); right: 20px;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(76,25,77,.18);
+    padding: 6px;
+    display: none;
+    z-index: 100;
+  }
+  .pd-nav-menu.is-open { display: block; }
+  .pd-nav-menu-item {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    background: transparent; border: none; border-radius: 8px;
+    font-family: var(--w-font-body); font-weight: 500; font-size: 13.5px;
+    color: var(--w-ink); cursor: pointer;
+    text-align: left;
+    transition: background .12s, color .12s;
+  }
+  .pd-nav-menu-item:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .pd-nav-menu-item svg { width: 14px; height: 14px; color: var(--w-purple); opacity: .65; flex-shrink: 0; }
+  .pd-nav-menu-item:hover svg { opacity: 1; color: var(--w-orange); }
+  .pd-nav-menu-divider { height: 1px; background: var(--w-hairline); margin: 4px 2px; }
+  .pd-nav-menu-item.is-danger { color: rgb(180, 50, 50); }
+  .pd-nav-menu-item.is-danger svg { color: rgb(180, 50, 50); }
+  .pd-nav-menu-item.is-danger:hover { background: rgba(180, 50, 50, 0.06); color: rgb(180, 50, 50); }
+  .pd-nav-caret { transition: transform .15s ease; opacity: .55; }
+  .pd-nav-cta.is-open .pd-nav-caret { transform: rotate(180deg); opacity: .85; }
+
+  /* ───── Round zone — one continuous purple→orange band (hero + round details) ───── */
+  .pd-roundzone {
+    margin: 0 -20px;
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(circle at 16% 8%, rgba(221,83,28,.28), transparent 46%),
+      radial-gradient(circle at 84% 30%, rgba(255,106,42,.16), transparent 42%),
+      linear-gradient(135deg, var(--w-purple-deep) 0%, var(--w-purple) 65%, var(--w-purple-deep) 100%);
+  }
+  body[data-variant="default"]   .pd-roundzone,
+  body[data-variant="window"]    .pd-roundzone,
+  body[data-variant="confirmed"] .pd-roundzone {
+    background:
+      radial-gradient(circle at 16% 6%, rgba(221,83,28,.26), transparent 34%),
+      radial-gradient(circle at 85% 93%, rgba(255,106,42,.22), transparent 44%),
+      linear-gradient(180deg,
+        var(--w-purple-deep) 0%,
+        var(--w-purple) 25%,
+        #7c2f51 44%,
+        #a83d35 64%,
+        #c8492a 84%,
+        var(--w-orange) 100%);
+  }
+
+  /* ───── Hero — big countdown to the next relevant action ───── */
+  .pd-hero {
+    margin: 0;
+    padding: 22px 20px 26px;
+    background: transparent;
+    color: #fff;
+    position: relative; overflow: hidden;
+  }
+  .pd-hero::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 22px);
+    pointer-events: none;
+  }
+  .pd-hero > * { position: relative; z-index: 1; }
+
+  .pd-hero-greet {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 16px;
+  }
+  /* Participant-addressed headline — Registered / Confirm / Confirmed states */
+  .pd-hero-headline { display: none; text-align: left; margin-bottom: 18px; }
+  body[data-variant="default"]   .pd-hero-headline,
+  body[data-variant="window"]    .pd-hero-headline,
+  body[data-variant="confirmed"] .pd-hero-headline { display: block; }
+  .pd-hero-headline [data-headline-state] { display: none; }
+  body[data-variant="default"]   .pd-hero-headline [data-headline-state="default"],
+  body[data-variant="window"]    .pd-hero-headline [data-headline-state="window"],
+  body[data-variant="confirmed"] .pd-hero-headline [data-headline-state="confirmed"] { display: block; }
+  .pd-hero-headline .k {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--w-font-body); font-size: 10px; font-weight: 700;
+    letter-spacing: .22em; text-transform: uppercase; color: var(--w-orange-bright);
+  }
+  .pd-hero-headline .k::before { content: ""; width: 16px; height: 1px; background: var(--w-orange-bright); }
+  .pd-hero-headline h1 {
+    margin: 11px 0 0; font-family: var(--w-font-display); font-weight: 800;
+    font-size: 25px; line-height: 1.12; letter-spacing: -.025em; color: #fff;
+  }
+  .pd-hero-headline h1 em {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange-bright);
+  }
+  .pd-hero-event {
+    display: flex; flex-direction: column; gap: 2px;
+    min-width: 0; flex: 1;
+  }
+  .pd-hero-event .name {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 14px;
+    color: #fff; letter-spacing: -.015em; line-height: 1.2;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pd-hero-event .org {
+    font-size: 11px; color: rgba(255,255,255,.55);
+    font-family: var(--w-font-mono); letter-spacing: .02em;
+    line-height: 1;
+  }
+  .pd-hero-state {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px 4px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.18);
+    font-size: 9.5px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.85);
+    font-family: var(--w-font-body);
+    backdrop-filter: blur(4px);
+  }
+  .pd-hero-state .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor; opacity: .8;
+  }
+  .pd-hero-state.is-window { background: rgba(221,83,28,.22); border-color: rgba(221,83,28,.45); color: #ffd6c1; }
+  .pd-hero-state.is-window .dot { background: var(--w-orange-bright); animation: pd-blink 1.4s ease-in-out infinite; }
+  .pd-hero-state.is-live { background: rgba(221,83,28,.30); border-color: rgba(221,83,28,.55); color: #fff; }
+  .pd-hero-state.is-live .dot { background: #ff8855; animation: pd-blink 1s ease-in-out infinite; }
+  .pd-hero-state.is-confirmed { background: rgba(76,180,90,.18); border-color: rgba(76,180,90,.40); color: #bdf2c4; }
+
+  /* Past variant: greet row is empty — collapse the gap above the eyebrow */
+  body[data-variant="past-only"] .pd-hero-greet,
+  body[data-variant="empty"]     .pd-hero-greet {
+    margin-bottom: 4px;
+    min-height: 0;
+  }
+  body[data-variant="past-only"] .pd-hero-greet > *,
+  body[data-variant="empty"]     .pd-hero-greet > * { display: none !important; }
+
+  .pd-hero-eyebrow {
+    font-size: 10px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.55);
+    font-family: var(--w-font-body);
+    margin-bottom: 12px;
+    line-height: 1; text-align: center;
+  }
+  .pd-hero-clock-wrap {
+    display: flex; justify-content: center; align-items: center;
+    margin-bottom: 14px;
+  }
+  .pd-hero-context {
+    text-align: center; font-size: 12.5px;
+    color: rgba(255,255,255,.72); line-height: 1.35;
+  }
+  .pd-hero-context strong {
+    font-family: var(--w-font-display); font-weight: 700; color: #fff;
+    letter-spacing: -.005em;
+  }
+  .pd-hero-context .sep { opacity: .35; margin: 0 6px; }
+
+  .pd-hero-cta {
+    margin: 18px auto 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 18px;
+    background: var(--w-orange); color: #fff;
+    border: none; border-radius: 12px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0,0,0,.20);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .pd-hero-cta:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0,0,0,.26); }
+  .pd-hero-cta svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .pd-hero-cta.is-live { background: #fff; color: var(--w-purple-deep); }
+
+  /* Decline link under the Confirm CTA */
+  .pd-hero-decline {
+    margin-top: 10px;
+  }
+  .pd-hero-decline button {
+    background: transparent; border: none; padding: 4px 8px;
+    color: rgba(255,255,255,.55); cursor: pointer;
+    font-family: var(--w-font-body); font-size: 12px; font-weight: 500;
+    text-decoration: underline; text-underline-offset: 3px;
+    text-decoration-color: rgba(255,255,255,.30);
+    letter-spacing: -.005em;
+  }
+  .pd-hero-decline button:hover { color: #fff; text-decoration-color: rgba(255,255,255,.55); }
+
+  /* Confirmed badge inside the hero — reads as "you tapped, we got it" */
+  .pd-hero-confirmed-row {
+    margin: 16px auto 0;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    background: rgba(76,180,90,.18);
+    border: 1px solid rgba(76,180,90,.40);
+    border-radius: 999px;
+    color: #d3f6d8;
+    font-family: var(--w-font-body); font-weight: 700; font-size: 13px;
+    letter-spacing: .02em;
+  }
+  .pd-hero-confirmed-row svg { width: 14px; height: 14px; color: #8aef9a; flex-shrink: 0; }
+  .pd-hero-confirmed-row-wrap { text-align: center; }
+
+  /* Small SMS-reminder note under the hero countdown */
+  .pd-hero-sms {
+    margin: 14px auto 0;
+    display: inline-flex; align-items: flex-start; gap: 6px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 999px;
+    font-size: 11.5px; color: rgba(255,255,255,.78);
+    font-family: var(--w-font-body);
+    line-height: 1.3;
+    max-width: 100%;
+  }
+  .pd-hero-sms svg {
+    width: 12px; height: 12px; flex-shrink: 0; margin-top: 1px;
+    color: var(--w-orange-bright);
+  }
+  .pd-hero-sms-wrap { text-align: center; }
+
+  /* Big flip-clock for hero */
+  .pd-hero .fc-clock { gap: 4px; display: inline-flex; align-items: center; font-family: var(--w-font-display); }
+  .pd-hero .fc-cell {
+    position: relative;
+    width: 38px; height: 56px; line-height: 56px;
+    perspective: 300px;
+    color: #fff; font-weight: 800; font-size: 36px;
+    text-align: center; border-radius: 6px; overflow: hidden;
+    background: #1a0822;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), 0 2px 4px rgba(0,0,0,.30);
+    font-family: var(--w-font-display);
+  }
+  .pd-hero .fc-cell .fc-half {
+    position: absolute; left: 0; right: 0; height: 50%;
+    overflow: hidden; backface-visibility: hidden;
+  }
+  .pd-hero .fc-cell .fc-half.fc-top {
+    top: 0; border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, #3a1547 0%, #260b30 100%);
+  }
+  .pd-hero .fc-cell .fc-half.fc-bot {
+    bottom: 0; border-radius: 0 0 6px 6px;
+    background: linear-gradient(180deg, #1f0828 0%, #311240 100%);
+  }
+  .pd-hero .fc-cell .fc-half span {
+    display: block; height: 56px; line-height: 56px; text-align: center;
+  }
+  .pd-hero .fc-cell .fc-half.fc-bot span { margin-top: -28px; }
+  .pd-hero .fc-cell .fc-hinge {
+    position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+    background: rgba(0,0,0,.6);
+    box-shadow: 0 1px 0 rgba(255,255,255,.04);
+    z-index: 4; pointer-events: none;
+  }
+  .pd-hero .fc-cell .fc-flap {
+    position: absolute; left: 0; right: 0; height: 50%;
+    overflow: hidden; backface-visibility: hidden; z-index: 3;
+  }
+  .pd-hero .fc-cell .fc-flap span {
+    display: block; height: 56px; line-height: 56px; text-align: center;
+    color: #fff; font-weight: 800; font-size: 36px;
+    font-family: var(--w-font-display);
+  }
+  .pd-hero .fc-cell .fc-flap.fc-flap-top {
+    top: 0; border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, #3a1547 0%, #260b30 100%);
+    transform-origin: 50% 100%;
+    animation: fc-flap-down .58s cubic-bezier(.45,.05,.55,.95) forwards;
+  }
+  .pd-hero .fc-cell .fc-flap.fc-flap-bot {
+    bottom: 0; border-radius: 0 0 6px 6px;
+    background: linear-gradient(180deg, #1f0828 0%, #311240 100%);
+    transform-origin: 50% 0%;
+    transform: rotateX(90deg);
+    animation: fc-flap-up .58s cubic-bezier(.45,.05,.55,.95) forwards;
+    animation-delay: .28s;
+  }
+  .pd-hero .fc-cell .fc-flap.fc-flap-bot span { margin-top: -28px; }
+  .pd-hero .fc-colon {
+    color: rgba(255,255,255,.85); font-weight: 800; font-size: 32px;
+    padding: 0 3px; line-height: 1; transform: translateY(-3px);
+    font-family: var(--w-font-display);
+  }
+  @keyframes fc-flap-down {
+    0%   { transform: rotateX(0deg);   }
+    100% { transform: rotateX(-90deg); }
+  }
+  @keyframes fc-flap-up {
+    0%   { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg);  }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pd-hero .fc-cell .fc-flap { display: none; }
+  }
+
+  /* Hero state-driven visibility */
+  .pd-hero [data-hero-state] { display: none; }
+  body[data-variant="default"]   .pd-hero [data-hero-state="pre-confirm"],
+  body[data-variant="window"]    .pd-hero [data-hero-state="in-window"],
+  body[data-variant="confirmed"] .pd-hero [data-hero-state="confirmed"],
+  body[data-variant="live"]      .pd-hero [data-hero-state="live"],
+  body[data-variant="empty"]     .pd-hero [data-hero-state="empty"],
+  body[data-variant="past-only"] .pd-hero [data-hero-state="past"] {
+    display: block;
+    padding: 18px 16px 16px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 16px;
+  }
+
+  /* In "window" + "confirmed" variants, the per-event Confirm prompt below is hidden — the hero CTA handles it. */
+  body[data-variant="window"]    .pd-confirm-row,
+  body[data-variant="confirmed"] .pd-confirm-row { display: none; }
+  body[data-variant="window"]    .pd-round.is-needs-confirm,
+  body[data-variant="confirmed"] .pd-round.is-needs-confirm {
+    background: #fff; border-color: var(--w-hairline); box-shadow: none;
+  }
+
+  /* ───── Section eyebrow ───── */
+  .pd-eyebrow {
+    margin: 28px 0 12px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px;
+  }
+  .pd-eyebrow .label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--w-purple); opacity: .75;
+    font-family: var(--w-font-body);
+  }
+  .pd-eyebrow .count {
+    font-family: var(--w-font-mono); font-size: 10.5px;
+    color: var(--w-ink); opacity: .5; letter-spacing: .04em;
+  }
+
+  /* ───── Event card (Wraps a session) ───── */
+  .pd-event { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .pd-event-head {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 0 2px;
+  }
+  .pd-event-org {
+    width: 36px; height: 36px; border-radius: 50%;
+    background:
+      repeating-linear-gradient(45deg, rgba(76,25,77,.10) 0 4px, transparent 4px 10px),
+      var(--w-paper-deep);
+    border: 1px solid var(--w-hairline);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .pd-event-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .pd-event-name {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 16px;
+    color: var(--w-purple-deep); letter-spacing: -.015em;
+    line-height: 1.2;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pd-event-org-name {
+    font-size: 11.5px; color: var(--w-ink); opacity: .65;
+    font-family: var(--w-font-mono); letter-spacing: .02em;
+  }
+  .pd-event-org-name .sep { opacity: .4; margin: 0 4px; }
+
+  /* ───── Session info strip (mirrors event-page session-meta) ───── */
+  .pd-session-meta {
+    margin-top: 6px;
+    display: flex; flex-wrap: wrap;
+    column-gap: 12px; row-gap: 4px;
+    font-size: 11.5px; color: var(--w-ink); opacity: .68;
+    align-items: center;
+  }
+  .pd-session-meta span { display: inline-flex; align-items: center; gap: 5px; }
+  .pd-session-meta svg { width: 12px; height: 12px; opacity: .8; }
+
+  /* Session info shown low in hero */
+  .pd-hero-session-meta {
+    margin: 14px -2px 0;
+    display: flex; flex-wrap: wrap; justify-content: center;
+    column-gap: 14px; row-gap: 4px;
+    font-size: 11.5px; color: rgba(255,255,255,.72);
+  }
+  .pd-hero-session-meta span { display: inline-flex; align-items: center; gap: 5px; }
+  .pd-hero-session-meta svg { width: 12px; height: 12px; opacity: .9; }
+  /* Hide on past/empty hero states — no session to describe */
+  body[data-variant="past-only"] .pd-hero-session-meta,
+  body[data-variant="empty"]     .pd-hero-session-meta { display: none; }
+
+  /* ───── Round expand: editable Topic / Group + Cancel ───── */
+  .pd-round-expand {
+    display: none;
+    margin-top: 7px; padding-top: 12px;
+    border-top: 1px dashed var(--w-hairline-strong);
+  }
+  body[data-variant="default"] .pd-round-expand,
+  body[data-variant="window"]  .pd-round-expand { display: block; }
+  body[data-variant="default"] .pd-round.is-past .pd-round-expand,
+  body[data-variant="window"]  .pd-round.is-past .pd-round-expand { display: none; }
+
+  .pd-expand-section + .pd-expand-section { margin-top: 4px; }
+  .pd-expand-section { padding: 0; background: transparent; border: none; border-radius: 0; }
+  .pd-expand-label {
+    display: block; margin-bottom: 8px;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 12.5px;
+    color: var(--w-purple-deep);
+  }
+
+  /* Summary row — quiet, supplementary */
+  .pd-summary {
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    font-family: var(--w-font-body); font-size: 12.5px;
+    color: var(--w-ink); opacity: .8;
+    padding: 4px 0; line-height: 1.5;
+  }
+  .pd-summary .key { color: var(--w-ink); opacity: .75; }
+  .pd-summary .val {
+    flex: 1; min-width: 0;
+    color: var(--w-purple-deep); font-weight: 600;
+  }
+  .pd-summary .val.is-empty { color: var(--w-orange); font-style: italic; font-weight: 500; }
+  .pd-summary .edit-btn {
+    background: transparent; border: none; padding: 0;
+    font-family: var(--w-font-body); font-size: 11.5px; font-weight: 500;
+    color: var(--w-purple-deep); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+    opacity: .6; transition: opacity .12s, color .12s;
+  }
+  .pd-summary .edit-btn:hover { opacity: 1; color: var(--w-orange); }
+
+  body[data-variant="default"]   .pd-hero-options,
+  body[data-variant="window"]    .pd-hero-options,
+  body[data-variant="confirmed"] .pd-hero-options { display: block; }
+  body[data-variant="window"]  .pd-hero-cancel { display: none; }
+
+  /* Hero prefs — single combined summary with one icon-only Edit */
+  .pd-hero-prefs { position: relative; }
+  .pd-hero-prefs-summary {
+    padding: 2px 0;
+    text-align: center;
+  }
+  .pd-hero-prefs-text {
+    margin: 0;
+    font-family: var(--w-font-body); font-size: 12.5px; line-height: 1.55;
+    color: rgba(255,255,255,.78);
+    text-wrap: pretty;
+  }
+  .pd-hero-prefs-text strong {
+    color: #fff; font-weight: 600;
+  }
+  .pd-hero-prefs-edit {
+    background: transparent; border: none; padding: 0;
+    font-family: var(--w-font-body); font-size: 12.5px; font-weight: 500;
+    color: rgba(255,255,255,.7); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+    margin-left: 6px;
+    transition: color .12s;
+  }
+  .pd-hero-prefs-edit:hover { color: #fff; }
+
+  .pd-hero-prefs-picker { display: none; margin-top: 4px; }
+  .pd-hero-prefs.is-editing .pd-hero-prefs-summary { display: none; }
+  .pd-hero-prefs.is-editing .pd-hero-prefs-picker { display: block; }
+  .pd-hero-prefs-picker .pd-expand-section { padding: 0; background: transparent; border: none; border-radius: 0; }
+  .pd-hero-prefs-picker .pd-expand-section + .pd-expand-section { margin-top: 14px; }
+  .pd-hero-prefs-picker .pd-expand-label { color: #fff; }
+  .pd-hero-prefs-picker .pd-expand-label em { color: var(--w-orange-bright); }
+  .pd-hero-prefs-picker .picker-done {
+    margin-top: 12px;
+    background: transparent; border: none; padding: 4px 0;
+    font-family: var(--w-font-body); font-size: 11.5px; font-weight: 600;
+    color: var(--w-orange-bright); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+
+  /* Picker — hidden until editing */
+  .pd-picker { display: none; padding: 4px 0 2px; }
+  .pd-expand-section.is-editing .pd-summary { display: none; }
+  .pd-expand-section.is-editing .pd-picker { display: block; }
+  .pd-picker .picker-done {
+    margin-top: 8px;
+    background: transparent; border: none; padding: 4px 0;
+    font-family: var(--w-font-body); font-size: 11.5px; font-weight: 600;
+    color: var(--w-orange); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .pd-hero-options .pd-picker .picker-done { color: var(--w-orange-bright); }
+  .pd-expand-label em {
+    font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400;
+  }
+  .pd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pd-chip {
+    padding: 6px 11px; border-radius: 999px;
+    font-family: var(--w-font-body); font-size: 12.5px; font-weight: 500;
+    border: 1px solid var(--w-hairline-strong); background: #fff;
+    color: var(--w-purple-deep); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+    line-height: 1.3;
+    transition: border-color .12s, background .12s, color .12s;
+  }
+  .pd-chip:hover { border-color: var(--w-orange); }
+  .pd-chip.is-active.is-topic {
+    border-color: var(--w-orange); background: rgba(221,83,28,.10);
+    color: var(--w-orange); font-weight: 700;
+  }
+  .pd-chip.is-active.is-topic::before {
+    content: ""; width: 5px; height: 5px; background: var(--w-orange); transform: rotate(45deg);
+  }
+  .pd-chip.is-active.is-group {
+    border-color: var(--w-purple-deep); background: var(--w-purple-deep);
+    color: #fff; font-weight: 700;
+  }
+  .pd-chip.is-active.is-group::before {
+    content: ""; width: 5px; height: 5px; background: #fff; transform: rotate(45deg);
+  }
+
+  .pd-match-note {
+    margin-top: 10px; padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+    border-radius: 12px;
+    background: rgba(221,83,28,.08);
+    border: 1px solid rgba(221,83,28,.25);
+  }
+  .pd-match-note.is-within {
+    background: rgba(76,25,77,.06);
+    border-color: var(--w-hairline-strong);
+  }
+  .pd-match-note .icon { flex-shrink: 0; }
+  .pd-match-note .body { flex: 1; min-width: 0; }
+  .pd-match-note .eyebrow {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--w-orange); opacity: .9;
+  }
+  .pd-match-note.is-within .eyebrow { color: var(--w-purple-deep); }
+  .pd-match-note .text {
+    margin-top: 3px; font-size: 12px; line-height: 1.4;
+    color: var(--w-ink); opacity: .9;
+  }
+  .pd-match-note .text strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* ───── Round prefs — same prose+Edit pattern as hero, light bg ───── */
+  .pd-round-prefs { margin-top: 2px; }
+  .pd-round-prefs-summary {
+    padding: 2px 0;
+    text-align: center;
+  }
+  .pd-round-prefs-text {
+    margin: 0;
+    font-family: var(--w-font-body); font-size: 12.5px; line-height: 1.55;
+    color: var(--w-ink); opacity: .75;
+    text-wrap: pretty;
+  }
+  .pd-round-prefs-text strong {
+    color: var(--w-purple-deep); font-weight: 600;
+  }
+  .pd-round-prefs-edit {
+    background: transparent; border: none; padding: 0;
+    font-family: var(--w-font-body); font-size: 12.5px; font-weight: 500;
+    color: var(--w-purple-deep); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+    margin-left: 6px; opacity: .7;
+    transition: opacity .12s, color .12s;
+  }
+  .pd-round-prefs-edit:hover { opacity: 1; color: var(--w-orange); }
+
+  .pd-round-prefs-picker { display: none; margin-top: 10px; }
+  .pd-round-prefs.is-editing .pd-round-prefs-summary { display: none; }
+  .pd-round-prefs.is-editing .pd-round-prefs-picker { display: block; }
+  .pd-round-prefs-picker .pd-expand-section { padding: 0; background: transparent; border: none; border-radius: 0; }
+  .pd-round-prefs-picker .pd-expand-section + .pd-expand-section { margin-top: 12px; }
+  .pd-round-prefs-picker .picker-done {
+    margin-top: 10px;
+    background: transparent; border: none; padding: 4px 0;
+    font-family: var(--w-font-body); font-size: 11.5px; font-weight: 600;
+    color: var(--w-orange); cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .pd-round-cancel {
+    margin-top: 12px;
+    display: flex; justify-content: center;
+  }
+  .pd-round-cancel button {
+    background: transparent; border: none; padding: 6px 10px;
+    font-family: var(--w-font-body); font-size: 12px; font-weight: 500;
+    color: var(--w-ink); opacity: .55; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .pd-round-cancel button:hover { color: var(--w-orange); opacity: 1; }
+  .pd-round-cancel svg { width: 12px; height: 12px; }
+
+  /* ───── Hero options (Topic / Group + Cancel inside the dark hero) ───── */
+  .pd-hero-options {
+    margin-top: 14px;
+    display: none;
+  }
+  .pd-hero-chips .pd-chip {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.18);
+    color: rgba(255,255,255,.88);
+  }
+  .pd-hero-chips .pd-chip:hover { border-color: var(--w-orange-bright); }
+  .pd-hero-chips .pd-chip.is-active.is-topic {
+    background: var(--w-orange); border-color: var(--w-orange); color: #fff;
+  }
+  .pd-hero-chips .pd-chip.is-active.is-topic::before { background: #fff; }
+  .pd-hero-chips .pd-chip.is-active.is-group {
+    background: #fff; border-color: #fff; color: var(--w-purple-deep);
+  }
+  .pd-hero-chips .pd-chip.is-active.is-group::before { background: var(--w-orange); }
+
+  .pd-hero-match-note {
+    background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18);
+  }
+  .pd-hero-match-note.is-within {
+    background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.14);
+  }
+  .pd-hero-match-note .eyebrow { color: var(--w-orange-bright); }
+  .pd-hero-match-note.is-within .eyebrow { color: #fff; }
+  .pd-hero-match-note .text { color: rgba(255,255,255,.85); }
+  .pd-hero-match-note .text strong { color: #fff; }
+
+  .pd-hero-cancel button { color: rgba(255,255,255,.65); }
+  .pd-hero-cancel button:hover { color: #fff; }
+  .pd-hero > .pd-hero-cancel { display: none; margin-top: 6px; }
+  body[data-variant="default"]   .pd-hero > .pd-hero-cancel,
+  body[data-variant="confirmed"] .pd-hero > .pd-hero-cancel { display: flex; }
+
+  /* ───── Round row ───── */
+  .pd-rounds { display: flex; flex-direction: column; gap: 8px; }
+  .pd-round {
+    background: #fff;
+    border: 1px solid var(--w-hairline);
+    border-radius: 12px;
+    padding: 15px 14px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pd-round-line {
+    display: flex; align-items: center; gap: 10px; min-width: 0;
+  }
+  /* Time + date share a baseline within the row */
+  .pd-round-when { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; flex-shrink: 0; }
+  .pd-round-time {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 16px;
+    color: var(--w-purple-deep); letter-spacing: -.015em;
+    flex-shrink: 0;
+  }
+  .pd-round-date {
+    font-family: var(--w-font-mono); font-size: 10.5px;
+    color: var(--w-ink); opacity: .5; letter-spacing: .04em;
+    flex-shrink: 0;
+  }
+
+  /* Inline Cancel link sitting to the left of the status badge */
+  .pd-round-cancel-inline {
+    background: transparent; border: none; padding: 0 2px;
+    font-family: var(--w-font-body); font-size: 11.5px; font-weight: 500;
+    color: var(--w-ink); opacity: .55; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px;
+    transition: color .12s, opacity .12s;
+  }
+  .pd-round-cancel-inline:hover { color: var(--w-orange); opacity: 1; }
+  .pd-round-spacer { flex: 1; }
+
+  /* Status badges (status-driven look) */
+  .pd-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    color: var(--w-purple-deep);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pd-status svg { width: 10px; height: 10px; }
+  .pd-status.is-live {
+    background: rgba(221,83,28,.10); border-color: rgba(221,83,28,.30); color: var(--w-orange);
+  }
+  .pd-status.is-live .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; animation: pd-blink 1.4s ease-in-out infinite;
+  }
+  @keyframes pd-blink { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .pd-status.is-confirmed {
+    background: rgba(40,140,55,.08); border-color: rgba(40,140,55,.22); color: rgb(40,140,55);
+  }
+  .pd-status.is-pending {
+    background: rgba(76,25,77,.06); border-color: rgba(76,25,77,.20); color: var(--w-purple-deep);
+  }
+  .pd-status.is-done {
+    background: rgba(76,25,77,.04); border-color: rgba(76,25,77,.12); color: var(--w-ink);
+    opacity: .8;
+  }
+  .pd-status.is-missed {
+    background: rgba(140,140,140,.10); border-color: rgba(140,140,140,.22); color: var(--w-ink); opacity: .75;
+  }
+
+  /* Confirmation-window CTA inside a round row (live or about-to-start) */
+  .pd-round.is-needs-confirm {
+    border-color: var(--w-orange);
+    background: rgba(221,83,28,.04);
+    box-shadow: 0 0 0 3px rgba(221,83,28,.08);
+  }
+  .pd-round.is-live {
+    border-color: var(--w-orange);
+    background: rgba(221,83,28,.06);
+    box-shadow: 0 0 0 3px rgba(221,83,28,.10);
+  }
+  .pd-confirm-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--w-orange); color: #fff;
+    border-radius: 9px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    cursor: pointer; border: none; width: 100%;
+    box-shadow: 0 6px 16px rgba(221,83,28,.22);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .pd-confirm-row:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(221,83,28,.30); }
+  .pd-confirm-row svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .pd-confirm-row .countdown {
+    margin-left: auto;
+    font-family: var(--w-font-mono); font-weight: 700;
+    background: rgba(0,0,0,.18); padding: 4px 8px; border-radius: 6px;
+    font-size: 11.5px; letter-spacing: .02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Live now row → "Open match" CTA, dark purple */
+  .pd-live-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: 9px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 13px;
+    cursor: pointer; border: none; width: 100%;
+    box-shadow: 0 6px 14px rgba(76,25,77,.20);
+  }
+  .pd-live-row svg { width: 14px; height: 14px; }
+
+  /* Past round: avatars + shared count strip */
+  .pd-past-strip {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--w-hairline);
+  }
+  .pd-avatars { display: inline-flex; align-items: center; }
+  .pd-av {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 9.5px;
+    border: 2px solid var(--w-paper);
+    margin-left: -7px; flex-shrink: 0;
+    letter-spacing: 0;
+  }
+  .pd-av:first-child { margin-left: 0; }
+  .pd-av.is-orange { background: var(--w-orange); }
+  .pd-av.is-cream { background: var(--w-cream); color: var(--w-purple-deep); }
+  .pd-av-rest {
+    margin-left: -7px;
+    height: 22px; min-width: 22px; padding: 0 5px;
+    border-radius: 999px;
+    background: var(--w-paper-deep); color: var(--w-purple-deep);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-mono); font-weight: 700; font-size: 9.5px;
+    border: 2px solid var(--w-paper); flex-shrink: 0;
+    letter-spacing: 0;
+  }
+  .pd-shared {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; color: var(--w-ink); opacity: .75;
+    font-family: var(--w-font-body); font-weight: 500;
+  }
+  .pd-shared svg { width: 12px; height: 12px; color: var(--w-orange); }
+  .pd-shared strong {
+    font-family: var(--w-font-display); font-weight: 700;
+    color: var(--w-purple-deep);
+    letter-spacing: -.005em;
+  }
+
+  /* Past round wrapper looks subtly different */
+  .pd-round.is-past {
+    background: rgba(76,25,77,.025);
+    border-color: rgba(76,25,77,.10);
+  }
+
+  /* ───── Round details: meeting points + rules — light, tied to the round via accent + tag ───── */
+  .pd-rounddetails {
+    margin: 0;
+    display: none;
+    flex-direction: column; gap: 14px;
+    padding: 2px 20px 26px;
+    background: transparent;
+    position: relative; overflow: hidden;
+  }
+  body[data-variant="default"]   .pd-rounddetails,
+  body[data-variant="window"]    .pd-rounddetails,
+  body[data-variant="confirmed"] .pd-rounddetails { display: flex; }
+  .pd-rounddetails::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 2px, transparent 2px 22px);
+    pointer-events: none;
+  }
+  .pd-rounddetails > * { position: relative; z-index: 1; }
+
+  /* White cards floating on the orange band */
+  .pd-rd-prefs {
+    background: var(--w-paper);
+    border: 1px solid rgba(255,255,255,.5);
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 8px 22px rgba(120,40,10,.14);
+  }
+  .pd-rd-fields { margin-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+  body.is-no-tg .pd-rd-fields { display: none; }
+  .pd-rd-box {
+    background: var(--w-paper);
+    border: 1px solid rgba(255,255,255,.5);
+    border-radius: 14px;
+    padding: 16px 16px 18px;
+    display: flex; flex-direction: column; gap: 0;
+    box-shadow: 0 8px 22px rgba(120,40,10,.14);
+  }
+
+  /* No-photo display variant (driven by dev toggle) */
+  .pd-mp.is-nophoto .pd-mp-grid { grid-template-columns: 1fr; gap: 8px; }
+  .pd-mp.is-nophoto .pd-mp-grid-photo { display: none; }
+  .pd-mp.is-nophoto .pd-mp-grid-name {
+    margin-top: 0; width: 100%;
+    padding: 11px 13px;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+    border-radius: 10px;
+  }
+
+  /* Round identity tag — ties this block to the purple hero round above */
+  .pd-rd-roundtag {
+    align-self: flex-start;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 13px 6px 10px;
+    margin-bottom: 18px;
+    background: rgba(76,25,77,.06);
+    border: 1px solid rgba(76,25,77,.16);
+    border-radius: 999px;
+  }
+  .pd-rd-roundtag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--w-purple-deep); flex-shrink: 0; }
+  .pd-rd-roundtag .name {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 13px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+  }
+  .pd-rd-roundtag .evt {
+    font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .02em;
+    color: var(--w-ink); opacity: .55;
+    padding-left: 8px; border-left: 1px solid var(--w-hairline-strong);
+  }
+
+  .pd-rd-divider { height: 1px; background: var(--w-hairline); margin: 18px 0; }
+
+  .pd-rd-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 13px;
+  }
+  .pd-rd-title {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 15px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+  }
+  .pd-rd-title em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .pd-rd-hint {
+    font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .03em;
+    color: var(--w-ink); opacity: .55;
+  }
+
+  /* Meeting points — 2-up photo grid, name under each photo */
+  .pd-mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pd-mp-grid-photo {
+    aspect-ratio: 4 / 3; width: 100%;
+    border-radius: 12px; overflow: hidden;
+    background:
+      repeating-linear-gradient(45deg, rgba(76,25,77,.06) 0 6px, transparent 6px 14px),
+      var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pd-mp-grid-photo .lbl {
+    font-family: var(--w-font-mono); font-size: 9px; letter-spacing: .16em;
+    color: var(--w-ink); opacity: .35; text-transform: uppercase;
+  }
+  .pd-mp-grid-name {
+    margin-top: 8px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--w-font-display); font-weight: 600; font-size: 13px;
+    color: var(--w-purple-deep); letter-spacing: -.005em; line-height: 1.2;
+  }
+  .pd-mp-grid-name svg { width: 13px; height: 13px; color: var(--w-orange); flex-shrink: 0; }
+
+  /* Round rules */
+  .pd-rules-inline { display: flex; flex-direction: column; gap: 13px; counter-reset: pdrule; }
+  .pd-rule-inline {
+    display: grid; grid-template-columns: 20px 1fr; gap: 11px;
+    counter-increment: pdrule;
+  }
+  .pd-rule-inline::before {
+    content: "0" counter(pdrule);
+    font-family: var(--w-font-mono); font-weight: 700; font-size: 11px;
+    color: var(--w-orange); letter-spacing: 0; padding-top: 1px;
+  }
+  .pd-rule-inline .t {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 13.5px;
+    color: var(--w-purple-deep); letter-spacing: -.01em; line-height: 1.25;
+  }
+  .pd-rule-inline .d {
+    margin-top: 3px; font-size: 12px; color: var(--w-ink); opacity: .72;
+    line-height: 1.45;
+  }
+
+  /* Disabled hero CTA — Registered: confirm window not open yet */
+  .pd-hero-cta:disabled,
+  .pd-hero-cta[disabled] {
+    background: rgba(255,255,255,.14);
+    color: rgba(255,255,255,.62);
+    border: 1px solid rgba(255,255,255,.20);
+    box-shadow: none; cursor: not-allowed;
+  }
+  .pd-hero-cta:disabled:hover { transform: none; box-shadow: none; }
+
+  /* Session meta + prefs moved into the light card — restyle for light bg */
+  .pd-rounddetails .pd-hero-session-meta { margin: 0; justify-content: flex-start; color: var(--w-ink); }
+  .pd-rounddetails .pd-hero-session-meta span { color: var(--w-ink); opacity: .72; }
+  .pd-rounddetails .pd-hero-options { margin-top: 16px; }
+  .pd-rounddetails .pd-hero-prefs-summary { text-align: left; }
+  .pd-rounddetails .pd-hero-prefs-text { color: var(--w-ink); opacity: .82; }
+  .pd-rounddetails .pd-hero-prefs-text strong { color: var(--w-purple-deep); }
+  .pd-rounddetails .pd-hero-prefs-edit { color: var(--w-purple-deep); opacity: .7; }
+  .pd-rounddetails .pd-hero-prefs-edit:hover { color: var(--w-orange); opacity: 1; }
+  .pd-rounddetails .pd-hero-prefs-picker .pd-expand-label { color: var(--w-purple-deep); }
+  .pd-rounddetails .pd-hero-prefs-picker .pd-expand-label em { color: var(--w-orange); }
+  .pd-rounddetails .pd-hero-prefs-picker .picker-done { color: var(--w-orange); }
+  .pd-rounddetails .pd-hero-chips .pd-chip {
+    background: #fff; border-color: var(--w-hairline-strong); color: var(--w-purple-deep);
+  }
+  .pd-rounddetails .pd-hero-chips .pd-chip:hover { border-color: var(--w-orange); }
+  .pd-rounddetails .pd-hero-chips .pd-chip.is-active.is-topic {
+    background: rgba(221,83,28,.10); border-color: var(--w-orange); color: var(--w-orange);
+  }
+  .pd-rounddetails .pd-hero-chips .pd-chip.is-active.is-topic::before { background: var(--w-orange); }
+  .pd-rounddetails .pd-hero-chips .pd-chip.is-active.is-group {
+    background: var(--w-purple-deep); border-color: var(--w-purple-deep); color: #fff;
+  }
+  .pd-rounddetails .pd-hero-chips .pd-chip.is-active.is-group::before { background: #fff; }
+  .pd-rounddetails .pd-hero-match-note { background: rgba(221,83,28,.08); border-color: rgba(221,83,28,.25); }
+  .pd-rounddetails .pd-hero-match-note.is-within { background: rgba(76,25,77,.06); border-color: var(--w-hairline-strong); }
+  .pd-rounddetails .pd-hero-match-note .eyebrow { color: var(--w-orange); }
+  .pd-rounddetails .pd-hero-match-note.is-within .eyebrow { color: var(--w-purple-deep); }
+  .pd-rounddetails .pd-hero-match-note .text { color: var(--w-ink); opacity: .9; }
+  .pd-rounddetails .pd-hero-match-note .text strong { color: var(--w-purple-deep); }
+  .pd-rounddetails .pd-hero-cancel { justify-content: flex-start; margin-top: 12px; }
+  .pd-rounddetails .pd-hero-cancel button { color: var(--w-ink); opacity: .6; }
+  .pd-rounddetails .pd-hero-cancel button:hover { color: var(--w-orange); opacity: 1; }
+
+  /* ───── How it works (under hero on Registered / Confirm attendance / Confirmed attendance) ───── */
+  .pd-howit {
+    margin: 22px 0 6px;
+    padding: 18px 18px 18px;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: 16px;
+  }
+  .pd-howit-head {
+    font-size: 10px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--w-purple); opacity: .7;
+    font-family: var(--w-font-body); margin-bottom: 14px;
+  }
+  .pd-howit-list { display: flex; flex-direction: column; gap: 18px; padding: 0; margin: 0; list-style: none; }
+  .pd-howit-step {
+    display: grid; grid-template-columns: 130px 1fr; gap: 16px;
+    align-items: center;
+    position: relative;
+  }
+  .pd-howit-num {
+    width: 130px; aspect-ratio: 16 / 10;
+    border-radius: 14px;
+    background: var(--w-paper-deep);
+    border: 1px solid var(--w-hairline);
+    flex-shrink: 0; overflow: hidden;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pd-howit-num img { width: 100%; height: 100%; object-fit: contain; }
+  /* Step 01 alarm clock — adjustable crop */
+  .pd-howit-step[data-step="1"] .pd-howit-num img {
+    object-fit: contain;
+    object-position: var(--step1-pos-x, 78%) var(--step1-pos-y, 54%);
+    transform: scale(var(--step1-scale, 1.05));
+    transform-origin: var(--step1-pos-x, 78%) var(--step1-pos-y, 54%);
+  }
+  /* Step 02 bar stool — crop in on the stool so it fills the frame */
+  .pd-howit-step[data-step="2"] .pd-howit-num {
+    background: #f3c9cc;
+  }
+  .pd-howit-step[data-step="2"] .pd-howit-num img {
+    object-fit: contain;
+    object-position: var(--step2-pos-x, 70%) var(--step2-pos-y, 65%);
+    transform: scale(var(--step2-scale, 1.4));
+    transform-origin: var(--step2-pos-x, 70%) var(--step2-pos-y, 65%);
+  }
+  /* Step 03 find your match — adjustable crop, matches new image pink bg */
+  .pd-howit-step[data-step="3"] .pd-howit-num {
+    background: #fae1dc;
+  }
+  .pd-howit-step[data-step="3"] .pd-howit-num img {
+    object-fit: contain;
+    object-position: var(--step3-pos-x, 50%) var(--step3-pos-y, 50%);
+    transform: scale(var(--step3-scale, 1));
+    transform-origin: var(--step3-pos-x, 50%) var(--step3-pos-y, 50%);
+  }
+  .pd-howit-text { display: flex; flex-direction: column; gap: 2px; padding-top: 0; }
+  .pd-howit-title {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 14px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+    transition: color .15s;
+  }
+  .pd-howit-title .pd-howit-step-num {
+    font-family: var(--w-font-mono); font-weight: 700; font-size: 11px;
+    color: var(--w-orange); opacity: .85;
+    margin-right: 6px; letter-spacing: .04em;
+  }
+  .pd-howit-desc {
+    font-size: 12px; color: var(--w-ink); opacity: .65; line-height: 1.4;
+  }
+
+  .pd-howit { display: none; }
+  body[data-variant="default"]   .pd-howit,
+  body[data-variant="window"]    .pd-howit,
+  body[data-variant="confirmed"] .pd-howit { display: block; }
+
+  /* No "active step" highlight — these are static rules from the codebase, not flow steps. */
+
+  /* ───── Share row (Bring a friend?) ───── */
+  .pd-share {
+    margin: 26px 0 8px;
+    padding: 16px 16px;
+    background: var(--w-paper-deep);
+    border: 1px solid var(--w-hairline);
+    border-radius: 14px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .pd-share-head { display: flex; flex-direction: column; gap: 2px; }
+  .pd-share-title {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 14px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+  }
+  .pd-share-sub { font-size: 11.5px; color: var(--w-ink); opacity: .65; }
+  .pd-share-buttons {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  }
+  .pd-share-btn {
+    appearance: none; border: 1px solid var(--w-hairline-strong);
+    background: #fff;
+    border-radius: 12px; padding: 10px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; transition: background .12s, border-color .12s;
+    color: var(--w-purple-deep);
+  }
+  .pd-share-btn:hover { background: var(--w-cream); }
+  .pd-share-btn svg { width: 16px; height: 16px; }
+  .pd-share-btn .lbl {
+    font-size: 10px; font-weight: 600; letter-spacing: .02em;
+    font-family: var(--w-font-body); color: var(--w-ink); opacity: .75;
+  }
+  .pd-share-btn.is-copied { background: var(--w-orange); border-color: var(--w-orange); color: #fff; }
+  .pd-share-btn.is-copied .lbl { color: #fff; }
+
+  /* Only registered + confirm-attendance variants see the share section */
+  body:not([data-variant="default"]):not([data-variant="window"]) .pd-share { display: none; }
+
+  /* ───── Add more rounds (compact pill) ───── */
+  .pd-add {
+    margin: 4px auto 0;
+    background: transparent;
+    border: 1px dashed var(--w-hairline-strong);
+    border-radius: 999px;
+    padding: 8px 16px;
+    display: inline-flex; align-items: center; gap: 7px;
+    cursor: pointer;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12.5px;
+    color: var(--w-purple-deep); letter-spacing: -.005em;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .pd-add:hover { background: var(--w-cream); border-color: var(--w-purple-deep); }
+  .pd-add svg { width: 13px; height: 13px; color: var(--w-orange); }
+  .pd-add-wrap { text-align: center; }
+
+  /* ───── Empty state — join with event code ───── */
+  .pd-empty {
+    margin: 28px 0 12px;
+    text-align: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+  }
+  .pd-empty-headline {
+    margin: 0 0 14px;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 20px;
+    color: var(--w-purple-deep); letter-spacing: -.02em;
+  }
+  /* Headline only relevant in past-only variant */
+  body:not([data-variant="past-only"]) .pd-empty-headline { display: none; }
+  .pd-empty-join {
+    display: flex; align-items: stretch; gap: 0;
+    max-width: 340px; margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 14px;
+    padding: 5px;
+    box-shadow: 0 8px 24px rgba(76,25,77,.08), inset 0 0 0 1px rgba(255,255,255,.4);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .pd-empty-join:focus-within {
+    border-color: var(--w-orange);
+    box-shadow: 0 8px 24px rgba(221,83,28,.18), 0 0 0 3px rgba(221,83,28,.12);
+  }
+  .pd-empty-input-wrap {
+    position: relative; flex: 1;
+    display: flex; align-items: center;
+  }
+  .pd-empty-input-wrap .hash {
+    position: absolute; left: 14px;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 18px;
+    color: rgba(76,25,77,.32);
+    pointer-events: none; z-index: 1;
+  }
+  .pd-empty-input-wrap input {
+    width: 100%; height: 44px;
+    padding: 0 14px 0 32px;
+    background: transparent;
+    border: none;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 17px;
+    color: var(--w-purple-deep); letter-spacing: -.01em;
+    outline: none;
+  }
+  .pd-empty-input-wrap input::placeholder {
+    color: rgba(76,25,77,.32);
+    font-family: var(--w-font-body); font-weight: 500; font-size: 14.5px;
+    letter-spacing: 0;
+  }
+  .pd-empty-join-btn {
+    height: 44px; padding: 0 16px;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--w-orange); color: #fff;
+    border: none; border-radius: 10px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(221,83,28,.25);
+    transition: opacity .15s, transform .12s, box-shadow .15s, background .15s;
+  }
+  .pd-empty-join-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(221,83,28,.32);
+  }
+  .pd-empty-join-btn:disabled {
+    background: var(--w-paper-deep);
+    color: var(--w-ink);
+    opacity: .6; cursor: not-allowed;
+    transform: none; box-shadow: none;
+  }
+  .pd-empty-join-btn:disabled svg { opacity: .5; }
+  .pd-empty-hint {
+    margin: 14px auto 0;
+    font-size: 12px; color: var(--w-ink); opacity: .6;
+    font-family: var(--w-font-body);
+  }
+  .pd-empty-hint .chip {
+    display: inline-block;
+    padding: 1px 7px;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: 6px;
+    font-family: var(--w-font-mono); font-weight: 600; font-size: 11px;
+    color: var(--w-purple-deep); letter-spacing: -.005em;
+    margin: 0 2px;
+  }
+
+  /* ───── Variant visibility ───── */
+  body[data-variant="default"]   .pd-empty,
+  body[data-variant="window"]    .pd-empty,
+  body[data-variant="confirmed"] .pd-empty,
+  body[data-variant="live"]      .pd-empty,
+  body[data-variant="empty"]     .pd-event,
+  body[data-variant="empty"]     .pd-eyebrow,
+  body[data-variant="empty"]     .pd-add,
+  body[data-variant="empty"]     [data-only="default-or-live"],
+  body[data-variant="past-only"] [data-section="upcoming"],
+  body[data-variant="past-only"] .pd-add,
+  body[data-variant="live"]      [data-only="default-or-past"],
+  body[data-variant="window"]    [data-only="live"],
+  body[data-variant="confirmed"] [data-only="live"],
+  body[data-variant="default"]   [data-only="live"],
+  body[data-variant="past-only"] [data-only="default-or-live"] { display: none !important; }
+
+  /* ───── Floating dev toggle ───── */
+  .pd-variant-toggle {
+    position: fixed; bottom: 22px; left: 14px; z-index: 60;
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+    border: 1px solid var(--w-hairline-strong);
+    border-radius: 999px; padding: 4px 6px 4px 12px;
+    font-family: var(--w-font-mono); font-size: 9.5px;
+    letter-spacing: .14em; color: var(--w-ink);
+    box-shadow: 0 12px 32px rgba(76,25,77,.14);
+    max-width: calc(100vw - 28px);
+    flex-wrap: wrap;
+  }
+  .pd-variant-toggle .lbl { text-transform: uppercase; opacity: .5; margin-right: 4px; }
+  .pd-variant-toggle button {
+    border: none; background: transparent;
+    padding: 5px 11px; border-radius: 999px;
+    font: inherit; cursor: pointer; color: var(--w-ink); opacity: .55;
+    letter-spacing: .08em;
+  }
+  .pd-variant-toggle button.is-active {
+    background: var(--w-purple-deep); color: #fff; opacity: 1;
+  }
+  /* Embedded in the Overview board (?variant=…) — hide all floating dev chrome */
+  body.is-embed .pd-variant-toggle,
+  body.is-embed #tweaks-steps { display: none !important; }
+
+  /* Desktop framing */
+  @media (min-width: 640px) {
+    body {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(221,83,28,.06), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(76,25,77,.06), transparent 40%),
+        var(--w-cream);
+    }
+    .pd-shell {
+      margin: 24px auto;
+      background: var(--w-paper);
+      border: 1px solid var(--w-hairline);
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(76,25,77,.10);
+      min-height: 0;
+      overflow: hidden;
+    }
+    .pd-nav { margin: 0 -20px; border-radius: 24px 24px 0 0; }
+    .pd-ribbon { margin: 18px -20px 0; }
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     v2 — PARTICIPANT DASHBOARD restyle (all variants)
+     · Band gradient: vanilla → orange (was purple → orange)
+     · The active countdown / hero block sits in its own purple box
+     ════════════════════════════════════════════════════════════════ */
+  .pd-roundzone,
+  body[data-variant="default"]   .pd-roundzone,
+  body[data-variant="window"]    .pd-roundzone,
+  body[data-variant="confirmed"] .pd-roundzone,
+  body[data-variant="live"]      .pd-roundzone,
+  body[data-variant="empty"]     .pd-roundzone,
+  body[data-variant="past-only"] .pd-roundzone {
+    /* Clean two-tone: vanilla straight into orange, no gold midtones.
+       Stripe is the TOP background layer so it runs continuously behind
+       every box across the whole band (no per-section seams). */
+    background:
+      repeating-linear-gradient(45deg, rgba(75,29,81,.05) 0 2px, transparent 2px 22px),
+      radial-gradient(circle at 12% 4%, rgba(255,255,255,.45), transparent 36%),
+      linear-gradient(180deg,
+        #f8ecd2 0%,
+        #f6e6c4 30%,
+        var(--w-orange) 100%);
+    /* Round off the bottom of the band */
+    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 28px;
+  }
+  /* The per-section stripe overlays would restart the pattern at each box and
+     break the continuity — drop them now that the band carries one stripe. */
+  .pd-hero::after,
+  .pd-rounddetails::after { display: none; }
+
+  /* Live + Empty + Past drop the orange → vanilla-only band (no warm bottom),
+     matching the meeting-point gradient. */
+  body[data-variant="live"]      .pd-roundzone,
+  body[data-variant="empty"]     .pd-roundzone,
+  body[data-variant="past-only"] .pd-roundzone {
+    background:
+      repeating-linear-gradient(45deg, rgba(75,29,81,.05) 0 2px, transparent 2px 22px),
+      radial-gradient(circle at 12% 4%, rgba(255,255,255,.5), transparent 42%),
+      linear-gradient(180deg, #faf1da 0%, #f1e0b8 100%);
+  }
+
+  /* Hero headline + greet sit on the light (vanilla) field → dark ink */
+  .pd-hero-headline h1 { color: var(--w-purple-deep); }
+  .pd-hero-headline h1 em { color: var(--w-orange); }
+  .pd-hero-headline .k { color: var(--w-orange); }
+  .pd-hero-headline .k::before { background: var(--w-orange); }
+  .pd-hero-event .name { color: var(--w-purple-deep); }
+  .pd-hero-event .org { color: rgba(75,29,81,.62); }
+
+  /* State pills → readable on the light band */
+  .pd-hero-state {
+    background: rgba(75,29,81,.08);
+    border-color: rgba(75,29,81,.20);
+    color: var(--w-purple-deep);
+    backdrop-filter: none;
+  }
+  .pd-hero-state .dot { opacity: .9; }
+  .pd-hero-state.is-window    { background: rgba(221,83,28,.15); border-color: rgba(221,83,28,.40); color: #b5431a; }
+  .pd-hero-state.is-window .dot { background: var(--w-orange); }
+  .pd-hero-state.is-confirmed { background: rgba(31,138,77,.15); border-color: rgba(31,138,77,.42); color: #1c7a45; }
+  .pd-hero-state.is-live      { background: rgba(221,83,28,.18); border-color: rgba(221,83,28,.50); color: #b5431a; }
+  .pd-hero-state.is-live .dot { background: var(--w-orange); }
+
+  /* Active hero/countdown block → self-contained purple box.
+     Per-variant selectors match the original card rule's specificity and,
+     coming later in the file, win the cascade. */
+  body[data-variant="default"]   .pd-hero [data-hero-state="pre-confirm"],
+  body[data-variant="window"]    .pd-hero [data-hero-state="in-window"],
+  body[data-variant="confirmed"] .pd-hero [data-hero-state="confirmed"],
+  body[data-variant="live"]      .pd-hero [data-hero-state="live"],
+  body[data-variant="empty"]     .pd-hero [data-hero-state="empty"],
+  body[data-variant="past-only"] .pd-hero [data-hero-state="past"] {
+    margin: 2px 0 0;
+    padding: 20px 18px 18px;
+    border-radius: 20px;
+    background:
+      radial-gradient(circle at 16% 0%, rgba(221,83,28,.28), transparent 58%),
+      linear-gradient(165deg, var(--w-purple-deep) 0%, var(--w-purple) 58%, #3a1442 100%);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 18px 38px rgba(75,29,81,.34), inset 0 1px 0 rgba(255,255,255,.10);
+  }
+
+  /* "Cancel this round" sits on the vanilla band (outside the box) → dark.
+     Show it on Confirm-attendance too, and drop the in-box "I can't make it". */
+  .pd-hero > .pd-hero-cancel button { color: rgba(75,29,81,.6); }
+  .pd-hero > .pd-hero-cancel button:hover { color: var(--w-orange); }
+  body[data-variant="window"] .pd-hero > .pd-hero-cancel { display: flex; }
+  body[data-variant="window"] .pd-hero-decline { display: none; }
+
+  /* Remove the participant headline block (+ its eyebrow) across every
+     dashboard variant. The countdown box keeps its own eyebrow. */
+  body[data-variant="default"]   .pd-hero-headline,
+  body[data-variant="window"]    .pd-hero-headline,
+  body[data-variant="confirmed"] .pd-hero-headline { display: none; }
+
+  /* Page footer */
+  .pd-footer {
+    margin: 44px -20px 0; padding: 40px 20px calc(44px + env(safe-area-inset-bottom));
+    background: #2d1133;
+    display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;
+  }
+  .pd-footer .pd-brand { cursor: default; gap: 20px; }
+  .pd-footer .pd-brand .mark .inner {
+    width: 50px; height: 50px;
+    transform: translate(-50%, -50%) rotate(-6deg);
+  }
+  .pd-footer .pd-brand .word { color: #fff; }
+  .pd-footer .tagline { margin: 2px 0 0; font-family: var(--w-font-display); font-weight: 500; font-size: 15px; color: rgba(255,255,255,.85); }
+  .pd-footer .links { display: flex; gap: 18px; }
+  .pd-footer .links a { font-family: var(--w-font-body); font-size: 12.5px; color: rgba(255,255,255,.6); text-decoration: none; cursor: pointer; }
+  .pd-footer .links a:hover { color: #fff; }
+  .pd-footer .copy { margin: 0; font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .04em; color: rgba(255,255,255,.4); }
+</style>
+</head>
+<body data-screen-label="03 Participant dashboard" data-variant="default">
+
+<canvas class="pd-confetti" aria-hidden="true"></canvas>
+
+<div class="pd-shell">
+
+  <nav class="pd-nav" data-screen-label="Dashboard / Nav">
+    <a class="pd-brand" href="#">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <div class="pd-nav-cta" id="pd-nav-trigger" role="button" tabindex="0">
+      <span class="av-mini">AA</span>
+      <span>Andy</span>
+      <svg class="pd-nav-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <div class="pd-nav-menu" id="pd-nav-menu" role="menu">
+      <button class="pd-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Dashboard
+      </button>
+      <button class="pd-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+        Profile
+      </button>
+      <button class="pd-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M9 15.5a3 3 0 0 1 6 0"/></svg>
+        Address book
+      </button>
+      <button class="pd-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+        Wonderelo home
+      </button>
+      <div class="pd-nav-menu-divider"></div>
+      <button class="pd-nav-menu-item is-danger" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <section class="pd-celebration" data-screen-label="Dashboard / Just-registered banner">
+    <span class="badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Registered
+    </span>
+    <h2 class="title">Andy, <em>you're in!</em></h2>
+  </section>
+
+  <div class="pd-roundzone">
+  <header class="pd-hero" data-screen-label="Dashboard / Hero countdown">
+    <div class="pd-hero-headline" data-screen-label="Dashboard / Participant headline">
+      <div data-headline-state="default">
+        <span class="k">You're on the list</span>
+        <h1>Andy, soon, the <em>time will come!</em></h1>
+      </div>
+      <div data-headline-state="window">
+        <span class="k">Confirm your spot</span>
+        <h1>You're in, <em>Andy!</em></h1>
+      </div>
+      <div data-headline-state="confirmed">
+        <span class="k">You're confirmed</span>
+        <h1>All set, Andy — your <em>match is brewing</em></h1>
+      </div>
+    </div>
+    <div class="pd-hero-greet">
+      <div class="pd-hero-event" data-event-state="default">
+        <span class="name">Founder Summit 2026</span>
+        <span class="org">Welcome mixer</span>
+      </div>
+      <div class="pd-hero-event" data-event-state="window">
+        <span class="name">Founder Summit 2026</span>
+        <span class="org">Welcome mixer</span>
+      </div>
+      <div class="pd-hero-event" data-event-state="confirmed">
+        <span class="name">Founder Summit 2026</span>
+        <span class="org">Welcome mixer</span>
+      </div>
+      <div class="pd-hero-event" data-event-state="live">
+        <span class="name">Founder Summit 2026</span>
+        <span class="org">Welcome mixer</span>
+      </div>
+      <div class="pd-hero-event" data-event-state="past-only"></div>
+      <div class="pd-hero-event" data-event-state="empty"></div>
+
+      <span class="pd-hero-state" data-greet-state="default"><span class="dot"></span> Upcoming</span>
+      <span class="pd-hero-state is-window" data-greet-state="window"><span class="dot"></span> Confirm now</span>
+      <span class="pd-hero-state is-confirmed" data-greet-state="confirmed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="width: 9px; height: 9px;"><polyline points="20 6 9 17 4 12"/></svg>
+        Confirmed
+      </span>
+      <span class="pd-hero-state is-live" data-greet-state="live"><span class="dot"></span> Live</span>
+      <span class="pd-hero-state" data-greet-state="past-only" style="visibility: hidden;"></span>
+      <span class="pd-hero-state" data-greet-state="empty" style="visibility: hidden;"></span>
+    </div>
+
+    <!-- Pre-confirmation: round is more than 5 min away — count down to confirmation window opening. -->
+    <div data-hero-state="pre-confirm">
+      <div class="pd-hero-eyebrow">Confirm attendance in</div>
+      <div class="pd-hero-clock-wrap">
+        <div class="fc-clock" data-flip-clock data-start="1635">
+          <div class="fc-cell"><div class="fc-half fc-top"><span>0</span></div><div class="fc-half fc-bot"><span>0</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>0</span></div><div class="fc-half fc-bot"><span>0</span></div><div class="fc-hinge"></div></div>
+          <span class="fc-colon">:</span>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>2</span></div><div class="fc-half fc-bot"><span>2</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>7</span></div><div class="fc-half fc-bot"><span>7</span></div><div class="fc-hinge"></div></div>
+          <span class="fc-colon">:</span>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>1</span></div><div class="fc-half fc-bot"><span>1</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>5</span></div><div class="fc-half fc-bot"><span>5</span></div><div class="fc-hinge"></div></div>
+        </div>
+      </div>
+      <div class="pd-hero-context">
+        Round starts <strong>19:30, Tue 12 May</strong>
+      </div>
+      <div class="pd-hero-sms-wrap">
+        <div class="pd-hero-sms">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>You'll get an SMS reminder</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-confirmation window: T-5 min — count down to round start + show confirm CTA. -->
+    <div data-hero-state="in-window">
+      <div class="pd-hero-eyebrow">Round starts in</div>
+      <div class="pd-hero-clock-wrap">
+        <div class="fc-clock" data-flip-clock data-start="288">
+          <div class="fc-cell"><div class="fc-half fc-top"><span>0</span></div><div class="fc-half fc-bot"><span>0</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>4</span></div><div class="fc-half fc-bot"><span>4</span></div><div class="fc-hinge"></div></div>
+          <span class="fc-colon">:</span>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>4</span></div><div class="fc-half fc-bot"><span>4</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>8</span></div><div class="fc-half fc-bot"><span>8</span></div><div class="fc-hinge"></div></div>
+        </div>
+      </div>
+      <div class="pd-hero-context">
+        Lock your seat for <strong>19:30, Tue 12 May</strong>
+      </div>
+      <div style="text-align: center;">
+        <button class="pd-hero-cta" type="button">
+          Yes, I'll join this round
+        </button>
+        <div class="pd-hero-decline">
+          <button type="button">I can't make it</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmed: participant tapped Confirm I'm here — still counting down to round start. -->
+    <div data-hero-state="confirmed">
+      <div class="pd-hero-eyebrow">Round starts in</div>
+      <div class="pd-hero-clock-wrap">
+        <div class="fc-clock" data-flip-clock data-start="205">
+          <div class="fc-cell"><div class="fc-half fc-top"><span>0</span></div><div class="fc-half fc-bot"><span>0</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>3</span></div><div class="fc-half fc-bot"><span>3</span></div><div class="fc-hinge"></div></div>
+          <span class="fc-colon">:</span>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>2</span></div><div class="fc-half fc-bot"><span>2</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>5</span></div><div class="fc-half fc-bot"><span>5</span></div><div class="fc-hinge"></div></div>
+        </div>
+      </div>
+      <div class="pd-hero-context">
+        Now wait for your meeting point
+      </div>
+    </div>
+
+    <!-- Live: round in progress, count down to round end. -->
+    <div data-hero-state="live">
+      <div class="pd-hero-eyebrow">Round ends in</div>
+      <div class="pd-hero-clock-wrap">
+        <div class="fc-clock" data-flip-clock data-start="252">
+          <div class="fc-cell"><div class="fc-half fc-top"><span>0</span></div><div class="fc-half fc-bot"><span>0</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>4</span></div><div class="fc-half fc-bot"><span>4</span></div><div class="fc-hinge"></div></div>
+          <span class="fc-colon">:</span>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>1</span></div><div class="fc-half fc-bot"><span>1</span></div><div class="fc-hinge"></div></div>
+          <div class="fc-cell"><div class="fc-half fc-top"><span>2</span></div><div class="fc-half fc-bot"><span>2</span></div><div class="fc-hinge"></div></div>
+        </div>
+      </div>
+      <div class="pd-hero-context">
+        You're at Coffee bar
+      </div>
+      <div style="text-align: center;">
+        <button class="pd-hero-cta" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          Show your round
+        </button>
+      </div>
+    </div>
+
+    <!-- Past only: no upcoming round; show contact tally instead. -->
+    <div data-hero-state="past">
+      <div class="pd-hero-eyebrow">All rounds wrapped</div>
+      <div class="pd-hero-clock-wrap" style="flex-direction: column; gap: 4px;">
+        <div style="font-family: var(--w-font-display); font-weight: 800; font-size: 56px; line-height: 1; letter-spacing: -.03em; color: #fff;">
+          5 <span style="font-family: var(--w-font-serif); font-style: italic; font-weight: 400; font-size: 28px; color: var(--w-orange-bright); vertical-align: middle;">contacts</span>
+        </div>
+      </div>
+      <div class="pd-hero-context">Across 3 rounds at 2 events</div>
+    </div>
+
+    <!-- Empty: no registrations yet -->
+    <div data-hero-state="empty">
+      <div class="pd-hero-eyebrow">Wondering what's next?</div>
+      <div class="pd-hero-clock-wrap" style="flex-direction: column; gap: 4px;">
+        <div style="font-family: var(--w-font-display); font-weight: 800; font-size: 40px; line-height: 1.0; letter-spacing: -.03em; color: #fff; text-align: center; max-width: 18ch; text-wrap: balance;">
+          One <em style="font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange-bright);">event code</em> away from your first round
+        </div>
+      </div>
+      <div class="pd-hero-context">Got an event code? Drop it below to register</div>
+    </div>
+
+    <!-- Session info + prefs moved to the light round-details card below -->
+    <div class="pd-round-cancel pd-hero-cancel">
+      <button type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Cancel this round
+      </button>
+    </div>
+  </header>
+
+  <!-- ─────────── Round details: meeting points + rules (Registered / Confirm attendance) ─────────── -->
+  <section class="pd-rounddetails" data-screen-label="Dashboard / Round details">
+    <div class="pd-rd-prefs">
+      <div class="pd-rd-head">
+        <span class="pd-rd-title">Your <em>round</em></span>
+      </div>
+      <div class="pd-hero-session-meta" data-hero-session>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          5 min round
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Pairs of 2
+        </span>
+      </div>
+
+      <div class="pd-rd-fields">
+        <div class="pd-expand-section" data-field="topic">
+          <div class="pd-expand-label">I want to <em>talk about</em></div>
+          <div class="pd-chips" role="group">
+            <button type="button" class="pd-chip is-topic is-active">Raising a seed</button>
+            <button type="button" class="pd-chip is-topic">Hiring my first 5</button>
+            <button type="button" class="pd-chip is-topic is-active">Pricing &amp; packaging</button>
+            <button type="button" class="pd-chip is-topic">PMF stories</button>
+            <button type="button" class="pd-chip is-topic">Cold outbound</button>
+          </div>
+        </div>
+        <div class="pd-expand-section" data-field="group">
+          <div class="pd-expand-label">I belong to <em>the group</em></div>
+          <div class="pd-chips" role="radiogroup">
+            <button type="button" class="pd-chip is-group is-active">Founder</button>
+            <button type="button" class="pd-chip is-group">Investor</button>
+          </div>
+          <div class="pd-match-note">
+            <svg class="icon" width="40" height="40" viewBox="0 0 40 40">
+              <circle cx="11" cy="20" r="8.5" fill="none" stroke="#4b1d51" opacity=".5" stroke-width="1.4" stroke-dasharray="2 2.5"/>
+              <circle cx="29" cy="20" r="8.5" fill="none" stroke="#dd531c" stroke-width="1.4" stroke-dasharray="2 2.5"/>
+              <line x1="14" y1="20" x2="26" y2="20" stroke="#dd531c" stroke-width="1.4"/>
+              <circle cx="11" cy="20" r="3.2" fill="#4b1d51"/>
+              <circle cx="29" cy="20" r="3.2" fill="#dd531c"/>
+            </svg>
+            <div class="body">
+              <div class="eyebrow">Matching across groups</div>
+              <div class="text">You'll be paired with <strong>Investors</strong> — not other Founders.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pd-rd-box">
+      <div class="pd-rd-head">
+        <span class="pd-rd-title">Meeting <em>points</em></span>
+        <span class="pd-rd-hint">Be near these before your round</span>
+      </div>
+      <div class="pd-mp" data-mp-display="photo">
+        <div class="pd-mp-grid">
+          <div class="pd-mp-grid-card">
+            <div class="pd-mp-grid-photo"><span class="lbl">photo</span></div>
+            <div class="pd-mp-grid-name">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Coffee bar
+            </div>
+          </div>
+          <div class="pd-mp-grid-card">
+            <div class="pd-mp-grid-photo"><span class="lbl">photo</span></div>
+            <div class="pd-mp-grid-name">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Lobby fireplace
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pd-rd-box">
+      <div class="pd-rd-head">
+        <span class="pd-rd-title">Round <em>rules</em></span>
+      </div>
+      <div class="pd-rules-inline">
+        <div class="pd-rule-inline">
+          <div>
+            <div class="t">Initiate deep talks</div>
+            <div class="d">Skip the weather talk — meaningful relationships emerge when you share views, values, and stories.</div>
+          </div>
+        </div>
+        <div class="pd-rule-inline">
+          <div>
+            <div class="t">End round on time</div>
+            <div class="d">It keeps you from getting stuck in one conversation and helps you reach your next round without delay.</div>
+          </div>
+        </div>
+        <div class="pd-rule-inline">
+          <div>
+            <div class="t">Do not ask for contacts</div>
+            <div class="d">After the round you'll be asked if you want to exchange contacts — sharing happens only if both agree.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <!-- ─────────── How it works — only Registered + Confirm attendance + Confirmed attendance ─────────── -->
+  <section class="pd-howit" data-screen-label="Dashboard / How it works">
+    <div class="pd-howit-head">How rounds work</div>
+    <ol class="pd-howit-list">
+      <li class="pd-howit-step" data-step="1">
+        <span class="pd-howit-num">
+          <img src="assets/how-it-works-3.png" alt="" />
+        </span>
+        <div class="pd-howit-text">
+          <span class="pd-howit-title"><span class="pd-howit-step-num">01</span>Confirm attendance</span>
+          <span class="pd-howit-desc">You'll get an SMS 5 minutes before each round. Tap to confirm you're joining.</span>
+        </div>
+      </li>
+      <li class="pd-howit-step" data-step="2">
+        <span class="pd-howit-num">
+          <img src="assets/meeting-bar.png" alt="" />
+        </span>
+        <div class="pd-howit-text">
+          <span class="pd-howit-title"><span class="pd-howit-step-num">02</span>Go to meeting point</span>
+          <span class="pd-howit-desc">We'll reveal your spot the moment matching runs — head there once you know where to go.</span>
+        </div>
+      </li>
+      <li class="pd-howit-step" data-step="3">
+        <span class="pd-howit-num">
+          <img src="assets/find-match.png" alt="" />
+        </span>
+        <div class="pd-howit-text">
+          <span class="pd-howit-title"><span class="pd-howit-step-num">03</span>Find your match</span>
+          <span class="pd-howit-desc">At the spot, your phone shows a unique image — same as your match's, with a different number. Confirm by entering your partner's number.</span>
+        </div>
+      </li>
+      <li class="pd-howit-step" data-step="4">
+        <span class="pd-howit-num">
+          <img src="assets/how-it-works-5.png" alt="" />
+        </span>
+        <div class="pd-howit-text">
+          <span class="pd-howit-title"><span class="pd-howit-step-num">04</span>Exchange contacts</span>
+          <span class="pd-howit-desc">After the round, you can choose to exchange contacts — sharing only happens if both of you agree.</span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ─────────── Empty state (only shown for empty variant) ─────────── -->
+  <section class="pd-empty" data-screen-label="Dashboard / Empty state">
+    <h3 class="pd-empty-headline" data-only="past-headline">Ready for next round?</h3>
+    <form class="pd-empty-join" onsubmit="event.preventDefault();">
+      <div class="pd-empty-input-wrap">
+        <span class="hash">#</span>
+        <input type="text" placeholder="event code" maxlength="20" />
+      </div>
+      <button class="pd-empty-join-btn" type="submit" disabled>
+        Join
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+    </form>
+    <p class="pd-empty-hint">Codes look like <span class="chip">#summit26</span> &middot; ask your organizer</p>
+  </section>
+
+  <!-- ─────────── Upcoming section ─────────── -->
+  <div data-section="upcoming">
+
+    <div class="pd-eyebrow">
+      <span class="label">Other upcoming rounds</span>
+    </div>
+
+    <!-- The next/live/about-to-confirm round lives in the hero countdown above.
+         This section only lists OTHER upcoming rounds the participant booked. -->
+
+    <!-- Builders Brunch — only other upcoming event the user registered for -->
+    <article class="pd-event" data-screen-label="Dashboard / Event 2026 Builders Brunch">
+      <div class="pd-event-head">
+        <div class="pd-event-org" aria-hidden="true"></div>
+        <div class="pd-event-meta">
+          <div class="pd-event-name">2026 Builders Brunch</div>
+          <div class="pd-event-org-name">Founders chat</div>
+          <div class="pd-session-meta">
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              6 min rounds
+            </span>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Groups of 4
+            </span>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Topic
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pd-rounds">
+        <div class="pd-round">
+          <div class="pd-round-line">
+            <span class="pd-round-when">
+              <span class="pd-round-time">11:00</span>
+              <span class="pd-round-date">Sat 16 May</span>
+            </span>
+            <span class="pd-round-spacer"></span>
+            <button class="pd-round-cancel-inline" type="button">Cancel</button>
+            <span class="pd-status is-pending">Registered</span>
+          </div>
+          <div class="pd-round-expand">
+            <div class="pd-round-prefs">
+              <div class="pd-round-prefs-summary">
+                <p class="pd-round-prefs-text">
+                  You'll talk about <strong data-topic-summary>Founder mental health</strong>.<button class="pd-round-prefs-edit" type="button" data-prefs-edit>Edit</button>
+                </p>
+              </div>
+              <div class="pd-round-prefs-picker">
+                <div class="pd-expand-section" data-field="topic">
+                  <div class="pd-expand-label">I want to <em>talk about</em></div>
+                  <div class="pd-chips" role="group">
+                    <button type="button" class="pd-chip is-topic is-active">Founder mental health</button>
+                    <button type="button" class="pd-chip is-topic">Cofounder dynamics</button>
+                    <button type="button" class="pd-chip is-topic">Building in public</button>
+                    <button type="button" class="pd-chip is-topic">Burn &amp; runway</button>
+                  </div>
+                </div>
+                <button class="picker-done" type="button" data-prefs-done>Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pd-round">
+          <div class="pd-round-line">
+            <span class="pd-round-when">
+              <span class="pd-round-time">11:20</span>
+              <span class="pd-round-date">Sat 16 May</span>
+            </span>
+            <span class="pd-round-spacer"></span>
+            <button class="pd-round-cancel-inline" type="button">Cancel</button>
+            <span class="pd-status is-pending">Registered</span>
+          </div>
+          <div class="pd-round-expand">
+            <div class="pd-round-prefs">
+              <div class="pd-round-prefs-summary">
+                <p class="pd-round-prefs-text">
+                  You'll talk about <strong data-topic-summary>Cofounder dynamics, Building in public</strong>.<button class="pd-round-prefs-edit" type="button" data-prefs-edit>Edit</button>
+                </p>
+              </div>
+              <div class="pd-round-prefs-picker">
+                <div class="pd-expand-section" data-field="topic">
+                  <div class="pd-expand-label">I want to <em>talk about</em></div>
+                  <div class="pd-chips" role="group">
+                    <button type="button" class="pd-chip is-topic">Founder mental health</button>
+                    <button type="button" class="pd-chip is-topic is-active">Cofounder dynamics</button>
+                    <button type="button" class="pd-chip is-topic is-active">Building in public</button>
+                    <button type="button" class="pd-chip is-topic">Burn &amp; runway</button>
+                  </div>
+                </div>
+                <button class="picker-done" type="button" data-prefs-done>Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Add more rounds CTA — compact -->
+    <div style="text-align: center;">
+      <button class="pd-add" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add more rounds
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ─────────── Share — only Registered + Confirm attendance ─────────── -->
+  <section class="pd-share" data-screen-label="Dashboard / Share">
+    <div class="pd-share-head">
+      <div class="pd-share-title">Bring a friend?</div>
+      <div class="pd-share-sub">Spread the word — more people, more wondering.</div>
+    </div>
+    <div class="pd-share-buttons">
+      <button class="pd-share-btn" type="button" data-share="copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <span class="lbl">Copy link</span>
+      </button>
+      <button class="pd-share-btn" type="button" data-share="x">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        <span class="lbl">X / Twitter</span>
+      </button>
+      <button class="pd-share-btn" type="button" data-share="linkedin">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>
+        <span class="lbl">LinkedIn</span>
+      </button>
+      <button class="pd-share-btn" type="button" data-share="facebook">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+        <span class="lbl">Facebook</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ─────────── Past section ─────────── -->
+  <div data-section="past">
+
+    <div class="pd-eyebrow">
+      <span class="label">Completed rounds</span>
+      <span class="count">3 rounds · 5 contacts</span>
+    </div>
+
+    <article class="pd-event" data-screen-label="Dashboard / Event Past Spring Mixer">
+      <div class="pd-event-head">
+        <div class="pd-event-org" aria-hidden="true"></div>
+        <div class="pd-event-meta">
+          <div class="pd-event-name">Spring Mixer ’26</div>
+          <div class="pd-event-org-name">Late-night portfolio jam</div>
+          <div class="pd-session-meta">
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              5 min rounds
+            </span>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Pairs of 2
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pd-rounds">
+        <div class="pd-round is-past">
+          <div class="pd-round-line">
+            <span class="pd-round-when">
+              <span class="pd-round-time">18:00</span>
+              <span class="pd-round-date">Sat 26 Apr</span>
+            </span>
+            <span class="pd-round-spacer"></span>
+            <span class="pd-status is-done">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Completed
+            </span>
+          </div>
+          <div class="pd-past-strip">
+            <div class="pd-avatars">
+              <span class="pd-av is-orange">MV</span>
+              <span class="pd-av">JS</span>
+              <span class="pd-av is-cream">PD</span>
+            </div>
+            <div class="pd-shared">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <strong>2</strong> contacts exchanged
+            </div>
+          </div>
+        </div>
+
+        <div class="pd-round is-past">
+          <div class="pd-round-line">
+            <span class="pd-round-when">
+              <span class="pd-round-time">18:20</span>
+              <span class="pd-round-date">Sat 26 Apr</span>
+            </span>
+            <span class="pd-round-spacer"></span>
+            <span class="pd-status is-missed">No show</span>
+          </div>
+        </div>
+
+        <div class="pd-round is-past">
+          <div class="pd-round-line">
+            <span class="pd-round-when">
+              <span class="pd-round-time">18:40</span>
+              <span class="pd-round-date">Sat 26 Apr</span>
+            </span>
+            <span class="pd-round-spacer"></span>
+            <span class="pd-status is-done">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Completed
+            </span>
+          </div>
+          <div class="pd-past-strip">
+            <div class="pd-avatars">
+              <span class="pd-av is-orange">EV</span>
+              <span class="pd-av is-cream">TC</span>
+              <span class="pd-av">RB</span>
+              <span class="pd-av-rest">+1</span>
+            </div>
+            <div class="pd-shared">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <strong>3</strong> contacts exchanged
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+
+  <footer class="pd-footer" data-screen-label="Dashboard / Footer">
+    <a class="pd-brand" href="#">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <p class="tagline">Break your bubble, meet new people</p>
+    <p class="copy">© 2026 Wonderelo</p>
+  </footer>
+
+</div>
+
+<div class="pd-variant-toggle" data-screen-label="Dashboard / Variant toggle">
+  <span class="lbl">Variant</span>
+  <button type="button" data-variant="default" class="is-active">Registered</button>
+  <button type="button" data-variant="window">Confirm attendance</button>
+  <button type="button" data-variant="confirmed">Confirmed attendance</button>
+  <button type="button" data-variant="live">Live</button>
+  <button type="button" data-variant="empty">Empty</button>
+  <button type="button" data-variant="past-only">Past</button>
+</div>
+
+<div class="pd-variant-toggle" data-screen-label="Dashboard / Just-registered toggle" style="bottom: 70px;">
+  <span class="lbl">Celebrate</span>
+  <button type="button" data-celebrate="off" class="is-active">Off</button>
+  <button type="button" data-celebrate="on">Just registered</button>
+</div>
+
+<div class="pd-variant-toggle" data-screen-label="Dashboard / Meeting photo toggle" style="bottom: 118px;">
+  <span class="lbl">Meeting</span>
+  <button type="button" data-mpdisplay="photo" class="is-active">Photo</button>
+  <button type="button" data-mpdisplay="list">No photo</button>
+</div>
+
+<div class="pd-variant-toggle" data-screen-label="Dashboard / Topics groups toggle" style="bottom: 166px;">
+  <span class="lbl">Topics+Groups</span>
+  <button type="button" data-tg="on" class="is-active">On</button>
+  <button type="button" data-tg="off">Off</button>
+</div>
+
+<script>
+  // ── Just-registered celebration: read ?just-registered=1 from URL or ?dev-celebration toggle.
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('just-registered') === '1') {
+      document.body.classList.add('is-just-registered');
+      fireConfetti();
+    }
+    document.querySelector('[data-action="dismiss-celebration"]')?.addEventListener('click', () => {
+      document.body.classList.remove('is-just-registered');
+    });
+  })();
+
+  // Diamond confetti, brand-coloured (same engine as Confirmed screen).
+  function fireConfetti() {
+    const canvas = document.querySelector('.pd-confetti');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    function resize() {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const COLORS = ['#dd531c', '#ff6a2a', '#f7f1e6', '#4b1d51', '#5C2277'];
+    const particles = [];
+    function spawnBurst(count) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * window.innerWidth,
+          y: -10 - Math.random() * 200,
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: 1.2 + Math.random() * 2.4,
+          size: 4 + Math.random() * 6,
+          rot: Math.random() * Math.PI,
+          vr: (Math.random() - 0.5) * 0.16,
+          color: COLORS[(Math.random() * COLORS.length) | 0],
+          life: 1,
+        });
+      }
+    }
+    spawnBurst(110);
+    setTimeout(() => spawnBurst(70), 300);
+    setTimeout(() => spawnBurst(40), 900);
+    function frame() {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.vy += 0.025; p.rot += p.vr;
+        if (p.y > window.innerHeight * 0.92) p.life -= 0.012;
+        if (p.life <= 0 || p.y > window.innerHeight + 40) {
+          particles.splice(i, 1); continue;
+        }
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -p.size);
+        ctx.lineTo(p.size * 0.75, 0);
+        ctx.lineTo(0, p.size);
+        ctx.lineTo(-p.size * 0.75, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      if (particles.length > 0) requestAnimationFrame(frame);
+      else canvas.style.display = 'none';
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ── Variant toggle
+  const vt = document.querySelector('.pd-variant-toggle');
+  function syncGreet(target) {
+    document.querySelectorAll('[data-greet-state]').forEach((el) => {
+      el.style.display = (el.dataset.greetState === target) ? '' : 'none';
+    });
+    document.querySelectorAll('[data-event-state]').forEach((el) => {
+      el.style.display = (el.dataset.eventState === target) ? '' : 'none';
+    });
+  }
+  if (vt) {
+    vt.querySelectorAll('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        vt.querySelectorAll('button').forEach((x) => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        document.body.dataset.variant = b.dataset.variant;
+        syncGreet(b.dataset.variant);
+      });
+    });
+  }
+  syncGreet(document.body.dataset.variant || 'default');
+
+  // ── Flip-clock tick (HH:MM:SS for 6 cells, MM:SS for 4 cells)
+  document.querySelectorAll('[data-flip-clock]').forEach((clock) => {
+    let s = parseInt(clock.dataset.start, 10) || 0;
+    const cells = clock.querySelectorAll('.fc-cell');
+    const showHours = cells.length >= 6;
+
+    const digitsOf = (secs) => {
+      if (showHours) {
+        const h   = Math.max(0, Math.floor(secs / 3600));
+        const m   = Math.max(0, Math.floor((secs % 3600) / 60));
+        const sec = Math.max(0, secs % 60);
+        return (String(h).padStart(2, '0')
+              + String(m).padStart(2, '0')
+              + String(sec).padStart(2, '0')).split('');
+      } else {
+        const m   = Math.max(0, Math.floor(secs / 60));
+        const sec = Math.max(0, secs % 60);
+        return (String(m).padStart(2, '0')
+              + String(sec).padStart(2, '0')).split('');
+      }
+    };
+    let prev = digitsOf(s);
+
+    const flipCell = (cell, oldD, newD) => {
+      if (oldD === newD) return;
+      const topSpan = cell.querySelector('.fc-half.fc-top span');
+      const botSpan = cell.querySelector('.fc-half.fc-bot span');
+      topSpan.textContent = newD;
+      botSpan.textContent = oldD;
+      cell.querySelectorAll('.fc-flap').forEach((n) => n.remove());
+
+      const flapTop = document.createElement('div');
+      flapTop.className = 'fc-flap fc-flap-top';
+      flapTop.innerHTML = '<span>' + oldD + '</span>';
+
+      const flapBot = document.createElement('div');
+      flapBot.className = 'fc-flap fc-flap-bot';
+      flapBot.innerHTML = '<span>' + newD + '</span>';
+
+      cell.appendChild(flapTop);
+      cell.appendChild(flapBot);
+
+      setTimeout(() => {
+        botSpan.textContent = newD;
+        flapTop.remove();
+        flapBot.remove();
+      }, 580);
+    };
+
+    setInterval(() => {
+      if (s <= 0) return;
+      s -= 1;
+      const next = digitsOf(s);
+      const n = showHours ? 6 : 4;
+      for (let i = 0; i < n && i < cells.length; i++) {
+        flipCell(cells[i], prev[i], next[i]);
+      }
+      prev = next;
+    }, 1000);
+  });
+  // ── Empty-state event-code input: enable Join only when value present
+  const emptyInput = document.querySelector('.pd-empty-input-wrap input');
+  const emptyBtn = document.querySelector('.pd-empty-join-btn');
+  if (emptyInput && emptyBtn) {
+    const syncEmpty = () => { emptyBtn.disabled = !emptyInput.value.trim(); };
+    emptyInput.addEventListener('input', syncEmpty);
+    syncEmpty();
+  }
+  // ── Profile dropdown menu
+  const navTrigger = document.getElementById('pd-nav-trigger');
+  const navMenu = document.getElementById('pd-nav-menu');
+  if (navTrigger && navMenu) {
+    navTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navTrigger.classList.toggle('is-open');
+      navMenu.classList.toggle('is-open');
+    });
+    document.addEventListener('click', (e) => {
+      if (navTrigger.contains(e.target) || navMenu.contains(e.target)) return;
+      navTrigger.classList.remove('is-open');
+      navMenu.classList.remove('is-open');
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        navTrigger.classList.remove('is-open');
+        navMenu.classList.remove('is-open');
+      }
+    });
+  }
+  // ── Share buttons (copy / X / LinkedIn / Facebook)
+  const eventUrl = 'https://wonderelo.com/andrea-kovac/founder-summit-2026';
+  document.querySelectorAll('[data-share]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const kind = b.dataset.share;
+      const text = 'Join me at Founder Summit 2026 — networking that actually works.';
+      let url = null;
+      if (kind === 'copy') {
+        navigator.clipboard?.writeText(eventUrl).catch(() => {});
+        b.classList.add('is-copied');
+        const lbl = b.querySelector('.lbl');
+        const orig = lbl.textContent;
+        lbl.textContent = 'Copied!';
+        setTimeout(() => { b.classList.remove('is-copied'); lbl.textContent = orig; }, 1600);
+        return;
+      } else if (kind === 'x') {
+        url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(eventUrl)}`;
+      } else if (kind === 'linkedin') {
+        url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(eventUrl)}`;
+      } else if (kind === 'facebook') {
+        url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl)}`;
+      }
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    });
+  });
+  // ── Dev toggle: simulate just-registered celebration (only valid in Registered variant)
+  const celebrateToggle = document.querySelector('[data-screen-label="Dashboard / Just-registered toggle"]');
+  function syncCelebrateAvailability() {
+    if (!celebrateToggle) return;
+    const isRegistered = (document.body.dataset.variant === 'default');
+    celebrateToggle.style.opacity = isRegistered ? '1' : '.35';
+    celebrateToggle.style.pointerEvents = isRegistered ? '' : 'none';
+    if (!isRegistered) {
+      document.body.classList.remove('is-just-registered');
+      celebrateToggle.querySelectorAll('button').forEach((x) => x.classList.remove('is-active'));
+      celebrateToggle.querySelector('[data-celebrate="off"]')?.classList.add('is-active');
+    }
+  }
+  if (celebrateToggle) {
+    celebrateToggle.querySelectorAll('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        celebrateToggle.querySelectorAll('button').forEach((x) => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        if (b.dataset.celebrate === 'on') {
+          document.body.classList.add('is-just-registered');
+          fireConfetti();
+        } else {
+          document.body.classList.remove('is-just-registered');
+        }
+      });
+    });
+  }
+  document.querySelector('.pd-variant-toggle')?.querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => setTimeout(syncCelebrateAvailability, 0));
+  });
+  syncCelebrateAvailability();
+
+  // Chip toggle: topic chips are multi-select, group chips are single-select within each .pd-chips.
+  document.querySelectorAll('.pd-chips').forEach((group) => {
+    group.querySelectorAll('.pd-chip').forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (chip.classList.contains('is-topic')) {
+          chip.classList.toggle('is-active');
+        } else {
+          group.querySelectorAll('.pd-chip').forEach((c) => c.classList.remove('is-active'));
+          chip.classList.add('is-active');
+        }
+        updateHeroPrefsSummary();
+        updateRoundPrefsSummary(chip.closest('.pd-round-prefs'));
+      });
+    });
+  });
+
+  // Hero prefs — single combined edit; pencil/text toggles is-editing on .pd-hero-prefs.
+  function updateHeroPrefsSummary() {
+    const root = document.querySelector('.pd-hero-prefs');
+    if (!root) return;
+    const topicLabels = [...root.querySelectorAll('[data-field="topic"] .pd-chip.is-active')].map((c) => c.textContent.trim());
+    const groupLabel  = root.querySelector('[data-field="group"] .pd-chip.is-active')?.textContent.trim();
+    const topicEl = root.querySelector('[data-topic-summary]');
+    const groupEl = root.querySelector('[data-group-summary]');
+    if (topicEl) topicEl.textContent = topicLabels.length ? topicLabels.join(', ') : 'nothing in particular';
+    if (groupEl) groupEl.textContent = groupLabel || 'someone';
+  }
+  updateHeroPrefsSummary();
+
+  // Round-level prefs (Builders Brunch) — same prose pattern.
+  function updateRoundPrefsSummary(root) {
+    if (!root || !root.classList.contains('pd-round-prefs')) return;
+    const topicLabels = [...root.querySelectorAll('[data-field="topic"] .pd-chip.is-active')].map((c) => c.textContent.trim());
+    const topicEl = root.querySelector('[data-topic-summary]');
+    if (topicEl) topicEl.textContent = topicLabels.length ? topicLabels.join(', ') : 'nothing in particular';
+  }
+  document.querySelectorAll('.pd-round-prefs').forEach((root) => updateRoundPrefsSummary(root));
+
+  // One delegated edit/done handler for both hero + round prefs.
+  document.querySelectorAll('[data-prefs-edit]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      btn.closest('.pd-hero-prefs, .pd-round-prefs')?.classList.add('is-editing');
+    });
+  });
+  document.querySelectorAll('[data-prefs-done]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      btn.closest('.pd-hero-prefs, .pd-round-prefs')?.classList.remove('is-editing');
+    });
+  });
+
+  // ── Dev toggle: meeting points photo vs no-photo (preview only)
+  const mpDisplayToggle = document.querySelector('[data-screen-label="Dashboard / Meeting photo toggle"]');
+  if (mpDisplayToggle) {
+    mpDisplayToggle.querySelectorAll('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        mpDisplayToggle.querySelectorAll('button').forEach((x) => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        document.querySelectorAll('.pd-mp').forEach((mp) => mp.classList.toggle('is-nophoto', b.dataset.mpdisplay === 'list'));
+      });
+    });
+  }
+
+  // ── Dev toggle: Your-round Topics & Groups on/off (preview only)
+  const tgToggle = document.querySelector('[data-screen-label="Dashboard / Topics groups toggle"]');
+  if (tgToggle) {
+    tgToggle.querySelectorAll('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        tgToggle.querySelectorAll('button').forEach((x) => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        document.body.classList.toggle('is-no-tg', b.dataset.tg === 'off');
+      });
+    });
+  }
+
+  // ── URL-driven variant (used by the Overview board): ?variant=default|window|confirmed|live|empty|past-only
+  const urlVariant = new URLSearchParams(window.location.search).get('variant');
+  if (urlVariant) {
+    document.body.classList.add('is-embed');
+    const vbtn = document.querySelector('.pd-variant-toggle [data-variant="' + urlVariant + '"]');
+    if (vbtn) vbtn.click(); else document.body.dataset.variant = urlVariant;
+  }
+</script>
+
+<script>
+  // ── Step image crop tweaks — sliders for object-position + scale on all three step images. ──
+  (function () {
+    const DEFAULTS = /*EDITMODE-BEGIN*/{
+      "step1PosX": 78,
+      "step1PosY": 54,
+      "step1Scale": 1.05,
+      "step2PosX": 53,
+      "step2PosY": 67,
+      "step2Scale": 1.65,
+      "step3PosX": 50,
+      "step3PosY": 50,
+      "step3Scale": 1
+    }/*EDITMODE-END*/;
+
+    const state = Object.assign({}, DEFAULTS);
+    const root = document.documentElement;
+    const cssMap = {
+      step1PosX: ['--step1-pos-x', '%'],
+      step1PosY: ['--step1-pos-y', '%'],
+      step1Scale: ['--step1-scale', ''],
+      step2PosX: ['--step2-pos-x', '%'],
+      step2PosY: ['--step2-pos-y', '%'],
+      step2Scale: ['--step2-scale', ''],
+      step3PosX: ['--step3-pos-x', '%'],
+      step3PosY: ['--step3-pos-y', '%'],
+      step3Scale: ['--step3-scale', ''],
+    };
+    function apply() {
+      for (const [k, [prop, suffix]] of Object.entries(cssMap)) {
+        root.style.setProperty(prop, state[k] + suffix);
+      }
+    }
+    apply();
+
+    function row(key, label, min, max, step, unit) {
+      const v = state[key];
+      const display = unit === '×' ? (+v).toFixed(2) : v;
+      return `
+        <label style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;">
+          <span style="font-weight:600;font-size:12px;">${label}</span>
+          <span data-out="${key}" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#4C194D;">${display}${unit}</span>
+          <input type="range" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${v}" style="grid-column:1 / -1;width:100%;accent-color:#E0533D;">
+        </label>
+      `;
+    }
+
+    function section(n, title) {
+      return `
+        <details ${n === 1 ? 'open' : ''} style="border-top:1px solid rgba(76,25,77,.12);padding-top:10px;">
+          <summary style="cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#4C194D;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+            <span>Step 0${n} · ${title}</span>
+            <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:#E0533D;opacity:.7;">▾</span>
+          </summary>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+            ${row('step'+n+'PosX','Position X', 0, 100, 1, '%')}
+            ${row('step'+n+'PosY','Position Y', 0, 100, 1, '%')}
+            ${row('step'+n+'Scale','Scale', 0.5, 4, 0.05, '×')}
+          </div>
+        </details>
+      `;
+    }
+
+    const panel = document.createElement('div');
+    panel.id = 'tweaks-steps';
+    panel.style.cssText = [
+      'position:fixed','right:20px','bottom:20px','z-index:9999',
+      'width:300px','max-height:calc(100vh - 40px)','overflow-y:auto',
+      'background:#fff','border:1px solid rgba(76,25,77,.18)',
+      'border-radius:14px','box-shadow:0 12px 40px rgba(76,25,77,.18)',
+      'padding:16px 16px 14px','font-family:"Bricolage Grotesque",system-ui,sans-serif',
+      'font-size:13px','color:#2A1538','display:none'
+    ].join(';');
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#4C194D;">Tweaks · Step images</div>
+        <button type="button" id="tweaks-steps-close" aria-label="Close" style="background:none;border:0;font-size:18px;line-height:1;color:#2A1538;cursor:pointer;padding:2px 6px;">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${section(1, 'Alarm clock')}
+        ${section(2, 'Bar stool')}
+        ${section(3, 'Find match')}
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    panel.querySelectorAll('input[type=range]').forEach(input => {
+      input.addEventListener('input', () => {
+        const k = input.dataset.key;
+        const isScale = k.endsWith('Scale');
+        const v = isScale ? parseFloat(input.value) : parseInt(input.value, 10);
+        state[k] = v;
+        const unit = isScale ? '×' : '%';
+        const out = panel.querySelector(`[data-out="${k}"]`);
+        if (out) out.textContent = (isScale ? v.toFixed(2) : v) + unit;
+        apply();
+        try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*'); } catch (e) {}
+      });
+    });
+
+    function show() { panel.style.display = 'block'; }
+    function hide() {
+      panel.style.display = 'none';
+      try { window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*'); } catch (e) {}
+    }
+    panel.querySelector('#tweaks-steps-close').addEventListener('click', hide);
+
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.type === '__activate_edit_mode') show();
+      else if (d.type === '__deactivate_edit_mode') panel.style.display = 'none';
+    });
+    try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch (e) {}
+
+    show();
+  })();
+</script>
+
+</body>
+</html>

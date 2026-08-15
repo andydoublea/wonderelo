@@ -8,9 +8,12 @@ interface SessionPreviewProps {
   organizerName?: string;
   profileImageUrl?: string;
   userSlug?: string;
+  /** When embedded inside the redesigned browser-chrome preview column,
+   *  drop the sticky wrapper + the standalone "Event page preview" title box. */
+  embedded?: boolean;
 }
 
-export function SessionPreview({ formData, userEmail = 'user@example.com', organizerName, profileImageUrl, userSlug }: SessionPreviewProps) {
+export function SessionPreview({ formData, userEmail = 'user@example.com', organizerName, profileImageUrl, userSlug, embedded = false }: SessionPreviewProps) {
   const generateRounds = () => {
     if (!formData.roundDuration || !formData.numberOfRounds) {
       return [];
@@ -74,12 +77,14 @@ export function SessionPreview({ formData, userEmail = 'user@example.com', organ
     : generateRounds();
 
   return (
-    <div className="sticky top-20">
+    <div className={embedded ? '' : 'sticky top-20'}>
       <div className="space-y-4">
         {/* Preview Title Box */}
-        <div className="text-center p-3 border rounded-lg bg-muted/30">
-          <h3>Event page preview</h3>
-        </div>
+        {!embedded && (
+          <div className="text-center p-3 border rounded-lg bg-muted/30">
+            <h3>Event page preview</h3>
+          </div>
+        )}
 
         {/* Header Box */}
         <OrganizerHeader

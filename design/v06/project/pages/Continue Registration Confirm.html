@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Confirm your email (mobile-first, participant journey)
+  Follows from "Finalise my registration" on the meeting-points step.
+  Restyled from the old Phase-02 desktop "Participant sign up · confirm email"
+  card to match the participant-journey vocabulary (Continue Registration chrome).
+  Maps to: src/components/EmailVerificationWaiting.tsx (participant guest path)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Confirm your email</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  body { background: var(--w-paper); }
+
+  .cr-shell {
+    max-width: 432px; margin: 0 auto;
+    padding: 0 20px 60px;
+    min-height: 100vh;
+  }
+
+  /* ───── Top nav (same vocab as Continue Registration) ───── */
+  .cr-nav {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(251,246,236,.94); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--w-hairline);
+    margin: 0 -20px;
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .cr-brand {
+    display: inline-flex; align-items: center; gap: 52px; cursor: pointer;
+    text-decoration: none;
+  }
+  .cr-brand .mark { position: relative; width: 26px; height: 26px; flex-shrink: 0; overflow: visible; }
+  .cr-brand .mark .inner {
+    display: block; width: 92px; height: 92px;
+    background: url("assets/Wonderelo-logo-symbol.png") center / contain no-repeat;
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(calc(-50% + 16px), -50%) rotate(-6deg); pointer-events: none;
+  }
+  .cr-brand .word {
+    font-family: var(--w-font-display); font-weight: 800; font-size: 17px;
+    letter-spacing: -0.025em; color: var(--w-purple-deep); line-height: 1;
+  }
+  .cr-brand .word em { font: inherit; color: inherit; font-style: normal; }
+  .cr-nav-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 14px 4px 4px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong); background: #fff;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12.5px;
+    color: var(--w-purple-deep); white-space: nowrap;
+  }
+  .cr-nav-cta .av-mini {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 10.5px;
+  }
+
+  /* ───── Profile dropdown menu (matches Participant dashboard) ───── */
+  .cr-nav-trigger { cursor: pointer; user-select: none; padding: 4px 12px 4px 4px; }
+  .cr-nav-caret { transition: transform .15s ease; opacity: .55; }
+  .cr-nav-trigger.is-open .cr-nav-caret { transform: rotate(180deg); opacity: .85; }
+  .cr-nav-menu {
+    position: absolute; top: calc(100% + 8px); right: 20px;
+    min-width: 200px; background: #fff;
+    border: 1px solid var(--w-hairline-strong); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(76,25,77,.18);
+    padding: 6px; display: none; z-index: 100;
+  }
+  .cr-nav-menu.is-open { display: block; }
+  .cr-nav-menu-item {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; background: transparent; border: none; border-radius: 8px;
+    font-family: var(--w-font-body); font-weight: 500; font-size: 13.5px;
+    color: var(--w-ink); cursor: pointer; text-align: left;
+    transition: background .12s, color .12s;
+  }
+  .cr-nav-menu-item:hover { background: var(--w-cream); color: var(--w-purple-deep); }
+  .cr-nav-menu-item svg { width: 14px; height: 14px; color: var(--w-purple); opacity: .65; flex-shrink: 0; }
+  .cr-nav-menu-item:hover svg { opacity: 1; color: var(--w-orange); }
+  .cr-nav-menu-divider { height: 1px; background: var(--w-hairline); margin: 4px 2px; }
+  .cr-nav-menu-item.is-danger { color: rgb(180, 50, 50); }
+  .cr-nav-menu-item.is-danger svg { color: rgb(180, 50, 50); }
+  .cr-nav-menu-item.is-danger:hover { background: rgba(180, 50, 50, 0.06); color: rgb(180, 50, 50); }
+
+  /* ───── Back + recap chip ───── */
+  .cr-topbar { margin: 20px 0 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .cr-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; border: none; cursor: pointer; padding: 0;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 12.5px;
+    color: var(--w-purple-deep); text-decoration: none;
+  }
+  .cr-back svg { width: 14px; height: 14px; }
+  .cr-back:hover { color: var(--w-orange); }
+  .cr-recap {
+    display: inline-flex; align-items: center; gap: 8px; margin-left: auto;
+    padding: 5px 12px; background: var(--w-cream);
+    border: 1px solid var(--w-hairline); border-radius: 999px;
+    font-size: 11.5px; color: var(--w-ink); line-height: 1.2; font-family: var(--w-font-body);
+  }
+  .cr-recap strong { font-family: var(--w-font-display); font-weight: 700; color: var(--w-purple-deep); letter-spacing: -.01em; }
+  .cr-recap .dot { color: var(--w-ink); opacity: .35; }
+
+  /* ───── Step progress (matches journey funnel) ───── */
+  .cr-steps { margin: 22px 0 0; display: flex; flex-direction: column; gap: 9px; }
+  .cr-steps .row {
+    display: flex; justify-content: space-between;
+    font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--w-purple); opacity: .8;
+  }
+  .cr-steps .bars { display: flex; gap: 6px; }
+  .cr-steps .bars i { flex: 1; height: 4px; border-radius: 4px; background: rgba(76,25,77,.12); }
+  .cr-steps .bars i.on { background: var(--w-orange); }
+
+  /* ───── Headline ───── */
+  .cr-head { margin: 24px 0 20px; }
+  .cr-head h1 {
+    margin: 0; font-family: var(--w-font-display); font-weight: 800;
+    font-size: 32px; line-height: 1.05; letter-spacing: -0.025em;
+    color: var(--w-purple-deep); text-wrap: balance;
+  }
+  .cr-head h1 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .cr-head .lede { margin: 12px 0 0; font-size: 14px; color: var(--w-ink); opacity: .75; line-height: 1.5; }
+  .cr-head .lede strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* ───── Confirmation card ───── */
+  .cr-card {
+    background: var(--w-paper); border: 1px solid var(--w-hairline);
+    border-radius: 18px; padding: 26px 22px 24px;
+    box-shadow: 0 4px 12px rgba(76,25,77,.04);
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .cr-mailicon {
+    width: 72px; height: 72px; border-radius: 20px; margin-bottom: 18px;
+    background: linear-gradient(140deg, #fff, var(--w-cream));
+    border: 1px solid var(--w-hairline);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-purple-deep); position: relative;
+  }
+  .cr-mailicon svg { width: 34px; height: 34px; }
+  .cr-mailicon .dmd { position: absolute; top: -6px; right: -6px; width: 10px; height: 10px; background: var(--w-orange); transform: rotate(45deg); }
+  .cr-card-eyebrow {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-orange); font-family: var(--w-font-body); margin-bottom: 8px;
+  }
+  .cr-card h2 {
+    margin: 0 0 8px; font-family: var(--w-font-display); font-weight: 800;
+    font-size: 22px; letter-spacing: -.02em; color: var(--w-purple-deep); line-height: 1.1;
+  }
+  .cr-card h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .cr-card .sent {
+    margin: 0 0 4px; font-size: 13px; color: var(--w-ink); opacity: .7;
+  }
+  .cr-card .email {
+    margin: 0 0 20px; font-family: var(--w-font-mono); font-weight: 600; font-size: 13.5px;
+    color: var(--w-purple-deep); letter-spacing: .02em; word-break: break-all;
+  }
+  .cr-open {
+    width: 100%; padding: 14px 18px;
+    background: var(--w-orange); color: #fff; border: none; border-radius: 12px;
+    font-family: var(--w-font-body); font-weight: 600; font-size: 14.5px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 6px 16px rgba(221,83,28,.22);
+    transition: transform .12s, box-shadow .12s; text-decoration: none;
+  }
+  .cr-open:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(221,83,28,.30); }
+  .cr-open svg { width: 16px; height: 16px; }
+
+  /* Resend / help note */
+  .cr-resend {
+    margin-top: 14px; width: 100%;
+    padding: 14px 16px; border-radius: 12px;
+    background: rgba(76,25,77,.04); border: 1px solid var(--w-hairline);
+    font-size: 12.5px; color: var(--w-ink); opacity: .85; line-height: 1.45; text-align: left;
+  }
+  .cr-resend strong { color: var(--w-purple-deep); font-weight: 600; }
+  .cr-resend .retry { color: var(--w-purple-deep); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; background: none; border: none; padding: 0; font: inherit; }
+  .cr-resend .retry:hover { color: var(--w-orange); }
+
+  /* Footer reassurance line */
+  .cr-foot {
+    margin: 20px 0 0; text-align: center;
+    font-size: 11.5px; color: var(--w-ink); opacity: .6; line-height: 1.5;
+  }
+
+  /* ───── Brand footer (mirrors dashboard) ───── */
+  .cr-footer {
+    margin: 40px -20px -60px;
+    padding: 40px 20px calc(40px + env(safe-area-inset-bottom));
+    background: #2d1133; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .cr-footer .cr-brand { cursor: default; gap: 20px; }
+  .cr-footer .cr-brand .mark .inner { width: 50px; height: 50px; transform: translate(-50%, -50%) rotate(-6deg); }
+  .cr-footer .cr-brand .word { color: #fff; }
+  .cr-footer .tagline { margin: 2px 0 0; font-family: var(--w-font-display); font-weight: 500; font-size: 15px; color: rgba(255,255,255,.85); }
+  .cr-footer .copy { margin: 0; font-family: var(--w-font-mono); font-size: 10.5px; letter-spacing: .04em; color: rgba(255,255,255,.4); }
+
+  /* Desktop framing — frame the 432px column on wide screens */
+  @media (min-width: 640px) {
+    body {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(221,83,28,.06), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(76,25,77,.06), transparent 40%),
+        var(--w-cream);
+    }
+    .cr-shell {
+      margin: 24px auto 80px; background: var(--w-paper);
+      border: 1px solid var(--w-hairline); border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(76,25,77,.10);
+      min-height: 0; overflow: hidden; padding-bottom: 28px;
+    }
+    .cr-nav { margin: 0 -20px; border-radius: 24px 24px 0 0; }
+    .cr-footer { margin-bottom: -28px; }
+  }
+</style>
+</head>
+<body data-screen-label="Continue / Confirm email">
+
+<div class="cr-shell">
+
+  <nav class="cr-nav" data-screen-label="Confirm email / Nav">
+    <a class="cr-brand" href="#">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <div class="cr-nav-cta cr-nav-trigger" id="cr-nav-trigger" role="button" tabindex="0">
+      <span class="av-mini">AA</span>
+      <span>Andy</span>
+      <svg class="cr-nav-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <div class="cr-nav-menu" id="cr-nav-menu" role="menu">
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Dashboard
+      </button>
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+        Profile
+      </button>
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="12" cy="10" r="2"/><path d="M9 15.5a3 3 0 0 1 6 0"/></svg>
+        Address book
+      </button>
+      <button class="cr-nav-menu-item" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+        Wonderelo home
+      </button>
+      <div class="cr-nav-menu-divider"></div>
+      <button class="cr-nav-menu-item is-danger" type="button" role="menuitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <div class="cr-topbar">
+    <a class="cr-back" href="Continue Registration.html?screen=meeting">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Meeting points
+    </a>
+    <div class="cr-recap">
+      <strong>2 rounds</strong>
+      <span class="dot">·</span>
+      <span>Founder Summit 2026</span>
+    </div>
+  </div>
+
+  <div class="cr-head">
+    <h1>Check your <em>email</em></h1>
+    <p class="lede">Click the link in your email to verify and continue.</p>
+  </div>
+
+  <div class="cr-card">
+    <div class="cr-mailicon">
+      <span class="dmd"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+    </div>
+    <p class="sent">We sent the email to</p>
+    <p class="email" data-email>andy.abel@klimas.io</p>
+
+    <a class="cr-open" href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+      <span data-provider-label>Open Gmail</span>
+    </a>
+
+    <div class="cr-resend">
+      <strong>Don't see it?</strong> Check your spam folder, or
+      <button class="retry" type="button" id="cr-retry">resend the link</button>.
+      <span data-retry-timer></span>
+    </div>
+  </div>
+
+  <footer class="cr-footer" data-screen-label="Confirm email / Footer">
+    <a class="cr-brand">
+      <span class="mark"><span class="inner"></span></span>
+      <span class="word">wond<em>e</em>relo</span>
+    </a>
+    <p class="tagline">Break your bubble, meet new people</p>
+    <p class="copy">© 2026 Wonderelo</p>
+  </footer>
+
+</div>
+
+<script>
+  // Resend countdown — mirror of EmailVerificationWaiting.tsx cooldown.
+  (function () {
+    var retry = document.getElementById('cr-retry');
+    var timerEl = document.querySelector('[data-retry-timer]');
+    var left = 0;
+    function tick() {
+      if (left <= 0) {
+        retry.disabled = false;
+        retry.style.opacity = '';
+        if (timerEl) timerEl.textContent = '';
+        return;
+      }
+      retry.disabled = true;
+      retry.style.opacity = '.5';
+      if (timerEl) timerEl.textContent = ' Available in 0:' + String(left).padStart(2, '0') + '.';
+      left -= 1;
+      setTimeout(tick, 1000);
+    }
+    if (retry) {
+      retry.addEventListener('click', function () {
+        if (left > 0) return;
+        left = 24;
+        tick();
+      });
+    }
+  })();
+
+  // Profile dropdown menu (matches Participant dashboard).
+  (function () {
+    var navTrigger = document.getElementById('cr-nav-trigger');
+    var navMenu = document.getElementById('cr-nav-menu');
+    if (!navTrigger || !navMenu) return;
+    navTrigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      navTrigger.classList.toggle('is-open');
+      navMenu.classList.toggle('is-open');
+    });
+    document.addEventListener('click', function (e) {
+      if (navTrigger.contains(e.target) || navMenu.contains(e.target)) return;
+      navTrigger.classList.remove('is-open');
+      navMenu.classList.remove('is-open');
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { navTrigger.classList.remove('is-open'); navMenu.classList.remove('is-open'); }
+    });
+  })();
+</script>
+
+</body>
+</html>

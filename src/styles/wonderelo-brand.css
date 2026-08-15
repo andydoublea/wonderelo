@@ -1,0 +1,115 @@
+/* ─────────────────────────────────────────────────────────────
+   Wonderelo — new brand layer (Claude Design redesign)
+
+   Source of truth: design bundle `wonderelo-public.css` (:root --w-* block).
+   Loaded AFTER index.css + visual-styles.css (see main.tsx) so it wins
+   within its scope.
+
+   ▸ OPT-IN: nothing here changes the app until an ancestor carries the
+     `.wonderelo` class. Admin (`/admin/*`, rendered under <AdminRoute>) never
+     gets that class, so the admin panel keeps its current design untouched.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Brand palette — verbatim from the design bundle */
+  --w-purple:        #5C2277;
+  --w-purple-deep:   #4b1d51;
+  --w-purple-ink:    #2d1133;
+  --w-orange:        #dd531c;
+  --w-orange-bright: #ff6a2a;
+  --w-cream:         #f7f1e6;
+  --w-paper:         #fbf6ec;
+  --w-paper-deep:    #f1e9d8;
+  --w-ink:           #3a2e34;
+
+  /* State tokens introduced by System States (v05) */
+  --w-destructive:   #c0392b;
+  --w-success:       #1f8a4d;
+
+  /* Typography */
+  --w-font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --w-font-serif:   "Instrument Serif", Georgia, serif;
+  --w-font-body:    "Space Grotesk", system-ui, sans-serif;
+  --w-font-hand:    "Caveat", cursive;
+  --w-font-mono:    ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Surface + radius */
+  --w-hairline:        rgba(76, 25, 77, 0.10);
+  --w-hairline-strong: rgba(76, 25, 77, 0.18);
+  --w-shadow-card:     0 20px 40px rgba(76, 25, 77, 0.18);
+  --w-shadow-soft:     0 8px 24px rgba(76, 25, 77, 0.08);
+  --w-shadow-cta:      0 8px 20px rgba(221, 83, 28, 0.30);
+  --w-r-sm: 10px;
+  --w-r-md: 14px;
+  --w-r-lg: 22px;
+  --w-r-xl: 28px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Brand scope — re-route the app's shadcn tokens to the new brand.
+   Tailwind v4 maps `--color-*` → `var(--<token>)`, so overriding the base
+   token routes `bg-primary`, `text-foreground`, `border-border`, etc. to the brand.
+   Applied to `:root` (global) now that the app is a single FIXED Wonderelo brand —
+   this recolours the not-yet-redesigned shadcn pages (sign-in, admin) with the brand
+   palette instead of the plain shadcn default. `.wonderelo` is kept for clarity/parity.
+   ───────────────────────────────────────────────────────────── */
+:root,
+.wonderelo {
+  --background:            var(--w-paper);
+  --foreground:            var(--w-ink);
+  --card:                  var(--w-paper);
+  --card-foreground:       var(--w-ink);
+  --popover:               var(--w-paper);
+  --popover-foreground:    var(--w-ink);
+  --primary:               var(--w-orange);
+  --primary-foreground:    #ffffff;
+  --secondary:             var(--w-purple-deep);
+  --secondary-foreground:  #ffffff;
+  --muted:                 var(--w-cream);
+  --muted-foreground:      var(--w-purple);
+  --accent:                var(--w-cream);
+  --accent-foreground:     var(--w-purple-deep);
+  --destructive:           var(--w-destructive);
+  --destructive-foreground:#ffffff;
+  --border:                var(--w-hairline);
+  --input:                 var(--w-hairline-strong);
+  --input-background:      #ffffff;
+  --ring:                  var(--w-orange);
+  --radius:                var(--w-r-md);
+
+  background: var(--w-paper);
+  color: var(--w-ink);
+  font-family: var(--w-font-body);
+}
+
+/* Page background — the design puts the paper/cream bg on <body>, so it fills the
+   whole viewport (top + bottom included). We were putting it on the inner .ev-page
+   wrapper, which doesn't cover the full height, so the legacy #faf8f3 <html>/<body>
+   showed through top and bottom. Re-assert the brand page bg on the real document
+   whenever a `.wonderelo` screen is mounted (beats the vs-jasper FOUC bg). */
+html:has(.wonderelo) {
+  background: var(--w-paper) !important;
+}
+html:has(.wonderelo) body {
+  background: transparent !important;
+}
+@media (min-width: 640px) {
+  html:has(.wonderelo) {
+    /* Flat cream — the design's subtle radial glow here was only desktop framing and
+       read as a visible colour break across the page; flat keeps it uniform. */
+    background: var(--w-cream) !important;
+  }
+}
+
+/* Signature type move — italic serif accent in orange. Maps to the design's
+   `.w-italic` and to the <Italic> primitive. */
+.wonderelo .w-italic {
+  font-family: var(--w-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--w-orange);
+}
+
+/* The legacy `html[class*="vs-"]` neutraliser layer was removed in the skin-retirement
+   cleanup (v1.29.0): the app is a single fixed Wonderelo brand, there is no skin to fight,
+   and the design CSS renders 1:1 on the clean base. See project_fixed_brand memory. */

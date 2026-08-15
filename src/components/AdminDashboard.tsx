@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { Button } from './ui/button';
-import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Palette, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact, Languages, Zap, Bell, Workflow } from 'lucide-react';
+import { Shield, MessageCircle, Users, ArrowLeft, UserCheck, BookOpen, ListOrdered, Calendar, Settings, Mail, Gift, FileText, Eye, TrendingDown, CreditCard, ChevronRight, SwatchBook, DollarSign, KeyRound, Contact, Languages, Zap, Bell, Workflow } from 'lucide-react';
 import { BUILD_VERSION } from '../BUILD_VERSION';
 import { Badge } from './ui/badge';
 
@@ -72,14 +72,6 @@ const adminTools = [
     description: 'Configure tier prices',
     icon: DollarSign,
     route: '/admin/pricing',
-    category: 'settings',
-  },
-  {
-    id: 'theme',
-    title: 'Theme manager',
-    description: 'Visual themes and color palettes',
-    icon: Palette,
-    route: '/admin/theme',
     category: 'settings',
   },
   {

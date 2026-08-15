@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Use Case Landing redesign
+  Maps to: src/components/UseCaseLandingPage.tsx
+  Renders one of: useCases[slug] from { conferences, meetups, weddings, bars, schools, teams, festivals }
+  This mockup uses "conferences" as the canonical example.
+  Shared chrome: Navigation + Footer
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — for Conferences</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  /* ── Use-case crumb (sibling use-cases) ──────────────── */
+  .uc-crumb {
+    padding: 24px 0 0;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-family: var(--w-font-mono); font-size: 12px; color: var(--w-ink); opacity: .7;
+  }
+  .uc-crumb a { color: var(--w-purple-deep); text-decoration: none; font-weight: 600; }
+  .uc-crumb .sep { opacity: .4; }
+  .uc-crumb .case-row { display: inline-flex; gap: 6px; margin-left: auto; }
+  .uc-crumb .case-row a {
+    padding: 5px 10px; border-radius: 999px; border: 1px solid var(--w-hairline);
+    font-weight: 500; opacity: .65;
+  }
+  .uc-crumb .case-row a:hover { opacity: 1; background: var(--w-cream); }
+  .uc-crumb .case-row a.is-active {
+    background: var(--w-purple-deep); color: #fff; border-color: var(--w-purple-deep); opacity: 1;
+  }
+
+  /* ── Hero ─────────────────────────────────────────────── */
+  .uc-hero { padding: 56px 0 96px; position: relative; }
+  .uc-hero .deco-1 { position: absolute; left: 8%; top: 80px; width: 14px; height: 14px; background: var(--w-orange); transform: rotate(45deg); }
+  .uc-hero .deco-2 { position: absolute; right: 6%; top: 240px; width: 22px; height: 22px; background: var(--w-purple-deep); transform: rotate(45deg); }
+  .uc-hero .deco-3 { position: absolute; right: 40%; bottom: 60px; width: 9px; height: 9px; background: var(--w-orange); transform: rotate(45deg); opacity: .6; }
+
+  .uc-hero-grid {
+    display: grid; grid-template-columns: 1.05fr .95fr; gap: 72px; align-items: center;
+  }
+  .uc-hero .uc-tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 8px 14px; border-radius: 999px;
+    background: rgba(221,83,28,.10); color: var(--w-orange);
+    font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  }
+  .uc-hero .uc-tag .w-diamond { width: 7px; height: 7px; background: currentColor; }
+  .uc-hero h1 { margin-top: 22px; }
+  .uc-hero h1 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .uc-hero .lede { margin-top: 24px; max-width: 540px; font-size: 18px; line-height: 1.55; color: var(--w-ink); opacity: .85; }
+  .uc-hero .actions { margin-top: 32px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .uc-hero .proof {
+    margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--w-hairline);
+    display: grid; grid-template-columns: repeat(3, auto); gap: 36px;
+    max-width: 520px;
+  }
+  .uc-hero .proof .num {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 36px; line-height: 1; letter-spacing: -0.035em;
+    color: var(--w-purple-deep);
+  }
+  .uc-hero .proof .num em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; font-size: 22px; vertical-align: 6px; margin-left: 2px; }
+  .uc-hero .proof .l {
+    margin-top: 6px; font-size: 12px; color: var(--w-ink); opacity: .7; line-height: 1.35;
+    max-width: 130px;
+  }
+
+  /* Hero illustration — venue scene */
+  .uc-hero-scene {
+    position: relative;
+    aspect-ratio: 4/5;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    overflow: hidden;
+  }
+  .uc-hero-scene .pattern {
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(135deg, rgba(76,25,77,.06) 0 1px, transparent 1px 16px);
+  }
+  .uc-hero-scene .stage {
+    position: absolute; left: 8%; right: 8%; top: 8%; height: 22%;
+    background: var(--w-purple-deep); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.5); font-family: var(--w-font-mono); font-size: 10px; letter-spacing: .14em;
+  }
+  .uc-hero-scene .stage::after {
+    content: "STAGE"; opacity: .7;
+  }
+  .uc-hero-scene .stage .qr {
+    position: absolute; right: 16px; top: 14px;
+    width: 36px; height: 36px; border-radius: 4px;
+    background: #fff;
+    background-image:
+      linear-gradient(45deg, var(--w-purple-deep) 25%, transparent 25%, transparent 75%, var(--w-purple-deep) 75%),
+      linear-gradient(45deg, var(--w-purple-deep) 25%, transparent 25%, transparent 75%, var(--w-purple-deep) 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 4px 4px;
+    border: 2px solid #fff;
+  }
+  .uc-hero-scene .meeting-pt {
+    position: absolute; padding: 6px 10px; border-radius: 6px;
+    background: #fff; border: 1px solid var(--w-hairline-strong);
+    font-family: var(--w-font-display); font-weight: 700; font-size: 11px; color: var(--w-purple-deep);
+    box-shadow: 0 3px 6px rgba(0,0,0,.08);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .uc-hero-scene .meeting-pt .w-diamond { width: 8px; height: 8px; background: var(--w-orange); }
+  .uc-hero-scene .mp-1 { left: 18%; top: 42%; }
+  .uc-hero-scene .mp-2 { right: 16%; top: 52%; }
+  .uc-hero-scene .mp-3 { left: 14%; bottom: 28%; }
+  .uc-hero-scene .mp-4 { right: 20%; bottom: 16%; }
+  .uc-hero-scene .person {
+    position: absolute; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--w-orange); box-shadow: 0 0 0 3px rgba(221,83,28,.18);
+  }
+  .uc-hero-scene .person.is-purple { background: var(--w-purple-deep); box-shadow: 0 0 0 3px rgba(76,25,77,.18); }
+  .uc-hero-scene .p1 { left: 30%; top: 50%; }
+  .uc-hero-scene .p2 { left: 36%; top: 56%; }
+  .uc-hero-scene .p3 { right: 28%; top: 60%; }
+  .uc-hero-scene .p4 { right: 30%; top: 66%; }
+  .uc-hero-scene .p5 { left: 22%; bottom: 22%; }
+  .uc-hero-scene .p6 { right: 32%; bottom: 12%; }
+  .uc-hero-scene .line {
+    position: absolute; height: 1.5px; background: var(--w-orange);
+    transform-origin: left center;
+    opacity: .35;
+  }
+  .uc-hero-scene .line.l1 { left: 30%; top: 50%; width: 4%; transform: rotate(40deg); }
+  .uc-hero-scene .line.l2 { right: 28%; top: 60%; width: 5%; transform: rotate(40deg); }
+  .uc-hero-scene .scene-cap {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 14px 18px;
+    background: rgba(247,241,230,.92); backdrop-filter: blur(6px);
+    border-top: 1px dashed var(--w-hairline-strong);
+    font-family: var(--w-font-mono); font-size: 11px; color: var(--w-purple);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .uc-hero-scene .scene-cap em { color: var(--w-orange); font-style: normal; font-weight: 600; }
+
+  /* ── Logo strip ───────────────────────────────────────── */
+  .uc-logos {
+    background: var(--w-cream);
+    border-top: 1px solid var(--w-hairline);
+    border-bottom: 1px solid var(--w-hairline);
+    padding: 36px 0;
+    overflow: hidden;
+  }
+  .uc-logos-inner { display: flex; align-items: center; gap: 64px; max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+  .uc-logos .l-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .7;
+    padding-right: 32px; border-right: 1px solid var(--w-hairline);
+    white-space: nowrap;
+  }
+  .uc-logos .l-list { display: flex; align-items: center; gap: 48px; flex-wrap: wrap; justify-content: space-between; flex: 1; }
+  .uc-logos .l-list .lg {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 18px;
+    color: var(--w-purple-deep); opacity: .55;
+    letter-spacing: -0.02em;
+  }
+  .uc-logos .l-list .lg em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; }
+
+  /* ── Benefits ─────────────────────────────────────────── */
+  .uc-benefits { padding: 120px 0 40px; }
+  .uc-benefits-head { text-align: center; max-width: 720px; margin: 0 auto 56px; }
+  .uc-benefits-head .w-eyebrow { justify-content: center; }
+  .uc-benefits-head h2 { margin-top: 14px; }
+  .uc-benefits-head h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .uc-benefits-head p { margin-top: 18px; font-size: 17px; line-height: 1.55; color: var(--w-ink); opacity: .82; }
+
+  .uc-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px;
+  }
+  .uc-card {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    padding: 36px;
+    transition: border-color .15s, transform .15s;
+    position: relative; overflow: hidden;
+  }
+  .uc-card:hover { border-color: var(--w-hairline-strong); transform: translateY(-2px); }
+  .uc-card .ico-wrap {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-orange);
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .uc-card .ico-wrap::after {
+    content: ""; position: absolute; top: -6px; right: -6px;
+    width: 10px; height: 10px; background: var(--w-orange); transform: rotate(45deg);
+  }
+  .uc-card.is-featured { background: var(--w-purple-deep); color: #fff; border-color: var(--w-purple-deep); }
+  .uc-card.is-featured .ico-wrap { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.15); color: var(--w-orange-bright); }
+  .uc-card.is-featured .ico-wrap::after { background: var(--w-orange-bright); }
+  .uc-card h3 {
+    font-family: var(--w-font-display); font-weight: 700;
+    font-size: 24px; line-height: 1.2; letter-spacing: -0.02em;
+    color: var(--w-purple-deep); margin: 0;
+  }
+  .uc-card.is-featured h3 { color: #fff; }
+  .uc-card h3 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .uc-card.is-featured h3 em { color: var(--w-orange-bright); }
+  .uc-card p {
+    margin: 14px 0 0;
+    font-size: 15.5px; line-height: 1.6;
+    color: var(--w-ink); opacity: .82;
+  }
+  .uc-card.is-featured p { color: rgba(255,255,255,.78); opacity: 1; }
+  .uc-card .num {
+    position: absolute; right: 28px; top: 28px;
+    font-family: var(--w-font-mono); font-size: 12px; font-weight: 600;
+    color: var(--w-ink); opacity: .3;
+  }
+  .uc-card.is-featured .num { color: rgba(255,255,255,.35); }
+
+  /* ── How it works (steps) ─────────────────────────────── */
+  .uc-how {
+    margin-top: 120px;
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    padding: 80px 60px;
+    position: relative; overflow: hidden;
+  }
+  .uc-how .deco-italic {
+    position: absolute; right: -40px; bottom: -120px;
+    font-family: var(--w-font-serif); font-style: italic; font-size: 360px;
+    color: rgba(76,25,77,.03); line-height: 1; pointer-events: none;
+  }
+  .uc-how-head { text-align: center; margin-bottom: 56px; }
+  .uc-how-head .w-eyebrow { justify-content: center; }
+  .uc-how-head h2 { margin-top: 14px; }
+  .uc-how-head h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .uc-steps {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+    position: relative;
+  }
+  .uc-steps::before {
+    content: ""; position: absolute; left: 28px; right: 28px; top: 28px; height: 1px;
+    background:
+      repeating-linear-gradient(90deg, var(--w-orange) 0 6px, transparent 6px 14px);
+    z-index: 0;
+  }
+  .uc-step { position: relative; z-index: 1; }
+  .uc-step .num-circle {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--w-orange);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 20px;
+    color: var(--w-purple-deep); letter-spacing: -0.02em;
+    margin-bottom: 22px;
+    box-shadow: 0 4px 10px rgba(221,83,28,.15);
+  }
+  .uc-step h4 {
+    margin: 0; font-family: var(--w-font-display); font-weight: 700;
+    font-size: 18px; line-height: 1.25; letter-spacing: -0.015em;
+    color: var(--w-purple-deep);
+    max-width: 240px;
+  }
+  .uc-step h4 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .uc-step p {
+    margin: 10px 0 0;
+    font-size: 14.5px; line-height: 1.55;
+    color: var(--w-ink); opacity: .8;
+    max-width: 240px;
+  }
+
+  /* ── Use cases (mini-scenarios) ───────────────────────── */
+  .uc-scenarios { margin-top: 120px; }
+  .uc-scenarios-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 40px; gap: 24px; flex-wrap: wrap; }
+  .uc-scenarios-head h2 { margin-top: 8px; }
+  .uc-scenarios-head h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .uc-scenarios-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .uc-scenario {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-lg);
+    padding: 28px;
+    position: relative;
+  }
+  .uc-scenario .head {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+    padding-bottom: 16px; border-bottom: 1px dashed var(--w-hairline-strong);
+  }
+  .uc-scenario .head .num {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--w-orange); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 13px;
+  }
+  .uc-scenario .head .l {
+    font-family: var(--w-font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .8;
+  }
+  .uc-scenario h4 {
+    margin: 0; font-family: var(--w-font-display); font-weight: 700;
+    font-size: 18px; line-height: 1.25; letter-spacing: -0.015em;
+    color: var(--w-purple-deep);
+  }
+  .uc-scenario h4 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .uc-scenario p {
+    margin: 10px 0 16px;
+    font-size: 14.5px; line-height: 1.55;
+    color: var(--w-ink); opacity: .78;
+  }
+  .uc-scenario .meta {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding-top: 14px; border-top: 1px solid var(--w-hairline);
+    font-family: var(--w-font-mono); font-size: 11px; color: var(--w-ink); opacity: .65;
+  }
+  .uc-scenario .meta span { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* ── Testimonial ──────────────────────────────────────── */
+  .uc-quote {
+    margin-top: 120px;
+    background: var(--w-orange); color: #fff;
+    border-radius: var(--w-r-xl);
+    padding: 80px 64px;
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: auto 1fr; gap: 56px; align-items: center;
+  }
+  .uc-quote .deco-italic {
+    position: absolute; right: -30px; bottom: -160px;
+    font-family: var(--w-font-serif); font-style: italic; font-size: 420px;
+    color: rgba(255,255,255,.07); line-height: 1; pointer-events: none;
+  }
+  .uc-quote .deco-d { position: absolute; right: 80px; top: 60px; width: 16px; height: 16px; background: var(--w-purple-deep); transform: rotate(45deg); opacity: .5; }
+  .uc-quote .pic {
+    width: 220px; aspect-ratio: 4/5;
+    border-radius: var(--w-r-lg); overflow: hidden;
+    background: var(--w-purple-deep);
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.08) 0 1px, transparent 1px 12px);
+    position: relative;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+  .uc-quote .pic .cap {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 12px 14px;
+    background: rgba(45,17,51,.6); backdrop-filter: blur(4px);
+    font-family: var(--w-font-mono); font-size: 11px; color: rgba(255,255,255,.85);
+    border-top: 1px solid rgba(255,255,255,.10);
+  }
+  .uc-quote blockquote {
+    margin: 0; position: relative;
+    font-family: var(--w-font-serif); font-style: italic;
+    font-size: clamp(24px, 2.6vw, 32px); line-height: 1.3;
+    color: #fff; text-wrap: balance;
+  }
+  .uc-quote .author {
+    margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.20);
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .uc-quote .author .name { font-family: var(--w-font-display); font-weight: 700; font-size: 16px; color: #fff; }
+  .uc-quote .author .role { color: rgba(255,255,255,.78); }
+  .uc-quote .author .stat {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 999px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+    font-family: var(--w-font-mono); font-size: 12px; color: #fff;
+  }
+  .uc-quote .author .stat em { color: var(--w-purple-deep); font-style: normal; font-weight: 700; }
+
+  /* ── Final CTA ────────────────────────────────────────── */
+  .uc-cta {
+    margin-top: 120px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: var(--w-r-xl); padding: 80px 64px;
+    position: relative; overflow: hidden;
+    text-align: center;
+  }
+  .uc-cta .deco-1 { position: absolute; left: 64px; top: 64px; width: 18px; height: 18px; background: var(--w-orange-bright); transform: rotate(45deg); }
+  .uc-cta .deco-2 { position: absolute; right: 80px; top: 90px; width: 10px; height: 10px; background: rgba(255,255,255,.5); transform: rotate(45deg); }
+  .uc-cta .deco-italic { position: absolute; right: -60px; bottom: -180px; font-family: var(--w-font-serif); font-style: italic; font-size: 440px; color: rgba(255,255,255,.04); line-height: 1; pointer-events: none; }
+  .uc-cta h2 { color: #fff; font-family: var(--w-font-display); font-weight: 800; font-size: clamp(36px, 4.6vw, 64px); line-height: 1; letter-spacing: -0.035em; margin: 0 auto; max-width: 760px; position: relative; text-wrap: balance; }
+  .uc-cta h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange-bright); font-weight: 400; }
+  .uc-cta p { margin: 22px auto 0; max-width: 560px; font-size: 17px; line-height: 1.55; color: rgba(255,255,255,.72); position: relative; }
+  .uc-cta .actions { position: relative; margin-top: 36px; display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .uc-cta .w-btn-ghost { color: #fff; border-color: rgba(255,255,255,.30); }
+  .uc-cta .w-btn-ghost:hover { background: rgba(255,255,255,.10); }
+  .uc-cta .small {
+    position: relative; margin-top: 22px;
+    font-family: var(--w-font-mono); font-size: 11.5px;
+    color: rgba(255,255,255,.55); letter-spacing: .04em;
+  }
+  .uc-cta .small em { color: var(--w-orange-bright); font-style: normal; font-weight: 600; }
+
+  @media (max-width: 980px) {
+    .uc-hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    .uc-grid { grid-template-columns: 1fr; }
+    .uc-steps { grid-template-columns: 1fr 1fr; }
+    .uc-steps::before { display: none; }
+    .uc-scenarios-grid { grid-template-columns: 1fr; }
+    .uc-quote { grid-template-columns: 1fr; padding: 48px 32px; }
+    .uc-quote .pic { width: 160px; }
+    .uc-how { padding: 56px 28px; }
+  }
+</style>
+</head>
+<body data-screen-label="05 Use Case · Conferences">
+
+<!-- Nav -->
+<wonderelo-nav data-screen-label="Public / Nav" active="who"></wonderelo-nav>
+
+<main class="w-shell">
+
+  <!-- Crumb + sibling switcher -->
+  <div class="uc-crumb" data-screen-label="UseCase / Switcher">
+    <a href="#">Who's it for</a> <span class="sep">/</span> <span>Conferences &amp; barcamps</span>
+    <div class="case-row">
+      <a class="is-active" href="#">Conferences</a>
+      <a href="#">Meetups</a>
+      <a href="#">Festivals</a>
+      <a href="#">Weddings</a>
+      <a href="#">Bars</a>
+      <a href="#">Schools</a>
+      <a href="#">Teams</a>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <section class="uc-hero" data-screen-label="UseCase / Hero">
+    <span class="deco-1"></span>
+    <span class="deco-2"></span>
+    <span class="deco-3"></span>
+
+    <div class="uc-hero-grid">
+      <div>
+        <span class="uc-tag"><span class="w-diamond"></span> Wonderelo for Conferences</span>
+        <h1 class="w-display">Give your attendees<br/>what they actually came for —<br/><span class="w-italic">connections</span></h1>
+        <p class="lede">Most conference-goers say networking is the #1 reason they showed up — yet most leave without a single meaningful new contact. Wonderelo runs structured 1-on-1 and small-group rounds during breaks, so every attendee walks out with a handful.</p>
+        <div class="actions">
+          <a class="w-btn w-btn-primary w-btn-lg" href="#">
+            Add networking to your conference
+            <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+          <a class="w-btn w-btn-ghost w-btn-lg" href="#">
+            <svg class="w-ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            See a 90-sec demo
+          </a>
+        </div>
+        <div class="proof">
+          <div>
+            <div class="num">240<em>+</em></div>
+            <div class="l">Conferences &amp; barcamps run on Wonderelo</div>
+          </div>
+          <div>
+            <div class="num">6<em>min</em></div>
+            <div class="l">From sign-up to your first round live</div>
+          </div>
+          <div>
+            <div class="num">81<em>%</em></div>
+            <div class="l">Attendees say they made a useful contact</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Venue scene illustration -->
+      <div class="uc-hero-scene">
+        <div class="pattern"></div>
+        <div class="stage">
+          <span class="qr"></span>
+        </div>
+        <div class="meeting-pt mp-1"><span class="w-diamond"></span> Coffee bar · A</div>
+        <div class="meeting-pt mp-2"><span class="w-diamond"></span> Foyer · B</div>
+        <div class="meeting-pt mp-3"><span class="w-diamond"></span> Atrium · C</div>
+        <div class="meeting-pt mp-4"><span class="w-diamond"></span> Stage left · D</div>
+        <span class="person p1"></span>
+        <span class="person is-purple p2"></span>
+        <span class="line l1"></span>
+        <span class="person is-purple p3"></span>
+        <span class="person p4"></span>
+        <span class="line l2"></span>
+        <span class="person p5"></span>
+        <span class="person is-purple p6"></span>
+        <div class="scene-cap">
+          <span>Round 02 · pairs · 5 min</span>
+          <span><em>64</em> attendees matched</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Logo strip (full-bleed) -->
+<section class="uc-logos" data-screen-label="UseCase / Logos">
+  <div class="uc-logos-inner">
+    <div class="l-label">Trusted by organizers at</div>
+    <div class="l-list">
+      <span class="lg">Forum<em>26</em></span>
+      <span class="lg">TechFuture</span>
+      <span class="lg">DesignDays</span>
+      <span class="lg">Founder<em>Summit</em></span>
+      <span class="lg">BarCamp BA</span>
+      <span class="lg">CodeWeek</span>
+    </div>
+  </div>
+</section>
+
+<main class="w-shell">
+
+  <!-- Benefits -->
+  <section class="uc-benefits" data-screen-label="UseCase / Benefits">
+    <div class="uc-benefits-head">
+      <span class="w-eyebrow">Why conferences pick Wonderelo</span>
+      <h2 class="w-h1">More than a coffee break with <span class="w-italic">name tags</span></h2>
+      <p>You spent months on the talks. Don't leave the most-valuable part of the day to chance.</p>
+    </div>
+
+    <div class="uc-grid">
+      <article class="uc-card is-featured">
+        <span class="num">01</span>
+        <div class="ico-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>Break the <em>bubble</em></h3>
+        <p>Attendees meet people outside their usual circle — across industries, departments, and experience levels. The hallway conversations that "just happen" at small events finally happen at scale.</p>
+      </article>
+
+      <article class="uc-card">
+        <span class="num">02</span>
+        <div class="ico-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <h3>Zero <em>friction</em></h3>
+        <p>No profiles, no apps to download, no AI guessing. Scan a QR code, get matched, meet at the assigned meeting point — done. Even your most introverted attendee will play.</p>
+      </article>
+
+      <article class="uc-card">
+        <span class="num">03</span>
+        <div class="ico-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <h3>Use the venue you <em>already</em> have</h3>
+        <p>Place printed meeting-point signs around your venue — tables, stands, roll-ups. Participants find each other at named spots. No new tech, no extra staff.</p>
+      </article>
+
+      <article class="uc-card">
+        <span class="num">04</span>
+        <div class="ico-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <h3>The <em>moment</em> people remember</h3>
+        <p>Attendees forget which keynote opened the day. They remember the conversation that turned into a co-founder, a customer, a friend. Wonderelo creates that moment, on purpose.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="uc-how" data-screen-label="UseCase / How it works">
+    <div class="deco-italic">setup</div>
+    <div class="uc-how-head">
+      <span class="w-eyebrow">Setup, end to end</span>
+      <h2 class="w-h1">Four steps. Six <span class="w-italic">minutes</span></h2>
+    </div>
+    <div class="uc-steps">
+      <div class="uc-step">
+        <div class="num-circle">01</div>
+        <h4>Put the QR on a <em>slide</em></h4>
+        <p>Display the code on a stage screen, roll-up, or table card. Each event gets a custom URL too.</p>
+      </div>
+      <div class="uc-step">
+        <div class="num-circle">02</div>
+        <h4>Attendees register in <em>seconds</em></h4>
+        <p>Name and email only — no profile to fill, no download. Most people are in within 20 seconds.</p>
+      </div>
+      <div class="uc-step">
+        <div class="num-circle">03</div>
+        <h4>The round goes <em>live</em></h4>
+        <p>At the time you set, everyone gets a match plus a named meeting point: "Coffee bar · A".</p>
+      </div>
+      <div class="uc-step">
+        <div class="num-circle">04</div>
+        <h4>They meet. They <em>talk</em></h4>
+        <p>Optional ice-breaker prompts, a timer, and an easy way to exchange contacts after if they want to.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scenarios -->
+  <section class="uc-scenarios" data-screen-label="UseCase / Scenarios">
+    <div class="uc-scenarios-head">
+      <div>
+        <span class="w-eyebrow">Real conference setups</span>
+        <h2 class="w-h1">Three <span class="w-italic">ways</span> to slot it in</h2>
+      </div>
+      <a class="w-btn w-btn-ghost w-btn-sm" href="#">See all case studies →</a>
+    </div>
+    <div class="uc-scenarios-grid">
+      <article class="uc-scenario">
+        <div class="head"><div class="num">A</div><div class="l">Opening · before the keynote</div></div>
+        <h4>A <em>15-minute</em> warmup before the first talk</h4>
+        <p>Run a single, fast pair-round while attendees are still finding seats. By the keynote, the room already feels warm. Works at 100 or 2 000 people.</p>
+        <div class="meta">
+          <span>1 round · 5 min · pairs</span>
+          <span>Recommended for 100–2 000</span>
+        </div>
+      </article>
+      <article class="uc-scenario">
+        <div class="head"><div class="num">B</div><div class="l">Between talks · the coffee slot</div></div>
+        <h4>Three <em>tight</em> rounds across two breaks</h4>
+        <p>The classic. Two coffee breaks, three networking rounds, named meeting points. Most popular setup — also the easiest to staff.</p>
+        <div class="meta">
+          <span>3 rounds · 4 min each</span>
+          <span>Pairs or trios</span>
+        </div>
+      </article>
+      <article class="uc-scenario">
+        <div class="head"><div class="num">C</div><div class="l">Evening · the after-party</div></div>
+        <h4>One <em>long</em> round with drinks &amp; matches</h4>
+        <p>Lower lighting, drink in hand, longer match windows (8–10 min). The conference's social wrap-up that people actually stay for.</p>
+        <div class="meta">
+          <span>1 round · 10 min · trios</span>
+          <span>Add ice-breaker prompts</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Testimonial -->
+  <section class="uc-quote" data-screen-label="UseCase / Testimonial">
+    <span class="deco-italic">"</span>
+    <span class="deco-d"></span>
+    <div class="pic">
+      <div class="cap">Anna M. · TechFuture Conf · Vienna</div>
+    </div>
+    <div>
+      <blockquote>
+        It was the first event where we felt confident <strong>nobody was left out of networking</strong> — even the people who'd usually slip out after the last talk. Three speakers asked us afterwards if it would run again.
+      </blockquote>
+      <div class="author">
+        <div>
+          <div class="name">Anna Müller</div>
+          <div class="role">Programme lead · TechFuture Conference</div>
+        </div>
+        <span class="stat"><em>1 600 attendees</em> · 3 rounds · 18 meeting points</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="uc-cta" data-screen-label="UseCase / CTA">
+    <span class="deco-1"></span>
+    <span class="deco-2"></span>
+    <span class="deco-italic">go</span>
+    <h2>Add networking to your <span class="w-italic">conference</span> — in the next six minutes</h2>
+    <p>Free for events up to 5 participants — perfect for testing before you commit. No card, no sales call, no integration.</p>
+    <div class="actions">
+      <a class="w-btn w-btn-ghost w-btn-lg" href="#">Talk to us first</a>
+      <a class="w-btn w-btn-primary w-btn-lg" href="#">
+        Start for free
+        <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <div class="small"><em>3 200+</em> organizers · No credit card · Cancel anytime</div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="w-footer">
+  <span class="w-foot-deco">wonder</span>
+  <div class="w-footer-inner">
+    <div class="w-footer-grid">
+      <div class="w-foot-brand">
+        <div class="w-foot-logo">
+          <div class="w-mark"><div class="w-inner"></div></div>
+          <div class="w-word">wonderelo</div>
+        </div>
+        <p>Speed-networking for events. The room you booked, the people you invited, every introduction worth having.</p>
+        <a class="w-foot-cta" href="#"><span class="w-dot"></span> All systems normal</a>
+      </div>
+      <div class="w-foot-col"><h5>Product</h5><ul><li><a href="#">How it works</a></li><li><a href="#">Features</a></li><li><a href="#">Pricing</a></li><li><a href="#">Sign up</a></li></ul></div>
+      <div class="w-foot-col"><h5>For</h5><ul><li><a href="#">Conferences</a></li><li><a href="#">Meetups</a></li><li><a href="#">Weddings</a></li><li><a href="#">Teams</a></li></ul></div>
+      <div class="w-foot-col"><h5>Learn</h5><ul><li><a href="#">Our story</a></li><li><a href="#">Blog</a></li><li><a href="#">Case studies</a></li><li><a href="#">Help center</a></li></ul></div>
+      <div class="w-foot-col"><h5>Company</h5><ul><li><a href="#">About</a></li><li><a href="#">Careers</a></li><li><a href="#">Contact</a></li><li><a href="#">Press kit</a></li></ul></div>
+    </div>
+    <div class="w-foot-bottom">
+      <span>© 2026 Wonderelo · Made in Bratislava with rounds that don't feel like rounds.</span>
+      <div class="w-foot-legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a><a href="#">GDPR</a></div>
+    </div>
+  </div>
+</footer>
+
+<script src="wonderelo-nav.js"></script>
+</body>
+</html>

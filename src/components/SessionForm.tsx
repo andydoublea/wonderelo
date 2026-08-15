@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { NetworkingSession } from '../App';
+import { C } from './redesign/organizerAtoms';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -8,7 +9,7 @@ import { Switch } from './ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
-import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle, Sparkles, Loader2, Coins, CreditCard } from 'lucide-react';
+import { Users, Clock, Calendar, Settings, Plus, X, MapPin, ChevronUp, ChevronDown, GripVertical, HelpCircle, Play, MessageCircle, Sparkles, Loader2, Coins, CreditCard, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Checkbox } from './ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -41,6 +42,158 @@ interface SessionFormProps {
   profileImageUrl?: string;
   userSlug?: string;
   isDuplicate?: boolean;
+}
+
+// ============================================================
+// Redesign primitives (ported 1:1 from design/v06 screen-round-form.jsx).
+// Pure presentation — every one is wired to the existing form state/handlers.
+// ============================================================
+const RF_ICONS: Record<string, string> = {
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  msg: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  up: '<polyline points="18 15 12 9 6 15"/>',
+  down: '<polyline points="6 9 12 15 18 9"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  spark: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>',
+  loader: '<line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>',
+};
+
+const RfIcon = ({ d, size = 18 }: { d: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: d }} />
+);
+
+const rfFieldBox = (error?: boolean, focused?: boolean): CSSProperties => ({
+  display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px', borderRadius: 11, background: '#fff',
+  border: `1.5px solid ${error ? '#c0392b' : focused ? C.orange : C.hairStrong}`,
+  boxShadow: focused ? '0 0 0 3px rgba(221,83,28,.10)' : 'none',
+});
+const rfBareInput: CSSProperties = { flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: C.fontBody, fontSize: 14, color: C.ink, minWidth: 0 };
+
+const RfCard = ({ icon, title, hint, hintList, children, error }: { icon: string; title: string; hint?: string; hintList?: string[]; children?: ReactNode; error?: boolean }) => (
+  <section style={{ background: '#fff', border: `1px solid ${error ? '#c0392b' : C.hair}`, borderRadius: 18, padding: 26, marginBottom: 18 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: hint || hintList ? 10 : 20 }}>
+      <span style={{ color: C.orange, display: 'inline-flex' }}><RfIcon d={icon} size={19} /></span>
+      <h3 style={{ margin: 0, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 19, letterSpacing: '-.02em', color: C.purpleDeep }}>{title}</h3>
+    </div>
+    {hint && <p style={{ margin: '0 0 18px', fontSize: 12.5, color: C.ink, opacity: .65 }}>{hint}</p>}
+    {hintList && <ul style={{ margin: '0 0 20px', padding: '0 0 0 18px', display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, color: C.ink, opacity: .65 }}>{hintList.map((h, i) => <li key={i}>{h}</li>)}</ul>}
+    {children}
+  </section>
+);
+
+const RfLbl = ({ children, help }: { children?: ReactNode; help?: string }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: C.fontBody, fontSize: 11.5, fontWeight: 700, letterSpacing: '.08em', color: C.purpleDeep, textTransform: 'uppercase' }}>
+    {children}
+    {help && <span title={help} style={{ color: 'rgba(75,29,81,.4)', display: 'inline-flex', cursor: 'help' }}><RfIcon d={RF_ICONS.help} size={14} /></span>}
+  </span>
+);
+
+const RfToggle = ({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) => (
+  <span onClick={() => !disabled && onChange(!on)} style={{ width: 42, height: 24, borderRadius: 999, background: on ? C.orange : 'rgba(76,25,77,.18)', position: 'relative', flexShrink: 0, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? .5 : 1 }}>
+    <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.2)', transition: 'left .15s' }} />
+  </span>
+);
+
+const RfToggleRow = ({ label, help, on, onChange, note, disabled }: { label: string; help?: string; on: boolean; onChange: (v: boolean) => void; note?: string; disabled?: boolean }) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+    <div><RfLbl help={help}>{label}</RfLbl>{note && <p style={{ margin: '5px 0 0', fontSize: 12, color: C.ink, opacity: .6 }}>{note}</p>}</div>
+    <RfToggle on={on} onChange={onChange} disabled={disabled} />
+  </div>
+);
+
+const RfSeparator = () => <div style={{ height: 1, background: C.hair, margin: '22px 0' }} />;
+
+// Editable string list (teams / topics) — wired to the existing add/update/move/remove handlers.
+function RfEditableList({ rows, onUpdate, onRemove, onMoveUp, onMoveDown, onAdd, placeholder, addLabel }: {
+  rows: string[];
+  onUpdate: (i: number, v: string) => void;
+  onRemove: (i: number) => void;
+  onMoveUp: (i: number) => void;
+  onMoveDown: (i: number) => void;
+  onAdd: () => void;
+  placeholder: string;
+  addLabel: string;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {rows.map((val, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, border: `1px solid ${C.hair}`, borderRadius: 11, background: C.cream }}>
+          <input value={val} placeholder={placeholder} onChange={(e) => onUpdate(i, e.target.value)} style={rfBareInput} />
+          <span style={{ display: 'inline-flex', gap: 4 }}>
+            <span onClick={() => onMoveUp(i)} style={{ color: i === 0 ? 'rgba(75,29,81,.2)' : 'rgba(75,29,81,.5)', cursor: i === 0 ? 'default' : 'pointer', display: 'inline-flex' }}><RfIcon d={RF_ICONS.up} size={15} /></span>
+            <span onClick={() => onMoveDown(i)} style={{ color: i === rows.length - 1 ? 'rgba(75,29,81,.2)' : 'rgba(75,29,81,.5)', cursor: i === rows.length - 1 ? 'default' : 'pointer', display: 'inline-flex' }}><RfIcon d={RF_ICONS.down} size={15} /></span>
+            <span onClick={() => onRemove(i)} style={{ color: '#c0392b', cursor: 'pointer', display: 'inline-flex' }}><RfIcon d={RF_ICONS.x} size={15} /></span>
+          </span>
+        </div>
+      ))}
+      <button type="button" onClick={onAdd} style={{ padding: '11px 14px', background: 'transparent', borderRadius: 11, border: `1.5px solid ${C.hairStrong}`, color: C.purpleDeep, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontFamily: C.fontBody }}>
+        <RfIcon d={RF_ICONS.plus} size={15} /> {addLabel}
+      </button>
+    </div>
+  );
+}
+
+// Within / Across matching illustration — wired to formData.matchingType.
+function RfMatchingCard({ mode, label, desc, active, onSelect }: { mode: 'within-team' | 'across-teams'; label: string; desc: string; active: boolean; onSelect: () => void }) {
+  const O = C.orange, P = C.purpleDeep, cream = C.cream;
+  const A = [{ x: 60, y: 40 }, { x: 36, y: 70 }, { x: 84, y: 70 }, { x: 60, y: 100 }];
+  const B = [{ x: 160, y: 40 }, { x: 136, y: 70 }, { x: 184, y: 70 }, { x: 160, y: 100 }];
+  const withinPairs = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+  const Dot = ({ p, c }: { p: { x: number; y: number }; c: string }) => <circle cx={p.x} cy={p.y} r="6" fill={c} stroke={cream} strokeWidth="2" />;
+  return (
+    <div onClick={onSelect} style={{ cursor: 'pointer', borderRadius: 14, padding: 14, background: active ? 'rgba(221,83,28,.05)' : '#fff', border: `2px solid ${active ? C.orange : C.hairStrong}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ position: 'relative', width: '100%', height: 130, background: cream, borderRadius: 11, border: `1px solid rgba(76,25,77,.12)`, overflow: 'hidden' }}>
+        <svg viewBox="0 0 220 140" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
+          <circle cx="60" cy="70" r="38" fill="none" stroke={O} strokeOpacity=".4" strokeWidth="1.5" strokeDasharray="3 3" />
+          <circle cx="160" cy="70" r="38" fill="none" stroke={P} strokeOpacity=".4" strokeWidth="1.5" strokeDasharray="3 3" />
+          {mode === 'across-teams' ? (
+            <g>
+              {A.map((a, i) => <line key={i} x1={a.x} y1={a.y} x2={B[i].x} y2={B[i].y} stroke={P} strokeOpacity=".5" strokeWidth="1.4" />)}
+              <line x1={A[0].x} y1={A[0].y} x2={B[3].x} y2={B[3].y} stroke={O} strokeOpacity=".5" strokeWidth="1.4" />
+              <line x1={A[3].x} y1={A[3].y} x2={B[0].x} y2={B[0].y} stroke={O} strokeOpacity=".5" strokeWidth="1.4" />
+            </g>
+          ) : (
+            <g>
+              {withinPairs.map(([i, j], k) => <line key={'a' + k} x1={A[i].x} y1={A[i].y} x2={A[j].x} y2={A[j].y} stroke={O} strokeOpacity=".55" strokeWidth="1.4" />)}
+              {withinPairs.map(([i, j], k) => <line key={'b' + k} x1={B[i].x} y1={B[i].y} x2={B[j].x} y2={B[j].y} stroke={P} strokeOpacity=".55" strokeWidth="1.4" />)}
+            </g>
+          )}
+          {A.map((p, i) => <Dot key={'a' + i} p={p} c={O} />)}
+          {B.map((p, i) => <Dot key={'b' + i} p={p} c={P} />)}
+        </svg>
+        {active && <span style={{ position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: '50%', background: C.orange, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        </span>}
+      </div>
+      <div>
+        <div style={{ fontFamily: C.fontDisplay, fontWeight: 700, fontSize: 14.5, color: active ? C.purpleDeep : C.ink }}>{label}</div>
+        <div style={{ marginTop: 3, fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.4 }}>{desc}</div>
+      </div>
+    </div>
+  );
+}
+
+// Styled number/text input row — controlled, wired to the caller's onChange.
+function RfNumField({ label, help, value, onChange, suffix, min, max, width, id, inputRef, placeholder, error, type = 'number', disabled }: {
+  label: string; help?: string; value: any; onChange: (e: any) => void; suffix?: string;
+  min?: number | string; max?: number | string; width?: number | string; id?: string;
+  inputRef?: Ref<HTMLInputElement>; placeholder?: string; error?: boolean; type?: string; disabled?: boolean;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width, opacity: disabled ? .55 : 1 }}>
+      <RfLbl help={help}>{label}</RfLbl>
+      <div style={rfFieldBox(error)}>
+        <input ref={inputRef} id={id} type={type} min={min} max={max} placeholder={placeholder} value={value} onChange={onChange} disabled={disabled} style={rfBareInput} />
+        {suffix && <span style={{ fontSize: 13, color: C.ink, opacity: .55 }}>{suffix}</span>}
+      </div>
+    </div>
+  );
 }
 
 export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organizerName, profileImageUrl, userSlug, isDuplicate }: SessionFormProps) {
@@ -372,25 +525,25 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     return true;
   };
 
-  const handleSaveDraft = async (e: React.FormEvent) => {
+  const handleSaveDraft = async (e: React.FormEvent): Promise<boolean> => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    const validMeetingPoints = (formData.meetingPoints || []).filter(point => 
+
+    if (!validateForm()) return false;
+
+    const validMeetingPoints = (formData.meetingPoints || []).filter(point =>
       typeof point === 'string' ? point.trim() : point.name?.trim()
     );
     const sessionData = {
       ...formData,
       endTime: calculatedEndTime,
-      teams: formData.enableTeams 
+      teams: formData.enableTeams
         ? (formData.teams || []).filter(name => name.trim())
         : [],
-      topics: formData.enableTopics 
+      topics: formData.enableTopics
         ? (formData.topics || []).filter(name => name.trim())
         : [],
       meetingPoints: validMeetingPoints,
-      rounds: generateRounds(),
+      rounds: buildRoundsForSave(),
       status: 'draft' as const,
       registrationStart: undefined
     };
@@ -401,6 +554,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     } finally {
       setIsSubmitting(false);
     }
+    return true;
   };
 
   const handleMakeLive = async (e: React.FormEvent) => {
@@ -550,7 +704,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         ? (formData.topics || []).filter(name => name.trim())
         : [],
       meetingPoints: validMeetingPoints,
-      rounds: generateRounds(),
+      rounds: buildRoundsForSave(),
       status: 'published' as const,
       registrationStart: registrationStartISO
     };
@@ -596,14 +750,20 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       const creditsList = Array.isArray(credData.credits) ? credData.credits.filter((c: any) => c.balance > 0) : [];
       const totalCredits = creditsList.reduce((sum: number, c: any) => sum + c.balance, 0);
 
+      const requiredTier = getTierForCapacity(maxParticipants);
+
       if (hasActiveSub) {
-        // Has subscription — publish directly, no credit needed
-        onSubmit(sessionData);
-        setShowCreditDialog(false);
+        // Has subscription — show the dialog with the subscription-covered
+        // confirmation state (design shows this instead of skipping the dialog).
+        setCreditInfo({
+          hasSubscription: true,
+          credits: creditsList,
+          totalCredits,
+          requiredTier,
+          eventCapacity: maxParticipants,
+        });
         return;
       }
-
-      const requiredTier = getTierForCapacity(maxParticipants);
 
       setCreditInfo({
         hasSubscription: false,
@@ -706,7 +866,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         ? (formData.topics || []).filter(name => name.trim())
         : [],
       meetingPoints: validMeetingPoints,
-      rounds: generateRounds(),
+      rounds: buildRoundsForSave(),
       status: 'scheduled' as const,
       registrationStart: scheduledDateTime.toISOString()
     };
@@ -715,13 +875,14 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     setShowScheduleDialog(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Default submit behavior - save as draft
-    handleSaveDraft(e);
-    
-    if (!initialData) {
-      // Reset form only if creating new session
+    // Default submit behavior (e.g. pressing Enter) - save as draft.
+    const saved = await handleSaveDraft(e);
+
+    // Only reset after a CONFIRMED successful save of a new session.
+    // Resetting on validation failure would wipe the user's entered values.
+    if (saved && !initialData) {
       setFormData({
         name: '',
         date: '',
@@ -733,6 +894,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         limitParticipants: true,
         maxParticipants: 50,
         groupSize: 2,
+        limitGroups: false,
+        maxGroups: 10,
         status: 'draft',
         registrationStart: undefined,
         isRecurring: false,
@@ -745,7 +908,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         enableTopics: false,
         allowMultipleTopics: false,
         topics: [],
-        meetingPoints: ['']
+        meetingPoints: [''],
+        iceBreakers: getDefaultIceBreakers()
       });
 
     }
@@ -916,6 +1080,39 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     }
 
     return rounds;
+  };
+
+  // Decide which rounds to persist on save.
+  // - Auto mode: the generated auto-sequence (generateRounds), which already
+  //   preserves already-started rounds when editing an existing session.
+  // - Custom mode: the user's per-round edits held in formData.rounds. We still
+  //   preserve any already-started rounds from initialData (their times/duration
+  //   are in the past and must not be rewritten), matching generateRounds' intent.
+  const buildRoundsForSave = () => {
+    if (!useCustomTimes) {
+      return generateRounds();
+    }
+
+    const customRounds = formData.rounds || [];
+
+    if (initialData && !isDuplicate && initialData.rounds && initialData.rounds.length > 0) {
+      const now = new Date();
+      return customRounds.map((round, i) => {
+        const original = initialData.rounds?.[i];
+        if (original && original.date && original.startTime) {
+          const [hours, minutes] = original.startTime.split(':').map(Number);
+          const roundStart = new Date(original.date);
+          roundStart.setHours(hours, minutes, 0, 0);
+          if (now >= roundStart) {
+            // Round already started — keep the original, ignore custom edits.
+            return { ...original };
+          }
+        }
+        return round;
+      });
+    }
+
+    return customRounds;
   };
 
   // Update rounds when relevant fields change for live preview (only in auto mode)
@@ -1115,191 +1312,133 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     });
   };
 
+  const rfGhostBtn: CSSProperties = { fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, padding: '11px 16px', borderRadius: 12, cursor: 'pointer', background: 'transparent', color: C.purpleDeep, border: `1px solid ${C.hairStrong}` };
+  const rfErr: CSSProperties = { margin: '8px 0 0', fontSize: 12.5, color: '#c0392b' };
+  const previewSlug = userSlug || 'your-event';
+
   return (
-    <TooltipProvider>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl">
-        {/* Form Section */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-      
-      {/* Event Capacity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Event capacity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Free tier notice */}
-          <div className="mb-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-              <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                Events up to 5 participants free for testing purposes
-              </p>
-            </div>
-          </div>
+    <div style={{ fontFamily: C.fontBody, color: C.ink }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'minmax(0,1fr) 440px' : '1fr', gap: 28, alignItems: 'start' }}>
+        {/* Form column */}
+        <form onSubmit={handleSubmit} style={{ minWidth: 0 }}>
 
-          <div>
-            <label className="text-sm font-medium" htmlFor="eventCapacity">Expected number of participants</label>
-            <div className="flex items-center gap-3" style={{ marginTop: '6px' }}>
-              <Input
-                id="eventCapacity"
-                type="number"
-                min="2"
-                max="10000"
-                placeholder="e.g. 50"
-                value={formData.maxParticipants}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '') {
-                    setFormData({ ...formData, maxParticipants: '' as any, limitParticipants: false });
-                  } else {
-                    const parsedValue = parseInt(value);
-                    if (!isNaN(parsedValue)) {
-                      setFormData({ ...formData, maxParticipants: parsedValue, limitParticipants: true });
-                    }
-                  }
-                }}
-                style={{ maxWidth: '160px' }}
-              />
-              <span className="text-sm text-muted-foreground">participants</span>
+          {/* Event capacity */}
+          <RfCard icon={RF_ICONS.users} title="Event capacity">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 10, marginBottom: 18, background: 'rgba(31,138,77,.08)', border: '1px solid rgba(31,138,77,.25)' }}>
+              <span style={{ color: '#1f8a4d', display: 'inline-flex' }}><RfIcon d={RF_ICONS.spark} size={16} /></span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#176b3c' }}>Events up to 5 participants free for testing purposes</span>
             </div>
-            <p className="text-xs text-muted-foreground" style={{ marginTop: '4px' }}>
-              This determines the pricing tier for your event
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Basic Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Basic information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Round name</Label>
-            <Input
-              ref={nameRef}
-              id="name"
-              value={formData.name}
+            <RfNumField
+              label="Expected number of participants"
+              value={formData.maxParticipants}
               onChange={(e) => {
-                setFormData({ ...formData, name: e.target.value });
-                if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: false }));
-              }}
-              placeholder="e.g. Morning Networking for IT Professionals"
-              className={fieldErrors.name ? 'border-destructive' : ''}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="groupSize">Group size</Label>
-                <Tooltip>
-                  <TooltipTrigger type="button">
-                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>Number of participants in a networking group. For a one-on-one meeting, enter 2. Keep in mind that smaller groups allow for deeper networking and increase the likelihood of finding a group to join.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <Input
-                ref={groupSizeRef}
-                id="groupSize"
-                type="number"
-                min="2"
-                max="20"
-                value={formData.groupSize}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '') {
-                    setFormData({ ...formData, groupSize: '' as any });
-                  } else {
-                    const parsedValue = parseInt(value);
-                    if (!isNaN(parsedValue)) {
-                      setFormData({ ...formData, groupSize: parsedValue });
-                    }
+                const value = e.target.value;
+                if (value === '') {
+                  setFormData({ ...formData, maxParticipants: '' as any, limitParticipants: false });
+                } else {
+                  const parsedValue = parseInt(value);
+                  if (!isNaN(parsedValue)) {
+                    setFormData({ ...formData, maxParticipants: parsedValue, limitParticipants: true });
                   }
+                }
+              }}
+              suffix="participants" min={2} max={10000} width={260} id="eventCapacity" placeholder="e.g. 50"
+            />
+            <p style={{ margin: '8px 0 0', fontSize: 11.5, color: C.ink, opacity: .55 }}>This determines the pricing tier for your event</p>
+          </RfCard>
+
+          {/* Basic information */}
+          <RfCard icon={RF_ICONS.cal} title="Basic information">
+            <div style={{ marginBottom: 16 }}>
+              <RfNumField
+                type="text"
+                label="Round name"
+                inputRef={nameRef}
+                id="name"
+                value={formData.name}
+                error={fieldErrors.name}
+                placeholder="e.g. Morning Networking for IT Professionals"
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: false }));
                 }}
-                className="w-full"
               />
             </div>
-          </div>
+            <RfNumField
+              label="Group size"
+              help="Number of participants in a networking group. For a one-on-one meeting, enter 2. Smaller groups allow for deeper networking and increase the likelihood of finding a group to join."
+              inputRef={groupSizeRef}
+              id="groupSize"
+              value={formData.groupSize}
+              error={fieldErrors.groupSize}
+              min={2}
+              max={20}
+              width={200}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  setFormData({ ...formData, groupSize: '' as any });
+                } else {
+                  const parsedValue = parseInt(value);
+                  if (!isNaN(parsedValue)) {
+                    setFormData({ ...formData, groupSize: parsedValue });
+                  }
+                }
+              }}
+            />
+          </RfCard>
 
-        </CardContent>
-      </Card>
+          {/* Rounds */}
+          <RfCard
+            icon={RF_ICONS.clock}
+            title="Rounds"
+            hintList={[
+              `First round must be at least ${systemParams?.minimalTimeToFirstRound || 10} minutes in the future`,
+              `Participants receive SMS notification ${systemParams?.confirmationWindowMinutes || 5} minutes before the round to confirm attendance`,
+              `Time must be rounded to ${systemParams?.timePickerIntervalMinutes || 5} minutes`,
+            ]}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div ref={dateRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <RfLbl>Date of first round</RfLbl>
+                <DatePicker
+                  value={formData.date}
+                  onChange={(date) => {
+                    setFormData({ ...formData, date });
+                    if (fieldErrors.date) setFieldErrors(prev => ({ ...prev, date: false }));
+                  }}
+                  placeholder="dd-mm-yyyy"
+                  minDate={new Date().toISOString().split('T')[0]}
+                  className={fieldErrors.date || isDateInPast ? 'border-destructive' : ''}
+                  disabled={firstRoundStarted}
+                />
+                {isDateInPast && <p style={rfErr}>Date cannot be in the past</p>}
+              </div>
 
-      {/* Rounds */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Rounds
-          </CardTitle>
-          <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-outside ml-5">
-            <li className="pl-1">First round must be at least {systemParams?.minimalTimeToFirstRound || 10} minutes in the future</li>
-            <li className="pl-1">Participants receive SMS notification {systemParams?.confirmationWindowMinutes || 5} minutes before the round to confirm attendance</li>
-            <li className="pl-1">Time must be rounded to {systemParams?.timePickerIntervalMinutes || 5} minutes</li>
-          </ul>
-        </CardHeader>
-        <CardContent className="space-y-4">
-
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div ref={dateRef} className="space-y-2">
-              <Label htmlFor="date">Date of first round</Label>
-              <DatePicker
-                value={formData.date}
-                onChange={(date) => {
-                  setFormData({ ...formData, date });
-                  if (fieldErrors.date) setFieldErrors(prev => ({ ...prev, date: false }));
-                }}
-                placeholder="dd-mm-yyyy"
-                minDate={new Date().toISOString().split('T')[0]}
-                className={fieldErrors.date || isDateInPast ? 'border-destructive' : ''}
-                disabled={firstRoundStarted}
-              />
-              {isDateInPast && (
-                <p className="text-sm text-destructive">
-                  Date cannot be in the past
-                </p>
-              )}
+              <div ref={startTimeRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <RfLbl>Time of first round</RfLbl>
+                <TimePicker
+                  value={formData.startTime}
+                  onChange={(time) => {
+                    setFormData({ ...formData, startTime: time });
+                    if (fieldErrors.startTime) setFieldErrors(prev => ({ ...prev, startTime: false }));
+                  }}
+                  error={!firstRoundStarted && (!!timeError || fieldErrors.startTime)}
+                  disabled={firstRoundStarted}
+                  asapMinutesOffset={systemParams?.minimalTimeToFirstRound || 10}
+                  minuteInterval={systemParams?.timePickerIntervalMinutes || 5}
+                />
+                {timeError && !firstRoundStarted && <p style={rfErr}>{timeError}</p>}
+              </div>
             </div>
 
-            <div ref={startTimeRef} className="space-y-2">
-              <Label htmlFor="startTime">Time of first round</Label>
-              <TimePicker
-                value={formData.startTime}
-                onChange={(time) => {
-                  setFormData({ ...formData, startTime: time });
-                  if (fieldErrors.startTime) setFieldErrors(prev => ({ ...prev, startTime: false }));
-                }}
-                error={!firstRoundStarted && (!!timeError || fieldErrors.startTime)}
-                disabled={firstRoundStarted}
-                asapMinutesOffset={systemParams?.minimalTimeToFirstRound || 10}
-                minuteInterval={systemParams?.timePickerIntervalMinutes || 5}
-              />
-              {timeError && !firstRoundStarted && (
-                <p className="text-sm text-destructive">{timeError}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="numberOfRounds">Number of rounds</Label>
-              <Input
-                id="numberOfRounds"
-                type="number"
-                min={minRoundsAllowed > 0 ? minRoundsAllowed : 1}
-                max="20"
+            <div style={{ height: 16 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <RfNumField
+                label="Number of rounds"
                 value={formData.numberOfRounds}
+                min={minRoundsAllowed > 0 ? minRoundsAllowed : 1}
+                max={20}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === '') {
@@ -1307,7 +1446,6 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                   } else {
                     const parsedValue = parseInt(value);
                     if (!isNaN(parsedValue)) {
-                      // Ensure value is not below minimum
                       const minValue = minRoundsAllowed > 0 ? minRoundsAllowed : 1;
                       const finalValue = Math.max(parsedValue, minValue);
                       setFormData({ ...formData, numberOfRounds: finalValue });
@@ -1315,18 +1453,13 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                   }
                 }}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="roundDuration">Round duration</Label>
-              <div className="relative">
-                <Input
-                  id="roundDuration"
-                  type="number"
+              <div>
+                <RfNumField
+                  label="Round duration"
+                  value={formData.roundDuration}
+                  suffix="min"
                   min={systemParams?.minimalRoundDuration ?? 5}
                   max={systemParams?.maximalRoundDuration ?? 240}
-                  value={formData.roundDuration}
-                  className="pr-10"
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value === '') {
@@ -1339,85 +1472,71 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                     }
                   }}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                  min
-                </span>
+                {roundDurationError && <p style={rfErr}>{roundDurationError}</p>}
               </div>
-              {roundDurationError && (
-                <p className="text-sm text-destructive">{roundDurationError}</p>
-              )}
             </div>
 
             {formData.numberOfRounds > 1 && (
-              <div className="space-y-2">
-                <Label htmlFor="gapBetweenRounds">Gap between rounds</Label>
-                <div className="relative">
-                  <Input
-                    id="gapBetweenRounds"
-                    type="number"
-                    min={systemParams?.minimalGapBetweenRounds ?? 10}
-                    max="60"
-                    value={formData.gapBetweenRounds || 10}
-                    className="pr-10"
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const minGap = systemParams?.minimalGapBetweenRounds ?? 10;
-                      if (value === '') {
-                        setFormData({ ...formData, gapBetweenRounds: minGap });
-                      } else {
-                        const parsedValue = parseInt(value);
-                        if (!isNaN(parsedValue)) {
-                          setFormData({ ...formData, gapBetweenRounds: parsedValue });
+              <>
+                <div style={{ height: 16 }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <RfNumField
+                      label="Gap between rounds"
+                      value={formData.gapBetweenRounds || 10}
+                      suffix="min"
+                      min={systemParams?.minimalGapBetweenRounds ?? 10}
+                      max={60}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const minGap = systemParams?.minimalGapBetweenRounds ?? 10;
+                        if (value === '') {
+                          setFormData({ ...formData, gapBetweenRounds: minGap });
+                        } else {
+                          const parsedValue = parseInt(value);
+                          if (!isNaN(parsedValue)) {
+                            setFormData({ ...formData, gapBetweenRounds: parsedValue });
+                          }
                         }
-                      }
-                    }}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                    min
-                  </span>
+                      }}
+                    />
+                    {gapBetweenRoundsError && <p style={rfErr}>{gapBetweenRoundsError}</p>}
+                  </div>
                 </div>
-                {gapBetweenRoundsError && (
-                  <p className="text-sm text-destructive">{gapBetweenRoundsError}</p>
-                )}
+              </>
+            )}
+
+            {/* Custom Times Toggle */}
+            {formData.numberOfRounds > 1 && (
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.hair}` }}>
+                <RfToggleRow
+                  label="Custom round times"
+                  note="Set individual start times for each round"
+                  on={useCustomTimes}
+                  onChange={(checked) => {
+                    setUseCustomTimes(checked);
+                    if (!checked) {
+                      const newRounds = generateRounds();
+                      setFormData(prev => ({ ...prev, rounds: newRounds }));
+                    }
+                  }}
+                />
               </div>
             )}
-          </div>
 
-          {/* Custom Times Toggle */}
-          {formData.numberOfRounds > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <div>
-                <Label htmlFor="customTimes" className="cursor-pointer">Custom round times</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Set individual start times for each round</p>
-              </div>
-              <Switch
-                id="customTimes"
-                checked={useCustomTimes}
-                onCheckedChange={(checked) => {
-                  setUseCustomTimes(checked);
-                  if (!checked) {
-                    // Regenerate rounds with auto spacing
-                    const newRounds = generateRounds();
-                    setFormData(prev => ({ ...prev, rounds: newRounds }));
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {/* Custom Round Times Editor */}
+          {/* Custom Round Times Editor — matches v07 screen-round-form.jsx (SF3).
+              Renders when the "Custom round times" toggle is on. */}
           {useCustomTimes && formData.rounds.length > 0 && (
-            <div className="space-y-3 pt-2">
-              <Label>Round start times</Label>
-              <div className="space-y-2">
-                {formData.rounds.map((round, idx) => (
-                  <div key={round.id} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
-                    <span className="text-sm font-medium text-muted-foreground w-20">Round {idx + 1}</span>
-                    <Input
+            <div style={{ marginTop: 16, borderRadius: 14, border: `1px solid ${C.hair}`, background: C.cream, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {formData.rounds.map((round, idx) => (
+                <div key={round.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 1fr 32px', alignItems: 'center', gap: 12, background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 12, padding: '10px 12px' }}>
+                  <span style={{ fontFamily: C.fontMono, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: C.orange }}>R{idx + 1}</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <span style={{ fontSize: 11.5, color: C.ink, opacity: .6 }}>Starts</span>
+                    <input
                       type="time"
                       value={round.startTime}
-                      className="w-32"
-                      step="300"
+                      step={300}
                       onChange={(e) => {
                         const newTime = e.target.value;
                         setFormData(prev => ({
@@ -1427,48 +1546,48 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                           ),
                         }));
                       }}
+                      style={{ flex: 1, minWidth: 0, padding: '7px 10px', borderRadius: 9, border: `1.5px solid ${C.hairStrong}`, background: '#fff', fontFamily: C.fontBody, fontSize: 14, color: C.ink }}
                     />
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="240"
-                        value={round.duration}
-                        className="w-20 pr-8"
-                        onChange={(e) => {
-                          const dur = parseInt(e.target.value) || formData.roundDuration;
-                          setFormData(prev => ({
-                            ...prev,
-                            rounds: prev.rounds.map((r, i) =>
-                              i === idx ? { ...r, duration: dur } : r
-                            ),
-                          }));
-                        }}
-                      />
-                      <span className="text-xs text-muted-foreground -ml-7">min</span>
-                    </div>
-                    {formData.rounds.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            numberOfRounds: prev.numberOfRounds - 1,
-                            rounds: prev.rounds.filter((_, i) => i !== idx),
-                          }));
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <span style={{ fontSize: 11.5, color: C.ink, opacity: .6 }}>Lasts</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={240}
+                      value={round.duration}
+                      onChange={(e) => {
+                        const dur = parseInt(e.target.value) || formData.roundDuration;
+                        setFormData(prev => ({
+                          ...prev,
+                          rounds: prev.rounds.map((r, i) =>
+                            i === idx ? { ...r, duration: dur } : r
+                          ),
+                        }));
+                      }}
+                      style={{ width: 62, padding: '7px 10px', borderRadius: 9, border: `1.5px solid ${C.hairStrong}`, background: '#fff', fontFamily: C.fontBody, fontSize: 14, color: C.ink }}
+                    />
+                    <span style={{ fontSize: 12, color: C.ink, opacity: .6 }}>min</span>
+                  </label>
+                  <button
+                    type="button"
+                    aria-label={`Remove round ${idx + 1}`}
+                    disabled={formData.rounds.length <= 1}
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        numberOfRounds: prev.numberOfRounds - 1,
+                        rounds: prev.rounds.filter((_, i) => i !== idx),
+                      }));
+                    }}
+                    style={{ width: 30, height: 30, borderRadius: 9, border: 'none', cursor: formData.rounds.length <= 1 ? 'default' : 'pointer', background: 'transparent', color: C.ink, opacity: formData.rounds.length <= 1 ? .25 : .55, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
                 onClick={() => {
                   const lastRound = formData.rounds[formData.rounds.length - 1];
                   const [h, m] = (lastRound?.startTime || '10:00').split(':').map(Number);
@@ -1488,401 +1607,191 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
                     }],
                   }));
                 }}
+                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 10, border: `1.5px dashed ${C.hairStrong}`, background: 'transparent', color: C.purpleDeep, fontFamily: C.fontBody, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add round
-              </Button>
+                <Plus size={14} /> Add round
+              </button>
+              <p style={{ margin: '2px 0 0', fontSize: 12, lineHeight: 1.5, color: C.ink, opacity: .6 }}>Each start time must be at least 5 minutes after the previous round ends. Times are rounded to 5 minutes.</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </RfCard>
 
-      {/* Meeting Points */}
-      <Card className={fieldErrors.meetingPoints ? 'border-destructive' : ''}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Meeting points
-          </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            Enter locations that are distinctive and easy to recognize
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div ref={meetingPointsRef}>
-            <MeetingPointsManager
-              meetingPoints={formData.meetingPoints || []}
-              onChange={(meetingPoints) => {
-                setFormData(prev => ({ ...prev, meetingPoints }));
-                if (fieldErrors.meetingPoints) setFieldErrors(prev => ({ ...prev, meetingPoints: false }));
+          {/* Meeting points */}
+          <RfCard icon={RF_ICONS.pin} title="Meeting points" hint="Enter locations that are distinctive and easy to recognize" error={fieldErrors.meetingPoints}>
+            <div ref={meetingPointsRef}>
+              <MeetingPointsManager
+                meetingPoints={formData.meetingPoints || []}
+                onChange={(meetingPoints) => {
+                  setFormData(prev => ({ ...prev, meetingPoints }));
+                  if (fieldErrors.meetingPoints) setFieldErrors(prev => ({ ...prev, meetingPoints: false }));
+                }}
+              />
+            </div>
+          </RfCard>
+
+          {/* Ice breakers */}
+          <RfCard icon={RF_ICONS.msg} title="Ice breakers">
+            <IceBreakersManager
+              iceBreakers={formData.iceBreakers || []}
+              onChange={(iceBreakers) => setFormData({ ...formData, iceBreakers })}
+            />
+          </RfCard>
+
+          {/* Advanced */}
+          <RfCard icon={RF_ICONS.settings} title="Advanced">
+            <RfToggleRow
+              label="Limit number of groups"
+              help="Useful if you have a dedicated table or meeting room for each group"
+              on={!!formData.limitGroups}
+              onChange={(checked) => setFormData({ ...formData, limitGroups: checked })}
+            />
+            {formData.limitGroups && (
+              <div style={{ marginTop: 16 }}>
+                <RfNumField
+                  label="Maximum groups"
+                  value={formData.maxGroups}
+                  min={1}
+                  max={100}
+                  width={200}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({ ...formData, maxGroups: '' as any });
+                    } else {
+                      const parsedValue = parseInt(value);
+                      if (!isNaN(parsedValue)) {
+                        setFormData({ ...formData, maxGroups: parsedValue });
+                      }
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            <RfSeparator />
+
+            <RfToggleRow
+              label="Enable teams"
+              help="Can be used for networking between or within departments. Also useful for events like weddings where Team bride meets Team groom"
+              on={!!formData.enableTeams}
+              onChange={(checked) => {
+                const newFormData = { ...formData, enableTeams: checked };
+                if (checked && (!formData.teams || formData.teams.length === 0)) {
+                  newFormData.teams = [''];
+                }
+                setFormData(newFormData);
               }}
             />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Ice Breakers */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            Ice breakers
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <IceBreakersManager
-            iceBreakers={formData.iceBreakers || []}
-            onChange={(iceBreakers) => setFormData({ ...formData, iceBreakers })}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Advanced */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Advanced
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <Label>Limit number of groups</Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p>Useful if you have a dedicated table or meeting room for each group</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  {formData.roundsMode === 'triggered' && (
-                    <p className="text-sm text-amber-600">
-                      Automatically enabled for triggered rounds
-                    </p>
-                  )}
-                </div>
-                <Switch
-                  checked={formData.limitGroups}
-                  onCheckedChange={(checked) => setFormData({ ...formData, limitGroups: checked })}
-                  disabled={formData.roundsMode === 'triggered'}
+            {formData.enableTeams && (
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <RfLbl>Team names</RfLbl>
+                <RfEditableList
+                  rows={formData.teams || []}
+                  onUpdate={updateTeam}
+                  onRemove={removeTeam}
+                  onMoveUp={moveTeamUp}
+                  onMoveDown={moveTeamDown}
+                  onAdd={addTeam}
+                  placeholder="e.g. Sales, Marketing, Team Bride, …"
+                  addLabel="Add team"
                 />
+                <div style={{ marginTop: 6 }}>
+                  <RfLbl>Matching type</RfLbl>
+                  <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <RfMatchingCard mode="within-team" label="Within the team" desc="Members meet others on their own team." active={formData.matchingType === 'within-team'} onSelect={() => setFormData({ ...formData, matchingType: 'within-team' })} />
+                    <RfMatchingCard mode="across-teams" label="Across teams" desc="Members meet people from other teams." active={formData.matchingType === 'across-teams'} onSelect={() => setFormData({ ...formData, matchingType: 'across-teams' })} />
+                  </div>
+                </div>
               </div>
+            )}
 
-              {formData.limitGroups && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="maxGroups">Maximum groups</Label>
-                    <Input
-                      id="maxGroups"
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={formData.maxGroups}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === '') {
-                          setFormData({ ...formData, maxGroups: '' as any });
-                        } else {
-                          const parsedValue = parseInt(value);
-                          if (!isNaN(parsedValue)) {
-                            setFormData({ ...formData, maxGroups: parsedValue });
-                          }
-                        }
-                      }}
-                      disabled={formData.roundsMode === 'triggered'}
-                    />
-                    {formData.roundsMode === 'triggered' && (
-                      <p className="text-sm text-amber-600">
-                        Maximum groups is set to 1 for triggered rounds and cannot be changed
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <RfSeparator />
 
-            <Separator />
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <Label>Enable teams</Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p>Can be used for networking between or within departments. Also useful for events like weddings where Team bride meets Team groom</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-                <Switch
-                  checked={formData.enableTeams}
-                  onCheckedChange={(checked) => {
-                    const newFormData = { ...formData, enableTeams: checked };
-                    // If enabling teams and no teams exist, add the first empty team
-                    if (checked && (!formData.teams || formData.teams.length === 0)) {
-                      newFormData.teams = [''];
-                    }
-                    setFormData(newFormData);
-                  }}
+            <RfToggleRow
+              label="Enable topics"
+              help="If you want participants to be matched by topic. Use carefully - best networking results happen when people meet outside their bubbles"
+              on={!!formData.enableTopics}
+              onChange={(checked) => {
+                const newFormData = { ...formData, enableTopics: checked };
+                if (checked && (!formData.topics || formData.topics.length === 0)) {
+                  newFormData.topics = [''];
+                }
+                setFormData(newFormData);
+              }}
+            />
+            {formData.enableTopics && (
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <RfLbl>Topic names</RfLbl>
+                <RfEditableList
+                  rows={formData.topics || []}
+                  onUpdate={updateTopic}
+                  onRemove={removeTopic}
+                  onMoveUp={moveTopicUp}
+                  onMoveDown={moveTopicDown}
+                  onAdd={addTopic}
+                  placeholder="Topic name"
+                  addLabel="Add topic"
                 />
-              </div>
-
-              {formData.enableTeams && (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <Label>Team names</Label>
-                    
-                    <div className="space-y-3">
-                      {(formData.teams || []).map((team, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <Input
-                            placeholder="e.g. Sales, Marketing, Team Bride, ..."
-                            value={team}
-                            onChange={(e) => updateTeam(index, e.target.value)}
-                            className="flex-1"
-                          />
-                          <div className="flex gap-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => moveTeamUp(index)}
-                              disabled={index === 0}
-                              className="h-8 w-8 p-0"
-                            >
-                              <ChevronUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => moveTeamDown(index)}
-                              disabled={index === (formData.teams || []).length - 1}
-                              className="h-8 w-8 p-0"
-                            >
-                              <ChevronDown className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeTeam(index)}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <Button type="button" variant="outline" onClick={addTeam} className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add team
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Matching type</Label>
-                    <ToggleGroup
-                      type="single"
-                      value={formData.matchingType}
-                      onValueChange={(value) => {
-                        if (value) {
-                          setFormData({ ...formData, matchingType: value as 'within-team' | 'across-teams' });
-                        }
-                      }}
-                      className="grid grid-cols-2"
-                    >
-                      <ToggleGroupItem value="within-team" className="h-10 py-2 px-4 text-center border border-border bg-background data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary">
-                        Within the team
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="across-teams" className="h-10 py-2 px-4 text-center border border-border bg-background data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary">
-                        Across teams
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <Label>Enable topics</Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p>If you want participants to be matched by topic. Use carefully - best networking results happen when people meet outside their bubbles</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-                <Switch
-                  checked={formData.enableTopics}
-                  onCheckedChange={(checked) => {
-                    const newFormData = { ...formData, enableTopics: checked };
-                    // If enabling topics and no topics exist, add the first empty topic
-                    if (checked && (!formData.topics || formData.topics.length === 0)) {
-                      newFormData.topics = [''];
-                    }
-                    setFormData(newFormData);
-                  }}
-                />
-              </div>
-
-              {formData.enableTopics && (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <Label>Topic names</Label>
-                    
-                    <div className="space-y-3">
-                      {(formData.topics || []).map((topic, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <Input
-                            placeholder={`Topic ${index + 1}`}
-                            value={topic}
-                            onChange={(e) => updateTopic(index, e.target.value)}
-                            className="flex-1"
-                          />
-                          <div className="flex gap-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => moveTopicUp(index)}
-                              disabled={index === 0}
-                              className="h-8 w-8 p-0"
-                            >
-                              <ChevronUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => moveTopicDown(index)}
-                              disabled={index === (formData.topics || []).length - 1}
-                              className="h-8 w-8 p-0"
-                            >
-                              <ChevronDown className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeTopic(index)}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <Button type="button" variant="outline" onClick={addTopic} className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add topic
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="allowMultipleTopics"
-                      checked={formData.allowMultipleTopics}
-                      onCheckedChange={(checked) => setFormData({ ...formData, allowMultipleTopics: !!checked })}
-                    />
-                    <Label htmlFor="allowMultipleTopics">Participant can select multiple topics</Label>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Mobile Preview - Show before action buttons */}
-      {!isDesktop && (
-      <div>
-        <Separator />
-        <div className="mt-6">
-          <SessionPreview formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
-        </div>
-      </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-3 justify-between">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSaveDraft}
-            disabled={isSubmitting}
-          >
-            Save as draft
-          </Button>
-          <div className="flex items-stretch">
-            <Button
-              type="button"
-              onClick={handleMakeLive}
-              className="rounded-r-none btn-group-left"
-              disabled={!!roundDurationError || isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Publishing...
-                </>
-              ) : (
-                formData.status === 'published' ? 'Update on event page' : 'Publish to event page'
-              )}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  className="px-2 rounded-l-none btn-group-right"
-                  disabled={!!roundDurationError}
+                <label
+                  onClick={() => setFormData({ ...formData, allowMultipleTopics: !formData.allowMultipleTopics })}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, fontSize: 13.5, color: C.ink, cursor: 'pointer' }}
                 >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleScheduleMakingLive}>
-                  Schedule
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <span style={{ width: 18, height: 18, borderRadius: 5, background: formData.allowMultipleTopics ? C.orange : '#fff', border: formData.allowMultipleTopics ? 'none' : `1.5px solid ${C.hairStrong}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
+                    {formData.allowMultipleTopics && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                  </span>
+                  Participant can select multiple topics
+                </label>
+              </div>
+            )}
+          </RfCard>
+
+          {/* Mobile preview — before action buttons */}
+          {!isDesktop && (
+            <div style={{ marginTop: 8, marginBottom: 8 }}>
+              <SessionPreview formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
+            </div>
+          )}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
+            {onCancel ? (
+              <button type="button" onClick={onCancel} style={rfGhostBtn}>Cancel</button>
+            ) : <span />}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+              <button type="button" onClick={handleSaveDraft} disabled={isSubmitting} style={{ ...rfGhostBtn, opacity: isSubmitting ? 0.6 : 1 }}>Save as draft</button>
+              <div style={{ display: 'inline-flex', alignItems: 'stretch' }}>
+                <button
+                  type="button"
+                  onClick={handleMakeLive}
+                  disabled={!!roundDurationError || isSubmitting}
+                  style={{ fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, border: 'none', cursor: (!!roundDurationError || isSubmitting) ? 'not-allowed' : 'pointer', background: C.orange, color: '#fff', padding: '11px 16px', borderRadius: '12px 0 0 12px', boxShadow: '0 6px 16px rgba(221,83,28,.25)', opacity: (!!roundDurationError || isSubmitting) ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                >
+                  {isSubmitting ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />Publishing...</>
+                  ) : (
+                    formData.status === 'published' ? 'Update on event page' : 'Publish to event page'
+                  )}
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="More publish options"
+                      disabled={!!roundDurationError}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: !!roundDurationError ? 'not-allowed' : 'pointer', background: C.orange, color: '#fff', padding: '0 11px', borderRadius: '0 12px 12px 0', borderLeft: '1px solid rgba(255,255,255,.30)', boxShadow: '0 6px 16px rgba(221,83,28,.25)' }}
+                    >
+                      <RfIcon d={RF_ICONS.down} size={16} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleScheduleMakingLive}>
+                      Schedule
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
     </form>
 
     {/* Schedule Dialog */}
@@ -1891,7 +1800,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         <DialogHeader>
           <DialogTitle>Schedule making live</DialogTitle>
           <DialogDescription>
-            Choose when this session should become visible on the event page. Time must be at least {systemParams?.minimalTimeToFirstRound || 10} minutes in the future to give participants time to register.
+            Choose when this round becomes visible on the event page. Time must be at least {systemParams?.minimalTimeToFirstRound || 10} minutes in the future to give participants time to register.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -1924,7 +1833,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           <Button variant="outline" onClick={() => setShowScheduleDialog(false)}>
             Cancel
           </Button>
-          <Button onClick={confirmScheduleMakingLive}>
+          <Button onClick={confirmScheduleMakingLive} disabled={!!scheduleError}>
             Confirm
           </Button>
         </DialogFooter>
@@ -1942,10 +1851,20 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       <DialogContent style={{ maxWidth: '420px' }}>
         <DialogHeader>
           <DialogTitle>Publish event</DialogTitle>
+          <DialogDescription>
+            {formData.name?.trim() || 'This round'} will go live on your event page.
+          </DialogDescription>
         </DialogHeader>
         {creditCheckLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : creditInfo?.hasSubscription ? (
+          <div style={{ display: 'flex', gap: 11, padding: '14px 16px', borderRadius: 12, background: 'rgba(31,138,77,.08)', border: '1px solid rgba(31,138,77,.25)' }}>
+            <Check className="h-[17px] w-[17px]" style={{ color: '#1f8a4d', flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.5 }}>
+              <strong style={{ color: C.purpleDeep }}>Unlimited events</strong> — your subscription covers this round. No credit needed.
+            </div>
           </div>
         ) : creditInfo ? (() => {
           const requiredTierCapacity = PRICING_TIERS[creditInfo.requiredTier].capacity;
@@ -2039,7 +1958,11 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           }}>
             Cancel
           </Button>
-          {creditInfo && (() => {
+          {creditInfo?.hasSubscription ? (
+            <Button onClick={handleConfirmPublish}>
+              Publish
+            </Button>
+          ) : creditInfo && (() => {
             const requiredCap = PRICING_TIERS[creditInfo.requiredTier].capacity;
             const exactMatch = creditInfo.credits.some(c => c.capacityTier === creditInfo.requiredTier && c.balance > 0);
             const hasUsable = creditInfo.credits.some(c => {
@@ -2068,14 +1991,26 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
       </DialogContent>
     </Dialog>
 
-    {/* Preview Section */}
+    {/* Live event page preview column */}
     {isDesktop && (
-    <div>
-      <SessionPreview formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
-    </div>
+      <div style={{ position: 'sticky', top: 96 }}>
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 8, height: 8, background: C.orange, transform: 'rotate(45deg)', display: 'inline-block' }} />
+          <span style={{ fontFamily: C.fontBody, fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: C.purpleDeep }}>Event page preview</span>
+        </div>
+        <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${C.hairStrong}`, background: '#fff', boxShadow: '0 22px 48px rgba(75,29,81,.16)' }}>
+          <div style={{ padding: '11px 16px', background: C.purpleDeep, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ display: 'inline-flex', gap: 5 }}>{['#ff5f57', '#febc2e', '#28c840'].map(c => <span key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />)}</span>
+            <span style={{ fontFamily: C.fontMono, fontSize: 10.5, opacity: .8 }}>wonderelo.com/{previewSlug}</span>
+          </div>
+          <div style={{ maxHeight: 760, overflowY: 'auto', overflowX: 'hidden', background: C.cream, padding: 16 }}>
+            <SessionPreview embedded formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
+          </div>
+        </div>
+        <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Only published rounds show up on your public event page.</p>
+      </div>
     )}
-  </div>
-
-  </TooltipProvider>
+      </div>
+    </div>
   );
 }

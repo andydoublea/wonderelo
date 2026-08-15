@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Phase 02 · Onboarding + Participant flow
+  10 screens on a single design canvas. Mobile screens use iOS device frame;
+  organizer onboarding uses a desktop card.
+
+  Component mapping (HTML mockup → React/TSX):
+    A1 Sign In             → src/components/SignInFlow.tsx (SignInFlowView)
+    A2 Sign Up             → src/components/SignUpFlow.tsx (SignUpFlowView)
+    A3 Email verify        → src/components/EmailVerificationWaiting.tsx
+    A4 Reset password      → src/components/ResetPasswordFlow.tsx
+    B1 Participant register→ src/components/SessionRegistration.tsx + RegistrationFlow
+    B2 Participant dash    → src/components/ParticipantDashboard.tsx
+    B3 Round detail        → src/components/ParticipantRoundDetail.tsx
+    B4 Match · find        → src/components/MatchPartner.tsx (MatchPartnerView)
+    B5 Match · in round    → src/components/MatchNetworking.tsx (MatchNetworkingView)
+    B6 Missed round        → src/components/MissedRound.tsx
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Phase 02 · Participant flow</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; height: 100%; }
+  #root { min-height: 100vh; }
+  /* Universal hover/active feedback — every button & clickable element responds */
+  button, [role="button"], [style*="cursor: pointer"], [style*="cursor:pointer"] {
+    transition: filter .14s ease, transform .12s ease, box-shadow .15s ease, border-color .14s ease, background-color .14s ease;
+  }
+  button:not(:disabled):hover, [role="button"]:hover {
+    filter: brightness(0.95); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(76,25,77,.18);
+  }
+  button:not(:disabled):active, [role="button"]:active { transform: translateY(0); filter: brightness(0.92); }
+  [style*="cursor: pointer"]:not(button):not([role="button"]):hover,
+  [style*="cursor:pointer"]:not(button):not([role="button"]):hover {
+    filter: brightness(0.94); box-shadow: 0 2px 10px rgba(76,25,77,.12);
+  }
+  /* Cap iOS frame's inner scroll so designs paint correctly inside the
+     canvas; the artboards are static visual mocks, not interactive scrollers. */
+  .dc-card iframe { display: block; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Starter components -->
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+
+<!-- Wonderelo screen components -->
+<script type="text/babel" src="participant-screens.jsx"></script>
+<script type="text/babel" src="auth-screens.jsx"></script>
+
+<script type="text/babel">
+  const {
+    SignInScreen, SignUpScreen, EmailVerifyScreen, ResetPasswordScreen,
+    ParticipantRegisterContent, ParticipantDashboardContent, RoundDetailContent,
+    MatchPartnerContent, MatchNetworkingContent, MissedRoundContent,
+    IOSDevice, DesignCanvas, DCSection, DCArtboard, WC, AuthMobileCtx, AuthChromeCtx,
+    PSContact, PSVerify, PSSuccess, PIEmail, PISent,
+    OSAccount, OSDiscovery, OSOrg, OSVerify, OISignIn, OIForgot, OIReset,
+  } = window;
+
+  // Phone width is fixed at 402 (iPhone 15 Pro). Desktop cards are sized per-component.
+  const PH_W = 402;
+  const PH_H = 874;
+
+  function Phone({ children, dark = false, height = PH_H }) {
+    return <IOSDevice width={PH_W} height={height} dark={dark}>{children}</IOSDevice>;
+  }
+
+  // Cream board background behind desktop card screens, to mimic them sitting
+  // inside the Wonderelo public chrome.
+  function CardStage({ width = 480, height = 720, children, pad = 80 }) {
+    return (
+      <div style={{
+        width: width + pad * 2, height,
+        background: WC.cream,
+        display: 'flex', flexDirection: 'column',
+        padding: pad, boxSizing: 'border-box',
+        position: 'relative', overflow: 'hidden',
+      }}>
+        {/* deco diamonds */}
+        <div style={{ position: 'absolute', top: 60, left: 60, width: 14, height: 14, background: WC.orange, transform: 'rotate(45deg)' }} />
+        <div style={{ position: 'absolute', top: 90, left: 90, width: 9, height: 9, background: WC.purpleDeep, transform: 'rotate(45deg)', opacity: .35 }} />
+        <div style={{ position: 'absolute', bottom: 70, right: 60, width: 18, height: 18, background: WC.purpleDeep, transform: 'rotate(45deg)', opacity: .25 }} />
+        <div style={{ position: 'absolute', bottom: 90, right: 100, width: 10, height: 10, background: WC.orange, transform: 'rotate(45deg)' }} />
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+          {children}
+        </div>
+        {/* Brand footer */}
+        <div style={{ position: 'relative', zIndex: 1, marginTop: 26, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <img src="assets/Wonderelo-logo-symbol.png" alt="" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+            <span style={{ fontFamily: WC.fontDisplay, fontWeight: 800, fontSize: 17, letterSpacing: '-.03em', color: WC.purpleDeep }}>wonderelo</span>
+          </div>
+          <span style={{ fontFamily: WC.fontMono, fontSize: 10.5, color: WC.ink, opacity: .5, letterSpacing: '.04em' }}>© 2026 Wonderelo · Break your bubble, meet new people</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Public desktop chrome (nav + footer) — wraps auth screens as full pages ──
+  function PublicNavDesktop() {
+    const link = (t) => (
+      <span key={t} style={{ fontFamily: WC.fontBody, fontSize: 14, fontWeight: 600, color: WC.ink, opacity: .72, cursor: 'pointer' }}>{t}</span>
+    );
+    return (
+      <nav style={{ borderBottom: `1px solid ${WC.hair}`, background: 'rgba(251,246,236,.92)', backdropFilter: 'blur(10px)', padding: '18px 40px', display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 32 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
+          <img src="assets/Wonderelo-logo-symbol.png" alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+          <span style={{ fontFamily: WC.fontDisplay, fontWeight: 800, fontSize: 21, letterSpacing: '-.03em', color: WC.purpleDeep }}>wonderelo</span>
+        </div>
+        <div style={{ display: 'flex', gap: 28, justifySelf: 'center' }}>{['Features', 'Pricing', 'Our story', 'Blog'].map(link)}</div>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <span style={{ fontFamily: WC.fontBody, fontSize: 14, fontWeight: 600, color: WC.purpleDeep, cursor: 'pointer' }}>Sign in</span>
+          <span style={{ fontFamily: WC.fontBody, fontSize: 14, fontWeight: 600, color: '#fff', background: WC.orange, borderRadius: 11, padding: '10px 16px', cursor: 'pointer', boxShadow: '0 6px 16px rgba(221,83,28,.25)' }}>Get started</span>
+        </div>
+      </nav>
+    );
+  }
+  function PublicFooterDesktop() {
+    const cols = [
+      { title: 'Product', links: ['Features', 'How it works', 'Pricing'] },
+      { title: 'Company', links: ['Our story', 'Newsroom', 'Contact us'] },
+      { title: 'Support', links: ['Help center'] },
+      { title: 'Legal', links: ['Terms of use', 'Privacy policy'] },
+    ];
+    return (
+      <footer style={{ background: WC.purpleInk, color: 'rgba(255,255,255,.7)', padding: '64px 40px 36px' }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr repeat(4, 1fr)', gap: 48, marginBottom: 48 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <img src="assets/Wonderelo-logo-symbol.png" alt="" style={{ width: 72, height: 72, transform: 'rotate(-6deg)' }} />
+              <span style={{ fontFamily: WC.fontDisplay, fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: '#fff' }}>wonderelo</span>
+            </div>
+            {cols.map((c) => (
+              <div key={c.title}>
+                <div style={{ fontFamily: WC.fontBody, fontSize: 12.5, fontWeight: 700, color: '#fff', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 16 }}>{c.title}</div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 11 }}>
+                  {c.links.map((l) => <li key={l} style={{ fontFamily: WC.fontBody, fontSize: 13.5, color: 'rgba(255,255,255,.65)', cursor: 'pointer', width: 'fit-content' }}>{l}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,.10)', paddingTop: 26, fontFamily: WC.fontBody, fontSize: 12.5, color: 'rgba(255,255,255,.5)' }}>© 2026 Wonderelo. All rights reserved.</div>
+        </div>
+      </footer>
+    );
+  }
+  // Full desktop page: site nav + centered auth card + site footer (normal page width).
+  function PublicPage({ children, minHeight = 880 }) {
+    return (
+      <div style={{ width: 1240, minHeight, background: WC.cream, display: 'flex', flexDirection: 'column', fontFamily: WC.fontBody, color: WC.ink }}>
+        <PublicNavDesktop />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 40px' }}>
+          <AuthChromeCtx.Provider value={true}>{children}</AuthChromeCtx.Provider>
+        </div>
+        <PublicFooterDesktop />
+      </div>
+    );
+  }
+
+  // ── Mobile auth top nav — mirrors the Event page mobile nav, without the right button ──
+  function MobileAuthNav() {
+    return (
+      <div style={{ position: 'sticky', top: 0, zIndex: 40, background: 'rgba(251,246,236,.94)', backdropFilter: 'blur(10px)', borderBottom: `1px solid ${WC.hair}`, padding: '14px 20px', display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
+          <img src="assets/Wonderelo-logo-symbol.png" alt="" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+          <span style={{ fontFamily: WC.fontDisplay, fontWeight: 800, fontSize: 17, letterSpacing: '-.03em', color: WC.purpleDeep }}>wonderelo</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mobile auth: same auth screens rendered full-bleed as 432px phone pages ──
+  function MobileBrandFooter() {
+    return (
+      <footer style={{ background: '#2d1133', padding: '34px 22px calc(30px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <img src="assets/Wonderelo-logo-symbol.png" alt="" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+          <span style={{ fontFamily: WC.fontDisplay, fontWeight: 800, fontSize: 17, letterSpacing: '-.03em', color: '#fff' }}>wonderelo</span>
+        </div>
+        <span style={{ fontFamily: WC.fontDisplay, fontWeight: 500, fontSize: 14, color: 'rgba(255,255,255,.85)' }}>Break your bubble, meet new people</span>
+        <span style={{ fontFamily: WC.fontMono, fontSize: 10.5, letterSpacing: '.04em', color: 'rgba(255,255,255,.4)' }}>© 2026 Wonderelo</span>
+      </footer>
+    );
+  }
+  function MobileAuth({ children, minHeight = 860 }) {
+    return (
+      <div style={{ width: 432, minHeight, background: WC.paper, display: 'flex', flexDirection: 'column', fontFamily: WC.fontBody, position: 'relative', overflow: 'hidden' }}>
+        <MobileAuthNav />
+        <AuthChromeCtx.Provider value={true}><AuthMobileCtx.Provider value={true}>{children}</AuthMobileCtx.Provider></AuthChromeCtx.Provider>
+        <MobileBrandFooter />
+      </div>
+    );
+  }
+  const AUTH_MOBILE = {
+    'psu3-success-m':   () => <MobileAuth><PSSuccess /></MobileAuth>,
+    'psi1-email-m':     () => <MobileAuth><PIEmail /></MobileAuth>,
+    'psi2-sent-m':      () => <MobileAuth><PISent /></MobileAuth>,
+    'osu1-account-m':   () => <MobileAuth><OSAccount /></MobileAuth>,
+    'osu2-discovery-m': () => <MobileAuth><OSDiscovery /></MobileAuth>,
+    'osu3-org-m':       () => <MobileAuth><OSOrg /></MobileAuth>,
+    'osu4-verify-m':    () => <MobileAuth><OSVerify /></MobileAuth>,
+    'osi1-signin-m':    () => <MobileAuth><OISignIn /></MobileAuth>,
+    'osi2-forgot-m':    () => <MobileAuth><OIForgot /></MobileAuth>,
+    'osi3-reset-m':     () => <MobileAuth><OIReset /></MobileAuth>,
+  };
+
+  // Single source of truth for all artboards. `?only=<id>` (used by the
+  // Overview.html board) renders one screen full-bleed instead of the canvas.
+  // Four auth flows: participant sign-up/in + organizer sign-up/in.
+  const ARTBOARDS = [
+    // 1 · Participant sign up (join an event — guest path)
+    { sec: 'p-signup', id: 'psu3-success', label: "You're in", w: 1240, h: 1180,
+      render: () => <PublicPage><PSSuccess /></PublicPage> },
+    // 2 · Participant sign in (returning — magic link)
+    { sec: 'p-signin', id: 'psi1-email', label: 'Magic link', w: 1240, h: 1180,
+      render: () => <PublicPage><PIEmail /></PublicPage> },
+    { sec: 'p-signin', id: 'psi2-sent', label: 'Link sent', w: 1240, h: 1180,
+      render: () => <PublicPage><PISent /></PublicPage> },
+    // 3 · Organizer sign up (3-step account creation + verify)
+    { sec: 'o-signup', id: 'osu1-account', label: 'Step 1 · Account', w: 1240, h: 1240,
+      render: () => <PublicPage><OSAccount /></PublicPage> },
+    { sec: 'o-signup', id: 'osu2-discovery', label: 'Step 2 · Discovery', w: 1240, h: 1240,
+      render: () => <PublicPage><OSDiscovery /></PublicPage> },
+    { sec: 'o-signup', id: 'osu3-org', label: 'Step 3 · Organisation', w: 1240, h: 1240,
+      render: () => <PublicPage><OSOrg /></PublicPage> },
+    { sec: 'o-signup', id: 'osu4-verify', label: 'Verify email', w: 1240, h: 1180,
+      render: () => <PublicPage><OSVerify /></PublicPage> },
+    // 4 · Organizer sign in (password + forgot + reset)
+    { sec: 'o-signin', id: 'osi1-signin', label: 'Sign in', w: 1240, h: 1200,
+      render: () => <PublicPage><OISignIn /></PublicPage> },
+    { sec: 'o-signin', id: 'osi2-forgot', label: 'Forgot password', w: 1240, h: 1180,
+      render: () => <PublicPage><OIForgot /></PublicPage> },
+    { sec: 'o-signin', id: 'osi3-reset', label: 'Reset password', w: 1240, h: 1280,
+      render: () => <PublicPage><OIReset /></PublicPage> },
+  ];
+
+  const _params = new URLSearchParams(window.location.search);
+  const onlyId = _params.get('only');
+  const bareMode = _params.get('bare');
+
+  // Bare (no iOS frame) renderers — used by the Overview board to present the
+  // mobile screens as plain pages, matching the Dashboard Live page styling.
+  const BARE = {
+    // Full matching flow, presented as plain brand pages (not iOS mockups).
+    'm1-meeting-point':    { bg: WC.paper,      render: () => <MeetingPointContent /> },
+    'm2-no-match':         { bg: WC.paper,      render: () => <NoMatchContent /> },
+    'm3-find-each-other':  { bg: WC.paper,      render: () => <MatchPartnerContent /> },
+    'm4-networking':       { bg: WC.purpleDeep, render: () => <MatchNetworkingContent /> },
+    'm5-contact-sharing':  { bg: WC.paper,      render: () => <ContactSharingContent /> },
+    'm6-wonderelo-feedback':{ bg: WC.paper,     render: () => <WondereloFeedbackContent /> },
+    'm7-missed-round':     { bg: WC.paper,      render: () => <MissedRoundContent /> },
+    // Legacy aliases (kept for any old links)
+    'b4-match-partner':    { bg: WC.paper,      render: () => <MatchPartnerContent /> },
+    'b5-match-networking': { bg: WC.purpleDeep, render: () => <MatchNetworkingContent /> },
+    'b6-missed-round':     { bg: WC.paper,      render: () => <MissedRoundContent /> },
+  };
+
+  function App() {
+    if (onlyId) {
+      if (AUTH_MOBILE[onlyId]) {
+        return <div style={{ width: 432, overflow: 'hidden' }}>{AUTH_MOBILE[onlyId]()}</div>;
+      }
+      if (bareMode && BARE[onlyId]) {
+        const b = BARE[onlyId];
+        return <div style={{ width: 432, background: b.bg }}>{b.render()}</div>;
+      }
+      const b = ARTBOARDS.find((a) => a.id === onlyId);
+      if (b) {
+        return <div style={{ width: b.w }}>{b.render()}</div>;
+      }
+    }
+    return (
+      <DesignCanvas>
+
+        <DCSection
+          id="p-signup"
+          title="1 · Participant sign up"
+          subtitle="Joining an event for the first time — no password. Contact details & email confirmation now live in the participant journey (Continue Registration). This is the final confirmation screen."
+        >
+          {ARTBOARDS.filter((a) => a.sec === 'p-signup').map((a) => (
+            <DCArtboard key={a.id} id={a.id} label={a.label} width={a.w} height={a.h}>{a.render()}</DCArtboard>
+          ))}
+        </DCSection>
+
+        <DCSection
+          id="p-signin"
+          title="2 · Participant sign in"
+          subtitle="Returning participant — magic-link only. Enter email → link sent → straight back in."
+        >
+          {ARTBOARDS.filter((a) => a.sec === 'p-signin').map((a) => (
+            <DCArtboard key={a.id} id={a.id} label={a.label} width={a.w} height={a.h}>{a.render()}</DCArtboard>
+          ))}
+        </DCSection>
+
+        <DCSection
+          id="o-signup"
+          title="3 · Organizer sign up"
+          subtitle="Creating an organizer account — three steps (account · discovery · organisation) then email verification."
+        >
+          {ARTBOARDS.filter((a) => a.sec === 'o-signup').map((a) => (
+            <DCArtboard key={a.id} id={a.id} label={a.label} width={a.w} height={a.h}>{a.render()}</DCArtboard>
+          ))}
+        </DCSection>
+
+        <DCSection
+          id="o-signin"
+          title="4 · Organizer sign in"
+          subtitle="Email + password, with the forgot-password → reset flow."
+        >
+          {ARTBOARDS.filter((a) => a.sec === 'o-signin').map((a) => (
+            <DCArtboard key={a.id} id={a.id} label={a.label} width={a.w} height={a.h}>{a.render()}</DCArtboard>
+          ))}
+        </DCSection>
+
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>

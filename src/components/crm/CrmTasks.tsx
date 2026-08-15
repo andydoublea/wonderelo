@@ -399,11 +399,18 @@ export default function CrmTasks() {
     );
 
     try {
-      const endpoint = wasCompleted
-        ? `${apiBaseUrl}/crm/tasks/${task.id}/reopen`
-        : `${apiBaseUrl}/crm/tasks/${task.id}/complete`;
-
-      const res = await fetch(endpoint, { method: 'POST', headers });
+      // Complete via the dedicated endpoint; reopen by clearing completed_at
+      // through the task update route (server has no /reopen route).
+      const res = wasCompleted
+        ? await fetch(`${apiBaseUrl}/crm/tasks/${task.id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ completed_at: null }),
+          })
+        : await fetch(`${apiBaseUrl}/crm/tasks/${task.id}/complete`, {
+            method: 'POST',
+            headers,
+          });
 
       if (!res.ok) {
         // Revert

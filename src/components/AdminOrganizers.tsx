@@ -604,7 +604,7 @@ export function AdminOrganizers({ accessToken, onBack, onNavigateToParticipant, 
               <CardContent>
                 <div className="text-2xl">{stats.confirmedUsers}</div>
                 <p className="text-xs text-muted-foreground">
-                  {((stats.confirmedUsers / stats.totalUsers) * 100).toFixed(1)}% confirmed
+                  {stats.totalUsers > 0 ? ((stats.confirmedUsers / stats.totalUsers) * 100).toFixed(1) : '0'}% confirmed
                 </p>
               </CardContent>
             </Card>

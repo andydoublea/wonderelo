@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Blog post detail redesign
+  Maps to: src/components/BlogDetailPage.tsx
+  Post HTML rendered from: post.content (sanitized) via dangerouslySetInnerHTML
+  Shared chrome: Navigation + Footer
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Meeting points: the secret ingredient</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  /* ── Breadcrumb ───────────────────────────────────────── */
+  /* ── Article header ───────────────────────────────────── */
+  .bp-header {
+    padding: 40px 0 56px; max-width: 720px;
+    margin-left: max(284px, calc(50% - 256px)); margin-right: 0;
+  }
+  .bp-header .tags {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;
+  }
+  .bp-header .tag {
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(221,83,28,.10); color: var(--w-orange);
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  }
+  .bp-header .tag.is-purple { background: rgba(76,25,77,.06); color: var(--w-purple-deep); }
+  .bp-header h1 {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: clamp(36px, 4.4vw, 60px); line-height: 1.05; letter-spacing: -0.03em;
+    color: var(--w-purple-deep); margin: 0;
+    text-wrap: balance;
+  }
+  .bp-header h1 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .bp-header .deck {
+    margin-top: 22px;
+    font-family: var(--w-font-serif); font-style: italic;
+    font-size: 22px; line-height: 1.4;
+    color: var(--w-ink); opacity: .82;
+    max-width: 640px;
+  }
+  .bp-byline {
+    margin-top: 40px;
+    padding-top: 24px; border-top: 1px solid var(--w-hairline);
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .bp-byline .av {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-display); font-weight: 800; font-size: 16px;
+  }
+  .bp-byline .who { display: flex; flex-direction: column; gap: 2px; }
+  .bp-byline .who .name { font-family: var(--w-font-display); font-weight: 700; font-size: 15px; color: var(--w-purple-deep); }
+  .bp-byline .who .role { font-size: 13px; color: var(--w-ink); opacity: .7; }
+  .bp-byline .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--w-hairline-strong); }
+  .bp-byline .meta {
+    display: flex; align-items: center; gap: 14px;
+    margin-left: auto;
+    font-family: var(--w-font-mono); font-size: 12px; color: var(--w-ink); opacity: .65;
+  }
+  .bp-byline .meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .bp-byline .share {
+    display: inline-flex; gap: 6px;
+  }
+  .bp-byline .share button {
+    width: 34px; height: 34px; border-radius: 9px;
+    border: 1px solid var(--w-hairline-strong); background: transparent;
+    color: var(--w-purple-deep);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .bp-byline .share button:hover { background: var(--w-cream); }
+
+  /* ── Cover image ──────────────────────────────────────── */
+  .bp-cover {
+    max-width: 720px;
+    margin-left: max(284px, calc(50% - 256px)); margin-right: 0;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, var(--w-purple-deep) 0%, var(--w-purple) 50%, var(--w-orange) 130%);
+    border-radius: var(--w-r-xl);
+    position: relative; overflow: hidden;
+    border: 1px solid var(--w-hairline);
+  }
+  .bp-cover::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 22px);
+  }
+  .bp-cover .cap {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 20px;
+    background: rgba(45,17,51,.6); backdrop-filter: blur(6px);
+    color: rgba(255,255,255,.85);
+    font-family: var(--w-font-mono); font-size: 11.5px; letter-spacing: .04em;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    border-top: 1px solid rgba(255,255,255,.10);
+  }
+  .bp-cover .cap em { color: var(--w-orange-bright); font-style: normal; font-weight: 600; }
+
+  /* ── Body grid: TOC + content ─────────────────────────── */
+  .bp-grid {
+    margin: 72px auto 0; max-width: 1080px;
+    display: grid; grid-template-columns: 220px 1fr; gap: 64px;
+    align-items: start;
+  }
+  .bp-toc {
+    position: sticky; top: 100px;
+    font-size: 13px;
+  }
+  .bp-toc .label {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-orange); margin-bottom: 16px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .bp-toc .label::before { content: ""; width: 20px; height: 1px; background: var(--w-orange); }
+  .bp-toc ol {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 2px;
+    counter-reset: toc;
+  }
+  .bp-toc li {
+    counter-increment: toc;
+    border-left: 2px solid var(--w-hairline);
+    padding: 8px 0 8px 14px;
+    color: var(--w-ink); opacity: .68;
+    cursor: pointer; line-height: 1.4;
+    transition: color .15s, border-color .15s, opacity .15s;
+  }
+  .bp-toc li::before {
+    content: counter(toc, decimal-leading-zero) " ";
+    font-family: var(--w-font-mono); font-size: 11px;
+    color: var(--w-ink); opacity: .55; margin-right: 6px;
+  }
+  .bp-toc li.is-active {
+    color: var(--w-purple-deep); border-left-color: var(--w-orange); opacity: 1; font-weight: 600;
+  }
+  .bp-toc li:hover { opacity: 1; color: var(--w-purple-deep); }
+
+  /* Article body */
+  .bp-body { max-width: 720px; }
+  .bp-body h2 {
+    margin: 56px 0 18px;
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 32px; line-height: 1.15; letter-spacing: -0.025em;
+    color: var(--w-purple-deep);
+  }
+  .bp-body h2:first-child { margin-top: 0; }
+  .bp-body h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .bp-body h2::before {
+    content: ""; display: block;
+    width: 40px; height: 4px;
+    background: var(--w-orange);
+    margin-bottom: 18px;
+  }
+  .bp-body h3 {
+    margin: 36px 0 12px;
+    font-family: var(--w-font-display); font-weight: 700;
+    font-size: 22px; line-height: 1.25; letter-spacing: -0.015em;
+    color: var(--w-purple-deep);
+  }
+  .bp-body p {
+    margin: 16px 0 0;
+    font-size: 17px; line-height: 1.7;
+    color: var(--w-ink);
+    text-wrap: pretty;
+  }
+  .bp-body p strong { color: var(--w-purple-deep); font-weight: 600; }
+  .bp-body p em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; font-size: 1.06em; }
+  .bp-body p:first-of-type::first-letter {
+    font-family: var(--w-font-serif); font-style: italic; font-weight: 400;
+    font-size: 76px; line-height: 0.85; color: var(--w-orange);
+    float: left; padding: 8px 12px 0 0;
+  }
+  .bp-body ul {
+    margin: 18px 0 0; padding: 0; list-style: none;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .bp-body ul li {
+    position: relative; padding-left: 28px;
+    font-size: 16.5px; line-height: 1.55; color: var(--w-ink);
+  }
+  .bp-body ul li::before {
+    content: ""; position: absolute; left: 0; top: 9px;
+    width: 9px; height: 9px; background: var(--w-orange); transform: rotate(45deg);
+  }
+  .bp-body ul li strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* Pull quote */
+  .bp-pull {
+    margin: 48px -40px;
+    padding: 36px 48px;
+    border-left: 4px solid var(--w-orange);
+    background: var(--w-cream);
+    border-radius: 0 var(--w-r-md) var(--w-r-md) 0;
+    font-family: var(--w-font-serif); font-style: italic;
+    font-size: 26px; line-height: 1.35; color: var(--w-purple-deep);
+    text-wrap: balance;
+  }
+  .bp-pull .who { display: block; margin-top: 18px; font-family: var(--w-font-body); font-style: normal; font-size: 13px; color: var(--w-ink); opacity: .7; font-weight: 500; }
+  .bp-pull .who strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* Inline figure */
+  .bp-figure {
+    margin: 36px 0; padding: 24px 28px;
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-md);
+    background: var(--w-paper);
+    display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center;
+  }
+  .bp-figure .big {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 56px; line-height: 1; letter-spacing: -0.04em;
+    color: var(--w-orange);
+  }
+  .bp-figure .big em { font-family: var(--w-font-serif); font-style: italic; font-size: 24px; color: var(--w-purple); margin-left: 4px; vertical-align: 12px; }
+  .bp-figure .body { font-size: 15px; line-height: 1.5; color: var(--w-ink); }
+  .bp-figure .body strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* ── Tags + share ─────────────────────────────────────── */
+  .bp-foot {
+    margin-top: 72px; padding: 24px 0;
+    border-top: 1px solid var(--w-hairline); border-bottom: 1px solid var(--w-hairline);
+    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  }
+  .bp-foot .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .bp-foot .tag-row span {
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong);
+    font-size: 12px; font-weight: 600; color: var(--w-purple-deep);
+  }
+  .bp-foot .share-row { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--w-ink); opacity: .7; }
+  .bp-foot .share-row button {
+    width: 34px; height: 34px; border-radius: 9px;
+    border: 1px solid var(--w-hairline-strong); background: transparent;
+    color: var(--w-purple-deep);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+
+  /* ── Author signature block (matches Our Story) ───────── */
+  .bp-author {
+    margin-top: 64px;
+    display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center;
+  }
+  .bp-author .avatar {
+    width: 128px; height: 128px; border-radius: 50%;
+    overflow: hidden;
+    border: 1.5px solid var(--w-hairline-strong);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .bp-author .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .bp-author .sig-name {
+    font-family: var(--w-font-hand); font-weight: 700; color: var(--w-orange);
+    font-size: 42px; line-height: 1; transform: rotate(-2deg); display: inline-block;
+  }
+  .bp-author .who {
+    margin-top: 8px;
+    font-size: 14px; color: var(--w-ink); opacity: .72;
+  }
+  .bp-author .who strong { color: var(--w-purple-deep); font-weight: 600; }
+
+  /* ── Related posts ────────────────────────────────────── */
+  .bp-related { margin-top: 120px; }
+  .bp-related-head { margin-bottom: 36px; display: flex; justify-content: space-between; align-items: end; }
+  .bp-related-head h2 { margin: 8px 0 0; }
+  .bp-related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .bp-related-post {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-lg); overflow: hidden;
+    text-decoration: none; color: inherit;
+    transition: border-color .15s, transform .15s;
+  }
+  .bp-related-post:hover { border-color: var(--w-hairline-strong); transform: translateY(-3px); }
+  .bp-related-post .cover {
+    aspect-ratio: 16/10; position: relative;
+    border-bottom: 1px solid var(--w-hairline);
+  }
+  .bp-related-post.is-c1 .cover { background: linear-gradient(135deg, #ddc7a3, #b48b4f); }
+  .bp-related-post.is-c2 .cover { background: linear-gradient(135deg, #5C2277, #2d1133); }
+  .bp-related-post.is-c3 .cover { background: linear-gradient(135deg, #dd531c, #ff8a52); }
+  .bp-related-post .cover::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 2px, transparent 2px 18px);
+  }
+  .bp-related-post .body { padding: 22px 24px 24px; }
+  .bp-related-post h3 {
+    font-family: var(--w-font-display); font-weight: 700;
+    font-size: 18px; line-height: 1.25; letter-spacing: -0.015em;
+    color: var(--w-purple-deep); margin: 0;
+    text-wrap: balance;
+  }
+  .bp-related-post h3 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .bp-related-post .meta {
+    margin-top: 12px;
+    font-family: var(--w-font-mono); font-size: 11.5px;
+    color: var(--w-ink); opacity: .6;
+  }
+
+  /* ── CTA strip ────────────────────────────────────────── */
+  .bp-cta {
+    margin-top: 96px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: var(--w-r-xl); padding: 56px;
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 40px;
+  }
+  .bp-cta .deco { position: absolute; right: 32px; top: 32px; width: 14px; height: 14px; background: var(--w-orange-bright); transform: rotate(45deg); }
+  .bp-cta .deco-italic { position: absolute; right: -30px; bottom: -100px; font-family: var(--w-font-serif); font-style: italic; font-size: 260px; color: rgba(255,255,255,.05); line-height: 1; pointer-events: none; }
+  .bp-cta h2 { color: #fff; font-family: var(--w-font-display); font-weight: 800; font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -0.025em; margin: 0; max-width: 520px; line-height: 1.1; }
+  .bp-cta h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange-bright); font-weight: 400; }
+  .bp-cta p { margin-top: 12px; max-width: 460px; font-size: 15.5px; line-height: 1.55; color: rgba(255,255,255,.72); }
+
+  @media (max-width: 980px) {
+    .bp-header, .bp-cover { max-width: 100%; margin-left: 0; margin-right: 0; }
+    .bp-grid { grid-template-columns: 1fr; gap: 32px; }
+    .bp-toc { position: static; }
+    .bp-pull { margin: 36px 0; }
+    .bp-cta { grid-template-columns: 1fr; padding: 36px 28px; }
+    .bp-related-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body data-screen-label="04 Blog Post">
+
+<!-- Nav -->
+<wonderelo-nav data-screen-label="Public / Nav"></wonderelo-nav>
+
+<main class="w-shell">
+
+  <!-- Breadcrumb -->
+  <!-- Article header -->
+  <header class="bp-header" data-screen-label="Post / Header">
+    <div class="tags">
+      <span class="tag">Networking</span>
+      <span class="tag is-purple">Event design</span>
+      <span class="tag is-purple">5 min read</span>
+    </div>
+    <h1>Meeting points: the secret ingredient of great <span class="w-italic">networking rounds</span></h1>
+    <p class="deck">Why designated meeting spots make networking less awkward, more efficient, and way more fun for everyone involved — with practical setups from three real events.</p>
+
+    <div class="bp-byline">
+      <span class="av">AK</span>
+      <div class="who">
+        <span class="name">Andy K.</span>
+        <span class="role">Founder, Wonderelo</span>
+      </div>
+      <span class="dot"></span>
+      <div class="meta">
+        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> 30 January 2026</span>
+        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 5 min read</span>
+      </div>
+      <div class="share">
+        <button type="button" aria-label="Share on X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+        <button type="button" aria-label="Share on LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
+        <button type="button" aria-label="Copy link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Cover -->
+  <section class="bp-cover" data-screen-label="Post / Cover">
+  </section>
+
+  <!-- Body -->
+  <section class="bp-grid">
+
+    <!-- TOC -->
+    <aside class="bp-toc" data-screen-label="Post / TOC">
+      <span class="label">In this article</span>
+      <ol>
+        <li class="is-active">What are meeting points?</li>
+        <li>Why they matter more than you think</li>
+        <li>How to set them up</li>
+        <li>Creative meeting-point ideas</li>
+        <li>The result</li>
+      </ol>
+    </aside>
+
+    <!-- Article body -->
+    <article class="bp-body" data-screen-label="Post / Body">
+
+      <h2>What are <em>meeting points?</em></h2>
+      <p>Meeting points are designated spots where matched participants meet for their networking conversation. Instead of wandering around looking for each other, both people know exactly where to go — <strong>Table 3, the Corner Lounge, or the Blue Flag area.</strong></p>
+      <p>The idea sounds almost too simple to write down. And yet, of all the things we've changed about networking rounds over the past two years, this is the one organizers tell us made the biggest difference.</p>
+
+      <blockquote class="bp-pull">
+        "We thought the matching algorithm was the magic. Turns out the real magic was telling people exactly where to stand."
+        <span class="who"><strong>Marek H.</strong> — co-organizer, Forum 2025</span>
+      </blockquote>
+
+      <h2>Why they matter more than <em>you think</em></h2>
+      <p>Without meeting points, matched participants waste precious minutes finding each other. In a crowded venue, this can eat up half the round time. With clear meeting points, conversations start immediately — and that compounds.</p>
+      <p>We measured this at three events of similar size:</p>
+
+      <div class="bp-figure">
+        <div class="big">+40<em>%</em></div>
+        <div class="body"><strong>Longer conversations.</strong> Events with clearly-named meeting points saw average per-pair talk time grow from 4 min 12 s to 5 min 54 s on a six-minute round.</div>
+      </div>
+
+      <h2>How to <em>set them up</em></h2>
+      <p>Choose locations that are:</p>
+      <ul>
+        <li><strong>Easy to find</strong> — numbered tables, colored zones, or recognizable landmarks (the espresso bar, the merch wall).</li>
+        <li><strong>Spread across the venue</strong> — avoid clustering everyone in one area; you'll create a bottleneck.</li>
+        <li><strong>Conversation-friendly</strong> — away from loud speakers, the stage feed, and the main flow of foot traffic.</li>
+      </ul>
+      <p>Most organizers get this right on the second event, never the first. If you only do one thing the first time around, walk the venue an hour before doors with the points marked on your phone and check the noise from each one.</p>
+
+      <h2>Creative <em>meeting-point</em> ideas</h2>
+      <p>Go beyond numbered tables. Use themed areas — <em>"The Innovation Corner"</em>, <em>"The Wonderelo Lounge"</em> — or even outdoor spaces for a fresh-air networking experience. At one wedding we set up four meeting points named after the couple's favorite films. Guests posted photos with the signs all night.</p>
+      <p>The name does double duty: it tells participants where to go, and it tells them what kind of conversation they're walking into.</p>
+
+      <h2>The <em>result</em></h2>
+      <p>Events with well-designed meeting points see longer conversations, higher follow-up rates, and — based on the post-event survey — noticeably higher reported enjoyment. When people don't waste time finding each other, they spend more time connecting. And that's what networking is all about.</p>
+
+      <!-- Tags + share strip -->
+      <div class="bp-foot">
+        <div class="tag-row">
+          <span>networking</span><span>event design</span><span>venue</span><span>practical</span>
+        </div>
+        <div class="share-row">
+          Share —
+          <button type="button" aria-label="X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+          <button type="button" aria-label="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
+          <button type="button" aria-label="Copy link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Author signature -->
+      <section class="bp-author">
+        <div class="avatar"><img src="assets/Andy-Abel-Wonderelo.jpg" alt="Andy Abel" /></div>
+        <div>
+          <div class="sig-name">Andy Abel</div>
+          <div class="who"><strong>Founder, Wonderelo.</strong> Lives in Slovakia in the heart of Europe. Loves design, golf and meeting new people. Still throws good parties.</div>
+        </div>
+      </section>
+
+    </article>
+  </section>
+
+  <!-- Related -->
+  <section class="bp-related" data-screen-label="Post / Related">
+    <div class="bp-related-head">
+      <div>
+        <span class="w-eyebrow">Keep reading</span>
+        <h2 class="w-h1">More from the <span class="w-italic">blog</span></h2>
+      </div>
+      <a class="w-btn w-btn-ghost w-btn-sm" href="#">Browse all articles →</a>
+    </div>
+    <div class="bp-related-grid">
+      <a class="bp-related-post is-c1" href="#">
+        <div class="cover"></div>
+        <div class="body">
+          <h3>How to promote your event and get more <span class="w-italic">signups</span></h3>
+          <div class="meta">Networking · 6 min read</div>
+        </div>
+      </a>
+      <a class="bp-related-post is-c2" href="#">
+        <div class="cover"></div>
+        <div class="body">
+          <h3>Random vs AI matching: which one <span class="w-italic">actually</span> works?</h3>
+          <div class="meta">Research · 8 min read</div>
+        </div>
+      </a>
+      <a class="bp-related-post is-c3" href="#">
+        <div class="cover"></div>
+        <div class="body">
+          <h3>5 networking tips to maximize your event <span class="w-italic">ROI</span></h3>
+          <div class="meta">Networking · 5 min read</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="bp-cta" data-screen-label="Post / CTA">
+    <span class="deco"></span>
+    <span class="deco-italic">try it</span>
+    <div>
+      <h2>Try meeting points at <span class="w-italic">your</span> next event</h2>
+      <p>Spin up a free Wonderelo event in two minutes, name your meeting points, share the QR code — done. Free up to 5 participants.</p>
+    </div>
+    <a class="w-btn w-btn-primary w-btn-lg" href="#">
+      Start for free
+      <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    </a>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="w-footer">
+  <span class="w-foot-deco">wonder</span>
+  <div class="w-footer-inner">
+    <div class="w-footer-grid">
+      <div class="w-foot-brand">
+        <div class="w-foot-logo">
+          <div class="w-mark"><div class="w-inner"></div></div>
+          <div class="w-word">wonderelo</div>
+        </div>
+        <p>Speed-networking for events. The room you booked, the people you invited, every introduction worth having.</p>
+        <a class="w-foot-cta" href="#"><span class="w-dot"></span> All systems normal</a>
+      </div>
+      <div class="w-foot-col"><h5>Product</h5><ul><li><a href="#">How it works</a></li><li><a href="#">Features</a></li><li><a href="#">Pricing</a></li><li><a href="#">Sign up</a></li></ul></div>
+      <div class="w-foot-col"><h5>For</h5><ul><li><a href="#">Conferences</a></li><li><a href="#">Meetups</a></li><li><a href="#">Weddings</a></li><li><a href="#">Teams</a></li></ul></div>
+      <div class="w-foot-col"><h5>Learn</h5><ul><li><a href="#">Our story</a></li><li><a href="#">Blog</a></li><li><a href="#">Case studies</a></li><li><a href="#">Help center</a></li></ul></div>
+      <div class="w-foot-col"><h5>Company</h5><ul><li><a href="#">About</a></li><li><a href="#">Careers</a></li><li><a href="#">Contact</a></li><li><a href="#">Press kit</a></li></ul></div>
+    </div>
+    <div class="w-foot-bottom">
+      <span>© 2026 Wonderelo · Made in Bratislava with rounds that don't feel like rounds.</span>
+      <div class="w-foot-legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a><a href="#">GDPR</a></div>
+    </div>
+  </div>
+</footer>
+
+<script src="wonderelo-nav.js"></script>
+</body>
+</html>

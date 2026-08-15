@@ -15,7 +15,6 @@ import { Calendar, Clock, Users, MapPin, CheckCircle } from 'lucide-react';
 import type { MatchData } from './MatchInfo';
 import type { MatchPartnerData, Partner as MatchPartnerPartner } from './MatchPartner';
 import type { NetworkingData } from './MatchNetworking';
-import type { RoundDetail } from './ParticipantRoundDetail';
 import type { Contact } from './AddressBook';
 import type { ParticipantProfileFormData } from '../pages/ParticipantProfile';
 import type { Registration, SessionWithRounds } from './ParticipantDashboard';
@@ -49,7 +48,6 @@ const EmailVerificationWaitingView = lazyNamed(() => import('./EmailVerification
 const MissedRoundView = lazyNamed(() => import('./MissedRound'), 'MissedRoundView');
 const RegistrationSuccessView = lazyNamed(() => import('./RegistrationSuccess'), 'RegistrationSuccessView');
 const SessionSuccessView = lazyNamed(() => import('./SessionSuccessPage'), 'SessionSuccessView');
-const ParticipantRoundDetailView = lazyNamed(() => import('./ParticipantRoundDetail'), 'ParticipantRoundDetailView');
 const AddressBookView = lazyNamed(() => import('./AddressBook'), 'AddressBookView');
 const ParticipantProfileView = lazyNamed(() => import('../pages/ParticipantProfile'), 'ParticipantProfileView');
 const ParticipantDashboardView = lazyNamed(() => import('./ParticipantDashboard'), 'ParticipantDashboardView');
@@ -161,7 +159,6 @@ type PreviewPage =
   | 'email-waiting'
   | 'registration-success'
   | 'missed-round'
-  | 'round-detail'
   | 'organizer-dashboard'
   | 'account-settings'
   | 'event-page-settings'
@@ -199,7 +196,6 @@ const PREVIEW_CATEGORIES: PreviewCategory[] = [
       { id: 'participant-dashboard', label: 'Dashboard', description: 'Participant\'s main dashboard with upcoming rounds' },
       { id: 'participant-profile', label: 'Profile', description: 'Participant edits their contact info and social links' },
       { id: 'address-book', label: 'Address Book', description: 'Contacts shared after networking rounds' },
-      { id: 'round-detail', label: 'Round detail', description: 'Detail page for a single registered round' },
     ],
   },
   {
@@ -298,6 +294,7 @@ function PreviewParticipantDashboard() {
       sessionName: mockPublishedSession.name,
       roundName: mockRound.name,
       organizerName: 'Andyho konfera',
+      eventName: 'Andyho konfera',
       organizerUrlSlug: 'andyconf',
       status: 'registered',
       currentStatus: 'registered',
@@ -313,6 +310,7 @@ function PreviewParticipantDashboard() {
       sessionName: pastSession.name,
       roundName: 'Round 1',
       organizerName: 'Andyho konfera',
+      eventName: 'Andyho konfera',
       organizerUrlSlug: 'andyconf',
       status: 'met',
       currentStatus: 'met',
@@ -479,6 +477,9 @@ function _PreviewParticipantDashboardLegacy() {
 function PreviewMeetingPoint() {
   const mockMatchData: MatchData = {
     matchId: 'preview-match-1',
+    eventName: 'Tech Meetup Prague',
+    sessionName: 'Welcome mixer',
+    myName: 'Sarah',
     meetingPointName: 'Lobby Bar',
     meetingPointType: 'physical',
     meetingPointImageUrl: '',
@@ -500,12 +501,14 @@ function PreviewMeetingPoint() {
 }
 
 function PreviewNoMatch() {
-  return <MatchInfoNoMatchView onBackToDashboard={() => {}} onBackToEventPage={() => {}} />;
+  return <MatchInfoNoMatchView firstName="Sarah" eventName="Tech Meetup Prague" sessionName="Welcome mixer" onBackToDashboard={() => {}} onBackToEventPage={() => {}} />;
 }
 
 function PreviewMatchPartner() {
   const mockData: MatchPartnerData = {
     matchId: 'preview-match-1',
+    eventName: 'Tech Meetup Prague',
+    sessionName: 'Welcome mixer',
     myIdentificationNumber: '42',
     myName: 'Sarah',
     findingDeadline: new Date(Date.now() + 5 * 60000).toISOString(),
@@ -541,7 +544,6 @@ function PreviewMatchPartner() {
   return (
     <MatchPartnerView
       matchData={mockData}
-      inlineCountdown={<>04:23</>}
       isSubmitting={false}
       wrongGuessPartnerId={null}
       getOptionsForPartner={getOptions}
@@ -554,7 +556,9 @@ function PreviewMatchPartner() {
 function PreviewNetworking() {
   const mockData: NetworkingData = {
     matchId: 'preview-match-1',
-    roundName: 'Round 1',
+    eventName: 'Tech Meetup Prague',
+    sessionName: 'Welcome mixer',
+    myName: 'Sarah',
     networkingEndTime: new Date(Date.now() + 15 * 60000).toISOString(),
     partners: [
       { id: 'p2', firstName: 'Marcus', lastName: 'Rivera' },
@@ -577,6 +581,9 @@ function PreviewContactSharing() {
   const partner = MOCK_PARTICIPANTS[1];
   return (
     <ContactSharingPartnerFeedbackView
+      firstName="Sarah"
+      eventName="Tech Meetup Prague"
+      sessionName="Welcome mixer"
       partners={[{ id: partner.id, firstName: partner.firstName, lastName: partner.lastName, email: partner.email }]}
       feedback={feedback}
       customFeedback={customFeedback}
@@ -606,6 +613,9 @@ function PreviewWondereloFeedback() {
   const [wondereloFeedback, setWondereloFeedback] = useState('');
   return (
     <ContactSharingWondereloFeedbackView
+      firstName="Sarah"
+      eventName="Tech Meetup Prague"
+      sessionName="Welcome mixer"
       wondereloRating={wondereloRating}
       wondereloFeedback={wondereloFeedback}
       isSubmitting={false}
@@ -659,57 +669,15 @@ function PreviewMissedRound() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   return (
     <MissedRoundView
-      roundName="Round 1 - Tech Meetup Prague"
+      firstName="Sarah"
+      eventName="Tech Meetup Prague"
+      sessionName="Welcome mixer"
       feedback={feedback}
       isSubmitting={false}
       isSubmitted={isSubmitted}
       onFeedbackChange={setFeedback}
       onSubmitFeedback={() => setIsSubmitted(true)}
       onBackToDashboard={() => {}}
-    />
-  );
-}
-
-function PreviewRoundDetail() {
-  const mockRoundDetail: RoundDetail = {
-    registration: { notificationsEnabled: false },
-    session: {
-      id: 's1',
-      name: 'Tech Meetup Prague',
-      date: mockSession.date,
-      location: 'Impact Hub Bratislava',
-      meetingPoints: [
-        { name: 'Lobby Bar' },
-        { name: 'Rooftop Terrace' },
-      ],
-    },
-    round: {
-      id: 'r1',
-      name: 'Round 1',
-      startTime: mockRound.startTime,
-      duration: 20,
-      groupSize: 2,
-      iceBreakers: MOCK_ICE_BREAKERS,
-      date: mockSession.date,
-    },
-    organizer: {
-      name: 'Andyho konfera',
-      urlSlug: 'andyconf',
-    },
-  };
-  return (
-    <ParticipantRoundDetailView
-      roundDetail={mockRoundDetail}
-      isUpcoming={true}
-      isInProgress={false}
-      isCompleted={false}
-      countdown="2h 14m 32s"
-      formattedDateTime={new Date(`${mockSession.date}T${mockRound.startTime}:00`).toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-      })}
-      notificationsEnabled={false}
-      onBack={() => {}}
-      onEnableNotifications={() => {}}
     />
   );
 }
@@ -1116,7 +1084,6 @@ function PreviewPublicEventPage() {
   };
   const [magicLinkDialogOpen, setMagicLinkDialogOpen] = useState(false);
   const [magicLinkEmail, setMagicLinkEmail] = useState('');
-  const [howItWorksDialogOpen, setHowItWorksDialogOpen] = useState(false);
   return (
     <UserPublicPageView
       userSlug="andyconf"
@@ -1132,13 +1099,11 @@ function PreviewPublicEventPage() {
       magicLinkDialogOpen={magicLinkDialogOpen}
       magicLinkEmail={magicLinkEmail}
       isSendingMagicLink={false}
-      howItWorksDialogOpen={howItWorksDialogOpen}
       onNavigate={noop}
       onLogout={noop}
       onMagicLinkDialogOpenChange={setMagicLinkDialogOpen}
       onMagicLinkEmailChange={setMagicLinkEmail}
       onSendMagicLink={noop}
-      onHowItWorksDialogOpenChange={setHowItWorksDialogOpen}
       onRegistrationStepChange={noop}
     />
   );
@@ -1301,7 +1266,6 @@ function PreviewAccountSettings() {
   const [newEmail, setNewEmail] = useState('');
   const [emailChangePassword, setEmailChangePassword] = useState('');
   const [showEmailChangeForm, setShowEmailChangeForm] = useState(false);
-  const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
   const noop = () => {};
   return (
     <div className="min-h-[600px] bg-background">
@@ -1310,18 +1274,16 @@ function PreviewAccountSettings() {
         userEmail="andy@example.com"
         organizerName={organizerName}
         isLoading={false}
-        isSavingName={false}
+        isSaving={false}
         isChangingPassword={false}
         isChangingEmail={false}
         showEmailChangeForm={showEmailChangeForm}
-        showPasswordChangeForm={showPasswordChangeForm}
         currentPassword={currentPassword}
         newPassword={newPassword}
         confirmPassword={confirmPassword}
         newEmail={newEmail}
         emailChangePassword={emailChangePassword}
         onOrganizerNameChange={setOrganizerName}
-        onOrganizerNameBlur={noop}
         onCurrentPasswordChange={setCurrentPassword}
         onNewPasswordChange={setNewPassword}
         onConfirmPasswordChange={setConfirmPassword}
@@ -1329,8 +1291,10 @@ function PreviewAccountSettings() {
         onEmailChangePasswordChange={setEmailChangePassword}
         onToggleEmailChangeForm={() => setShowEmailChangeForm(v => !v)}
         onCancelEmailChange={() => { setShowEmailChangeForm(false); setNewEmail(''); setEmailChangePassword(''); }}
-        onTogglePasswordChangeForm={() => setShowPasswordChangeForm(v => !v)}
-        onCancelPasswordChange={() => { setShowPasswordChangeForm(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
+        onSave={noop}
+        onDiscard={noop}
+        hasChanges={false}
+        lastSavedAt={null}
         onPasswordChange={noop}
         onEmailChange={noop}
       />
@@ -1373,7 +1337,11 @@ function PreviewEventPromo() {
       <EventPromoPageView
         eventSlug="andyconf"
         qrCodeUrl=""
-        displaySlug="andyconf"
+        displayName="Andyho konfera"
+        publishedSessions={[mockPublishedSession]}
+        organizerName="Andy"
+        eventName="Andyho konfera"
+        profileImageUrl=""
         onBack={() => {}}
       />
     </div>
@@ -1450,7 +1418,6 @@ export function AdminPagePreview({ onBack }: AdminPagePreviewProps) {
       case 'email-waiting': return <PreviewEmailWaiting />;
       case 'registration-success': return <PreviewRegistrationSuccess />;
       case 'missed-round': return <PreviewMissedRound />;
-      case 'round-detail': return <PreviewRoundDetail />;
       case 'participant-profile': return <PreviewProfile />;
       case 'session-registration': return <PreviewRegistration />;
       case 'session-success': return <PreviewSessionSuccess />;

@@ -23,18 +23,18 @@ import { AuthenticatedNav } from './components/AuthenticatedNav';
 import { SessionAdministration } from './components/SessionAdministration';
 import { RoundFormPage } from './components/RoundFormPage';
 import { Dashboard } from './components/Dashboard';
-import { Footer } from './components/Footer';
+import { StudioFooter } from './components/redesign/organizerAtoms';
 import { NetworkingDashboard } from './components/NetworkingDashboard';
 import { AccountSettings } from './components/AccountSettings';
 import { EventPageSettings } from './components/EventPageSettings';
 import { BillingSettings } from './components/BillingSettings';
 import { EmailVerification } from './components/EmailVerification';
 import { ParticipantDashboard } from './components/ParticipantDashboard';
-import { ParticipantRoundDetail } from './components/ParticipantRoundDetail';
 import { MatchInfo } from './components/MatchInfo';
 import { MatchPartner } from './components/MatchPartner';
 import { MatchNetworking } from './components/MatchNetworking';
 import { ContactSharing } from './components/ContactSharing';
+import { BootSplash } from './components/redesign/StatePlaceholder';
 import { UserPublicPage } from './components/UserPublicPage';
 import { EventPromoPage } from './components/EventPromoPage';
 import { BlogListingPage } from './components/BlogListingPage';
@@ -70,7 +70,6 @@ const AdminBpmnDiagram = lazy(() => import('./components/AdminBpmnDiagram').then
 const AdminPagePreview = lazy(() => import('./components/AdminPagePreview').then(m => ({ default: m.AdminPagePreview })));
 const AdminParameters = lazy(() => import('./components/AdminParameters').then(m => ({ default: m.AdminParameters })));
 const AdminOrganizerRequests = lazy(() => import('./components/AdminOrganizerRequests').then(m => ({ default: m.AdminOrganizerRequests })));
-const ThemeManager = lazy(() => import('./components/ThemeManager').then(m => ({ default: m.ThemeManager })));
 const AdminLeads = lazy(() => import('./components/AdminLeads').then(m => ({ default: m.AdminLeads })));
 const AdminStyleGuide = lazy(() => import('./components/AdminStyleGuide').then(m => ({ default: m.AdminStyleGuide })));
 const AdminPricing = lazy(() => import('./components/AdminPricing').then(m => ({ default: m.AdminPricing })));
@@ -80,6 +79,9 @@ import { InlineEditToggle } from './components/i18n/InlineEditToggle';
 import { AdminVersionBadge } from './components/AdminVersionBadge';
 const UseCaseLandingPage = lazy(() => import('./components/UseCaseLandingPage').then(m => ({ default: m.UseCaseLandingPage })));
 const OurStoryPage = lazy(() => import('./components/OurStoryPage').then(m => ({ default: m.OurStoryPage })));
+const TermsOfUsePage = lazy(() => import('./components/TermsOfUsePage').then(m => ({ default: m.TermsOfUsePage })));
+const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
+const HelpCenterPage = lazy(() => import('./components/HelpCenterPage').then(m => ({ default: m.HelpCenterPage })));
 
 // Lazy load CRM components
 const CrmLayout = lazy(() => import('./components/crm/CrmLayout'));
@@ -97,15 +99,8 @@ const CrmSegments = lazy(() => import('./components/crm/CrmSegments'));
 const CrmReports = lazy(() => import('./components/crm/CrmReports'));
 const CrmSettings = lazy(() => import('./components/crm/CrmSettings'));
 
-// Loading component for lazy loaded routes
-const RouteLoader = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="text-center">
-      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-      <p className="mt-4 text-muted-foreground">Loading...</p>
-    </div>
-  </div>
-);
+// Loading component for lazy loaded routes — v07 "App boot & route change" splash
+const RouteLoader = () => <BootSplash />;
 
 interface AppContextType {
   isAuthenticated: boolean;
@@ -225,7 +220,7 @@ function NotFoundRoute() {
 // Route wrapper components that use navigate
 function HomepageRoute() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated, currentUser } = useApp();
 
   // Don't redirect here - let Homepage handle its own redirect logic
   // This allows Homepage to properly handle participant token checks
@@ -236,7 +231,7 @@ function HomepageRoute() {
       onGetStarted={() => navigate('/signup')}
       onSignIn={() => navigate('/signin')}
       onResetPassword={() => navigate('/reset-password')}
-      isOrganizerAuthenticated={isAuthenticated}
+      isOrganizerAuthenticated={isAuthenticated && !!currentUser}
     />
   );
 }
@@ -248,15 +243,19 @@ function SignUpRoute() {
     setEventSlug,
     setIsAuthenticated,
     setCurrentUser,
-    isAuthenticated
+    isAuthenticated,
+    currentUser
   } = useApp();
 
   useEffect(() => {
-    // If user is already authenticated, redirect to dashboard
-    if (isAuthenticated) {
+    // If user is already authenticated (with a loaded profile), redirect to dashboard.
+    // Require currentUser too, matching ProtectedRoute's guard — otherwise a
+    // half-authenticated state (isAuthenticated true, currentUser null) ping-pongs
+    // between this redirect and ProtectedRoute's redirect back to /signin.
+    if (isAuthenticated && currentUser) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, currentUser, navigate]);
 
   const handleSignUpComplete = (signUpData: SignUpData) => {
     debugLog('Sign up completed:', signUpData);
@@ -301,15 +300,19 @@ function SignInRoute() {
     setCurrentUser,
     setAccessToken,
     loadSessions,
-    isAuthenticated
+    isAuthenticated,
+    currentUser
   } = useApp();
 
   useEffect(() => {
-    // If user is already authenticated, redirect to dashboard
-    if (isAuthenticated) {
+    // If user is already authenticated (with a loaded profile), redirect to dashboard.
+    // Require currentUser too, matching ProtectedRoute's guard — otherwise a
+    // half-authenticated state (isAuthenticated true, currentUser null) ping-pongs
+    // between this redirect and ProtectedRoute's redirect back to /signin.
+    if (isAuthenticated && currentUser) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, currentUser, navigate]);
 
   const handleSignInComplete = async (userData: any, sessionData?: any) => {
     debugLog('=== SIGN IN COMPLETE ===');
@@ -422,7 +425,7 @@ function ResetPasswordRoute() {
   return (
     <ResetPasswordFlow
       onComplete={handleResetPasswordComplete}
-      onBack={() => navigate('/')}
+      onBack={() => navigate('/signin')}
     />
   );
 }
@@ -476,7 +479,7 @@ function RoundFormPageRoute() {
     }
 
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <AuthenticatedNav
           currentView="rounds"
           currentUser={currentUser}
@@ -490,12 +493,12 @@ function RoundFormPageRoute() {
           onSignOut={handleSignOut}
         />
 
-        <div className="container mx-auto p-6">
-          <SessionAdministration
-            session={session}
-            onBack={() => navigate('/rounds')}
-          />
-        </div>
+        <SessionAdministration
+          session={session}
+          onBack={() => navigate('/rounds')}
+        />
+
+        <StudioFooter />
       </div>
     );
   }
@@ -527,52 +530,16 @@ function RoundFormPageRoute() {
         userSlug={eventSlug}
       />
 
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
 
 function DashboardRoute() {
-  const {
-    currentUser,
-    sessions,
-    isLoadingSessions,
-    eventSlug,
-    updateSession,
-    deleteSession,
-    isAdminUser,
-    handleSignOut
-  } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <AuthenticatedNav
-        currentView="dashboard"
-        currentUser={currentUser}
-        isAdminUser={isAdminUser()}
-        onNavigateToDashboard={() => navigate('/dashboard')}
-        onNavigateToRounds={() => navigate('/rounds')}
-        onNavigateToAccountSettings={() => navigate('/account-settings')}
-        onNavigateToEventPageSettings={() => navigate('/event-page-settings')}
-        onNavigateToBilling={() => navigate('/billing')}
-        onNavigateToAdmin={() => navigate('/admin')}
-        onSignOut={handleSignOut}
-      />
-
-      <div className="container mx-auto p-6 flex-1">
-        <Dashboard
-          eventSlug={eventSlug}
-          sessions={sessions}
-          isLoadingSessions={isLoadingSessions}
-          onUpdateSession={updateSession}
-          onDeleteSession={deleteSession}
-        />
-      </div>
-
-      <Footer />
-    </div>
-  );
+  // The organizer Dashboard + Rounds were merged into a single home in the redesign
+  // (the /rounds NetworkingDashboard). Collapse the old split by redirecting here, so
+  // the legacy non-redesigned Dashboard.tsx is no longer reachable.
+  return <Navigate to="/rounds" replace />;
 }
 
 function RoundsRoute() {
@@ -619,7 +586,8 @@ function RoundsRoute() {
           serviceType={serviceType}
           eventSlug={eventSlug}
           userEmail={currentUser?.email}
-          organizerName={currentUser?.eventName || currentUser?.organizerName}
+          organizerName={currentUser?.organizerName}
+          eventName={currentUser?.eventName}
           profileImageUrl={currentUser?.profileImageUrl}
           onAddSession={addSession}
           onUpdateSession={updateSession}
@@ -633,7 +601,7 @@ function RoundsRoute() {
         />
       </div>
 
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
@@ -681,7 +649,7 @@ function AccountSettingsRoute() {
           debugLog('Profile updated in AppRouter:', updates);
         }}
       />
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
@@ -733,13 +701,13 @@ function EventPageSettingsRoute() {
           debugLog('Event page settings updated in AppRouter:', updates);
         }}
       />
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
 
 function EventPromoPageRoute() {
-  const { eventSlug, loadSessions } = useApp();
+  const { eventSlug, sessions, currentUser, loadSessions } = useApp();
   const navigate = useNavigate();
 
   // The promo page is often left open on a big screen at the event — refresh
@@ -765,6 +733,10 @@ function EventPromoPageRoute() {
     <div style={{ position: 'fixed', inset: 0 }}>
       <EventPromoPage
         eventSlug={eventSlug}
+        sessions={sessions}
+        organizerName={currentUser?.organizerName}
+        eventName={currentUser?.eventName}
+        profileImageUrl={currentUser?.profileImageUrl}
         onBack={() => navigate('/dashboard')}
       />
     </div>
@@ -795,7 +767,7 @@ function BillingSettingsRoute() {
         onSignOut={handleSignOut}
       />
       <BillingSettings accessToken={accessToken} />
-      <Footer />
+      <StudioFooter />
     </div>
   );
 }
@@ -825,20 +797,6 @@ function AdminDashboardRoute() {
         />
       </Suspense>
     </>
-  );
-}
-
-function AdminThemeRoute() {
-  const { currentUser, accessToken, isAdminUser, handleSignOut } = useApp();
-  const navigate = useNavigate();
-
-  return (
-    <Suspense fallback={<RouteLoader />}>
-      <ThemeManager
-        accessToken={accessToken}
-        onBack={() => navigate('/admin')}
-      />
-    </Suspense>
   );
 }
 
@@ -1304,7 +1262,7 @@ function AdminOrganizerRequestsRoute() {
         onSignOut={handleSignOut}
       />
       <Suspense fallback={<RouteLoader />}>
-        <AdminOrganizerRequests accessToken={accessToken} />
+        <AdminOrganizerRequests accessToken={accessToken} onBack={() => navigate('/admin')} />
       </Suspense>
     </>
   );
@@ -1379,6 +1337,42 @@ function OurStoryPageRoute() {
   return (
     <Suspense fallback={<RouteLoader />}>
       <OurStoryPage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
+}
+
+function TermsOfUsePageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <TermsOfUsePage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
+}
+
+function PrivacyPolicyPageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <PrivacyPolicyPage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
+}
+
+function HelpCenterPageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <HelpCenterPage
         onGetStarted={() => navigate('/signup')}
         onSignIn={() => navigate('/signin')}
       />
@@ -1465,16 +1459,11 @@ function AppProviderWithRouter() {
     localStorage.setItem('oliwonder_current_user', JSON.stringify(userData));
   }, []);
 
-  // Load theme and system parameters AFTER a short delay
-  // so the critical page data fetch (/public/user/:slug) gets connection priority
+  // Load system parameters AFTER a short delay so the critical page data fetch
+  // (/public/user/:slug) gets connection priority. (Theme/skin loading was removed —
+  // the app is a single fixed Wonderelo brand.)
   useEffect(() => {
     const timer = setTimeout(async () => {
-      try {
-        const { loadAndApplyTheme } = await import('./utils/themeLoader');
-        await loadAndApplyTheme();
-      } catch (error) {
-        errorLog('Error loading theme:', error);
-      }
       try {
         await fetchSystemParameters();
         debugLog('✅ System parameters loaded');
@@ -2176,7 +2165,6 @@ function AppProviderWithRouter() {
             h(Route, { path: '/event-promo', element: h(ProtectedRoute, null, h(EventPromoPageRoute)) }),
             h(Route, { path: '/billing', element: h(ProtectedRoute, null, h(BillingSettingsRoute)) }),
             h(Route, { path: '/admin', element: h(AdminRoute, null, h(AdminDashboardRoute)) }),
-            h(Route, { path: '/admin/theme', element: h(AdminRoute, null, h(AdminThemeRoute)) }),
             h(Route, { path: '/admin/ice-breakers', element: h(AdminRoute, null, h(AdminIceBreakersRoute)) }),
             h(Route, { path: '/admin/notification-texts', element: h(AdminRoute, null, h(AdminNotificationTextsRoute)) }),
             h(Route, { path: '/admin/toast-messages', element: h(AdminRoute, null, h(AdminToastMessagesRoute)) }),
@@ -2226,12 +2214,14 @@ function AppProviderWithRouter() {
             h(Route, { path: '/p/:token/contact-sharing', element: h(ContactSharing) }),
             h(Route, { path: '/p/:token/profile', element: h(ParticipantProfile) }),
             h(Route, { path: '/p/:token/address-book', element: h(AddressBook) }),
-            h(Route, { path: '/p/:token/r/:roundId', element: h(ParticipantRoundDetail) }),
             h(Route, { path: '/bootstrap-admin', element: h(BootstrapAdminRoute) }),
             h(Route, { path: '/pricing', element: h(PricingPageRoute) }),
             h(Route, { path: '/blog', element: h(BlogListingPageRoute) }),
             h(Route, { path: '/blog/:slug', element: h(BlogDetailPageRoute) }),
             h(Route, { path: '/our-story', element: h(OurStoryPageRoute) }),
+            h(Route, { path: '/terms', element: h(TermsOfUsePageRoute) }),
+            h(Route, { path: '/privacy', element: h(PrivacyPolicyPageRoute) }),
+            h(Route, { path: '/help', element: h(HelpCenterPageRoute) }),
 
             // Use case landing pages
             h(Route, { path: '/for/:useCase', element: h(UseCaseLandingPageRoute) }),

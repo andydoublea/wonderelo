@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Phase 03 + 04 · Organizer studio, account & billing
+
+  Component mapping (HTML mockup → React/TSX):
+    C1 Round form              → RoundFormPage.tsx + SessionForm.tsx
+    C2 Event page settings     → EventPageSettings.tsx
+    C3 Calendar view           → CalendarView.tsx (inside NetworkingDashboard)
+    C4 Live round monitor      → NetworkingDashboard.tsx + RoundParticipantsAdmin.tsx
+    C5 Blog management         → BlogManagement.tsx
+    D1 Account settings        → AccountSettings.tsx
+    D2 Billing settings        → BillingSettings.tsx
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Organizer Studio</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; height: 100%; }
+  #root { min-height: 100vh; }
+  .dc-card iframe { display: block; }
+  /* Universal hover/active feedback — every button & clickable element responds */
+  button, [role="button"], [style*="cursor: pointer"], [style*="cursor:pointer"] {
+    transition: filter .14s ease, transform .12s ease, box-shadow .15s ease, border-color .14s ease, background-color .14s ease;
+  }
+  button:not(:disabled):hover, [role="button"]:hover {
+    filter: brightness(0.95); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(76,25,77,.18);
+  }
+  button:not(:disabled):active, [role="button"]:active { transform: translateY(0); filter: brightness(0.92); }
+  /* Split publish button: hover is driven together from the wrapper (both halves
+     share one background state) — opt the halves out of the per-button lift/brighten
+     so hovering either half looks identical across the whole control. */
+  .wpub:hover, .wpub:active { filter: none !important; transform: none !important; box-shadow: inherit; }
+  [style*="cursor: pointer"]:not(button):not([role="button"]):hover,
+  [style*="cursor:pointer"]:not(button):not([role="button"]):hover {
+    filter: brightness(0.94); box-shadow: 0 2px 10px rgba(76,25,77,.12);
+  }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Image slot web component (welcome modal photo) -->
+<script src="image-slot.js"></script>
+
+<!-- Starters -->
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<!-- Shared atoms (must load before screens) -->
+<script type="text/babel" src="organizer-shared.jsx"></script>
+
+<!-- Phase 03 screens -->
+<script type="text/babel" src="screen-dashboard.jsx"></script>
+<script type="text/babel" src="screen-rounds.jsx"></script>
+<script type="text/babel" src="screen-dashboard-pro.jsx"></script>
+<script type="text/babel" src="screen-rounds-pro.jsx"></script>
+<script type="text/babel" src="screen-dashboard-merged.jsx"></script>
+<script type="text/babel" src="screen-round-form.jsx"></script>
+<script type="text/babel" src="screen-round-success.jsx"></script>
+<script type="text/babel" src="screen-mobile-studio.jsx"></script>
+<script type="text/babel" src="screen-mobile-studio2.jsx"></script>
+<script type="text/babel" src="screen-mobile-studio3.jsx"></script>
+<script type="text/babel" src="screen-mobile-roundform.jsx"></script>
+<script type="text/babel" src="screen-event-settings.jsx"></script>
+<script type="text/babel" src="screen-live-round.jsx"></script>
+
+<!-- Phase 04 screens -->
+<script type="text/babel" src="screen-account-billing.jsx"></script>
+
+<script type="text/babel">
+  const {
+    DesignCanvas, DCSection, DCArtboard,
+    DashboardScreen, RoundsListScreen,
+    DashboardProScreen, RoundsProScreen, DashboardMergedScreen,
+    RoundFormScreen, EventSettingsScreen, LiveRoundScreen,
+    AccountSettingsScreen, BillingSettingsScreen,
+    RoundSuccessScreen,
+    RoundsMobileScreen,
+    AccountMobileScreen, EventSettingsMobileScreen, RoundCreatedMobileScreen,
+    LiveRoundMobileScreen, RoundFormMobileScreen, BillingMobileScreen,
+  } = window;
+
+
+  // Single source of truth for all artboards. `?only=<id>` (used by the
+  // Overview.html board) renders one screen full-bleed instead of the canvas.
+  const ARTBOARDS = [
+    { sec: 'organizer-studio', id: 'b0-home', label: 'B0 · Rounds', w: 1240, h: 1540,
+      render: () => <DashboardMergedScreen /> },
+    { sec: 'organizer-studio', id: 'c4-live-round', label: 'C4 · Live round monitor', w: 1240, h: 2880,
+      render: () => <LiveRoundScreen /> },
+    { sec: 'organizer-studio', id: 'c1-round-form', label: 'C1 · Round form', w: 1240, h: 3560,
+      render: () => <RoundFormScreen /> },
+    { sec: 'organizer-studio', id: 'c1b-round-success', label: 'C1 · Round created', w: 1240, h: 1840,
+      render: () => <RoundSuccessScreen /> },
+    { sec: 'organizer-studio', id: 'b0-home-m', label: 'B0 · Rounds (mobile)', w: 432, h: 1980,
+      render: () => <RoundsMobileScreen /> },
+    { sec: 'organizer-studio', id: 'c1-round-form-m', label: 'C1 · Round form (mobile)', w: 432, h: 3320,
+      render: () => <RoundFormMobileScreen /> },
+    { sec: 'organizer-studio', id: 'c1b-round-success-m', label: 'C1 · Round created (mobile)', w: 432, h: 1640,
+      render: () => <RoundCreatedMobileScreen /> },
+    { sec: 'organizer-studio', id: 'c4-live-round-m', label: 'C4 · Live monitor (mobile)', w: 432, h: 2160,
+      render: () => <LiveRoundMobileScreen /> },
+    { sec: 'organizer-studio', id: 'c2-event-settings-m', label: 'C2 · Event settings (mobile)', w: 432, h: 1040,
+      render: () => <EventSettingsMobileScreen /> },
+    { sec: 'account-public', id: 'd1-account-m', label: 'D1 · Account (mobile)', w: 432, h: 980,
+      render: () => <AccountMobileScreen /> },
+    { sec: 'account-public', id: 'd2-billing-m', label: 'D2 · Billing (mobile)', w: 432, h: 2360,
+      render: () => <BillingMobileScreen /> },
+    { sec: 'organizer-studio', id: 'c2-event-settings', label: 'C2 · Event page settings', w: 1240, h: 1520,
+      render: () => <EventSettingsScreen /> },
+    { sec: 'account-public', id: 'd1-account', label: 'D1 · Account settings', w: 1240, h: 1120,
+      render: () => <AccountSettingsScreen /> },
+    { sec: 'account-public', id: 'd2-billing', label: 'D2 · Billing', w: 1240, h: 2080,
+      render: () => <BillingSettingsScreen /> },
+  ];
+
+  const onlyId = new URLSearchParams(window.location.search).get('only');
+
+  function App() {
+    if (onlyId) {
+      const b = ARTBOARDS.find((a) => a.id === onlyId);
+      if (b) {
+        return <div style={{ width: b.w }}>{b.render()}</div>;
+      }
+    }
+    return (
+      <DesignCanvas>
+
+        <DCSection
+          id="organizer-studio"
+          title="C · Organizer studio"
+          subtitle="Where organizers spend their hours. Same brand vocabulary as the public pages, denser layouts."
+        >
+          {ARTBOARDS.filter((a) => a.sec === 'organizer-studio').map((a) => (
+            <DCArtboard key={a.id} id={a.id} label={a.label} width={a.w} height={a.h}>{a.render()}</DCArtboard>
+          ))}
+        </DCSection>
+
+        <DCSection
+          id="account-public"
+          title="D · Account & billing"
+          subtitle="Account and billing for the organizer."
+        >
+          {ARTBOARDS.filter((a) => a.sec === 'account-public').map((a) => (
+            <DCArtboard key={a.id} id={a.id} label={a.label} width={a.w} height={a.h}>{a.render()}</DCArtboard>
+          ))}
+        </DCSection>
+
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>

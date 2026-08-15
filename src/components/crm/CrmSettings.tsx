@@ -335,7 +335,6 @@ function FreshdeskSection() {
   const [apiKey, setApiKey] = useState('');
   const [domain, setDomain] = useState('');
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -358,36 +357,16 @@ function FreshdeskSection() {
     fetchStatus();
   }, []);
 
-  const handleTestConnection = async () => {
-    if (!apiKey || !domain) return;
-
-    try {
-      setTesting(true);
-      setTestResult(null);
-
-      const response = await authenticatedFetch('/crm/settings/freshdesk/test', {
-        method: 'POST',
-        body: JSON.stringify({ api_key: apiKey, domain }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setTestResult({ ok: true, message: data.message ?? 'Connection successful' });
-      } else {
-        setTestResult({
-          ok: false,
-          message: data.error ?? `Connection failed (${response.status})`,
-        });
-      }
-    } catch (err) {
-      setTestResult({
-        ok: false,
-        message: err instanceof Error ? err.message : 'Connection test failed',
-      });
-    } finally {
-      setTesting(false);
-    }
+  // There is no server route to validate unsaved Freshdesk credentials
+  // (only GET /crm/settings/freshdesk/status, which reflects the *saved*
+  // config). Report that honestly instead of calling a nonexistent endpoint
+  // that always failed.
+  const handleTestConnection = () => {
+    setTestResult({
+      ok: false,
+      message:
+        'Connection testing is not available. Save your settings, then check the connection status above.',
+    });
   };
 
   const handleSave = async () => {
@@ -522,13 +501,9 @@ function FreshdeskSection() {
             variant="outline"
             size="sm"
             onClick={handleTestConnection}
-            disabled={testing || !apiKey || !domain}
+            disabled={!apiKey || !domain}
           >
-            {testing ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <TestTube className="mr-2 size-4" />
-            )}
+            <TestTube className="mr-2 size-4" />
             Test Connection
           </Button>
           <Button
@@ -544,6 +519,11 @@ function FreshdeskSection() {
             Save
           </Button>
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          Live connection testing isn&apos;t available — save your settings and
+          check the connection status badge above.
+        </p>
       </CardContent>
     </Card>
   );

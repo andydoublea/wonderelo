@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Public pages redesign · index
+  Links to all 5 public-page mockups + the existing Homepage and Design System
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Public Pages Redesign</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  body { background: var(--w-paper); }
+
+  .ix-shell { max-width: 1320px; margin: 0 auto; padding: 64px 40px 120px; }
+
+  .ix-mast {
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 60px; align-items: end;
+    padding-bottom: 32px; border-bottom: 1px solid var(--w-hairline);
+    margin-bottom: 56px; position: relative;
+  }
+  .ix-mast .deco { position: absolute; right: 4%; top: 10px; width: 14px; height: 14px; background: var(--w-orange); transform: rotate(45deg); }
+  .ix-mast h1 { margin-top: 14px; font-size: clamp(40px, 5vw, 72px); }
+  .ix-mast h1 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .ix-mast p { margin-top: 22px; max-width: 540px; font-size: 17px; line-height: 1.55; color: var(--w-ink); opacity: .85; }
+  .ix-mast .meta {
+    text-align: right;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .ix-mast .meta .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; font-size: 13px; }
+  .ix-mast .meta .row .l { color: var(--w-ink); opacity: .65; font-family: var(--w-font-mono); letter-spacing: .04em; }
+  .ix-mast .meta .row .v { font-family: var(--w-font-display); font-weight: 700; color: var(--w-purple-deep); }
+  .ix-mast .meta .row .v em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .ix-mast .meta .stamp {
+    display: inline-flex; align-items: center; gap: 10px; align-self: flex-end;
+    padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong); background: rgba(255,255,255,.5);
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--w-purple-deep);
+  }
+  .ix-mast .meta .stamp .w-diamond { width: 8px; height: 8px; }
+
+  .ix-section { margin-top: 80px; }
+  .ix-section-head {
+    display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 24px;
+  }
+  .ix-section-head h2 { margin: 8px 0 0; font-size: 32px; }
+  .ix-section-head h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .ix-section-head .num {
+    font-family: var(--w-font-mono); font-size: 12px; color: var(--w-ink); opacity: .55;
+    letter-spacing: .14em;
+  }
+
+  /* Grid of page cards */
+  .ix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .ix-grid.is-wide { grid-template-columns: repeat(2, 1fr); }
+
+  .ix-card {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    overflow: hidden;
+    text-decoration: none; color: inherit;
+    display: flex; flex-direction: column;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .ix-card:hover {
+    border-color: var(--w-hairline-strong);
+    transform: translateY(-3px);
+    box-shadow: var(--w-shadow-soft);
+  }
+  .ix-card .preview {
+    aspect-ratio: 16/10;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--w-hairline);
+    background: var(--w-cream);
+  }
+  .ix-card .preview .scaler {
+    position: absolute; top: 0; left: 0;
+    width: 1320px; height: 825px;
+    transform-origin: top left;
+    transform: scale(0.32);
+    pointer-events: none;
+  }
+  .ix-card .preview iframe {
+    width: 100%; height: 100%;
+    border: 0;
+    background: var(--w-paper);
+    pointer-events: none;
+  }
+  .ix-card .preview .label {
+    position: absolute; top: 14px; left: 14px;
+    padding: 5px 10px; border-radius: 6px;
+    background: var(--w-purple-deep); color: #fff;
+    font-family: var(--w-font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase;
+    z-index: 1;
+  }
+  .ix-card .preview .label.is-orange { background: var(--w-orange); }
+  .ix-card .preview .label.is-ghost { background: rgba(76,25,77,.08); color: var(--w-purple-deep); border: 1px solid var(--w-hairline-strong); }
+  .ix-card .preview .status {
+    position: absolute; top: 14px; right: 14px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.85); backdrop-filter: blur(6px);
+    font-family: var(--w-font-mono); font-size: 10.5px; font-weight: 600; color: var(--w-purple-deep);
+    z-index: 1;
+  }
+  .ix-card .preview .status .w-diamond { width: 7px; height: 7px; }
+
+  .ix-card .body { padding: 22px 24px 22px; flex: 1; display: flex; flex-direction: column; }
+  .ix-card h3 {
+    font-family: var(--w-font-display); font-weight: 700;
+    font-size: 22px; line-height: 1.15; letter-spacing: -0.02em;
+    color: var(--w-purple-deep); margin: 0;
+  }
+  .ix-card h3 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .ix-card p {
+    margin: 8px 0 0; font-size: 14.5px; line-height: 1.5;
+    color: var(--w-ink); opacity: .78;
+  }
+  .ix-card .mapping {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px dashed var(--w-hairline-strong);
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    font-family: var(--w-font-mono); font-size: 11px;
+    color: var(--w-ink); opacity: .7;
+  }
+  .ix-card .mapping .path {
+    background: var(--w-cream); padding: 4px 8px; border-radius: 5px;
+    color: var(--w-purple-deep); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 230px;
+  }
+  .ix-card .mapping .arrow { color: var(--w-orange); font-weight: 700; }
+  .ix-card .mapping .arrow svg { vertical-align: -2px; margin-left: 4px; transition: transform .15s; }
+  .ix-card:hover .mapping .arrow svg { transform: translateX(3px); }
+
+  /* Big "next steps" block */
+  .ix-next {
+    margin-top: 80px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: var(--w-r-xl);
+    padding: 60px 56px;
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center;
+  }
+  .ix-next .deco { position: absolute; right: 32px; top: 28px; width: 14px; height: 14px; background: var(--w-orange-bright); transform: rotate(45deg); }
+  .ix-next .deco-italic { position: absolute; right: -40px; bottom: -120px; font-family: var(--w-font-serif); font-style: italic; font-size: 260px; color: rgba(255,255,255,.05); line-height: 1; pointer-events: none; }
+  .ix-next h2 { color: #fff; font-family: var(--w-font-display); font-weight: 800; font-size: 36px; letter-spacing: -0.025em; margin: 0; max-width: 520px; line-height: 1.1; }
+  .ix-next h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange-bright); font-weight: 400; }
+  .ix-next p { margin-top: 14px; max-width: 500px; font-size: 15px; line-height: 1.55; color: rgba(255,255,255,.72); }
+  .ix-next .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ix-next .w-btn-primary { background: var(--w-orange-bright); }
+  .ix-next .w-btn-ghost { color: #fff; border-color: rgba(255,255,255,.30); }
+  .ix-next .w-btn-ghost:hover { background: rgba(255,255,255,.10); }
+
+  @media (max-width: 1080px) {
+    .ix-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .ix-mast { grid-template-columns: 1fr; gap: 24px; align-items: start; }
+    .ix-mast .meta { text-align: left; }
+    .ix-mast .meta .stamp { align-self: flex-start; }
+    .ix-grid { grid-template-columns: 1fr; }
+    .ix-next { grid-template-columns: 1fr; padding: 40px 28px; }
+  }
+</style>
+</head>
+<body data-screen-label="00 Index">
+
+<div class="ix-shell">
+
+  <!-- Masthead -->
+  <header class="ix-mast">
+    <span class="deco"></span>
+    <div>
+      <span class="w-eyebrow">Phase 01 · Public pages</span>
+      <h1 class="w-display">Wonderelo redesign — <span class="w-italic">public</span> pages</h1>
+      <p>Five marketing pages restyled in the same brand language as the new Homepage and Dashboard. Self-contained HTML mockups, mapped 1:1 to <code style="background: var(--w-cream); padding: 2px 6px; border-radius: 4px; font-family: var(--w-font-mono); font-size: 13px;">src/components/*</code> for an easy Claude Code handoff.</p>
+    </div>
+    <div class="meta">
+      <span class="stamp"><span class="w-diamond"></span> Ready for review</span>
+      <div class="row"><span class="l">version</span><span class="v">v1.0 <em>· may 2026</em></span></div>
+      <div class="row"><span class="l">scope</span><span class="v">5 pages <em>· 1 shared CSS</em></span></div>
+      <div class="row"><span class="l">handoff</span><span class="v"><a href="HANDOFF_PUBLIC.md" style="color: inherit;">HANDOFF_PUBLIC.md →</a></span></div>
+    </div>
+  </header>
+
+  <!-- Already done section -->
+  <section class="ix-section">
+    <div class="ix-section-head">
+      <div>
+        <span class="w-eyebrow is-purple">Already shipped</span>
+        <h2 class="w-h2">Reference: the existing <span class="w-italic">style</span></h2>
+      </div>
+      <span class="num">2 designs</span>
+    </div>
+    <div class="ix-grid is-wide">
+      <a class="ix-card" href="home/Homepage.html">
+        <div class="preview">
+          <span class="label is-ghost">Reference</span>
+          <span class="status"><span class="w-diamond" style="background: #4ade80;"></span> Approved</span>
+          <div class="scaler"><iframe src="home/Homepage.html" loading="lazy" scrolling="no"></iframe></div>
+        </div>
+        <div class="body">
+          <h3>Homepage <span class="w-italic">— reference</span></h3>
+          <p>The source-of-truth for type, color, decorative diamonds, italic serif accents.</p>
+          <div class="mapping">
+            <span class="path">src/components/Homepage.tsx</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <a class="ix-card" href="Design System.html">
+        <div class="preview">
+          <span class="label is-ghost">Reference</span>
+          <span class="status"><span class="w-diamond" style="background: #4ade80;"></span> Approved</span>
+          <div class="scaler"><iframe src="Design System.html" loading="lazy" scrolling="no"></iframe></div>
+        </div>
+        <div class="body">
+          <h3>Design System <span class="w-italic">— reference</span></h3>
+          <p>The style source-of-truth — type scale, color tokens, components, decorative diamonds and italic serif accents.</p>
+          <div class="mapping">
+            <span class="path">design tokens · components · type scale</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- New public pages -->
+  <section class="ix-section">
+    <div class="ix-section-head">
+      <div>
+        <span class="w-eyebrow">Phase 01 · This batch</span>
+        <h2 class="w-h2">New <span class="w-italic">public</span> pages</h2>
+      </div>
+      <span class="num">6 designs</span>
+    </div>
+    <div class="ix-grid">
+
+      <a class="ix-card" href="Event Page.html" style="grid-column: 1 / -1;">
+        <div class="preview" style="aspect-ratio: 21/9;">
+          <span class="label is-orange">★ Highest traffic</span>
+          <span class="status"><span class="w-diamond" style="background: #4ade80;"></span> Approved</span>
+          <div class="scaler" style="width: 2400px; height: 1029px; transform: scale(0.34);">
+            <iframe src="Event Page.html" loading="lazy" scrolling="no"></iframe>
+          </div>
+        </div>
+        <div class="body">
+          <h3>Public event page <span class="w-italic">— wonderelo.com /&lt;slug&gt;</span></h3>
+          <p>The page every participant lands on after scanning the QR. Branded hero with countdown, rounds list with inline join, meeting-points map, organizer block. Mobile-first.</p>
+          <div class="mapping">
+            <span class="path">UserPublicPage.tsx + OrganizerHeader + SessionRegistration</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <a class="ix-card" href="Pricing.html">
+        <div class="preview">
+          <span class="label is-orange">01</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler"><iframe src="Pricing.html" loading="lazy" scrolling="no"></iframe></div>
+        </div>
+        <div class="body">
+          <h3>Pricing</h3>
+          <p>Capacity slider, 2 plan cards, comparison table, FAQ, CTA.</p>
+          <div class="mapping">
+            <span class="path">PricingPage.tsx + PricingPanel.tsx</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <a class="ix-card" href="Our Story.html">
+        <div class="preview">
+          <span class="label is-orange">02</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler"><iframe src="Our Story.html" loading="lazy" scrolling="no"></iframe></div>
+        </div>
+        <div class="body">
+          <h3>Our <span class="w-italic">Story</span></h3>
+          <p>Editorial narrative — 4 chapters, pull quote, timeline, signature.</p>
+          <div class="mapping">
+            <span class="path">OurStoryPage.tsx</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <a class="ix-card" href="Blog.html">
+        <div class="preview">
+          <span class="label is-orange">03</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler"><iframe src="Blog.html" loading="lazy" scrolling="no"></iframe></div>
+        </div>
+        <div class="body">
+          <h3>Blog <span class="w-italic">listing</span></h3>
+          <p>Featured post, category chips, 6-post grid, newsletter signup.</p>
+          <div class="mapping">
+            <span class="path">BlogListingPage.tsx</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <a class="ix-card" href="Blog Post.html">
+        <div class="preview">
+          <span class="label is-orange">04</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler"><iframe src="Blog Post.html" loading="lazy" scrolling="no"></iframe></div>
+        </div>
+        <div class="body">
+          <h3>Blog <span class="w-italic">post</span></h3>
+          <p>Long-form article with sticky TOC, pull quote, author block, related posts.</p>
+          <div class="mapping">
+            <span class="path">BlogDetailPage.tsx</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <a class="ix-card" href="Use Case.html">
+        <div class="preview">
+          <span class="label is-orange">05</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler"><iframe src="Use Case.html" loading="lazy" scrolling="no"></iframe></div>
+        </div>
+        <div class="body">
+          <h3>Use case <span class="w-italic">landing</span></h3>
+          <p>Conferences variant. Hero scene, 4 benefits, 4 steps, 3 scenarios, testimonial.</p>
+          <div class="mapping">
+            <span class="path">UseCaseLandingPage.tsx · /for/:slug</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- Phase 02 — onboarding + participant flow -->
+  <section class="ix-section">
+    <div class="ix-section-head">
+      <div>
+        <span class="w-eyebrow">Phase 02 · Onboarding + participant</span>
+        <h2 class="w-h2">Auth &amp; <span class="w-italic">live</span> flow</h2>
+      </div>
+      <span class="num">10 screens · 1 canvas</span>
+    </div>
+    <div class="ix-grid is-wide">
+      <a class="ix-card" href="Participant Flow.html" style="grid-column: 1 / -1;">
+        <div class="preview" style="aspect-ratio: 21/9;">
+          <span class="label is-orange">Canvas</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler" style="width: 2400px; height: 1029px; transform: scale(0.34);">
+            <iframe src="Participant Flow.html" loading="lazy" scrolling="no"></iframe>
+          </div>
+        </div>
+        <div class="body">
+          <h3>Onboarding + Participant flow <span class="w-italic">canvas</span></h3>
+          <p>10 artboards: 4 organizer auth screens (Sign in, Sign up, Email verify, Reset) + 6 mobile participant screens (Register, Dashboard, Round detail, Find match, In round, Missed round).</p>
+          <div class="mapping">
+            <span class="path">SignInFlow · SignUpFlow · ParticipantDashboard · MatchPartner · MatchNetworking · MissedRound</span>
+            <span class="arrow">Open canvas <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Phase 03 + 04 — organizer studio + account + event promo -->
+  <section class="ix-section">
+    <div class="ix-section-head">
+      <div>
+        <span class="w-eyebrow">Phase 03 + 04 · Organizer studio &amp; public event</span>
+        <h2 class="w-h2">Daily <span class="w-italic">workspace</span></h2>
+      </div>
+      <span class="num">8 screens · 1 canvas</span>
+    </div>
+    <div class="ix-grid is-wide">
+      <a class="ix-card" href="Organizer Studio.html" style="grid-column: 1 / -1;">
+        <div class="preview" style="aspect-ratio: 21/9;">
+          <span class="label is-orange">Canvas</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler" style="width: 2400px; height: 1029px; transform: scale(0.34);">
+            <iframe src="Organizer Studio.html" loading="lazy" scrolling="no"></iframe>
+          </div>
+        </div>
+        <div class="body">
+          <h3>Organizer studio + account + event <span class="w-italic">promo</span></h3>
+          <p>8 artboards: Round form, Event page settings, Calendar, Live round monitor, Blog management, Account, Billing, and the projected 1920×1080 event promo slide.</p>
+          <div class="mapping">
+            <span class="path">RoundFormPage · EventPageSettings · CalendarView · NetworkingDashboard · BlogManagement · AccountSettings · BillingSettings · EventPromoPage</span>
+            <span class="arrow">Open canvas <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <a class="ix-card" href="Event Promo Slide.html" style="grid-column: 1 / -1;">
+        <div class="preview" style="aspect-ratio: 16/9;">
+          <span class="label is-orange">1920×1080</span>
+          <span class="status"><span class="w-diamond"></span> Needs review</span>
+          <div class="scaler" style="width: 1920px; height: 1080px; transform: scale(0.42);">
+            <iframe src="Event Promo Slide.html" loading="lazy" scrolling="no"></iframe>
+          </div>
+        </div>
+        <div class="body">
+          <h3>Event promo <span class="w-italic">slide</span></h3>
+          <p>The projected venue slide — scan-to-join QR on the left, the three participant steps on the right. 16:9, built for the big screen.</p>
+          <div class="mapping">
+            <span class="path">EventPromoPage.tsx</span>
+            <span class="arrow">Open <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Next steps / handoff CTA -->
+  <section class="ix-next">
+    <span class="deco"></span>
+    <span class="deco-italic">next</span>
+    <div>
+      <span style="font-family: var(--w-font-mono); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--w-orange-bright);">↳ Phase 05 · Open</span>
+      <h2 style="margin-top: 12px;">Last surfaces — <span class="w-italic">admin</span> &amp; CRM</h2>
+      <p>Admin panel (~25 screens, internal utility treatment) + CRM module (~14 screens). Both reuse all existing tokens — denser tables, less decoration.</p>
+    </div>
+    <div class="actions">
+      <a class="w-btn w-btn-ghost w-btn-lg" href="HANDOFF_PUBLIC.md">Phase 01</a>
+      <a class="w-btn w-btn-ghost w-btn-lg" href="HANDOFF_PARTICIPANT.md">Phase 02</a>
+      <a class="w-btn w-btn-ghost w-btn-lg" href="HANDOFF_ORGANIZER.md">Phase 03–04</a>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>

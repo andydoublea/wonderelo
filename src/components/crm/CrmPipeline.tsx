@@ -31,14 +31,17 @@ import { authenticatedFetch } from '../../utils/supabase/apiClient';
 
 interface PipelineContact {
   id: string;
-  name: string;
+  first_name: string | null;
+  last_name: string | null;
   email: string | null;
   company_name: string | null;
   lead_score: number | null;
-  expected_value: number | null;
-  source: string | null;
-  days_in_stage: number;
-  entered_stage_at: string;
+  lead_expected_value: number | null;
+  lead_source: string | null;
+  updated_at?: string | null;
+  entered_stage_at?: string | null;
+  // Present only on optimistic local updates; derived from timestamps otherwise.
+  days_in_stage?: number;
 }
 
 interface PipelineStage {
@@ -67,6 +70,25 @@ function getScoreColor(score: number | null): string {
   if (score >= 80) return 'text-green-600';
   if (score >= 50) return 'text-amber-600';
   return 'text-red-500';
+}
+
+/** Build a display name from the raw contact row (no `name` column exists). */
+function getContactName(c: PipelineContact): string {
+  const full = [c.first_name, c.last_name].filter(Boolean).join(' ').trim();
+  return full || c.email || 'Unnamed contact';
+}
+
+/**
+ * Days the contact has been in its current stage. The server row has no
+ * `days_in_stage`/`entered_stage_at`, so derive from the last update time
+ * (a stage move updates `updated_at`). Optimistic moves set `days_in_stage`.
+ */
+function getDaysInStage(c: PipelineContact): number {
+  if (typeof c.days_in_stage === 'number') return c.days_in_stage;
+  const ts = c.entered_stage_at ?? c.updated_at;
+  if (!ts) return 0;
+  const ms = Date.now() - new Date(ts).getTime();
+  return ms > 0 ? Math.floor(ms / 86_400_000) : 0;
 }
 
 /** Determine special styling for Won/Lost columns. */
@@ -146,7 +168,7 @@ export default function CrmPipeline() {
     new Set(
       stages
         .flatMap((s) => s.contacts)
-        .map((c) => c.source)
+        .map((c) => c.lead_source)
         .filter(Boolean) as string[]
     )
   ).sort();
@@ -156,11 +178,11 @@ export default function CrmPipeline() {
     ...stage,
     contacts: stage.contacts.filter((c) => {
       // Source filter
-      if (sourceFilter !== ALL_SOURCES && c.source !== sourceFilter) return false;
+      if (sourceFilter !== ALL_SOURCES && c.lead_source !== sourceFilter) return false;
       // Search filter
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const matchesName = c.name.toLowerCase().includes(q);
+        const matchesName = getContactName(c).toLowerCase().includes(q);
         const matchesEmail = c.email?.toLowerCase().includes(q);
         const matchesCompany = c.company_name?.toLowerCase().includes(q);
         if (!matchesName && !matchesEmail && !matchesCompany) return false;
@@ -208,6 +230,14 @@ export default function CrmPipeline() {
       return;
     }
 
+    // Find the target stage — the server groups contacts by stage NAME
+    // (lead_stage), so we must send the name rather than the UUID.
+    const targetStage = stages.find((s) => s.id === targetStageId);
+    if (!targetStage) {
+      setDragContactId(null);
+      return;
+    }
+
     // Optimistic update: move the contact in local state
     setStages((prev) => {
       const contact = prev
@@ -243,8 +273,8 @@ export default function CrmPipeline() {
       const response = await authenticatedFetch('/crm/pipeline/move', {
         method: 'PUT',
         body: JSON.stringify({
-          contact_id: contactId,
-          stage_id: targetStageId,
+          contactId: contactId,
+          stage: targetStage.name,
         }),
       });
 
@@ -406,7 +436,7 @@ export default function CrmPipeline() {
                           <GripVertical className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/40" />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium">
-                              {contact.name}
+                              {getContactName(contact)}
                             </p>
                             {contact.email && (
                               <p className="truncate text-xs text-muted-foreground">
@@ -436,15 +466,15 @@ export default function CrmPipeline() {
                               {contact.lead_score}
                             </span>
                           )}
-                          {contact.expected_value != null && (
+                          {contact.lead_expected_value != null && (
                             <span className="flex items-center gap-0.5 text-muted-foreground">
                               <DollarSign className="size-3" />
-                              {formatCurrency(contact.expected_value)}
+                              {formatCurrency(contact.lead_expected_value)}
                             </span>
                           )}
                           <span className="ml-auto flex items-center gap-0.5 text-muted-foreground">
                             <Clock className="size-3" />
-                            {contact.days_in_stage}d
+                            {getDaysInStage(contact)}d
                           </span>
                         </div>
                       </CardContent>

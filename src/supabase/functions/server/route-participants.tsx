@@ -934,9 +934,9 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
     try {
       const token = c.req.param('token');
       const body = await c.req.json();
-      const { matchId, preferences } = body;
+      const { matchId, preferences, feedback, wondereloFeedback } = body;
 
-      debugLog('[POST /contact-sharing] Saving contact preferences:', { matchId, preferences });
+      debugLog('[POST /contact-sharing] Saving contact preferences:', { matchId, preferences, feedback, wondereloFeedback });
 
       if (!token) {
         return c.json({ error: 'Token required' }, 400);
@@ -948,8 +948,9 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         return c.json({ error: 'Invalid token' }, 404);
       }
 
-      // Save preferences to contact_sharing table
-      await db.setContactSharing(matchId, participant.participantId, preferences);
+      // Save preferences to contact_sharing table. Partner feedback and Wonderelo
+      // feedback (when the client sends them) are persisted alongside the consent map.
+      await db.setContactSharing(matchId, participant.participantId, preferences, { feedback, wondereloFeedback });
 
       debugLog('[POST /contact-sharing] Contact preferences saved successfully');
 
@@ -1193,6 +1194,81 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
     } catch (error) {
       errorLog('Error saving missed feedback:', error);
       return c.json({ error: 'Failed to save feedback' }, 500);
+    }
+  });
+
+
+  // ========================================
+  // PUBLIC: Update chosen topics for a round
+  // ========================================
+  app.post('/make-server-ce05600a/p/:token/round/:roundId/topics', async (c) => {
+    try {
+      const token = c.req.param('token');
+      const roundId = c.req.param('roundId');
+      const body = await c.req.json();
+      const { topics, sessionId } = body;
+
+      if (!token) {
+        return c.json({ error: 'Token required' }, 400);
+      }
+      if (!roundId) {
+        return c.json({ error: 'roundId required' }, 400);
+      }
+      if (!Array.isArray(topics)) {
+        return c.json({ error: 'topics must be an array' }, 400);
+      }
+
+      const participant = await db.getParticipantByToken(token);
+      if (!participant) {
+        return c.json({ error: 'Invalid token' }, 404);
+      }
+
+      // Find the participant's registration for this round
+      const registrations = await db.getRegistrationsByParticipant(participant.participantId);
+      const registration = registrations.find((r: any) =>
+        r.roundId === roundId && (!sessionId || r.sessionId === sessionId)
+      );
+
+      if (!registration) {
+        return c.json({ error: 'Registration not found for this round' }, 404);
+      }
+
+      // Normalise against the session's allowed topics + single/multiple rule
+      const session = await db.getSessionById(registration.sessionId);
+      const allowedTopics: string[] = Array.isArray(session?.topics) ? session.topics : [];
+
+      let cleanTopics = topics.filter(
+        (t: any) => typeof t === 'string' && allowedTopics.includes(t)
+      );
+      // Dedupe while preserving order
+      cleanTopics = [...new Set(cleanTopics)];
+      // Enforce single-topic rule when the session disallows multiple topics
+      if (session && session.allowMultipleTopics === false && cleanTopics.length > 1) {
+        cleanTopics = cleanTopics.slice(0, 1);
+      }
+
+      await db.updateRegistrationStatus(
+        participant.participantId,
+        registration.sessionId,
+        roundId,
+        registration.status,
+        { topics: cleanTopics }
+      );
+
+      debugLog('[POST /round/:roundId/topics] Topics updated:', {
+        participantId: participant.participantId,
+        roundId,
+        topics: cleanTopics,
+      });
+
+      return c.json({ success: true, topics: cleanTopics });
+
+    } catch (error) {
+      errorLog('Error updating round topics:', error);
+      return c.json({
+        error: 'Failed to update topics',
+        details: error instanceof Error ? error.message : String(error)
+      }, 500);
     }
   });
 

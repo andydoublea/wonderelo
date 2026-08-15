@@ -2,19 +2,53 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { EventPromoPage } from './EventPromoPage';
 import { UserPublicPage } from './UserPublicPage';
+import { PublicFooter } from './redesign/PublicFooter';
 import { Eye, Monitor, Smartphone, ArrowLeft, ArrowRight, ArrowDown } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
+import { NetworkingSession } from '../App';
 
 type Phase = 'slide' | 'event';
 
+const DEMO_DISPLAY_NAME = 'Lovely event';
 const DEMO_DISPLAY_SLUG = 'Lovelyevent';
+
+interface DemoUserProfile {
+  profileImageUrl?: string;
+}
 
 export function DemoPage() {
   const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>('slide');
+  const [userProfile, setUserProfile] = useState<DemoUserProfile | null>(null);
+  const [sessions, setSessions] = useState<NetworkingSession[]>([]);
 
   // Ensure demo data is set up on the backend so UserPublicPage has rounds to show
   useEffect(() => {
+    let cancelled = false;
+
+    // Pull the public event data (profile image + published sessions) that the
+    // presenter slide renders — sessions drive the live "next round" countdown.
+    const fetchDemoData = async () => {
+      try {
+        const res = await fetch(`${apiBaseUrl}/public/user/demo`, {
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.success) {
+          // Only keep the profile image — name/slug are overridden with demo branding below
+          setUserProfile({ profileImageUrl: data.user?.profileImageUrl });
+          setSessions(data.sessions || []);
+        }
+      } catch {
+        // Non-critical — slide still renders with an empty session list
+      }
+    };
+
     const setup = async () => {
       try {
         await fetch(`${apiBaseUrl}/demo/setup`, {
@@ -31,6 +65,8 @@ export function DemoPage() {
       } catch {
         // Backend unreachable — fail silently; demo just won't show live data
       }
+      // After (re)seeding demo data, refresh the public event data for the slide
+      await fetchDemoData();
     };
 
     setup();
@@ -38,6 +74,7 @@ export function DemoPage() {
     // Refresh demo data every 2 minutes to keep rounds in the future
     const interval = setInterval(setup, 120_000);
     return () => {
+      cancelled = true;
       clearInterval(interval);
     };
   }, []);
@@ -114,11 +151,17 @@ export function DemoPage() {
           <EventPromoPage
             eventSlug="demo"
             displaySlug={DEMO_DISPLAY_SLUG}
+            sessions={sessions}
+            organizerName={DEMO_DISPLAY_NAME}
+            eventName={DEMO_DISPLAY_NAME}
+            profileImageUrl={userProfile?.profileImageUrl}
           />
         ) : (
           <UserPublicPage userSlug="demo" />
         )}
       </div>
+
+      <PublicFooter />
     </div>
   );
 }

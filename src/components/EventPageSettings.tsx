@@ -1,13 +1,21 @@
-import { useState, useEffect, useRef, RefObject } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Save, Loader2, Check, X, Upload, ImageIcon } from 'lucide-react';
-import { Skeleton } from './ui/skeleton';
+import { useState, useEffect, useRef, RefObject, CSSProperties } from 'react';
+import { Loader2, Check, X } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { debugLog, errorLog } from '../utils/debug';
+import { C, PageShell, PageHead, Italic } from './redesign/organizerAtoms';
+
+// Read a Blob as a base64 data URL. Used to persist the optimized profile image
+// inline via PUT /profile — this app has no image-upload endpoint and no Storage
+// bucket wired, and organizer_profiles.profile_image_url is a TEXT column.
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read image'));
+    reader.readAsDataURL(blob);
+  });
+}
 
 interface EventPageSettingsProps {
   accessToken: string;
@@ -60,139 +68,248 @@ export function EventPageSettingsView({
   onOpenFilePicker,
   onSave,
 }: EventPageSettingsViewProps) {
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const labelStyle: CSSProperties = {
+    fontFamily: C.fontBody, fontSize: 11.5, fontWeight: 700, letterSpacing: '.08em',
+    color: C.purpleDeep, textTransform: 'uppercase',
+  };
+  const fieldBox = (isFocused: boolean): CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11,
+    background: '#fff', border: `1.5px solid ${isFocused ? C.orange : C.hairStrong}`,
+    boxShadow: isFocused ? '0 0 0 3px rgba(221,83,28,.10)' : 'none',
+    transition: 'border-color .15s, box-shadow .15s',
+  });
+  const inputStyle: CSSProperties = {
+    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+    fontFamily: C.fontBody, fontSize: 14, color: C.ink, minWidth: 0,
+  };
+  const green = '#16a34a';
+  const red = '#dc2626';
+  const hasImage = Boolean(previewImageUrl || profileImageUrl);
+  // Event initials for the gradient empty-state avatar (design shows "FS").
+  const eventInitials = (eventName || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('');
+
+  // Live slug-availability field state (Claude Design v07 · screen-event-settings.jsx UrlField).
+  // Wired to the real /check-slug logic (isCheckingSlug / slugAvailable / slugError).
+  const slugChecking = isCheckingSlug;
+  const slugOk = !isCheckingSlug && slugAvailable === true && urlSlug !== '';
+  const slugBad = !isCheckingSlug && slugAvailable === false;
+  const slugTaken = slugBad && slugError === 'This URL is already taken';
+  const slugBorder = slugBad ? '#c0392b' : (slugOk ? '#1f8a4d' : C.orange);
+
   return (
-    <div className="flex-1">
-      <div className="container mx-auto p-6 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="mb-2">Event page settings</h1>
-        </div>
+    <div className="wonderelo" style={{ flex: 1, minWidth: 0 }}>
+      <PageShell nav={false} footer={false}>
+        <PageHead
+          eyebrow="Event page"
+          title={<>Event page <Italic>settings</Italic></>}
+          lede="This information is visible on your event page."
+        />
 
         {isLoading ? (
-          <div className="space-y-6">
-            <Card><CardHeader><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-24 w-24 rounded-full" /></div></CardContent></Card>
+          <div style={{ maxWidth: 720 }}>
+            <section style={{ background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, padding: 28 }}>
+              <div className="animate-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ height: 18, width: 160, borderRadius: 8, background: C.hair }} />
+                <div style={{ height: 44, width: '100%', borderRadius: 11, background: C.hair }} />
+                <div style={{ height: 44, width: '100%', borderRadius: 11, background: C.hair }} />
+                <div style={{ height: 80, width: 80, borderRadius: '50%', background: C.hair }} />
+              </div>
+            </section>
           </div>
         ) : (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Event page</CardTitle>
-                <CardDescription>This information is visible on your event page</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="eventName">Event organizer name</Label>
-                  <div className="max-w-sm">
-                    <Input
-                      id="eventName"
-                      value={eventName}
-                      onChange={(e) => onEventNameChange(e.target.value)}
-                      placeholder="My networking event"
-                      className="mt-2"
-                    />
-                  </div>
-                </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 440px', gap: 28, alignItems: 'start' }}>
+            <div style={{ maxWidth: 720 }}>
+            <section style={{ background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, padding: 28 }}>
+              <h3 style={{ margin: '0 0 6px', fontFamily: C.fontDisplay, fontWeight: 700, fontSize: 19, color: C.purpleDeep, letterSpacing: '-0.015em' }}>Event page</h3>
+              <p style={{ margin: '0 0 24px', fontSize: 13, color: C.ink, opacity: .68 }}>This information is visible on your event page</p>
 
-                <div ref={urlSlugFieldRef}>
-                  <Label htmlFor="urlSlug">Event page URL</Label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center gap-2 max-w-sm">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">wonderelo.com/</span>
-                      <div className="relative flex-1">
-                        <Input
-                          id="urlSlug"
-                          value={urlSlug}
-                          onChange={(e) => onSlugChange(e.target.value)}
-                          placeholder="my-event"
-                          className="pr-10"
+              {/* Event organizer name */}
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={labelStyle}>Event organizer name</span>
+                <div style={fieldBox(focusedField === 'eventName')}>
+                  <input
+                    id="eventName"
+                    type="text"
+                    value={eventName}
+                    onChange={(e) => onEventNameChange(e.target.value)}
+                    onFocus={() => setFocusedField('eventName')}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="My networking event"
+                    style={inputStyle}
+                  />
+                </div>
+              </label>
+
+              <div style={{ height: 22 }} />
+
+              {/* Event page URL — live availability check (Claude Design v07 · screen-event-settings.jsx UrlField).
+                  Checks as you type: orange spinner "Checking…", green "available", red X + "already taken" / invalid. */}
+              <div ref={urlSlugFieldRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <style>{`@keyframes wz-spin{to{transform:rotate(360deg)}}`}</style>
+                <span style={labelStyle}>Event page URL</span>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11, background: '#fff',
+                  border: `1.5px solid ${slugBorder}`,
+                  boxShadow: `0 0 0 3px ${slugBad ? 'rgba(192,57,43,.10)' : (slugOk ? 'rgba(31,138,77,.10)' : 'rgba(221,83,28,.10)')}`,
+                  transition: 'border-color .15s, box-shadow .15s',
+                }}>
+                  <span style={{ color: C.ink, opacity: .6, fontSize: 13.5, fontFamily: C.fontMono, whiteSpace: 'nowrap' }}>wonderelo.com /</span>
+                  <input
+                    id="urlSlug"
+                    type="text"
+                    value={urlSlug}
+                    onChange={(e) => onSlugChange(e.target.value)}
+                    placeholder="my-event"
+                    spellCheck={false}
+                    style={inputStyle}
+                  />
+                  {slugChecking && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: C.fontMono, fontSize: 11.5, color: C.ink, opacity: .6 }}>
+                      <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(76,25,77,.16)', borderTopColor: C.orange, animation: 'wz-spin .8s linear infinite' }} />Checking…
+                    </span>
+                  )}
+                  {slugOk && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: C.fontMono, fontSize: 12, fontWeight: 600, color: '#1f8a4d' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>available
+                    </span>
+                  )}
+                  {slugBad && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', color: '#c0392b' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: 12, lineHeight: 1.5, color: slugBad ? '#c0392b' : C.ink, opacity: slugBad ? 1 : .65 }}>
+                  {slugChecking ? 'Checking availability…'
+                    : slugTaken ? <><strong style={{ fontWeight: 700 }}>wonderelo.com/{urlSlug}</strong> is already taken. Try {urlSlug}-2026.</>
+                    : slugBad ? 'Use at least 3 characters — lowercase letters, numbers and dashes only.'
+                    : 'This is the link you share with attendees.'}
+                </span>
+              </div>
+
+              <div style={{ height: 24 }} />
+
+              {/* Profile image */}
+              <div>
+                <span style={labelStyle}>Profile image</span>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, marginTop: 12 }}>
+                  <div style={{ width: 80, height: 80, flexShrink: 0, position: 'relative' }}>
+                    {hasImage ? (
+                      <>
+                        <img
+                          src={previewImageUrl || profileImageUrl}
+                          alt="Profile"
+                          style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C.hair}`, display: 'block' }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {isCheckingSlug && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                          {!isCheckingSlug && slugAvailable === true && urlSlug !== '' && (
-                            <Check className="h-4 w-4 text-green-600" />
-                          )}
-                          {!isCheckingSlug && slugAvailable === false && <X className="h-4 w-4 text-destructive" />}
-                        </div>
-                      </div>
-                    </div>
-                    {slugError && <p className="text-xs text-destructive">{slugError}</p>}
-                    {!slugError && slugAvailable === true && urlSlug !== originalUrlSlug && (
-                      <p className="text-xs text-green-600">This URL is available</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="profileImage">Profile image</Label>
-                  <div className="flex items-start gap-4 mt-3">
-                    <div className="shrink-0 relative">
-                      {(previewImageUrl || profileImageUrl) ? (
-                        <>
-                          <img
-                            src={previewImageUrl || profileImageUrl}
-                            alt="Profile"
-                            className="h-20 w-20 rounded-full object-cover border-2 border-border"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                              if (fallback) fallback.style.display = 'flex';
-                            }}
-                          />
-                          {isUploadingImage && (
-                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                              <Loader2 className="h-6 w-6 text-white animate-spin" />
-                            </div>
-                          )}
-                        </>
-                      ) : null}
-                      <div
-                        className={`h-20 w-20 rounded-full bg-muted flex items-center justify-center ${(previewImageUrl || profileImageUrl) ? 'hidden' : ''}`}
-                      >
-                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 space-y-2 max-w-sm">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
-                        className="hidden"
-                        onChange={onImageUpload}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onOpenFilePicker}
-                        disabled={isUploadingImage}
-                        className="w-full"
-                      >
-                        {isUploadingImage ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading...</>
-                        ) : (
-                          <><Upload className="h-4 w-4 mr-2" />Upload image</>
+                        {isUploadingImage && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: '#fff' }} />
+                          </div>
                         )}
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        {isUploadingImage ? 'Optimizing image...' : 'JPG, PNG, WEBP, GIF, HEIC • Up to 5MB • 200x200px or larger'}
-                      </p>
+                      </>
+                    ) : null}
+                    <div style={{
+                      width: 80, height: 80, borderRadius: '50%',
+                      background: `linear-gradient(135deg, ${C.purpleDeep} 0%, ${C.purple} 60%, ${C.orange} 130%)`,
+                      alignItems: 'center', justifyContent: 'center', border: `2px solid ${C.hair}`, overflow: 'hidden',
+                      display: hasImage ? 'none' : 'flex',
+                    }}>
+                      <span style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 28, color: '#fff', letterSpacing: '-.02em' }}>{eventInitials}</span>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            <div className="flex justify-end">
-              <Button onClick={onSave} disabled={isSaving} className="w-full sm:w-auto">
+                  <div style={{ flex: 1, maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
+                      style={{ display: 'none' }}
+                      onChange={onImageUpload}
+                    />
+                    <button
+                      type="button"
+                      onClick={onOpenFilePicker}
+                      disabled={isUploadingImage}
+                      style={{
+                        width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+                        padding: '11px 16px', borderRadius: 11, background: '#fff', border: `1.5px solid ${C.hairStrong}`,
+                        color: C.purpleDeep, fontFamily: C.fontBody, fontWeight: 600, fontSize: 14,
+                        cursor: isUploadingImage ? 'not-allowed' : 'pointer', opacity: isUploadingImage ? .6 : 1, whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {isUploadingImage ? (
+                        <><Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />Uploading...</>
+                      ) : (
+                        <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>Upload image</>
+                      )}
+                    </button>
+                    <p style={{ margin: 0, fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>
+                      {isUploadingImage ? 'Optimizing image...' : 'JPG, PNG, WEBP, GIF, HEIC · Up to 5MB · 200×200px or larger'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Save changes */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '11px 16px', borderRadius: 12, border: '1px solid transparent',
+                  background: C.orange, color: '#fff', fontFamily: C.fontBody, fontWeight: 600, fontSize: 14,
+                  boxShadow: '0 6px 16px rgba(221,83,28,.25)', whiteSpace: 'nowrap',
+                  cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? .6 : 1,
+                }}
+              >
                 {isSaving ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                  <><Loader2 className="animate-spin" style={{ width: 15, height: 15 }} />Saving...</>
                 ) : (
-                  <><Save className="h-4 w-4 mr-2" />Save changes</>
+                  <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>Save changes</>
                 )}
-              </Button>
+              </button>
+            </div>
+            </div>
+
+            {/* Event page preview — static browser-chrome frame (matches the mock's
+                visual; reflects the live event name / slug / image, no iframe). */}
+            <div style={{ position: 'sticky', top: 96 }}>
+              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, background: C.orange, transform: 'rotate(45deg)', display: 'inline-block' }} />
+                <span style={{ fontFamily: C.fontBody, fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: C.purpleDeep }}>Event page preview</span>
+              </div>
+              <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${C.hairStrong}`, background: '#fff', boxShadow: '0 22px 48px rgba(75,29,81,.16)' }}>
+                <div style={{ padding: '11px 16px', background: C.purpleDeep, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'inline-flex', gap: 5 }}>{['#ff5f57', '#febc2e', '#28c840'].map((c) => <span key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />)}</span>
+                  <span style={{ fontFamily: C.fontMono, fontSize: 10.5, opacity: .8 }}>wonderelo.com/{urlSlug || 'your-event'}</span>
+                </div>
+                <div style={{ minHeight: 420, background: C.cream, padding: '44px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 18 }}>
+                  {hasImage ? (
+                    <img src={previewImageUrl || profileImageUrl} alt="" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C.hair}` }} />
+                  ) : (
+                    <div style={{ width: 84, height: 84, borderRadius: '50%', background: `linear-gradient(135deg, ${C.purpleDeep} 0%, ${C.purple} 60%, ${C.orange} 130%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 30, color: '#fff', letterSpacing: '-.02em' }}>{eventInitials}</span>
+                    </div>
+                  )}
+                  <h2 style={{ margin: 0, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 26, color: C.purpleDeep, letterSpacing: '-.02em', lineHeight: 1.1 }}>{eventName || 'My networking event'}</h2>
+                  <span style={{ fontFamily: C.fontMono, fontSize: 12, color: C.ink, opacity: .6 }}>wonderelo.com/{urlSlug || 'your-event'}</span>
+                </div>
+              </div>
+              <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Changes here update your public event page.</p>
             </div>
           </div>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }
@@ -248,8 +365,10 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         debugLog('Profile data received:', result);
         // Backend returns result.profile, not result.user
         const profile = result.profile || result.user || {};
-        // Fallback to organizerName for accounts that haven't set eventName yet
-        setEventName(profile.eventName || profile.organizerName || '');
+        // Event page settings edit the EVENT name (event_name), which is
+        // independent from the organizer's personal name (organizerName)
+        // edited on Account Settings. Do NOT fall back to organizerName here.
+        setEventName(profile.eventName || '');
         setUrlSlug(profile.urlSlug || '');
         setOriginalUrlSlug(profile.urlSlug || '');
         setProfileImageUrl(profile.profileImageUrl || '');
@@ -370,75 +489,50 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
 
     setIsUploadingImage(true);
 
+    let previewUrl: string | null = null;
     try {
       // Optimize image on frontend
       debugLog(`Original image: ${formatFileSize(file.size)}`);
       const optimizedBlob = await optimizeImage(file, 400, 0.85);
       debugLog(`Optimized image: ${formatFileSize(optimizedBlob.size)}`);
-      
+
       const savingsPercent = Math.round((1 - optimizedBlob.size / file.size) * 100);
       debugLog(`Size reduction: ${savingsPercent}%`);
 
       // Show preview immediately
-      const previewUrl = URL.createObjectURL(optimizedBlob);
+      previewUrl = URL.createObjectURL(optimizedBlob);
       setPreviewImageUrl(previewUrl);
 
-      const { apiBaseUrl } = await import('../utils/supabase/info');
-      
-      // Create FormData to send the optimized file
-      const formData = new FormData();
-      formData.append('file', optimizedBlob, 'profile.jpg');
+      // There is no image-upload endpoint (POST /upload-profile-image 404s) and no
+      // Storage bucket is wired anywhere in the app. Persist the optimized image
+      // inline as a base64 data URL via the existing (working) PUT /profile route —
+      // organizer_profiles.profile_image_url is TEXT, and the image is already resized
+      // to a small 400px / 16:9 JPEG @0.85, so the encoded string stays modest.
+      const dataUrl = await blobToDataUrl(optimizedBlob);
 
-      // Upload to backend
-      const response = await fetch(
-        `${apiBaseUrl}/upload-profile-image`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: formData,
-        }
-      );
+      // Swap the transient object-URL preview for the persistent data URL.
+      URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+      setPreviewImageUrl(null);
+      setProfileImageUrl(dataUrl);
 
-      if (response.ok) {
-        const result = await response.json();
-        debugLog('Image uploaded:', result);
-        
-        // Clear preview URL
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewImageUrl(null);
-        
-        // Update profile image URL
-        setProfileImageUrl(result.url);
-        
-        // Automatically save to profile
-        await saveImageToProfile(result.url);
-        
+      // Persist to the profile. saveImageToProfile reports success/failure so we
+      // never show a success toast for a save that silently failed.
+      const saved = await saveImageToProfile(dataUrl);
+      if (saved) {
         toast.success(`Image uploaded (${savingsPercent}% size reduction)`);
       } else {
-        const errorText = await response.text();
-        errorLog('Image upload failed:', errorText);
-        
-        // Clear preview on error
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewImageUrl(null);
-        
-        toast.error('Failed to upload image. Please try again.');
+        toast.error('Failed to save image. Please try again.');
       }
     } catch (error) {
       errorLog('Error uploading image:', error);
-      
+
       // Clear preview on error
-      if (previewImageUrl) {
-        URL.revokeObjectURL(previewImageUrl);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
       setPreviewImageUrl(null);
-      
+
       toast.error('Error uploading image. Please try again.');
     } finally {
       setIsUploadingImage(false);
@@ -449,10 +543,10 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
     }
   };
 
-  const saveImageToProfile = async (imageUrl: string) => {
+  const saveImageToProfile = async (imageUrl: string): Promise<boolean> => {
     try {
       debugLog('Saving optimized image to profile...');
-      
+
       const { authenticatedFetch } = await import('../utils/supabase/apiClient');
       const response = await authenticatedFetch(
         '/profile',
@@ -467,17 +561,20 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
 
       if (response.ok) {
         debugLog('Optimized image saved to profile successfully');
-        
+
         // Notify parent component
         if (onProfileUpdate) {
           onProfileUpdate({ profileImageUrl: imageUrl });
         }
+        return true;
       } else {
         const errorText = await response.text();
         errorLog('Failed to save image to profile:', errorText);
+        return false;
       }
     } catch (error) {
       errorLog('Error saving image to profile:', error);
+      return false;
     }
   };
 
@@ -505,7 +602,7 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
         {
           method: 'PUT',
           body: JSON.stringify({
-            eventName,
+            eventName,  // EVENT name — persisted to organizer_profiles.event_name, independent of the person's organizerName
             urlSlug,
             profileImageUrl,
           }),

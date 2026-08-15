@@ -73,7 +73,6 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
   const [isLoadingAuditLog, setIsLoadingAuditLog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sessionFilter, setSessionFilter] = useState<string | null>(null);
-  const [roundFilter, setRoundFilter] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'registrations' | 'audit'>('registrations');
   
   // Delete dialogs
@@ -100,15 +99,16 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
   
   // Apply filters from sessionStorage on mount
   React.useEffect(() => {
-    // Check for session/round filters from Session Management
+    // Check for session filter from Session Management.
+    // NOTE: round-level filtering isn't possible on this list — the participant rows
+    // only carry sessionIds (see /admin/participants), never roundIds — so we filter
+    // by session only. The round key is still cleared so it doesn't linger.
     const filterSession = sessionStorage.getItem('admin_participant_filter_session');
-    const filterRound = sessionStorage.getItem('admin_participant_filter_round');
 
-    if (filterSession && filterRound) {
-      debugLog('Applying session/round filter from Session Management:', { filterSession, filterRound });
-      toast.info(`Filtering participants for session ${filterSession.substring(0, 8)}... and round ${filterRound.substring(0, 8)}...`);
+    if (filterSession) {
+      debugLog('Applying session filter from Session Management:', { filterSession });
+      toast.info(`Filtering participants for session ${filterSession.substring(0, 8)}...`);
       setSessionFilter(filterSession);
-      setRoundFilter(filterRound);
       sessionStorage.removeItem('admin_participant_filter_session');
       sessionStorage.removeItem('admin_participant_filter_round');
     }
@@ -184,7 +184,7 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
     }
   };
   
-  // Apply all filters when participants, searchQuery, sessionFilter, or roundFilter change
+  // Apply all filters when participants, searchQuery, or sessionFilter change
   React.useEffect(() => {
     let filtered = [...participants];
     
@@ -203,17 +203,9 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
       debugLog('Filtering by sessionId:', sessionFilter);
       filtered = filtered.filter(p => p.sessionIds?.includes(sessionFilter));
     }
-    
-    // Apply round filter - this requires expanding to check registrations detail
-    // For now, we show message that round-level filtering requires expanding participant
-    if (roundFilter) {
-      debugLog('Round filter active:', roundFilter);
-      // TODO: Backend should return participants filtered by roundId
-      // For now, show all participants from the session
-    }
-    
+
     setFilteredParticipants(filtered);
-  }, [participants, searchQuery, sessionFilter, roundFilter]);
+  }, [participants, searchQuery, sessionFilter]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value.toLowerCase();
@@ -354,98 +346,101 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
   };
 
   const getAuditLogDescription = (entry: AuditLogEntry) => {
+    // Guard against entries with null/undefined details (would otherwise throw and
+    // break the entire Activity-log tab render).
+    const details = entry.details || {};
     switch (entry.action) {
       case 'profile_created':
-        return `Profile created with ${entry.details.roundsCount || 0} round registration${entry.details.roundsCount !== 1 ? 's' : ''}`;
-      
+        return `Profile created with ${details.roundsCount || 0} round registration${details.roundsCount !== 1 ? 's' : ''}`;
+
       case 'profile_updated':
         const updateChanges = [];
-        if (entry.details.changes?.name) {
-          updateChanges.push(`name changed from "${entry.details.changes.name.from}" to "${entry.details.changes.name.to}"`);
+        if (details.changes?.name) {
+          updateChanges.push(`name changed from "${details.changes.name.from}" to "${details.changes.name.to}"`);
         }
-        if (entry.details.changes?.phone) {
-          updateChanges.push(`phone changed from "${entry.details.changes.phone.from}" to "${entry.details.changes.phone.to}"`);
+        if (details.changes?.phone) {
+          updateChanges.push(`phone changed from "${details.changes.phone.from}" to "${details.changes.phone.to}"`);
         }
-        if (entry.details.changes?.phoneCountry) {
-          updateChanges.push(`country changed from "${entry.details.changes.phoneCountry.from}" to "${entry.details.changes.phoneCountry.to}"`);
+        if (details.changes?.phoneCountry) {
+          updateChanges.push(`country changed from "${details.changes.phoneCountry.from}" to "${details.changes.phoneCountry.to}"`);
         }
-        const newRounds = entry.details.newRoundsCount > 0 ? ` and added ${entry.details.newRoundsCount} new round${entry.details.newRoundsCount !== 1 ? 's' : ''}` : '';
+        const newRounds = details.newRoundsCount > 0 ? ` and added ${details.newRoundsCount} new round${details.newRoundsCount !== 1 ? 's' : ''}` : '';
         return `Profile updated: ${updateChanges.join(', ')}${newRounds}`;
-      
+
       case 'email_verified':
         const verifyChanges = [];
-        if (entry.details.changes?.name) {
-          verifyChanges.push(`name changed to "${entry.details.changes.name.to}"`);
+        if (details.changes?.name) {
+          verifyChanges.push(`name changed to "${details.changes.name.to}"`);
         }
-        if (entry.details.changes?.phone) {
-          verifyChanges.push(`phone changed to "${entry.details.changes.phone.to}"`);
+        if (details.changes?.phone) {
+          verifyChanges.push(`phone changed to "${details.changes.phone.to}"`);
         }
-        const newRoundsVerified = entry.details.newRoundsAdded > 0 ? ` and added ${entry.details.newRoundsAdded} new round${entry.details.newRoundsAdded !== 1 ? 's' : ''}` : '';
-        return verifyChanges.length > 0 
+        const newRoundsVerified = details.newRoundsAdded > 0 ? ` and added ${details.newRoundsAdded} new round${details.newRoundsAdded !== 1 ? 's' : ''}` : '';
+        return verifyChanges.length > 0
           ? `Email verified: ${verifyChanges.join(', ')}${newRoundsVerified}`
           : `Email verified${newRoundsVerified}`;
-      
+
       case 'verification_requested':
-        const reason = entry.details.reason;
+        const reason = details.reason;
         if (reason === 'new_registration') {
-          return `Verification email sent for new registration (${entry.details.roundsCount} round${entry.details.roundsCount !== 1 ? 's' : ''})`;
+          return `Verification email sent for new registration (${details.roundsCount} round${details.roundsCount !== 1 ? 's' : ''})`;
         } else if (reason === 'adding_new_rounds') {
-          return `Verification email sent for adding ${entry.details.newRoundsCount} new round${entry.details.newRoundsCount !== 1 ? 's' : ''}`;
+          return `Verification email sent for adding ${details.newRoundsCount} new round${details.newRoundsCount !== 1 ? 's' : ''}`;
         } else if (reason === 'updating_profile_all_rounds_registered') {
-          return `Verification email sent for profile update (name: ${entry.details.firstName} ${entry.details.lastName}, phone: ${entry.details.phone})`;
+          return `Verification email sent for profile update (name: ${details.firstName} ${details.lastName}, phone: ${details.phone})`;
         }
         return 'Verification email sent';
-      
+
       case 'admin_deleted_registration':
-        return `Administrator deleted registration for round "${entry.details.roundName}"`;
-      
+        return `Administrator deleted registration for round "${details.roundName}"`;
+
       case 'verification_email_resent':
-        return `Verification email resent (${entry.details.roundsCount || 0} round${entry.details.roundsCount !== 1 ? 's' : ''})`;
-      
+        return `Verification email resent (${details.roundsCount || 0} round${details.roundsCount !== 1 ? 's' : ''})`;
+
       case 'welcome_email_sent':
-        return `Welcome email sent - ${entry.details.roundsActivated} round${entry.details.roundsActivated !== 1 ? 's' : ''} activated`;
-      
+        return `Welcome email sent - ${details.roundsActivated} round${details.roundsActivated !== 1 ? 's' : ''} activated`;
+
       case 'token_accessed':
         return `Accessed participant dashboard`;
-      
+
       case 'registered_to_round':
-        return `Registered for "${entry.details.roundName}"${entry.details.requiresVerification ? ' (pending verification)' : ''}`;
-      
+        return `Registered for "${details.roundName}"${details.requiresVerification ? ' (pending verification)' : ''}`;
+
       case 'added_to_multiple_rounds':
-        return `Registered for ${entry.details.count} rounds at once`;
-      
+        return `Registered for ${details.count} rounds at once`;
+
       case 'UNREGISTERED_FROM_ROUND':
-        return `Unregistered from round "${entry.details.roundName || 'Unknown'}"`;
-      
+        return `Unregistered from round "${details.roundName || 'Unknown'}"`;
+
       case 'confirmed_attendance':
       case 'CONFIRMED_ATTENDANCE':
-        return `Confirmed attendance for "${entry.details.roundName || 'round'}"`;
-      
+        return `Confirmed attendance for "${details.roundName || 'round'}"`;
+
       case 'missed_attendance_confirmation':
-        return `Missed attendance confirmation deadline${entry.details.reason ? `: ${entry.details.reason}` : ''}`;
-      
+        return `Missed attendance confirmation deadline${details.reason ? `: ${details.reason}` : ''}`;
+
       case 'auto_removed_no_confirmation':
         return `Automatically removed from matching - did not confirm attendance`;
-      
+
       case 'matched_with_participant':
-        const partners = entry.details.partnerNames?.join(', ') || 'other participants';
-        return `Matched with ${partners} (${entry.details.groupSize || 2} people)`;
-      
+        const partners = details.partnerNames?.join(', ') || 'other participants';
+        return `Matched with ${partners} (${details.groupSize || 2} people)`;
+
       case 'checked_in':
         return `Checked in via QR code`;
-      
+
       case 'no_show_reported':
         return `Reported participant as no-show`;
-      
+
       case 'no_show_received':
         return `Reported as no-show by another participant`;
-      
+
       case 'participant_status_changed':
-        return `Status changed: "${entry.details.oldStatus}" → "${entry.details.newStatus}"${entry.details.reason ? ` (${entry.details.reason})` : ''}`;
-      
+        return `Status changed: "${details.oldStatus}" → "${details.newStatus}"${details.reason ? ` (${details.reason})` : ''}`;
+
       case 'profile_viewed_by_admin':
         return `Profile viewed by administrator`;
-      
+
       default:
         return entry.action.replace(/_/g, ' ');
     }
@@ -564,24 +559,16 @@ export function AdminParticipants({ accessToken, onBack, onNavigateToSession }: 
               />
               
               {/* Active Filters */}
-              {(sessionFilter || roundFilter) && (
+              {sessionFilter && (
                 <div className="flex items-center gap-2">
-                  {sessionFilter && (
-                    <Badge variant="secondary" className="text-xs">
-                      Session: {sessionFilter.substring(0, 8)}...
-                    </Badge>
-                  )}
-                  {roundFilter && (
-                    <Badge variant="secondary" className="text-xs">
-                      Round: {roundFilter.substring(0, 8)}...
-                    </Badge>
-                  )}
+                  <Badge variant="secondary" className="text-xs">
+                    Session: {sessionFilter.substring(0, 8)}...
+                  </Badge>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       setSessionFilter(null);
-                      setRoundFilter(null);
                       toast.info('Filters cleared');
                     }}
                   >

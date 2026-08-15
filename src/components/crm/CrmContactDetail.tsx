@@ -75,6 +75,7 @@ interface CrmContactDetail {
   company_id: string | null;
   company_name: string | null;
   role: string | null;
+  job_title?: string | null;
   lead_stage: LeadStage | null;
   lead_score: number | null;
   tags: string[];
@@ -101,6 +102,7 @@ interface Task {
   description: string | null;
   due_date: string | null;
   completed: boolean;
+  completed_at: string | null;
   priority: 'low' | 'medium' | 'high';
   created_at: string;
 }
@@ -280,11 +282,20 @@ export function CrmContactDetail() {
     try {
       const res = await fetch(`${apiBaseUrl}/crm/contacts/${id}`, { headers });
       if (!res.ok) throw new Error(`Failed to load contact (${res.status})`);
-      const data: ContactDetailApiResponse = await res.json();
-      setContact(data.contact);
-      setActivities(data.activities ?? []);
-      setTasks(data.tasks ?? []);
-      setWebsiteVisits(data.website_visits ?? []);
+      const data = await res.json();
+      // The server spreads the contact fields at the top level alongside
+      // `activities`/`tasks` (GET /crm/contacts/:id → { ...contact, activities,
+      // tasks }), not under a `contact` key. Read the spread shape, falling back
+      // to a nested { contact } shape if one is ever returned.
+      const contactData = (data.contact ?? data) as CrmContactDetail;
+      const activityList: Activity[] = data.activities ?? data.contact?.activities ?? [];
+      const taskList: Task[] = data.tasks ?? data.contact?.tasks ?? [];
+      setContact(contactData);
+      setActivities(activityList);
+      // Server persists task completion via `completed_at`; derive the boolean
+      // the UI renders from it so completed/reopened state reflects correctly.
+      setTasks(taskList.map((t) => ({ ...t, completed: t.completed_at != null })));
+      setWebsiteVisits(data.website_visits ?? data.contact?.website_visits ?? []);
     } catch (err) {
       console.error('Error fetching contact:', err);
       setError(err instanceof Error ? err.message : 'Failed to load contact');
@@ -308,7 +319,7 @@ export function CrmContactDetail() {
       last_name: contact.last_name,
       email: contact.email,
       phone: contact.phone,
-      role: contact.role,
+      role: contact.role ?? contact.job_title ?? null,
       lead_stage: contact.lead_stage,
       lead_score: contact.lead_score,
       tags: [...(contact.tags ?? [])],
@@ -327,10 +338,14 @@ export function CrmContactDetail() {
     if (!contact) return;
     setIsSaving(true);
     try {
+      // The "Role" field maps to the DB column `job_title` — send it under the
+      // real column name so the update doesn't 400 on an unknown `role` column.
+      const { role, ...rest } = editData;
+      const payload = role !== undefined ? { ...rest, job_title: role } : rest;
       const res = await fetch(`${apiBaseUrl}/crm/contacts/${contact.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers,
-        body: JSON.stringify(editData),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`Failed to update contact (${res.status})`);
       setIsEditing(false);
@@ -420,10 +435,11 @@ export function CrmContactDetail() {
     if (!emailSubject.trim() || !emailBody.trim() || !contact) return;
     setIsSendingEmail(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/crm/contacts/${contact.id}/email`, {
+      const res = await fetch(`${apiBaseUrl}/crm/email/send`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
+          contactId: contact.id,
           subject: emailSubject.trim(),
           body: emailBody.trim(),
         }),
@@ -474,11 +490,18 @@ export function CrmContactDetail() {
 
   const toggleTaskComplete = async (task: Task) => {
     try {
-      const res = await fetch(`${apiBaseUrl}/crm/tasks/${task.id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ completed: !task.completed }),
-      });
+      // Complete via the dedicated endpoint; reopen by clearing completed_at
+      // through the task update route (server has no /reopen route).
+      const res = task.completed
+        ? await fetch(`${apiBaseUrl}/crm/tasks/${task.id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ completed_at: null }),
+          })
+        : await fetch(`${apiBaseUrl}/crm/tasks/${task.id}/complete`, {
+            method: 'POST',
+            headers,
+          });
       if (!res.ok) throw new Error('Failed to update task');
       fetchContact();
     } catch (err) {
@@ -1024,7 +1047,7 @@ export function CrmContactDetail() {
                   <InfoRow
                     icon={<Users className="h-4 w-4" />}
                     label="Role"
-                    value={contact.role ?? '—'}
+                    value={contact.role ?? contact.job_title ?? '—'}
                   />
                   <InfoRow
                     icon={<Star className="h-4 w-4" />}

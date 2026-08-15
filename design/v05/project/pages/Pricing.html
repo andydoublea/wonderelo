@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Pricing page redesign
+  Maps to: src/components/PricingPage.tsx + src/components/PricingPanel.tsx
+  Data from: src/config/pricing.ts (PRICING_TIERS, CAPACITY_OPTIONS, formatPrice)
+  Shared chrome: src/components/Navigation.tsx + src/components/Footer.tsx
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Pricing</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  /* ── Page-specific ─────────────────────────────────────────── */
+  .pr-hero { padding: 80px 0 56px; position: relative; }
+  .pr-hero .pr-deco-1 { position: absolute; left: 8%; top: 96px; width: 14px; height: 14px; background: var(--w-orange); transform: rotate(45deg); }
+  .pr-hero .pr-deco-2 { position: absolute; right: 12%; top: 64px; width: 10px; height: 10px; background: var(--w-purple-deep); transform: rotate(45deg); }
+  .pr-hero .pr-deco-3 { position: absolute; right: 6%; bottom: 24px; width: 18px; height: 18px; background: var(--w-orange); transform: rotate(45deg); opacity: .35; }
+  .pr-hero-inner { text-align: center; }
+  .pr-lede { max-width: 620px; margin: 24px auto 0; font-size: 18px; line-height: 1.55; color: var(--w-ink); opacity: .85; }
+  .pr-free-pill {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-top: 28px;
+    padding: 9px 14px 9px 12px; border-radius: 999px;
+    background: rgba(76,25,77,.06); border: 1px solid var(--w-hairline-strong);
+    font-size: 13px; font-weight: 600; color: var(--w-purple-deep);
+  }
+  .pr-free-pill .w-diamond { width: 9px; height: 9px; }
+
+  /* ── Capacity selector ─────────────────────────────────────── */
+  .pr-cap {
+    background: var(--w-cream);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    padding: 36px 40px 28px;
+    margin-top: 24px;
+    position: relative; overflow: hidden;
+  }
+  .pr-cap .pr-cap-deco {
+    position: absolute; right: -30px; top: -30px;
+    font-family: var(--w-font-serif); font-style: italic; font-size: 200px;
+    color: rgba(76,25,77,.04); line-height: 1; pointer-events: none;
+  }
+  .pr-cap-head {
+    display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    margin-bottom: 32px; position: relative;
+  }
+  .pr-cap-head .l { display: flex; flex-direction: column; gap: 6px; }
+  .pr-cap-head .label {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .8;
+  }
+  .pr-cap-head .pr-cap-value {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 56px; line-height: 1; letter-spacing: -0.035em;
+    color: var(--w-purple-deep);
+  }
+  .pr-cap-head .pr-cap-value em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; font-size: 28px; color: var(--w-orange); margin-left: 8px; vertical-align: 4px; }
+  .pr-cap-head .pr-cap-meta {
+    text-align: right;
+    font-family: var(--w-font-mono); font-size: 12px;
+    color: var(--w-ink); opacity: .6;
+    line-height: 1.5;
+  }
+
+  /* Slider */
+  .pr-slider { padding: 0 16px; }
+  .pr-track {
+    position: relative; height: 56px;
+  }
+  .pr-track .pr-rail {
+    position: absolute; top: 50%; left: 0; right: 0; height: 4px;
+    background: rgba(76,25,77,.10); border-radius: 999px;
+    transform: translateY(-50%);
+  }
+  .pr-track .pr-fill {
+    position: absolute; top: 50%; left: 0; height: 4px;
+    background: linear-gradient(90deg, var(--w-orange), var(--w-orange-bright));
+    border-radius: 999px;
+    transform: translateY(-50%);
+    transition: width .25s cubic-bezier(.2,.7,.2,1);
+  }
+  .pr-stop {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--w-paper); border: 2px solid rgba(76,25,77,.20);
+    transition: background .2s, border-color .2s, transform .2s;
+    cursor: pointer;
+  }
+  .pr-stop.is-active {
+    background: var(--w-orange); border-color: var(--w-orange);
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  .pr-stop.is-passed {
+    background: var(--w-orange); border-color: var(--w-orange);
+  }
+  .pr-thumb {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--w-orange);
+    box-shadow: 0 6px 14px rgba(221,83,28,.30);
+    cursor: grab; z-index: 2;
+    transition: left .25s cubic-bezier(.2,.7,.2,1);
+  }
+  .pr-thumb::after {
+    content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--w-orange);
+  }
+  .pr-stop-labels {
+    position: relative; height: 16px;
+    margin-top: 16px;
+    font-family: var(--w-font-mono); font-size: 11px;
+    color: var(--w-ink);
+  }
+  .pr-stop-labels .pr-stop-label { position: absolute; transform: translateX(-50%); white-space: nowrap; opacity: .55; }
+  .pr-stop-labels .pr-stop-label.is-active { color: var(--w-orange); opacity: 1; font-weight: 600; }
+
+  /* ── Plan cards ────────────────────────────────────────────── */
+  .pr-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 36px; }
+  .pr-plan {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    padding: 36px 36px 32px;
+    position: relative;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .pr-plan.is-featured {
+    border: 2px solid var(--w-purple-deep);
+    background: linear-gradient(180deg, var(--w-paper) 0%, var(--w-paper) 100%);
+    box-shadow: var(--w-shadow-card);
+  }
+  .pr-plan .pr-plan-tag {
+    position: absolute; top: -14px; left: 32px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--w-orange); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  }
+  .pr-plan .pr-plan-tag .w-diamond { width: 7px; height: 7px; background: #fff; }
+  .pr-plan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .pr-plan-name { font-family: var(--w-font-display); font-weight: 700; font-size: 22px; color: var(--w-purple-deep); letter-spacing: -0.02em; }
+  .pr-plan-toggle { display: inline-flex; gap: 2px; padding: 3px; background: rgba(76,25,77,.06); border-radius: 999px; }
+  .pr-plan-toggle button {
+    border: none; background: transparent;
+    padding: 6px 12px; border-radius: 999px;
+    font-family: var(--w-font-body); font-size: 12px; font-weight: 600;
+    color: var(--w-ink); opacity: .65;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .pr-plan-toggle button.is-active { background: #fff; opacity: 1; color: var(--w-purple-deep); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .pr-plan-toggle .pr-save { color: var(--w-orange); font-weight: 700; font-size: 10px; letter-spacing: .04em; }
+  .pr-plan-price {
+    margin-top: 24px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .pr-plan-price .num {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: 64px; line-height: 1; letter-spacing: -0.04em;
+    color: var(--w-purple-deep);
+  }
+  .pr-plan-price .num .currency { font-size: 36px; vertical-align: 14px; margin-right: 2px; opacity: .75; }
+  .pr-plan-price .unit { font-size: 14px; color: var(--w-ink); opacity: .7; line-height: 1.35; max-width: 130px; }
+  .pr-plan-price .unit em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+
+  .pr-plan-feats { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .pr-plan-feats li { display: flex; gap: 12px; align-items: flex-start; font-size: 14.5px; color: var(--w-ink); }
+  .pr-plan-feats li .check {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--w-orange); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  .pr-plan-feats li.is-bold { font-weight: 600; color: var(--w-purple-deep); }
+  .pr-plan-feats li.is-muted { opacity: .55; }
+  .pr-plan-feats li.is-muted .check { background: var(--w-paper-deep); color: var(--w-hairline-strong); }
+
+  .pr-plan-qty {
+    margin-top: 22px; padding: 14px 16px;
+    background: rgba(76,25,77,.04); border-radius: var(--w-r-md);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pr-plan-qty .label { font-size: 13px; font-weight: 600; color: var(--w-purple-deep); }
+  .pr-qty-ctrl { display: inline-flex; align-items: center; gap: 12px; }
+  .pr-qty-ctrl button {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1px solid var(--w-hairline-strong); background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-purple-deep); font-weight: 700;
+  }
+  .pr-qty-ctrl .qty { font-family: var(--w-font-display); font-weight: 800; font-size: 20px; min-width: 26px; text-align: center; color: var(--w-purple-deep); }
+
+  .pr-plan-cta { margin-top: 24px; width: 100%; justify-content: center; }
+  .pr-plan-foot { margin-top: 14px; font-size: 12px; color: var(--w-ink); opacity: .55; text-align: center; }
+  .pr-plan-foot .w-link-i { color: var(--w-purple); text-decoration: underline; cursor: pointer; }
+
+  /* Comparison table */
+  .pr-compare { margin-top: 96px; }
+  .pr-compare-head { text-align: center; margin-bottom: 40px; }
+  .pr-compare-head .w-eyebrow { justify-content: center; }
+  .pr-compare-head h2 { margin-top: 12px; }
+  .pr-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    overflow: hidden;
+  }
+  .pr-table th, .pr-table td {
+    padding: 18px 24px;
+    text-align: left;
+    border-bottom: 1px solid var(--w-hairline);
+    font-size: 14.5px;
+    vertical-align: middle;
+  }
+  .pr-table thead th {
+    font-family: var(--w-font-display); font-weight: 700; font-size: 14px;
+    color: var(--w-purple-deep); letter-spacing: -0.01em;
+    background: var(--w-cream);
+    padding: 22px 24px;
+  }
+  .pr-table thead th.is-featured { color: var(--w-orange); }
+  .pr-table tbody tr:last-child td { border-bottom: none; }
+  .pr-table tbody td:first-child { font-weight: 500; color: var(--w-purple-deep); }
+  .pr-table tbody td.is-cell { text-align: center; }
+  .pr-table tbody td.is-cell svg { color: var(--w-orange); }
+  .pr-table tbody td.is-cell.is-dim svg { color: var(--w-hairline-strong); }
+  .pr-table .pr-section-row td {
+    background: var(--w-cream);
+    font-family: var(--w-font-display); font-weight: 700; font-size: 12px;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .85;
+  }
+  .pr-table .pr-section-row td::before {
+    content: ""; display: inline-block; width: 6px; height: 6px;
+    background: var(--w-orange); transform: rotate(45deg);
+    margin-right: 10px; vertical-align: middle;
+  }
+
+  /* FAQ */
+  .pr-faq { margin-top: 120px; display: grid; grid-template-columns: 1fr 1.4fr; gap: 80px; align-items: start; }
+  .pr-faq-side h2 { margin-top: 12px; }
+  .pr-faq-side p { margin-top: 18px; max-width: 360px; font-size: 15.5px; line-height: 1.55; color: var(--w-ink); opacity: .8; }
+  .pr-faq-side .w-btn { margin-top: 24px; }
+  .pr-faq-list { display: flex; flex-direction: column; gap: 0; }
+  .pr-faq-item {
+    border-bottom: 1px solid var(--w-hairline);
+    padding: 22px 0;
+  }
+  .pr-faq-item:first-child { border-top: 1px solid var(--w-hairline); }
+  .pr-faq-q {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    cursor: pointer;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 18px;
+    color: var(--w-purple-deep); letter-spacing: -0.015em;
+  }
+  .pr-faq-q .pr-faq-mark {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--w-hairline-strong);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--w-purple-deep); flex: none;
+    transition: background .15s, color .15s, transform .15s;
+  }
+  .pr-faq-item[open] .pr-faq-mark { background: var(--w-orange); border-color: var(--w-orange); color: #fff; transform: rotate(45deg); }
+  .pr-faq-a {
+    margin-top: 14px;
+    font-size: 14.5px; line-height: 1.65; color: var(--w-ink); opacity: .8;
+    max-width: 580px;
+  }
+  .pr-faq-item summary { list-style: none; }
+  .pr-faq-item summary::-webkit-details-marker { display: none; }
+
+  /* Final CTA */
+  .pr-cta {
+    margin-top: 120px;
+    background: var(--w-purple-deep); color: #fff;
+    border-radius: var(--w-r-xl); padding: 64px 56px;
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 40px;
+  }
+  .pr-cta .deco-1 { position: absolute; right: 24px; top: 24px; width: 16px; height: 16px; background: var(--w-orange-bright); transform: rotate(45deg); }
+  .pr-cta .deco-2 { position: absolute; right: 58px; top: 60px; width: 10px; height: 10px; background: rgba(255,255,255,.30); transform: rotate(45deg); }
+  .pr-cta .deco-italic { position: absolute; right: -40px; bottom: -120px; font-family: var(--w-font-serif); font-style: italic; font-size: 320px; color: rgba(255,255,255,.04); line-height: 1; pointer-events: none; }
+  .pr-cta h2 { color: #fff; }
+  .pr-cta h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange-bright); }
+  .pr-cta p { margin-top: 16px; max-width: 480px; font-size: 16px; line-height: 1.55; color: rgba(255,255,255,.72); }
+  .pr-cta .pr-cta-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .pr-cta .w-btn-ghost { color: #fff; border-color: rgba(255,255,255,.20); }
+  .pr-cta .w-btn-ghost:hover { background: rgba(255,255,255,.08); }
+
+  @media (max-width: 880px) {
+    .pr-plans { grid-template-columns: 1fr; }
+    .pr-faq { grid-template-columns: 1fr; gap: 40px; }
+    .pr-cta { grid-template-columns: 1fr; padding: 40px 28px; }
+    .pr-cta .pr-cta-actions { justify-content: flex-start; }
+    .pr-table th, .pr-table td { padding: 14px; font-size: 13px; }
+  }
+</style>
+</head>
+<body data-screen-label="01 Pricing">
+
+<!-- ───────── Nav ───────── -->
+<wonderelo-nav data-screen-label="Public / Nav" active="pricing"></wonderelo-nav>
+
+<main>
+
+  <!-- ───────── Hero ───────── -->
+  <section class="pr-hero" data-screen-label="Pricing / Hero">
+    <span class="pr-deco-1"></span>
+    <span class="pr-deco-2"></span>
+    <span class="pr-deco-3"></span>
+    <div class="w-shell-narrow pr-hero-inner">
+      <span class="w-eyebrow" style="justify-content: center;">Pricing · No surprises</span>
+      <h1 class="w-display" style="margin-top: 18px;">Simple pricing,<br/><span class="w-italic">no worry</span></h1>
+      <p class="pr-lede">Start free with up to 5 participants. Pay per event when you need it, or subscribe for unlimited rounds. No hidden fees, cancel anytime.</p>
+    </div>
+  </section>
+
+  <!-- ───────── Capacity selector + plan cards ───────── -->
+  <section class="w-shell" data-screen-label="Pricing / Capacity + plans">
+
+    <!-- Capacity selector (data: src/config/pricing.ts CAPACITY_OPTIONS) -->
+    <div class="pr-cap" data-component="CapacitySelector">
+      <span class="pr-cap-deco">capacity</span>
+      <div class="pr-cap-head">
+        <div class="l">
+          <span class="label">Event capacity</span>
+          <div class="pr-cap-value" data-bind="selectedCapacity.label">
+            Up to 200<em>participants</em>
+          </div>
+        </div>
+      </div>
+      <div class="pr-slider">
+        <div class="pr-track">
+          <div class="pr-rail"></div>
+          <div class="pr-fill" style="width: 40%;"></div>
+          <!-- 6 stops: 5 / 50 / 200 / 500 / 1000 / 5000 -->
+          <div class="pr-stop is-passed" style="left: 0%;"></div>
+          <div class="pr-stop is-passed" style="left: 20%;"></div>
+          <div class="pr-stop is-active" style="left: 40%;"></div>
+          <div class="pr-stop" style="left: 60%;"></div>
+          <div class="pr-stop" style="left: 80%;"></div>
+          <div class="pr-stop" style="left: 100%;"></div>
+          <div class="pr-thumb" style="left: 40%;"></div>
+        </div>
+        <div class="pr-stop-labels">
+          <span class="pr-stop-label" style="left:0%;">5</span>
+          <span class="pr-stop-label" style="left:20%;">50</span>
+          <span class="pr-stop-label is-active" style="left:40%;">200</span>
+          <span class="pr-stop-label" style="left:60%;">500</span>
+          <span class="pr-stop-label" style="left:80%;">1 000</span>
+          <span class="pr-stop-label" style="left:100%;">5 000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two plan cards (data: PRICING_TIERS[selectedTier]) -->
+    <div class="pr-plans">
+
+      <!-- Single event (pay per event) -->
+      <article class="pr-plan" data-component="SingleEventCard">
+        <div class="pr-plan-head">
+          <div class="pr-plan-name">Single event</div>
+        </div>
+        <div class="pr-plan-price">
+          <div class="num"><span class="currency">€</span>99</div>
+          <div class="unit">per event, billed<br/><em>once</em></div>
+        </div>
+        <ul class="pr-plan-feats">
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Up to <strong>200 participants</strong></li>
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Valid for one event per credit</li>
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Unlimited rounds within event</li>
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Custom event page &amp; QR code</li>
+          <li class="is-muted"><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Priority support</li>
+        </ul>
+        <div class="pr-plan-qty">
+          <span class="label">Credits</span>
+          <div class="pr-qty-ctrl">
+            <button type="button" aria-label="Decrease">−</button>
+            <span class="qty">1</span>
+            <button type="button" aria-label="Increase">+</button>
+          </div>
+        </div>
+        <button class="w-btn w-btn-ghost pr-plan-cta" type="button">
+          <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          <span class="pr-pay-label">Pay €99 once</span>
+        </button>
+        <div class="pr-plan-foot">
+          One-time payment · No subscription · <span class="w-link-i">Redeem gift card</span>
+        </div>
+      </article>
+
+      <!-- Unlimited subscription -->
+      <article class="pr-plan is-featured" data-component="SubscriptionCard">
+        <span class="pr-plan-tag"><span class="w-diamond"></span> Most popular</span>
+        <div class="pr-plan-head">
+          <div class="pr-plan-name">Unlimited events</div>
+          <div class="pr-plan-toggle" role="tablist">
+            <button class="is-active" type="button" role="tab" aria-selected="true">
+              Annually <span class="pr-save">−17%</span>
+            </button>
+            <button type="button" role="tab" aria-selected="false">Monthly</button>
+          </div>
+        </div>
+        <div class="pr-plan-price">
+          <div class="num"><span class="currency">€</span>165</div>
+          <div class="unit">per month, billed<br/><em>€1 990 / year</em></div>
+        </div>
+        <ul class="pr-plan-feats">
+          <li class="is-bold"><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Unlimited events</li>
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Up to <strong>200 participants</strong> each</li>
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Unlimited rounds &amp; sessions</li>
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Remove Wonderelo branding</li>
+          <li><span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Priority email support · 24h</li>
+        </ul>
+        <button class="w-btn w-btn-primary pr-plan-cta" type="button">
+          <span class="pr-sub-label">Subscribe annually</span>
+          <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+        <div class="pr-plan-foot">
+          Cancel anytime · No setup fee · All prices excl. VAT · <span class="w-link-i">Redeem gift card</span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ───────── Comparison table ───────── -->
+  <section class="w-shell pr-compare" data-screen-label="Pricing / Comparison">
+    <div class="pr-compare-head">
+      <span class="w-eyebrow">Compare</span>
+      <h2 class="w-h1">What's <span class="w-italic">included</span></h2>
+      <p class="w-lede" style="max-width: 580px; margin: 18px auto 0;">Every plan ships with the full networking engine — what differs is capacity, branding, and how often you run.</p>
+    </div>
+
+    <table class="pr-table">
+      <thead>
+        <tr>
+          <th style="width: 38%;">Feature</th>
+          <th>Free</th>
+          <th>Single event</th>
+          <th class="is-featured">Unlimited</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="pr-section-row"><td colspan="4">Core engine</td></tr>
+        <tr>
+          <td>Random &amp; topic-based matching</td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+        </tr>
+        <tr>
+          <td>Custom round duration &amp; group size</td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+        </tr>
+        <tr>
+          <td>Meeting points &amp; ice-breakers</td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+        </tr>
+        <tr class="pr-section-row"><td colspan="4">Limits</td></tr>
+        <tr>
+          <td>Participants per event</td>
+          <td class="is-cell" style="font-weight: 600;">Up to 5</td>
+          <td class="is-cell" style="font-weight: 600;">5 – 5 000</td>
+          <td class="is-cell" style="font-weight: 600; color: var(--w-orange);">5 – 5 000</td>
+        </tr>
+        <tr>
+          <td>Events per month</td>
+          <td class="is-cell" style="font-weight: 600;">Unlimited</td>
+          <td class="is-cell" style="font-weight: 600;">1 per credit</td>
+          <td class="is-cell" style="font-weight: 600; color: var(--w-orange);">Unlimited</td>
+        </tr>
+        <tr>
+          <td>Rounds per event</td>
+          <td class="is-cell" style="font-weight: 600;">Unlimited</td>
+          <td class="is-cell" style="font-weight: 600;">Unlimited</td>
+          <td class="is-cell" style="font-weight: 600;">Unlimited</td>
+        </tr>
+        <tr class="pr-section-row"><td colspan="4">Branding &amp; promotion</td></tr>
+        <tr>
+          <td>Custom event page</td>
+          <td class="is-cell is-dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+        </tr>
+        <tr>
+          <td>QR code &amp; promo slide</td>
+          <td class="is-cell is-dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+        </tr>
+        <tr>
+          <td>Remove Wonderelo branding</td>
+          <td class="is-cell is-dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></td>
+          <td class="is-cell is-dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+        </tr>
+        <tr class="pr-section-row"><td colspan="4">Support</td></tr>
+        <tr>
+          <td>Email support</td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></td>
+          <td class="is-cell" style="font-weight: 600; color: var(--w-orange);">Priority · 24h</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ───────── FAQ ───────── -->
+  <section class="w-shell pr-faq" data-screen-label="Pricing / FAQ">
+    <div class="pr-faq-side">
+      <span class="w-eyebrow">Questions</span>
+      <h2 class="w-h1" style="margin-top: 14px;">Curious about <span class="w-italic">something else?</span></h2>
+      <p>Drop us a line — we usually reply within a few hours during European working hours.</p>
+      <a class="w-btn w-btn-ghost" href="#">
+        <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        hello@wonderelo.com
+      </a>
+    </div>
+    <div class="pr-faq-list">
+      <details class="pr-faq-item" open>
+        <summary class="pr-faq-q">
+          What counts as one event?
+          <span class="pr-faq-mark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        </summary>
+        <p class="pr-faq-a">An event is a single Wonderelo URL — the page where participants register. You can run as many networking rounds inside that event as you want. So a 3-day conference with rounds every morning is still one event, not three.</p>
+      </details>
+      <details class="pr-faq-item">
+        <summary class="pr-faq-q">
+          Do you charge per participant?
+          <span class="pr-faq-mark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        </summary>
+        <p class="pr-faq-a">No. You pick a capacity tier (5 / 50 / 200 / 500 / 1 000 / 5 000) and pay a flat price for that ceiling. If 47 people show up to a 50-tier event, you still pay the 50 price.</p>
+      </details>
+      <details class="pr-faq-item">
+        <summary class="pr-faq-q">
+          Can I upgrade mid-subscription?
+          <span class="pr-faq-mark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        </summary>
+        <p class="pr-faq-a">Yes. Move up a capacity tier any time and we'll prorate the difference. Moving down takes effect at the next billing cycle.</p>
+      </details>
+      <details class="pr-faq-item">
+        <summary class="pr-faq-q">
+          What payment methods do you support?
+          <span class="pr-faq-mark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        </summary>
+        <p class="pr-faq-a">All major cards via Stripe. For annual subscriptions over €1 000 we can also issue an invoice (SEPA / wire). Drop us a note if that's you.</p>
+      </details>
+      <details class="pr-faq-item">
+        <summary class="pr-faq-q">
+          Is there a non-profit discount?
+          <span class="pr-faq-mark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        </summary>
+        <p class="pr-faq-a">Yes — schools, universities, and registered non-profits get 40% off any plan. Reply to your welcome email with proof and we'll apply it.</p>
+      </details>
+      <details class="pr-faq-item">
+        <summary class="pr-faq-q">
+          Can I cancel anytime?
+          <span class="pr-faq-mark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        </summary>
+        <p class="pr-faq-a">Yes. Subscriptions cancel at the end of your current billing period — no fees, no questions. Single-event credits never expire.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ───────── Final CTA ───────── -->
+  <section class="w-shell" data-screen-label="Pricing / CTA">
+    <div class="pr-cta">
+      <span class="deco-1"></span>
+      <span class="deco-2"></span>
+      <span class="deco-italic">go</span>
+      <div>
+        <h2 class="w-h1">Run your first <span class="w-italic">round</span> in under a minute</h2>
+        <p>You don't need a credit card. Spin up a free event, share the URL with five people, and see how it feels before you commit to anything.</p>
+      </div>
+      <div class="pr-cta-actions">
+        <a class="w-btn w-btn-ghost" href="#">Watch a demo</a>
+        <a class="w-btn w-btn-primary w-btn-lg" href="#">
+          Start for free
+          <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ───────── Footer (shared) ───────── -->
+<footer class="w-footer" data-screen-label="Public / Footer">
+  <span class="w-foot-deco">wonder</span>
+  <div class="w-footer-inner">
+    <div class="w-footer-grid">
+      <div class="w-foot-brand">
+        <div class="w-foot-logo">
+          <div class="w-mark"><div class="w-inner"></div></div>
+          <div class="w-word">wonderelo</div>
+        </div>
+        <p>Speed-networking for events. The room you booked, the people you invited, every introduction worth having.</p>
+        <a class="w-foot-cta" href="#"><span class="w-dot"></span> All systems normal</a>
+      </div>
+      <div class="w-foot-col">
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#">How it works</a></li>
+          <li><a href="#">Features</a></li>
+          <li><a href="#">Pricing</a></li>
+          <li><a href="#">Sign up</a></li>
+        </ul>
+      </div>
+      <div class="w-foot-col">
+        <h5>For</h5>
+        <ul>
+          <li><a href="#">Conferences</a></li>
+          <li><a href="#">Meetups</a></li>
+          <li><a href="#">Weddings</a></li>
+          <li><a href="#">Teams</a></li>
+        </ul>
+      </div>
+      <div class="w-foot-col">
+        <h5>Learn</h5>
+        <ul>
+          <li><a href="#">Our story</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Case studies</a></li>
+          <li><a href="#">Help center</a></li>
+        </ul>
+      </div>
+      <div class="w-foot-col">
+        <h5>Company</h5>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Press kit</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="w-foot-bottom">
+      <span>© 2026 Wonderelo · Made in Bratislava with rounds that don't feel like rounds.</span>
+      <div class="w-foot-legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Cookies</a>
+        <a href="#">GDPR</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="wonderelo-nav.js"></script>
+<script>
+  // ── Capacity slider + live pricing (data: src/config/pricing.ts) ──
+  (function () {
+    const TIERS = [
+      { cap: 5,    single: 0,      mo: 0,       yr: 0 },
+      { cap: 50,   single: 4900,   mo: 9900,    yr: 99000 },
+      { cap: 200,  single: 9900,   mo: 19900,   yr: 199000 },
+      { cap: 500,  single: 19900,  mo: 39900,   yr: 399000 },
+      { cap: 1000, single: 34900,  mo: 69900,   yr: 699000 },
+      { cap: 5000, single: 79900,  mo: 149900,  yr: 1499000 },
+    ];
+    const fmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+    const euro = (cents) => '<span class="currency">€</span>' + fmt(cents / 100);
+
+    const capValue = document.querySelector('.pr-cap-value');
+    const fill  = document.querySelector('.pr-fill');
+    const thumb = document.querySelector('.pr-thumb');
+    const track = document.querySelector('.pr-track');
+    const stops  = [...document.querySelectorAll('.pr-stop')];
+    const labels = [...document.querySelectorAll('.pr-stop-label')];
+    const single = document.querySelector('[data-component="SingleEventCard"]');
+    const sub    = document.querySelector('[data-component="SubscriptionCard"]');
+    if (!track || !single || !sub) return;
+
+    const singleNum = single.querySelector('.num');
+    const singleCap = single.querySelector('.pr-plan-feats strong');
+    const payLabel  = single.querySelector('.pr-pay-label');
+    const qtyEl     = single.querySelector('.qty');
+    const qtyBtns   = single.querySelectorAll('.pr-qty-ctrl button');
+    const subNum    = sub.querySelector('.num');
+    const subUnit   = sub.querySelector('.unit');
+    const subCap    = sub.querySelector('.pr-plan-feats strong');
+    const subLabel  = sub.querySelector('.pr-sub-label');
+    const toggleBtns = [...sub.querySelectorAll('.pr-plan-toggle button')];
+
+    let idx = 2, billing = 'annual', qty = 1, dragging = false;
+
+    function render() {
+      const t = TIERS[idx];
+      const pct = (idx / (TIERS.length - 1)) * 100;
+      fill.style.width = pct + '%';
+      thumb.style.left = pct + '%';
+      stops.forEach((s, i) => { s.classList.toggle('is-active', i === idx); s.classList.toggle('is-passed', i < idx); });
+      labels.forEach((l, i) => l.classList.toggle('is-active', i === idx));
+
+      capValue.innerHTML = 'Up to ' + fmt(t.cap) + '<em>participants</em>';
+
+      singleNum.innerHTML = euro(t.single);
+      if (singleCap) singleCap.textContent = fmt(t.cap) + ' participants';
+      qtyEl.textContent = qty;
+      payLabel.textContent = 'Pay €' + fmt(t.single / 100 * qty) + ' once';
+
+      if (subCap) subCap.textContent = fmt(t.cap) + ' participants';
+      if (billing === 'annual') {
+        subNum.innerHTML = euro(Math.floor(t.yr / 12 / 100) * 100);
+        subUnit.innerHTML = 'per month, billed<br/><em>€' + fmt(t.yr / 100) + ' / year</em>';
+        subLabel.textContent = 'Subscribe annually';
+      } else {
+        subNum.innerHTML = euro(t.mo);
+        subUnit.innerHTML = 'per month<br/><em>billed monthly</em>';
+        subLabel.textContent = 'Subscribe monthly';
+      }
+    }
+
+    function setIdx(i) { idx = Math.max(0, Math.min(TIERS.length - 1, i)); render(); }
+    function posToIdx(clientX) {
+      const r = track.getBoundingClientRect();
+      let rel = (clientX - r.left) / r.width;
+      rel = Math.max(0, Math.min(1, rel));
+      return Math.round(rel * (TIERS.length - 1));
+    }
+
+    track.addEventListener('pointerdown', (e) => { dragging = true; track.setPointerCapture(e.pointerId); setIdx(posToIdx(e.clientX)); });
+    track.addEventListener('pointermove', (e) => { if (dragging) setIdx(posToIdx(e.clientX)); });
+    track.addEventListener('pointerup',   () => { dragging = false; });
+    track.addEventListener('pointercancel', () => { dragging = false; });
+    labels.forEach((l, i) => l.addEventListener('click', () => setIdx(i)));
+
+    toggleBtns.forEach((b) => b.addEventListener('click', () => {
+      toggleBtns.forEach((x) => { x.classList.remove('is-active'); x.setAttribute('aria-selected', 'false'); });
+      b.classList.add('is-active'); b.setAttribute('aria-selected', 'true');
+      billing = /month/i.test(b.textContent) ? 'monthly' : 'annual';
+      render();
+    }));
+
+    if (qtyBtns.length === 2) {
+      qtyBtns[0].addEventListener('click', () => { qty = Math.max(1, qty - 1); render(); });
+      qtyBtns[1].addEventListener('click', () => { qty = qty + 1; render(); });
+    }
+
+    render();
+  })();
+</script>
+</body>
+</html>

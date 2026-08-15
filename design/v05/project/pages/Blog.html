@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<!--
+  Wonderelo — Blog Listing page redesign
+  Maps to: src/components/BlogListingPage.tsx
+  Posts fetched from: GET /blog-posts (apiBaseUrl) — falls back to fallbackPosts[]
+  Shared chrome: Navigation + Footer
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wonderelo — Blog</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wonderelo-public.css" />
+
+<style>
+  /* ── Hero / masthead ──────────────────────────────────── */
+  .bl-hero { padding: 72px 0 56px; position: relative; }
+  .bl-hero .deco { position: absolute; transform: rotate(45deg); pointer-events: none; }
+  .bl-hero .deco-1  { left: 10%;  top: 88px;  width: 12px; height: 12px; background: var(--w-orange); }
+  .bl-hero .deco-2  { right: 14%; top: 120px; width: 18px; height: 18px; background: var(--w-purple-deep); }
+  .bl-hero .deco-3  { left: 4%;   top: 250px; width: 8px;  height: 8px;  background: var(--w-purple-deep); opacity: .35; }
+  .bl-hero .deco-4  { right: 6%;  top: 60px;  width: 10px; height: 10px; background: var(--w-orange); opacity: .55; }
+  .bl-hero .deco-5  { left: 33%;  top: 40px;  width: 7px;  height: 7px;  background: var(--w-purple-deep); opacity: .3; }
+  .bl-hero .deco-6  { right: 28%; top: 300px; width: 14px; height: 14px; background: var(--w-orange); opacity: .4; }
+  .bl-hero .deco-7  { left: 48%;  top: 330px; width: 9px;  height: 9px;  background: var(--w-purple-deep); opacity: .25; }
+  .bl-hero .deco-8  { right: 2%;  top: 210px; width: 11px; height: 11px; background: var(--w-purple); opacity: .5; }
+  .bl-hero .deco-9  { left: 20%;  top: 360px; width: 6px;  height: 6px;  background: var(--w-orange); opacity: .6; }
+  .bl-hero .deco-10 { right: 40%; top: 70px;  width: 8px;  height: 8px;  background: var(--w-purple-deep); opacity: .3; }
+  .bl-hero .deco-11 { left: 62%;  top: 150px; width: 13px; height: 13px; background: var(--w-orange); opacity: .3; }
+  .bl-hero .deco-12 { right: 20%; top: 380px; width: 7px;  height: 7px;  background: var(--w-purple-deep); opacity: .4; }
+  .bl-hero-grid {
+    display: grid; grid-template-columns: 1.4fr 1fr; align-items: end; gap: 60px;
+  }
+  .bl-hero h1 { margin-top: 18px; }
+  .bl-hero .bl-issue {
+    text-align: right; padding-bottom: 8px;
+  }
+  .bl-hero .bl-issue .l {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .7;
+  }
+  .bl-hero .bl-issue .v {
+    margin-top: 6px; font-family: var(--w-font-display); font-weight: 800;
+    font-size: 28px; letter-spacing: -0.02em; color: var(--w-purple-deep);
+  }
+  .bl-hero .bl-issue .v em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+
+  /* ── Category bar ─────────────────────────────────────── */
+  .bl-cats {
+    margin-top: 40px; padding: 22px 0; border-top: 1px solid var(--w-hairline);
+    border-bottom: 1px solid var(--w-hairline);
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  }
+  .bl-cats .label {
+    font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--w-purple); opacity: .7;
+    padding-right: 18px; border-right: 1px solid var(--w-hairline);
+  }
+  .bl-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong);
+    background: transparent;
+    font-size: 13px; font-weight: 600; color: var(--w-purple-deep);
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .bl-chip:hover { background: var(--w-cream); }
+  .bl-chip.is-active {
+    background: var(--w-purple-deep); color: #fff; border-color: var(--w-purple-deep);
+  }
+  .bl-chip .count {
+    font-family: var(--w-font-mono); font-size: 10.5px; opacity: .7;
+    margin-left: 2px;
+  }
+  .bl-chip.is-active .count { opacity: .85; }
+  .bl-search {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 999px;
+    border: 1px solid var(--w-hairline-strong); background: rgba(255,255,255,.5);
+    font-size: 13px; color: var(--w-purple-deep);
+  }
+  .bl-search input {
+    border: none; outline: none; background: transparent;
+    font-family: var(--w-font-body); font-size: 13px; color: var(--w-ink);
+    width: 160px;
+  }
+
+  /* ── Featured post ────────────────────────────────────── */
+  .bl-featured {
+    margin-top: 56px;
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px;
+    align-items: stretch;
+  }
+  .bl-featured .ft-cover {
+    aspect-ratio: 4/3; border-radius: var(--w-r-lg); overflow: hidden;
+    position: relative;
+    background:
+      linear-gradient(135deg, var(--w-purple-deep) 0%, var(--w-purple) 60%, var(--w-orange) 130%);
+    border: 1px solid var(--w-hairline);
+  }
+  .bl-featured .ft-cover::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 22px);
+  }
+  .bl-featured .ft-cover .ft-tag {
+    position: absolute; top: 18px; left: 18px;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 12px; border-radius: 999px;
+    background: var(--w-orange); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  }
+  .bl-featured .ft-cover .ft-tag .w-diamond { width: 7px; height: 7px; background: #fff; }
+  .bl-featured .ft-cover .ft-title-overlay {
+    position: absolute; left: 30px; bottom: 30px; right: 30px;
+    font-family: var(--w-font-serif); font-style: italic; font-size: 28px; line-height: 1.15;
+    color: rgba(255,255,255,.92);
+    text-wrap: balance;
+  }
+  .bl-featured .ft-body { display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+  .bl-featured .ft-meta {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-family: var(--w-font-mono); font-size: 12px;
+    color: var(--w-ink); opacity: .65;
+  }
+  .bl-featured .ft-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .bl-featured .ft-meta .pill {
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(221,83,28,.10); color: var(--w-orange);
+    font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 11px;
+    opacity: 1;
+  }
+  .bl-featured h2 {
+    font-family: var(--w-font-display); font-weight: 800;
+    font-size: clamp(32px, 3.8vw, 48px); line-height: 1.05; letter-spacing: -0.025em;
+    color: var(--w-purple-deep); margin: 0;
+    text-wrap: balance;
+  }
+  .bl-featured h2 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .bl-featured p {
+    margin: 0; font-size: 16px; line-height: 1.55; color: var(--w-ink); opacity: .8;
+    max-width: 460px;
+  }
+  .bl-featured .ft-author {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px; color: var(--w-ink);
+  }
+  .bl-featured .ft-author .av {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--w-purple-deep); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--w-font-display); font-weight: 700; font-size: 12px;
+  }
+  .bl-featured .ft-author strong { color: var(--w-purple-deep); font-weight: 600; }
+  .bl-featured .ft-cta { margin-top: 8px; align-self: flex-start; }
+
+  /* ── Section heading ──────────────────────────────────── */
+  .bl-section-head {
+    margin: 96px 0 32px;
+    display: flex; justify-content: space-between; align-items: end; gap: 24px;
+  }
+  .bl-section-head h2 { margin: 8px 0 0; }
+  .bl-section-head .actions {
+    display: flex; gap: 6px; align-items: center;
+    font-family: var(--w-font-mono); font-size: 12px; color: var(--w-ink); opacity: .6;
+  }
+  .bl-section-head .actions a { color: var(--w-purple-deep); text-decoration: none; font-weight: 600; }
+
+  /* ── Post grid ────────────────────────────────────────── */
+  .bl-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+  }
+  .bl-post {
+    background: var(--w-paper);
+    border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-lg);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .bl-post:hover {
+    border-color: var(--w-hairline-strong);
+    transform: translateY(-3px);
+    box-shadow: var(--w-shadow-soft);
+  }
+  .bl-post .cover {
+    aspect-ratio: 16/10;
+    position: relative; overflow: hidden;
+    background: var(--w-cream);
+    border-bottom: 1px solid var(--w-hairline);
+  }
+  .bl-post .cover .pattern {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+  }
+  .bl-post.is-c1 .cover .pattern { background: linear-gradient(135deg, #ddc7a3, #b48b4f); }
+  .bl-post.is-c2 .cover .pattern { background: linear-gradient(135deg, #5C2277, #2d1133); }
+  .bl-post.is-c3 .cover .pattern { background: linear-gradient(135deg, #dd531c, #ff8a52); }
+  .bl-post.is-c4 .cover .pattern { background: linear-gradient(135deg, #1f4a3a, #4a8772); }
+  .bl-post.is-c5 .cover .pattern { background: linear-gradient(135deg, #f1e9d8, #d6c8a4); }
+  .bl-post.is-c6 .cover .pattern { background: linear-gradient(135deg, #3a2e34, #6b5764); }
+  .bl-post .cover::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 2px, transparent 2px 18px);
+  }
+  .bl-post .cover .tag {
+    position: absolute; top: 14px; left: 14px;
+    padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.92); color: var(--w-purple-deep);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    backdrop-filter: blur(4px);
+  }
+  .bl-post .body { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .bl-post h3 {
+    font-family: var(--w-font-display); font-weight: 700;
+    font-size: 20px; line-height: 1.2; letter-spacing: -0.015em;
+    color: var(--w-purple-deep); margin: 0;
+    text-wrap: balance;
+  }
+  .bl-post h3 em { font-family: var(--w-font-serif); font-style: italic; font-weight: 400; color: var(--w-orange); }
+  .bl-post p {
+    margin: 0; font-size: 14.5px; line-height: 1.5;
+    color: var(--w-ink); opacity: .75;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .bl-post .meta {
+    margin-top: auto; padding-top: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px dashed var(--w-hairline);
+    font-family: var(--w-font-mono); font-size: 11.5px;
+    color: var(--w-ink); opacity: .6;
+  }
+  .bl-post .meta .arrow {
+    color: var(--w-orange); opacity: 1; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: transform .15s;
+  }
+  .bl-post:hover .meta .arrow { transform: translateX(3px); }
+
+  /* ── Pagination ───────────────────────────────────────── */
+  .bl-pagination {
+    margin: 56px auto 0; display: flex; justify-content: center; gap: 6px;
+  }
+  .bl-pagination button {
+    width: 38px; height: 38px; border-radius: 10px;
+    border: 1px solid var(--w-hairline-strong); background: transparent;
+    color: var(--w-purple-deep); font-family: var(--w-font-display); font-weight: 700; font-size: 14px;
+    cursor: pointer;
+  }
+  .bl-pagination button.is-current { background: var(--w-purple-deep); color: #fff; border-color: var(--w-purple-deep); }
+  .bl-pagination button.dots { border: none; opacity: .5; }
+  .bl-pagination button:hover:not(.is-current):not(.dots) { background: var(--w-cream); }
+
+  /* ── Newsletter ───────────────────────────────────────── */
+  .bl-news {
+    margin-top: 120px;
+    margin-bottom: 120px;
+    background: var(--w-cream); border: 1px solid var(--w-hairline);
+    border-radius: var(--w-r-xl);
+    padding: 64px 56px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center;
+    position: relative; overflow: hidden;
+  }
+  .bl-news .deco-italic { position: absolute; right: 24px; bottom: -100px; font-family: var(--w-font-serif); font-style: italic; font-size: 260px; color: rgba(76,25,77,.04); line-height: 1; pointer-events: none; }
+  .bl-news h2 { margin: 14px 0 0; }
+  .bl-news h2 em { font-family: var(--w-font-serif); font-style: italic; color: var(--w-orange); font-weight: 400; }
+  .bl-news p { margin-top: 16px; max-width: 380px; font-size: 15.5px; line-height: 1.55; color: var(--w-ink); opacity: .85; }
+  .bl-news form {
+    display: flex; gap: 10px; padding: 6px;
+    background: #fff; border: 1px solid var(--w-hairline-strong);
+    border-radius: 999px;
+    box-shadow: var(--w-shadow-soft);
+  }
+  .bl-news .w-btn { border-radius: 999px; }
+  .wn-footer-link { transition: color .2s ease, transform .2s ease; }
+  .wn-footer-link:hover { color: #fff !important; transform: translateX(3px); }
+  .wn-social { transition: color .2s ease, transform .2s ease; }
+  .wn-social:hover { color: #fff !important; transform: translateY(-3px); }
+  .bl-news input {
+    flex: 1; border: none; outline: none; background: transparent;
+    padding: 12px 16px; font-family: var(--w-font-body); font-size: 15px; color: var(--w-ink);
+  }
+  .bl-news .small {
+    margin-top: 12px;
+    font-family: var(--w-font-mono); font-size: 11px;
+    color: var(--w-ink); opacity: .55;
+  }
+  .bl-news .small em { color: var(--w-orange); font-style: normal; font-weight: 600; }
+
+  @media (max-width: 980px) {
+    .bl-hero-grid { grid-template-columns: 1fr; gap: 24px; align-items: start; }
+    .bl-hero .bl-issue { text-align: left; }
+    .bl-featured { grid-template-columns: 1fr; }
+    .bl-grid { grid-template-columns: 1fr 1fr; }
+    .bl-news { grid-template-columns: 1fr; padding: 36px 28px; }
+    .bl-search { width: 100%; margin-left: 0; }
+  }
+  @media (max-width: 640px) {
+    .bl-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body data-screen-label="03 Blog Listing">
+
+<!-- Nav -->
+<wonderelo-nav data-screen-label="Public / Nav"></wonderelo-nav>
+
+<main class="w-shell">
+
+  <!-- Hero -->
+  <section class="bl-hero" data-screen-label="Blog / Hero">
+    <span class="deco deco-1"></span>
+    <span class="deco deco-2"></span>
+    <span class="deco deco-3"></span>
+    <span class="deco deco-4"></span>
+    <span class="deco deco-5"></span>
+    <span class="deco deco-6"></span>
+    <span class="deco deco-7"></span>
+    <span class="deco deco-8"></span>
+    <span class="deco deco-9"></span>
+    <span class="deco deco-10"></span>
+    <span class="deco deco-11"></span>
+    <span class="deco deco-12"></span>
+    <div class="bl-hero-grid">
+      <div>
+        <span class="w-eyebrow">Our blog</span>
+        <h1 class="w-display">The Wonderelo<br/><span class="w-italic">notebook</span></h1>
+        <p class="w-lede" style="max-width: 540px;">Practical guides on running networking rounds, dispatches from real events, and the occasional rabbit hole into the science of small talk.</p>
+      </div>
+      <div class="bl-issue">
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="bl-cats">
+      <span class="label">Topics</span>
+      <button class="bl-chip is-active" type="button">All <span class="count">· 24</span></button>
+      <button class="bl-chip" type="button">Networking <span class="count">· 9</span></button>
+      <button class="bl-chip" type="button">Event design <span class="count">· 6</span></button>
+      <button class="bl-chip" type="button">Case studies <span class="count">· 4</span></button>
+      <button class="bl-chip" type="button">Product <span class="count">· 3</span></button>
+      <button class="bl-chip" type="button">Stories <span class="count">· 2</span></button>
+      <div class="bl-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search articles" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured post -->
+  <section class="bl-featured" data-screen-label="Blog / Featured">
+    <a class="ft-cover" href="#" aria-label="Read featured post">
+      <span class="ft-tag"><span class="w-diamond"></span> Featured · 30 Jan</span>
+    </a>
+    <div class="ft-body">
+      <div class="ft-meta">
+        <span class="pill">Networking</span>
+        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 5 min read</span>
+        <span>30 January 2026</span>
+      </div>
+      <h2>Meeting points: the secret ingredient of great <span class="w-italic">networking rounds</span></h2>
+      <p>Why designated meeting spots make networking less awkward, more efficient, and way more fun for everyone involved. With practical examples from three real events.</p>
+      <div class="ft-author">
+        <span class="av">AK</span>
+        <span><strong>Andy K.</strong> · Founder, Wonderelo</span>
+      </div>
+      <a class="w-btn w-btn-primary ft-cta" href="#">
+        Read the article
+        <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Recent grid -->
+  <section data-screen-label="Blog / Recent posts">
+    <div class="bl-section-head">
+      <div>
+        <span class="w-eyebrow">More from the notebook</span>
+        <h2 class="w-h1">Recent <span class="w-italic">posts</span></h2>
+      </div>
+      <div class="actions"></div>
+    </div>
+
+    <div class="bl-grid">
+
+      <a class="bl-post is-c1" href="#">
+        <div class="cover"><div class="pattern"></div><span class="tag">Networking</span></div>
+        <div class="body">
+          <h3>How to promote your event and get more <span class="w-italic">signups</span></h3>
+          <p>From social media to on-site QR codes — practical ways to drive attendance and get people excited about networking rounds.</p>
+          <div class="meta"><span>25 Jan · 6 min read</span><span class="arrow">Read →</span></div>
+        </div>
+      </a>
+
+      <a class="bl-post is-c2" href="#">
+        <div class="cover"><div class="pattern"></div><span class="tag">Research</span></div>
+        <div class="body">
+          <h3>Random vs AI matching: which one <span class="w-italic">actually</span> works?</h3>
+          <p>We tested both approaches at real events. The results surprised us — and changed how we think about networking.</p>
+          <div class="meta"><span>20 Jan · 8 min read</span><span class="arrow">Read →</span></div>
+        </div>
+      </a>
+
+      <a class="bl-post is-c3" href="#">
+        <div class="cover"><div class="pattern"></div><span class="tag">Networking</span></div>
+        <div class="body">
+          <h3>5 networking tips to maximize your event <span class="w-italic">ROI</span></h3>
+          <p>Learn how to create meaningful connections that drive real business value at your next event.</p>
+          <div class="meta"><span>15 Jan · 5 min read</span><span class="arrow">Read →</span></div>
+        </div>
+      </a>
+
+      <a class="bl-post is-c4" href="#">
+        <div class="cover"><div class="pattern"></div><span class="tag">Event design</span></div>
+        <div class="body">
+          <h3>Why the speed-dating format <span class="w-italic">works</span> for networking</h3>
+          <p>Discover the psychology behind structured networking and why it beats traditional mingling.</p>
+          <div class="meta"><span>10 Jan · 7 min read</span><span class="arrow">Read →</span></div>
+        </div>
+      </a>
+
+      <a class="bl-post is-c5" href="#">
+        <div class="cover"><div class="pattern"></div><span class="tag">Hybrid</span></div>
+        <div class="body">
+          <h3>Running networking at <span class="w-italic">hybrid</span> events</h3>
+          <p>Bridge the gap between online and in-person attendees with these proven strategies.</p>
+          <div class="meta"><span>05 Jan · 6 min read</span><span class="arrow">Read →</span></div>
+        </div>
+      </a>
+
+      <a class="bl-post is-c6" href="#">
+        <div class="cover"><div class="pattern"></div><span class="tag">Case study</span></div>
+        <div class="body">
+          <h3>TechFuture 2025: <span class="w-italic">1 600</span> attendees, 18 rounds</h3>
+          <p>How Europe's largest design conference used Wonderelo to make sure no one left without a handful of new contacts.</p>
+          <div class="meta"><span>28 Dec · 9 min read</span><span class="arrow">Read →</span></div>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Pagination -->
+    <div class="bl-pagination">
+      <button class="is-current" type="button">1</button>
+      <button type="button">2</button>
+      <button type="button">3</button>
+      <button class="dots" type="button">…</button>
+      <button type="button">8</button>
+      <button type="button" aria-label="Next">→</button>
+    </div>
+  </section>
+
+  <!-- Newsletter -->
+  <section class="bl-news" data-screen-label="Blog / Newsletter">
+    <span class="deco-italic">subscribe</span>
+    <div>
+      <span class="w-eyebrow">Subscribe to our newsletter</span>
+      <h2 class="w-h1">Get the next one in your <span class="w-italic">inbox</span></h2>
+      <p>One email a month with our newest field notes, a behind-the-scenes look at a real event, and an idea you can steal for yours.</p>
+    </div>
+    <div>
+      <form>
+        <input type="email" placeholder="your.email@where.you.work" />
+        <button class="w-btn w-btn-primary" type="submit">
+          Subscribe
+          <svg class="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer style="background:#2d1133;color:rgba(255,255,255,.7);padding:80px 60px 40px;font-family:var(--w-font-body);">
+  <div style="max-width:1240px;margin:0 auto;">
+    <div style="display:grid;grid-template-columns:1.4fr repeat(4, 1fr);gap:60px;margin-bottom:60px;">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <img src="assets/Wonderelo-logo-symbol.png" alt="" style="width:96px;height:96px;transform:rotate(-6deg);" />
+          <span style="font-family:var(--w-font-display);font-size:28px;font-weight:800;letter-spacing:-0.03em;color:#fff;">wonderelo</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px;">Product</div>
+        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;">
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Features</li>
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">How it works</li>
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Pricing</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px;">Company</div>
+        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;">
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Our story</li>
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Newsroom</li>
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Contact us</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px;">Support</div>
+        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;">
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Help center</li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px;">Legal</div>
+        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;">
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Terms of use</li>
+          <li class="wn-footer-link" style="font-size:14px;color:rgba(255,255,255,.65);cursor:pointer;width:fit-content;">Privacy policy</li>
+        </ul>
+      </div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,.10);padding-top:30px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:13px;color:rgba(255,255,255,.5);">© 2026 Wonderelo. All rights reserved.</div>
+      <div style="display:flex;gap:18px;align-items:center;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:rgba(255,255,255,.6);cursor:pointer;" class="wn-social"><svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg></span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:rgba(255,255,255,.6);cursor:pointer;" class="wn-social"><svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg></span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:rgba(255,255,255,.6);cursor:pointer;" class="wn-social"><svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg></span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:rgba(255,255,255,.6);cursor:pointer;" class="wn-social"><svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" /></svg></span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="wonderelo-nav.js"></script>
+</body>
+</html>

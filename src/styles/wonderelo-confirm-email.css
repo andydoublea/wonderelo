@@ -1,0 +1,50 @@
+/* Wonderelo — "Confirm your email" page (Claude Design v06, Continue Registration Confirm.html).
+   Reuses the shared .cr-* chrome (nav / topbar / head / footer) from wonderelo-continue-reg.css.
+   These page-specific rules are scoped under `.cev` because this page's `.cr-card` is a centred
+   mail card that differs from the Continue Registration form `.cr-card` — loaded globally they
+   would collide, so the email-confirm variants live behind the `.cev` marker on the page root. */
+
+.cev .cr-card {
+  background: var(--w-paper); border: 1px solid var(--w-hairline);
+  border-radius: 18px; padding: 26px 22px 24px;
+  box-shadow: 0 4px 12px rgba(76,25,77,.04);
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.cev .cr-mailicon {
+  width: 72px; height: 72px; border-radius: 20px; margin-bottom: 18px;
+  background: linear-gradient(140deg, #fff, var(--w-cream));
+  border: 1px solid var(--w-hairline);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--w-purple-deep); position: relative;
+}
+.cev .cr-mailicon svg { width: 34px; height: 34px; }
+.cev .cr-mailicon .dmd { position: absolute; top: -6px; right: -6px; width: 10px; height: 10px; background: var(--w-orange); transform: rotate(45deg); }
+.cev .cr-card .sent {
+  margin: 0 0 4px; font-size: 13px; color: var(--w-ink); opacity: .7;
+}
+.cev .cr-card .email {
+  margin: 0 0 20px; font-family: var(--w-font-mono); font-weight: 600; font-size: 13.5px;
+  color: var(--w-purple-deep); letter-spacing: .02em; word-break: break-all;
+}
+.cev .cr-open {
+  width: 100%; padding: 14px 18px;
+  background: var(--w-orange); color: #fff; border: none; border-radius: 12px;
+  font-family: var(--w-font-body); font-weight: 600; font-size: 14.5px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 6px 16px rgba(221,83,28,.22);
+  transition: transform .12s, box-shadow .12s; text-decoration: none;
+}
+.cev .cr-open:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(221,83,28,.30); }
+.cev .cr-open svg { width: 16px; height: 16px; }
+
+/* Resend / help note */
+.cev .cr-resend {
+  margin-top: 14px; width: 100%;
+  padding: 14px 16px; border-radius: 12px;
+  background: rgba(76,25,77,.04); border: 1px solid var(--w-hairline);
+  font-size: 12.5px; color: var(--w-ink); opacity: .85; line-height: 1.45; text-align: left;
+}
+.cev .cr-resend strong { color: var(--w-purple-deep); font-weight: 600; }
+.cev .cr-resend .retry { color: var(--w-purple-deep); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; background: none; border: none; padding: 0; font: inherit; }
+.cev .cr-resend .retry:hover { color: var(--w-orange); }
+.cev .cr-resend .retry:disabled { opacity: .5; cursor: not-allowed; text-decoration: none; }

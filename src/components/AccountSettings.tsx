@@ -1,12 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Loader2 } from 'lucide-react';
-import { Skeleton } from './ui/skeleton';
+import { useState, useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner@2.0.3';
 import { debugLog, errorLog } from '../utils/debug';
+import { C, PageShell, PageHead, Italic } from './redesign/organizerAtoms';
 
 interface AccountSettingsProps {
   accessToken: string;
@@ -23,18 +18,16 @@ export interface AccountSettingsViewProps {
   userEmail: string;
   organizerName: string;
   isLoading: boolean;
-  isSavingName: boolean;
+  isSaving: boolean;
   isChangingPassword: boolean;
   isChangingEmail: boolean;
   showEmailChangeForm: boolean;
-  showPasswordChangeForm: boolean;
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
   newEmail: string;
   emailChangePassword: string;
   onOrganizerNameChange: (value: string) => void;
-  onOrganizerNameBlur: () => void;
   onCurrentPasswordChange: (value: string) => void;
   onNewPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
@@ -42,28 +35,122 @@ export interface AccountSettingsViewProps {
   onEmailChangePasswordChange: (value: string) => void;
   onToggleEmailChangeForm: () => void;
   onCancelEmailChange: () => void;
-  onTogglePasswordChangeForm: () => void;
-  onCancelPasswordChange: () => void;
+  onSave: () => void;
+  onDiscard: () => void;
+  hasChanges: boolean;
+  lastSavedAt: number | null;
   onPasswordChange: () => void;
   onEmailChange: () => void;
+}
+
+// ============================================================
+// Redesigned field atoms
+// Ported from design/v06/project/pages/screen-account-billing.jsx
+// (AccountSettingsScreen). Defined at module scope so controlled
+// inputs keep focus across re-renders.
+// ============================================================
+
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <span style={{ display: 'block', fontFamily: C.fontBody, fontSize: 11.5, fontWeight: 700, letterSpacing: '.08em', color: C.purpleDeep, textTransform: 'uppercase', marginBottom: 8 }}>
+      {children}
+    </span>
+  );
+}
+
+function Hint({ children }: { children: ReactNode }) {
+  return <p style={{ margin: '7px 0 0', fontSize: 11.5, color: C.ink, opacity: .6 }}>{children}</p>;
+}
+
+// "Last saved" indicator formatter — e.g. "12 Feb 2026 · 09:41".
+function formatLastSaved(ts: number): string {
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `${date} · ${time}`;
+}
+
+function LinkBtn({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      display: 'block', marginTop: 8, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer',
+      fontFamily: C.fontBody, fontSize: 12.5, fontWeight: 600, color: C.orange,
+    }}>{children}</button>
+  );
+}
+
+function ActionBtn({ children, outline, onClick, disabled }: { children: ReactNode; outline?: boolean; onClick?: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} style={{
+      fontFamily: C.fontBody, fontSize: 13, fontWeight: 600, cursor: disabled ? 'default' : 'pointer', padding: '9px 16px', borderRadius: 10,
+      background: 'transparent',
+      color: C.purpleDeep,
+      border: outline ? `1.5px solid ${C.hairStrong}` : '1px solid transparent',
+      opacity: disabled ? .55 : (outline ? 1 : .8),
+    }}>{children}</button>
+  );
+}
+
+function InlineForm({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ maxWidth: 380, marginTop: 16, padding: 18, borderRadius: 12, background: 'rgba(76,25,77,.04)', border: `1px solid ${C.hair}`, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {children}
+    </div>
+  );
+}
+
+// Controlled input styled to match the mock's <Field>. Focus state is real
+// (drives the orange ring), unlike the static `focused` prop in the mock.
+function TextField({ value, onChange, placeholder, type = 'text', disabled = false, onBlur }: {
+  value?: string;
+  onChange?: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  disabled?: boolean;
+  onBlur?: () => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const active = focused && !disabled;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11,
+      background: disabled ? C.cream : '#fff',
+      border: `1.5px solid ${active ? C.orange : C.hairStrong}`,
+      boxShadow: active ? '0 0 0 3px rgba(221,83,28,.10)' : 'none',
+      transition: 'border-color .15s, box-shadow .15s',
+    }}>
+      <input
+        type={type}
+        value={value}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        readOnly={!onChange}
+        disabled={disabled}
+        placeholder={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); onBlur?.(); }}
+        style={{
+          flex: 1, border: 'none', outline: 'none', background: 'transparent',
+          fontFamily: C.fontBody, fontSize: 14, color: disabled ? 'rgba(58,46,52,.55)' : C.ink, minWidth: 0,
+        }}
+      />
+    </div>
+  );
 }
 
 export function AccountSettingsView({
   userEmail,
   organizerName,
   isLoading,
-  isSavingName,
+  isSaving,
   isChangingPassword,
   isChangingEmail,
   showEmailChangeForm,
-  showPasswordChangeForm,
   currentPassword,
   newPassword,
   confirmPassword,
   newEmail,
   emailChangePassword,
   onOrganizerNameChange,
-  onOrganizerNameBlur,
   onCurrentPasswordChange,
   onNewPasswordChange,
   onConfirmPasswordChange,
@@ -71,196 +158,149 @@ export function AccountSettingsView({
   onEmailChangePasswordChange,
   onToggleEmailChangeForm,
   onCancelEmailChange,
-  onTogglePasswordChangeForm,
-  onCancelPasswordChange,
+  onSave,
+  onDiscard,
+  hasChanges,
+  lastSavedAt,
   onPasswordChange,
   onEmailChange,
 }: AccountSettingsViewProps) {
-  return (
-    <div className="flex-1">
-      <div className="container mx-auto p-6 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="mb-2">Account settings</h1>
-        </div>
+  // View-local toggle for the collapsible change-password form (matches the
+  // mock). Email uses the prop-driven showEmailChangeForm toggle from the parent.
+  const [showPass, setShowPass] = useState(false);
 
-        {isLoading ? (
-          <div className="space-y-6">
-            <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-64 mt-1" /></CardHeader><CardContent><div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div></CardContent></Card>
-            <Card><CardHeader><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-10 w-full" /></CardContent></Card>
-          </div>
-        ) : (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Account information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="organizerName">Your name</Label>
-                <div className="max-w-sm relative">
-                  <Input
-                    id="organizerName"
-                    value={organizerName}
-                    onChange={(e) => onOrganizerNameChange(e.target.value)}
-                    onBlur={onOrganizerNameBlur}
-                    placeholder="John Doe"
-                    className="mt-2"
-                  />
-                  {isSavingName && (
-                    <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 mt-1 text-muted-foreground" />
+  return (
+    // nav={false}: the route (AccountSettingsRoute) and AdminPagePreview already
+    // render their own top nav — a second OrgNav here would double the chrome.
+    <div className="wonderelo">
+      <PageShell nav={false} footer={false} navActive="Account">
+        <PageHead eyebrow="Your account" title={<>Account <Italic>settings</Italic></>} />
+
+        <div style={{ maxWidth: 760 }}>
+          <section style={{ background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, padding: 28 }}>
+            <h3 style={{ margin: '0 0 24px', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 19, color: C.purpleDeep, letterSpacing: '-0.02em' }}>Account information</h3>
+
+            {isLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                {[0, 1].map((i) => (
+                  <div key={i} style={{ maxWidth: 380 }}>
+                    <div style={{ width: 120, height: 11, borderRadius: 6, background: C.hair, marginBottom: 10 }} />
+                    <div style={{ height: 44, borderRadius: 11, background: C.hair }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+                {/* Your name */}
+                <div style={{ maxWidth: 380 }}>
+                  <FieldLabel>Your name</FieldLabel>
+                  <TextField value={organizerName} onChange={onOrganizerNameChange} placeholder="John Doe" />
+                </div>
+
+                {/* Email — disabled, with collapsible change form (prop-driven toggle) */}
+                <div>
+                  <div style={{ maxWidth: 380 }}>
+                    <FieldLabel>Email</FieldLabel>
+                    <TextField value={userEmail} disabled />
+                  </div>
+                  <LinkBtn onClick={onToggleEmailChangeForm}>{showEmailChangeForm ? 'Cancel' : 'Change email'}</LinkBtn>
+
+                  {showEmailChangeForm && (
+                    <InlineForm>
+                      <p style={{ margin: 0, fontSize: 13, color: C.ink, opacity: .7, lineHeight: 1.5 }}>
+                        For security, we'll send a verification email to your new address and notify your current email
+                      </p>
+                      <div>
+                        <FieldLabel>New email</FieldLabel>
+                        <TextField type="email" value={newEmail} onChange={onNewEmailChange} placeholder="Enter new email" />
+                      </div>
+                      <div>
+                        <FieldLabel>Current password</FieldLabel>
+                        <TextField type="password" value={emailChangePassword} onChange={onEmailChangePasswordChange} placeholder="Enter current password" />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <ActionBtn outline onClick={onEmailChange} disabled={isChangingEmail}>{isChangingEmail ? 'Changing…' : 'Change email'}</ActionBtn>
+                        <ActionBtn onClick={onCancelEmailChange}>Cancel</ActionBtn>
+                      </div>
+                    </InlineForm>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Saves automatically</p>
-              </div>
 
-              <div>
-                <Label>Email</Label>
-                <div className="max-w-sm">
-                  <Input value={userEmail} disabled className="mt-2 bg-muted" />
-                </div>
-                <button
-                  type="button"
-                  onClick={onToggleEmailChangeForm}
-                  className="text-xs text-primary hover:underline mt-1 block"
-                >
-                  {showEmailChangeForm ? 'Cancel' : 'Change email'}
-                </button>
-
-                {showEmailChangeForm && (
-                  <div className="mt-4 p-4 border rounded-lg bg-muted/30 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      For security, we'll send a verification email to your new address and notify your current email
-                    </p>
-                    <div>
-                      <Label htmlFor="newEmail">New email</Label>
-                      <Input
-                        id="newEmail"
-                        type="email"
-                        value={newEmail}
-                        onChange={(e) => onNewEmailChange(e.target.value)}
-                        placeholder="Enter new email"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="emailChangePassword">Current password</Label>
-                      <Input
-                        id="emailChangePassword"
-                        type="password"
-                        value={emailChangePassword}
-                        onChange={(e) => onEmailChangePasswordChange(e.target.value)}
-                        placeholder="Enter current password"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button onClick={onEmailChange} disabled={isChangingEmail} variant="outline" size="sm">
-                        {isChangingEmail ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing...</>
-                        ) : (
-                          'Change email'
-                        )}
-                      </Button>
-                      <Button onClick={onCancelEmailChange} variant="ghost" size="sm">
-                        Cancel
-                      </Button>
-                    </div>
+                {/* Password — masked, with collapsible change form (view-local toggle) */}
+                <div>
+                  <div style={{ maxWidth: 380 }}>
+                    <FieldLabel>Password</FieldLabel>
+                    <TextField value="••••••••" disabled />
                   </div>
-                )}
-              </div>
+                  <LinkBtn onClick={() => setShowPass((v) => !v)}>{showPass ? 'Cancel' : 'Change password'}</LinkBtn>
 
-              <div>
-                <Label>Password</Label>
-                <div className="max-w-sm">
-                  <Input value="••••••••" disabled className="mt-2 bg-muted" />
+                  {showPass && (
+                    <InlineForm>
+                      <div>
+                        <FieldLabel>Current password</FieldLabel>
+                        <TextField type="password" value={currentPassword} onChange={onCurrentPasswordChange} placeholder="Enter current password" />
+                      </div>
+                      <div>
+                        <FieldLabel>New password</FieldLabel>
+                        <TextField type="password" value={newPassword} onChange={onNewPasswordChange} placeholder="Enter new password" />
+                        <Hint>At least 6 characters</Hint>
+                      </div>
+                      <div>
+                        <FieldLabel>Confirm new password</FieldLabel>
+                        <TextField type="password" value={confirmPassword} onChange={onConfirmPasswordChange} placeholder="Confirm new password" />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <ActionBtn outline onClick={onPasswordChange} disabled={isChangingPassword}>{isChangingPassword ? 'Changing…' : 'Change password'}</ActionBtn>
+                        <ActionBtn onClick={() => setShowPass(false)}>Cancel</ActionBtn>
+                      </div>
+                    </InlineForm>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={onTogglePasswordChangeForm}
-                  className="text-xs text-primary hover:underline mt-1 block"
-                >
-                  {showPasswordChangeForm ? 'Cancel' : 'Change password'}
-                </button>
 
-                {showPasswordChangeForm && (
-                  <div className="mt-4 p-4 border rounded-lg bg-muted/30 space-y-4">
-                    <div>
-                      <Label htmlFor="currentPassword">Current password</Label>
-                      <Input
-                        id="currentPassword"
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => onCurrentPasswordChange(e.target.value)}
-                        placeholder="Enter current password"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="newPassword">New password</Label>
-                      <Input
-                        id="newPassword"
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => onNewPasswordChange(e.target.value)}
-                        placeholder="Enter new password"
-                        className="mt-2"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">At least 6 characters</p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="confirmPassword">Confirm new password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => onConfirmPasswordChange(e.target.value)}
-                        placeholder="Confirm new password"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button onClick={onPasswordChange} disabled={isChangingPassword} variant="outline" size="sm">
-                        {isChangingPassword ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Changing...</>
-                        ) : (
-                          'Change password'
-                        )}
-                      </Button>
-                      <Button onClick={onCancelPasswordChange} variant="ghost" size="sm">
-                        Cancel
-                      </Button>
-                    </div>
+                {/* Explicit save — matches v07 screen-account-billing.jsx (SF5).
+                    Replaces the previous autosave-on-blur. Save/Discard wired to
+                    the real profile update logic; "Last saved" reflects the last
+                    successful save this session. */}
+                <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.hair}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12.5, color: C.ink, opacity: .6 }}>{lastSavedAt ? `Last saved ${formatLastSaved(lastSavedAt)}` : ''}</span>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button type="button" onClick={onDiscard} disabled={!hasChanges} style={{
+                      fontFamily: C.fontBody, fontWeight: 600, fontSize: 14, padding: '11px 16px', borderRadius: 12,
+                      cursor: hasChanges ? 'pointer' : 'default', background: 'transparent', color: C.purpleDeep,
+                      border: `1.5px solid ${C.hairStrong}`, opacity: hasChanges ? 1 : .5,
+                    }}>Discard</button>
+                    <button type="button" onClick={onSave} disabled={isSaving} style={{
+                      fontFamily: C.fontBody, fontWeight: 700, fontSize: 14, padding: '11px 20px', borderRadius: 12,
+                      cursor: isSaving ? 'default' : 'pointer', background: C.orange, color: '#fff', border: 'none',
+                      boxShadow: '0 8px 20px rgba(221,83,28,.26)', opacity: isSaving ? .7 : 1,
+                    }}>{isSaving ? 'Saving…' : 'Save changes'}</button>
                   </div>
-                )}
+                </div>
+
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </section>
         </div>
-        )}
-      </div>
+      </PageShell>
     </div>
   );
 }
 
 export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdate }: AccountSettingsProps) {
   const [organizerName, setOrganizerName] = useState('');
+  const [savedName, setSavedName] = useState('');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSavingName, setIsSavingName] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [showEmailChangeForm, setShowEmailChangeForm] = useState(false);
-  const [showPasswordChangeForm, setShowPasswordChangeForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [emailChangePassword, setEmailChangePassword] = useState('');
-  const lastSavedNameRef = useRef<string>('');
 
   // Load current settings
   useEffect(() => {
@@ -284,7 +324,7 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         debugLog('Organizer name:', result.profile?.organizerName);
         const loadedName = result.profile?.organizerName || '';
         setOrganizerName(loadedName);
-        lastSavedNameRef.current = loadedName;
+        setSavedName(loadedName);
       } else {
         const errorText = await response.text();
         errorLog('Failed to load settings:', response.status, errorText);
@@ -298,51 +338,61 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     }
   };
 
-  const handleNameBlur = async () => {
-    const trimmed = organizerName.trim();
-    if (trimmed === lastSavedNameRef.current) return;
-    if (!trimmed) {
-      toast.error('Name is required');
-      setOrganizerName(lastSavedNameRef.current);
+  const handleSave = async () => {
+    // Validate before saving
+    if (!organizerName) {
+      toast.error('Organizer name is required');
       return;
     }
 
-    setIsSavingName(true);
+    setIsSaving(true);
     try {
+      debugLog('Saving account settings...');
+      debugLog('Organizer name to save:', organizerName);
+      
       const { authenticatedFetch } = await import('../utils/supabase/apiClient');
       const response = await authenticatedFetch(
         '/profile',
         {
           method: 'PUT',
-          body: JSON.stringify({ organizerName: trimmed }),
+          body: JSON.stringify({
+            organizerName,
+          }),
         },
         accessToken
       );
 
-      if (response.ok) {
-        lastSavedNameRef.current = trimmed;
-        if (trimmed !== organizerName) setOrganizerName(trimmed);
-        toast.success('Name saved');
+      debugLog('Save response status:', response.status);
 
+      if (response.ok) {
+        const result = await response.json();
+        debugLog('Save successful:', result);
+        toast.success('Settings saved successfully');
+        setSavedName(organizerName);
+        setLastSavedAt(Date.now());
+
+        // Update current user in localStorage
         const currentUser = localStorage.getItem('oliwonder_current_user');
         if (currentUser) {
           const userData = JSON.parse(currentUser);
-          userData.organizerName = trimmed;
+          userData.organizerName = organizerName;
           localStorage.setItem('oliwonder_current_user', JSON.stringify(userData));
         }
-        if (onProfileUpdate) onProfileUpdate({ organizerName: trimmed });
+        
+        // Notify parent component of profile update
+        if (onProfileUpdate) {
+          onProfileUpdate({ organizerName });
+        }
       } else {
         const errorText = await response.text();
-        errorLog('Failed to save name:', response.status, errorText);
-        toast.error('Failed to save name');
-        setOrganizerName(lastSavedNameRef.current);
+        errorLog('Failed to save settings:', response.status, errorText);
+        toast.error(`Failed to save settings: ${response.status}`);
       }
     } catch (error) {
-      errorLog('Error saving name:', error);
-      toast.error('Error saving name. Please try again.');
-      setOrganizerName(lastSavedNameRef.current);
+      errorLog('Error saving settings:', error);
+      toast.error('Error saving settings. Please try again.');
     } finally {
-      setIsSavingName(false);
+      setIsSaving(false);
     }
   };
 
@@ -364,34 +414,39 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     setIsChangingPassword(true);
     try {
       debugLog('Changing password...');
-      
-      const { apiBaseUrl } = await import('../utils/supabase/info');
-      const response = await fetch(
-        `${apiBaseUrl}/change-password`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword,
-            newPassword,
-          }),
-        }
-      );
 
-      if (response.ok) {
+      // No backend route exists for password changes (POST /change-password 404s).
+      // Use the Supabase JS client directly — updateUser({ password }) is the
+      // standard, secure way and needs no custom edge function.
+      const { supabase } = await import('../utils/supabase/client');
+
+      // Re-authenticate with the current password first, so the "Current password"
+      // field is actually enforced (not a silent no-op) and a leftover/stolen session
+      // can't change the password without it. Signing the same user in just refreshes
+      // the session; the resulting SIGNED_IN event is ignored by the app's auth listener.
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+      if (reauthError) {
+        errorLog('Re-authentication failed:', reauthError);
+        toast.error('Current password is incorrect');
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        errorLog('Failed to change password:', updateError);
+        toast.error(updateError.message || 'Failed to change password');
+      } else {
         toast.success('Password changed successfully');
-        // Clear password fields and collapse the form
+        // Clear password fields
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        setShowPasswordChangeForm(false);
-      } else {
-        const errorData = await response.json();
-        errorLog('Failed to change password:', errorData);
-        toast.error(errorData.error || 'Failed to change password');
       }
     } catch (error) {
       errorLog('Error changing password:', error);
@@ -415,36 +470,40 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     setIsChangingEmail(true);
     try {
       debugLog('Changing email...');
-      
-      const { apiBaseUrl } = await import('../utils/supabase/info');
-      const response = await fetch(
-        `${apiBaseUrl}/change-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: emailChangePassword,
-            newEmail,
-          }),
-        }
-      );
 
-      if (response.ok) {
-        const result = await response.json();
+      // No backend route exists for email changes (POST /change-email 404s). Use the
+      // Supabase JS client directly — updateUser({ email }) makes Supabase send a
+      // confirmation link to the new address (and a change notice to the old one).
+      const { supabase } = await import('../utils/supabase/client');
+
+      // Re-authenticate with the current password first so the "Current password"
+      // field is enforced before this sensitive change. Same-user sign-in just
+      // refreshes the session; the SIGNED_IN event is ignored by the app's auth listener.
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: emailChangePassword,
+      });
+      if (reauthError) {
+        errorLog('Re-authentication failed:', reauthError);
+        toast.error('Current password is incorrect');
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (updateError) {
+        errorLog('Failed to change email:', updateError);
+        toast.error(updateError.message || 'Failed to change email');
+      } else {
         toast.success('Verification email sent', {
-          description: result.message || 'Please check your new email to confirm the change'
+          description: 'Please check your new email to confirm the change',
         });
         // Clear email fields and hide form
         setNewEmail('');
         setEmailChangePassword('');
         setShowEmailChangeForm(false);
-      } else {
-        const errorData = await response.json();
-        errorLog('Failed to change email:', errorData);
-        toast.error(errorData.error || 'Failed to change email');
       }
     } catch (error) {
       errorLog('Error changing email:', error);
@@ -459,18 +518,16 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
       userEmail={userEmail}
       organizerName={organizerName}
       isLoading={isLoading}
-      isSavingName={isSavingName}
+      isSaving={isSaving}
       isChangingPassword={isChangingPassword}
       isChangingEmail={isChangingEmail}
       showEmailChangeForm={showEmailChangeForm}
-      showPasswordChangeForm={showPasswordChangeForm}
       currentPassword={currentPassword}
       newPassword={newPassword}
       confirmPassword={confirmPassword}
       newEmail={newEmail}
       emailChangePassword={emailChangePassword}
       onOrganizerNameChange={setOrganizerName}
-      onOrganizerNameBlur={handleNameBlur}
       onCurrentPasswordChange={setCurrentPassword}
       onNewPasswordChange={setNewPassword}
       onConfirmPasswordChange={setConfirmPassword}
@@ -482,20 +539,10 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
         setNewEmail('');
         setEmailChangePassword('');
       }}
-      onTogglePasswordChangeForm={() => {
-        setShowPasswordChangeForm(!showPasswordChangeForm);
-        if (showPasswordChangeForm) {
-          setCurrentPassword('');
-          setNewPassword('');
-          setConfirmPassword('');
-        }
-      }}
-      onCancelPasswordChange={() => {
-        setShowPasswordChangeForm(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      }}
+      onSave={handleSave}
+      onDiscard={() => setOrganizerName(savedName)}
+      hasChanges={organizerName !== savedName}
+      lastSavedAt={lastSavedAt}
       onPasswordChange={handlePasswordChange}
       onEmailChange={handleEmailChange}
     />

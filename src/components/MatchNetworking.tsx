@@ -3,12 +3,22 @@ import { useEffect, useState, ReactNode } from 'react';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { CountdownTimer } from './CountdownTimer';
-import { WondereloHeader } from './WondereloHeader';
+import { PdNav } from './redesign/PdNav';
+import { PmFooter } from './redesign/PmFooter';
+import { FlipClock } from './redesign/FlipClock';
+import { cachedRoundNames } from './MatchInfo';
+import { StatePlaceholder, Skeleton, Spinner, StateButton, RefreshIcon, Italic } from './redesign/StatePlaceholder';
 
 export interface NetworkingData {
   matchId: string;
   roundId?: string;
   roundName: string;
+  /** Event name (organizer.event_name) — bold primary in the event row. */
+  eventName?: string;
+  /** Session name (session.name) — light subtitle in the event row. */
+  sessionName?: string;
+  /** Current participant's first name — shown in the nav. */
+  myName?: string;
   networkingEndTime: string;
   partners: { id: string; firstName: string; lastName: string; }[];
   iceBreakers: any[];
@@ -29,38 +39,52 @@ export function MatchNetworkingView({
   countdown,
   onBackToDashboard,
 }: MatchNetworkingViewProps) {
+  const endSecs = networkingData.networkingEndTime
+    ? Math.max(0, Math.floor((new Date(networkingData.networkingEndTime).getTime() - Date.now()) / 1000))
+    : null;
   return (
-    <div className="min-h-screen bg-background">
-      <WondereloHeader />
-      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
-        <h1 className="text-4xl font-bold mb-8">
-          Your round has begun!
-        </h1>
-
-        {countdown && <div className="mb-8">{countdown}</div>}
-
-        {networkingData.iceBreakers && networkingData.iceBreakers.length > 0 && (
-          <div className="mt-12">
-            <p className="text-lg text-muted-foreground mb-6">Questions to help you start:</p>
-            <div className="space-y-4 text-left max-w-md mx-auto">
-              {networkingData.iceBreakers.map((iceBreaker, index) => (
-                <div key={index} className="flex gap-3 p-4 border rounded-lg">
-                  <span className="text-primary font-semibold shrink-0">{index + 1}.</span>
-                  <span>{typeof iceBreaker === 'string' ? iceBreaker : iceBreaker.question}</span>
-                </div>
-              ))}
+    <div className="wonderelo pm-page" data-active="networking">
+      <div className="pm-shell">
+        <PdNav
+          firstName={networkingData.myName || networkingData.partners?.[0]?.firstName}
+          onBrandClick={onBackToDashboard}
+          onDashboard={onBackToDashboard}
+          onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
+          onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
+        />
+        <div data-screen="networking">
+          <div className="pm-band">
+            <div className="pm-eventrow">
+              <div className="pm-event"><span className="name">{networkingData.eventName || networkingData.sessionName || 'Your round'}</span><span className="org">{networkingData.sessionName || 'Speed networking'}</span></div>
+              <span className="pm-state"><span className="dot" /> Live</span>
+            </div>
+            <div className="pm-focusbox" style={{ textAlign: 'center' }}>
+              <h1 style={{ margin: 0, fontFamily: 'var(--w-font-display)', fontWeight: 800, fontSize: 28, letterSpacing: '-.02em', color: '#fff' }}>Enjoy the talk!</h1>
+              <div style={{ marginTop: 20 }}><span className="eyebrow">Round ends in</span></div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>{endSecs != null ? <FlipClock seconds={endSecs} /> : countdown}</div>
+              {networkingData.iceBreakers && networkingData.iceBreakers.length > 0 && (
+                <>
+                  <div className="eyebrow" style={{ marginTop: 24 }}>Ice breakers you can begin with</div>
+                  <div className="pm-ib" style={{ marginTop: 12 }}>
+                    {networkingData.iceBreakers.map((ib, i) => (
+                      <div className="pm-ib-item" key={i}><span className="n">{i + 1}.</span><span>{typeof ib === 'string' ? ib : (ib.question || ib.text)}</span></div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {/* Put-your-phone-away note (v07 design — sits on the dark focus panel) */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginTop: 18, padding: '18px 16px', borderRadius: 16, background: 'rgba(255,255,255,.10)', border: '1px dashed rgba(255,255,255,.26)' }}>
+                <span style={{ width: 38, height: 38, borderRadius: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,.94)', border: '1px solid rgba(255,255,255,.3)', color: 'var(--w-orange)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}><rect x="5" y="2" width="14" height="20" rx="2.5" /><line x1="10" y1="18.5" x2="14" y2="18.5" /><line x1="3" y1="22" x2="21" y2="2" /></svg>
+                </span>
+                <strong style={{ display: 'block', marginTop: 12, fontFamily: 'var(--w-font-display)', fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: '-.01em' }}>Put your phone away</strong>
+                <span style={{ display: 'block', marginTop: 5, maxWidth: 300, fontSize: 12.5, lineHeight: 1.5, color: 'rgba(255,255,255,.74)' }}>A phone on the table kills the conversation. You'll get an SMS when the round ends.</span>
+              </div>
             </div>
           </div>
-        )}
-
-        <div className="mt-12">
-          <button
-            onClick={onBackToDashboard}
-            className="text-muted-foreground hover:text-foreground underline transition-colors"
-          >
-            Back to dashboard
-          </button>
+          <div className="pm-body"><div className="pm-center"><button className="pm-link" type="button" onClick={onBackToDashboard}>Back to dashboard</button></div></div>
         </div>
+        <PmFooter onBrandClick={onBackToDashboard} />
       </div>
     </div>
   );
@@ -149,7 +173,12 @@ export function MatchNetworking() {
         return;
       }
 
-      setNetworkingData(data);
+      const names = cachedRoundNames(token, data?.roundId);
+      setNetworkingData({
+        ...data,
+        eventName: data?.eventName || names.event,
+        sessionName: data?.sessionName || names.session,
+      });
       setIsLoading(false);
     } catch (err) {
       errorLog('[MatchNetworking] Error loading networking data:', err);
@@ -158,14 +187,29 @@ export function MatchNetworking() {
     }
   };
 
+  const backToDashboard = () => navigate(`/p/${token}`);
+  const handleRetry = () => {
+    setError(null);
+    setIsLoading(true);
+    loadNetworkingData();
+  };
+
+  // Loading state — skeleton in the shape of the networking timer band.
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading networking session...</p>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell" style={{ paddingTop: 40, paddingBottom: 40 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Skeleton width="62%" height={26} />
+            <Skeleton width="84%" height={12} />
+            <Skeleton height={96} radius={18} />
+          </div>
+          <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Spinner />
+            <span style={{ fontFamily: 'var(--w-font-mono)', fontSize: 12.5, fontWeight: 700, letterSpacing: '.02em', color: 'var(--w-ink)', opacity: 0.72 }}>Loading networking session…</span>
+          </div>
+          <div style={{ marginTop: 22, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
+            <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
           </div>
         </div>
       </div>
@@ -174,20 +218,21 @@ export function MatchNetworking() {
 
   if (error || !networkingData) {
     return (
-      <div className="min-h-screen bg-background">
-        <WondereloHeader />
-        <div className="flex items-center justify-center p-4 pt-20">
-          <div className="text-center">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-6">{error || 'Failed to load networking data'}</p>
-            <button
-              onClick={() => navigate(`/p/${token}?from=match`)}
-              className="text-muted-foreground hover:text-foreground underline transition-colors"
-            >
-              Back to dashboard
-            </button>
-          </div>
+      <div className="wonderelo pm-page">
+        <div className="pm-shell">
+          <StatePlaceholder
+            variant="error"
+            glyphSize={74}
+            glyph={<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg>}
+            eyebrow="Connection lost"
+            title={<>We can't reach <Italic>the round</Italic></>}
+            body="Your round may still be running. Check your connection and try again."
+            actions={<>
+              <StateButton variant="primary" leadingIcon={<RefreshIcon />} onClick={handleRetry}>Try again</StateButton>
+              <StateButton variant="ghost" onClick={backToDashboard}>Back to dashboard</StateButton>
+            </>}
+            errorId="error · matchnetworking"
+          />
         </div>
       </div>
     );

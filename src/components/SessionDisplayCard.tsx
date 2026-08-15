@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import { NetworkingSession } from '../App';
+import { C } from './redesign/organizerAtoms';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -77,6 +78,9 @@ export function SessionDisplayCard({
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
+  // Admin dashboard round-card "Manage ▾" dropdown (design/v07 RoundCard).
+  const [manageMenuOpen, setManageMenuOpen] = useState(false);
+  const manageMenuRef = useRef<HTMLDivElement>(null);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
   const [scheduleError, setScheduleError] = useState('');
@@ -158,7 +162,19 @@ export function SessionDisplayCard({
       window.removeEventListener('hashchange', handleHashChange);
     };
   }, []);
-  
+
+  // Close the round-card "Manage" dropdown on any outside click.
+  useEffect(() => {
+    if (!manageMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (manageMenuRef.current && !manageMenuRef.current.contains(e.target as Node)) {
+        setManageMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [manageMenuOpen]);
+
   // Validate time whenever date or time changes
   useEffect(() => {
     // Only validate if both date and time are filled
@@ -385,102 +401,149 @@ export function SessionDisplayCard({
 
   // Admin mode layout (dashboard)
   if (adminMode) {
+    // Status pill palette + top-strip colour — ported 1:1 from the v06 RoundCard mock.
+    const STATUS_STYLE: Record<string, { label: string; fg: string; bg: string; bd: string }> = {
+      published: { label: 'Published', fg: C.orange,  bg: 'rgba(221,83,28,.10)',   bd: 'rgba(221,83,28,.30)' },
+      scheduled: { label: 'Scheduled', fg: C.purple,  bg: 'rgba(92,34,119,.10)',   bd: 'rgba(92,34,119,.28)' },
+      draft:     { label: 'Draft',     fg: '#9a8478', bg: 'rgba(154,132,120,.14)', bd: 'rgba(154,132,120,.34)' },
+      completed: { label: 'Completed', fg: '#1f8a4d', bg: 'rgba(31,138,77,.10)',   bd: 'rgba(31,138,77,.28)' },
+    };
+    const st = STATUS_STYLE[session.status] || STATUS_STYLE.draft;
+
+    const CIcon = ({ d, size = 14, sw = 2 }: { d: string; size?: number; sw?: number }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: d }} />
+    );
+    const ICON = {
+      cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+      users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+      arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+      // Manage-dropdown glyphs (design/v07 RoundCard menu)
+      pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+      chart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+      copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+      check: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+      trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
+    };
+    const CMeta = ({ icon, children }: { icon: string; children?: ReactNode }) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.ink, opacity: .8, fontFamily: C.fontBody }}>
+        <span style={{ color: 'rgba(75,29,81,.45)', display: 'inline-flex' }}><CIcon d={icon} size={14} /></span>{children}
+      </div>
+    );
+    // Manage-dropdown row — hover wash; destructive rows tint red (design/v07 RoundCard menu).
+    const MenuItem = ({ icon, danger, onClick, children }: { icon: string; danger?: boolean; onClick?: () => void; children?: ReactNode }) => {
+      const [hov, setHov] = useState(false);
+      return (
+        <button type="button" onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: 'calc(100% - 12px)', margin: '0 6px', textAlign: 'left',
+          padding: '9px 10px', border: 'none', borderRadius: 9, cursor: 'pointer',
+          background: hov ? (danger ? 'rgba(192,57,43,.08)' : 'rgba(76,25,77,.07)') : 'transparent',
+          fontFamily: C.fontBody, fontSize: 13.5, fontWeight: 600, color: danger ? '#c0392b' : C.purpleDeep,
+        }}>
+          <span style={{ display: 'inline-flex', opacity: .75 }}><CIcon d={icon} size={15} /></span>{children}
+        </button>
+      );
+    };
+
+    // ── Card meta strings — mock shows date / "HH:MM · N rounds" / meeting point ──
+    const rawDate = session.date || session.rounds?.[0]?.date || '';
+    const dateStr = (() => {
+      if (!rawDate) return 'Date to be set';
+      const p = new Date(rawDate);
+      if (isNaN(p.getTime())) return 'Date to be set';
+      const wd = p.toLocaleDateString('en-US', { weekday: 'short' });
+      const mon = p.toLocaleDateString('en-US', { month: 'short' });
+      return `${wd} ${p.getDate()} ${mon} ${p.getFullYear()}`;
+    })();
+    const startStr = session.startTime || session.rounds?.[0]?.startTime || '';
+    const roundCount = session.rounds?.length || session.numberOfRounds || 0;
+    const roundsLabel = roundCount === 1 ? '1 round' : `${roundCount} rounds`;
+    const timeStr = startStr ? `${startStr} · ${roundsLabel}` : (roundCount ? roundsLabel : 'Time to be set');
+    const points = session.meetingPoints || [];
+    const pointNames = points.map((p: any) => (typeof p === 'string' ? p : p.name)).filter(Boolean);
+    const pointStr = pointNames.length ? pointNames.join(' · ') : 'Not set';
+
+    // Registered count — mirror the dashboard list view (session.participants) with a
+    // rounds.registeredCount fallback so the number is never under-reported.
+    const partLen = (session as unknown as { participants?: unknown[] }).participants?.length || 0;
+    const roundReg = session.rounds?.reduce((s, r) => s + (r.registeredCount || 0), 0) || 0;
+    const registeredCount = Math.max(partLen, roundReg);
+
+    // Footer action — a "Manage ▾" dropdown (design/v07 RoundCard). Each item is
+    // gated on the handler the card actually received, so usages that pass no
+    // handlers (e.g. the success-page preview) render no button at all.
+    const showEdit = !!onEdit;
+    const showReport = !hideReportButton && !!onManage;
+    const showDuplicate = !!onDuplicate;
+    const showComplete = !!(onUpdateSession || onUpdateStatus);
+    const showDelete = !!onDelete;
+    const hasManageMenu = showEdit || showReport || showDuplicate || showComplete || showDelete;
+
+    debugLog('🎯 DASHBOARD RoundCard (redesign):', { registeredCount, status: session.status });
+
     return (
       <>
-        <Card 
-          className={isHighlighted ? 'animate-highlight-fade' : ''}
-        >
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between">
-              <CardTitle className="text-lg leading-tight">{session.name}</CardTitle>
-              <div className="flex items-center gap-2">
-                {(session.status === 'draft' || session.status === 'scheduled') && (
-                  <Button 
-                    variant="outline"
-                    size="sm" 
-                    onClick={onEdit}
-                    className="h-8"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
+        <div ref={manageMenuRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+          <div
+            className={isHighlighted ? 'animate-highlight-fade' : ''}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', border: `1px solid ${C.hair}`, borderRadius: 18, boxShadow: '0 10px 26px rgba(75,29,81,.06)' }}
+          >
+            <div style={{ height: 4, background: st.fg }} />
+            <div style={{ flex: 1, padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Header — title + status pill */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                <h3 style={{ margin: 0, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 21, letterSpacing: '-.025em', color: C.purpleDeep, lineHeight: 1.05 }}>{session.name}</h3>
+                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 11px', borderRadius: 999, background: st.bg, border: `1px solid ${st.bd}`, color: st.fg, fontFamily: C.fontMono, fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: st.fg }} />{st.label}
+                </span>
+              </div>
+              {/* Meta — date / time / meeting point */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                <CMeta icon={ICON.cal}>{dateStr}</CMeta>
+                <CMeta icon={ICON.clock}>{timeStr}</CMeta>
+                <CMeta icon={ICON.pin}>{pointStr}</CMeta>
+              </div>
+              {/* Footer — registered count + Manage dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 'auto', paddingTop: 14, borderTop: `1px solid ${C.hair}` }}>
+                {registeredCount > 0
+                  ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, color: C.ink, opacity: .7, fontFamily: C.fontBody }}><span style={{ color: 'rgba(75,29,81,.45)', display: 'inline-flex' }}><CIcon d={ICON.users} size={15} /></span>{registeredCount} registered</span>
+                  : <span style={{ fontSize: 13, color: C.ink, opacity: .45, fontFamily: C.fontBody }}>No registrations yet</span>}
+                {hasManageMenu && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button type="button" onClick={() => setManageMenuOpen((v) => !v)} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 11, cursor: 'pointer',
+                      border: `1.5px solid ${manageMenuOpen ? C.purpleDeep : C.hairStrong}`, background: manageMenuOpen ? 'rgba(76,25,77,.06)' : '#fff',
+                      fontFamily: C.fontBody, fontSize: 13, fontWeight: 600, color: C.purpleDeep,
+                    }}>
+                      Manage
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: manageMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease' }}><polyline points="6 9 12 15 18 9" /></svg>
+                    </button>
+                  </div>
                 )}
-                {!hideReportButton && (session.status === 'published' || session.status === 'completed') && (
-                  <Button 
-                    variant="outline"
-                    size="sm" 
-                    onClick={onManage}
-                    className="h-8"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Report
-                  </Button>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                  {!hideReportButton && (
-                    <>
-                      <DropdownMenuItem onClick={onManage}>
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        Report
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  {session.status !== 'completed' && (
-                    <DropdownMenuItem onClick={onEdit}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={onDuplicate}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  {session.status === 'published' && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setShowCompleteDialog(true)}>
-                        <Square className="mr-2 h-4 w-4" />
-                        Complete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
-            {getStatusLabel(session.status) && (
-              <Badge 
-                variant={getStatusColor(session.status)} 
-                className="w-fit"
-              >
-                {getStatusLabel(session.status)}
-              </Badge>
-            )}
-          </CardHeader>
-          
-          {/* Use SessionDetailCard for consistent rendering */}
-          {debugLog('🎯 DASHBOARD using SessionDetailCard')}
-          <SessionDetailCard 
-            session={session}
-            showTitle={false}
-            showStatus={false}
-            variant="default"
-            className="space-y-3"
-            noWrapper={true}
-          />
-        </Card>
+          </div>
+          {/* Menu lives outside the clipped card so it can overflow freely */}
+          {manageMenuOpen && hasManageMenu && (
+            <div style={{
+              position: 'absolute', right: 22, top: '100%', marginTop: -14, zIndex: 200, minWidth: 208,
+              background: '#fff', border: `1px solid ${C.hairStrong}`, borderRadius: 13,
+              boxShadow: '0 18px 40px rgba(75,29,81,.18)', padding: '6px 0',
+            }}>
+              {showEdit && <MenuItem icon={ICON.pencil} onClick={() => { setManageMenuOpen(false); onEdit?.(); }}>Edit round</MenuItem>}
+              {showReport && <MenuItem icon={ICON.chart} onClick={() => { setManageMenuOpen(false); onManage?.(); }}>Round report</MenuItem>}
+              {showDuplicate && <MenuItem icon={ICON.copy} onClick={() => { setManageMenuOpen(false); onDuplicate?.(); }}>Duplicate round</MenuItem>}
+              {showComplete && <MenuItem icon={ICON.check} onClick={() => { setManageMenuOpen(false); setShowCompleteDialog(true); }}>Mark as completed</MenuItem>}
+              {showDelete && (
+                <>
+                  {(showEdit || showReport || showDuplicate || showComplete) && <div style={{ height: 1, background: C.hair, margin: '5px 0' }} />}
+                  <MenuItem danger icon={ICON.trash} onClick={() => { setManageMenuOpen(false); setShowDeleteDialog(true); }}>Delete round</MenuItem>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Admin dialogs */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

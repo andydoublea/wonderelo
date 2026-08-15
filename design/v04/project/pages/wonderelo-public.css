@@ -1,0 +1,328 @@
+/* ─────────────────────────────────────────────────────────────
+   Wonderelo — Public-pages design system (shared)
+   Used by:
+   - Wonderelo Pricing.html
+   - Wonderelo Our Story.html
+   - Wonderelo Blog.html
+   - Wonderelo Blog Post.html
+   - Wonderelo Use Case.html
+
+   ▸ MAPPING FOR CLAUDE CODE
+   These tokens map 1:1 to tailwind/CSS variables in
+   `src/styles/globals.css`. When porting, copy the :root block
+   into globals.css and route the existing utility classes
+   (`bg-background`, `text-primary`, etc.) through these tokens.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Brand palette — copy verbatim into globals.css */
+  --w-purple:       #5C2277;
+  --w-purple-deep:  #4b1d51;
+  --w-purple-ink:   #2d1133;
+  --w-orange:       #dd531c;
+  --w-orange-bright:#ff6a2a;
+  --w-cream:        #f7f1e6;
+  --w-paper:        #fbf6ec;
+  --w-paper-deep:   #f1e9d8;
+  --w-ink:          #3a2e34;
+
+  /* tailwind/shadcn token mapping (use these in globals.css)
+       --background       = var(--w-paper)
+       --foreground       = var(--w-ink)
+       --primary          = var(--w-orange)
+       --primary-foreground = #fff
+       --secondary        = var(--w-purple-deep)
+       --secondary-foreground = #fff
+       --muted            = var(--w-cream)
+       --muted-foreground = var(--w-purple)
+       --card             = var(--w-paper)
+       --border           = rgba(76,25,77,.10)
+       --ring             = var(--w-orange)
+  */
+
+  /* Typography */
+  --w-font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --w-font-serif:   "Instrument Serif", Georgia, serif;
+  --w-font-body:    "Space Grotesk", system-ui, sans-serif;
+  --w-font-hand:    "Caveat", cursive;
+  --w-font-mono:    ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Surface */
+  --w-hairline:        rgba(76,25,77,.10);
+  --w-hairline-strong: rgba(76,25,77,.18);
+  --w-shadow-card:     0 20px 40px rgba(76,25,77,.18);
+  --w-shadow-soft:     0 8px 24px rgba(76,25,77,.08);
+  --w-shadow-cta:      0 8px 20px rgba(221,83,28,.30);
+
+  /* Radius */
+  --w-r-sm: 10px;
+  --w-r-md: 14px;
+  --w-r-lg: 22px;
+  --w-r-xl: 28px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+/* Universal hover/active feedback — every button & clickable element responds */
+button, [role="button"], [style*="cursor: pointer"], [style*="cursor:pointer"] {
+  transition: filter .14s ease, transform .12s ease, box-shadow .15s ease, border-color .14s ease, background-color .14s ease;
+}
+button:not(:disabled):hover, [role="button"]:hover {
+  filter: brightness(0.95); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(76,25,77,.18);
+}
+button:not(:disabled):active, [role="button"]:active { transform: translateY(0); filter: brightness(0.92); }
+[style*="cursor: pointer"]:not(button):not([role="button"]):hover,
+[style*="cursor:pointer"]:not(button):not([role="button"]):hover { filter: brightness(0.95); box-shadow: 0 2px 10px rgba(76,25,77,.12); }
+body {
+  font-family: var(--w-font-body);
+  background: var(--w-paper);
+  color: var(--w-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font-family: inherit; cursor: pointer; }
+a { color: inherit; }
+
+/* ─── Italic serif accent — the single most distinctive type move ─── */
+.w-italic {
+  font-family: var(--w-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--w-orange);
+}
+
+/* ───────── Top nav ───────── */
+.w-nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(251,246,236,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--w-hairline);
+}
+.w-nav-inner {
+  max-width: 1440px; margin: 0 auto; padding: 18px 40px;
+  display: grid; grid-template-columns: auto 1fr auto;
+  align-items: center; gap: 32px;
+}
+.w-lockup { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; cursor: pointer; }
+.w-lockup .w-mark {
+  position: relative;
+  width: 34px; height: 34px;
+  background: transparent;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.w-lockup .w-mark .w-inner {
+  display: block;
+  width: 64px; height: 64px;
+  background: url("assets/Wonderelo-logo-symbol.png") center / contain no-repeat;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) rotate(-6deg);
+  pointer-events: none;
+}
+.w-lockup .w-word {
+  font-family: var(--w-font-display); font-weight: 800; font-size: 22px;
+  letter-spacing: -0.025em; color: var(--w-purple-deep);
+}
+.w-lockup .w-word em { font: inherit; color: inherit; font-style: normal; }
+
+.w-nav-links { display: flex; gap: 6px; justify-self: center; }
+.w-nav-link {
+  border: none; background: transparent;
+  font-family: var(--w-font-body); font-weight: 600; font-size: 14px;
+  color: var(--w-ink); opacity: .7;
+  padding: 10px 14px; border-radius: 10px;
+  text-decoration: none;
+  transition: opacity .15s, background .15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.w-nav-link:hover { opacity: 1; background: rgba(76,25,77,.05); }
+.w-nav-link.is-active { opacity: 1; color: var(--w-purple-deep); background: rgba(76,25,77,.08); }
+.w-nav-link.is-active::before {
+  content: ""; width: 6px; height: 6px; background: var(--w-orange);
+  transform: rotate(45deg); margin-right: 2px;
+}
+
+.w-nav-right { display: flex; align-items: center; gap: 14px; }
+.w-lang {
+  font-family: var(--w-font-mono); font-size: 11px; font-weight: 600;
+  letter-spacing: .12em; color: var(--w-ink); opacity: .55;
+  padding: 6px 10px; border-radius: 999px;
+  text-transform: uppercase; cursor: pointer;
+  background: transparent; border: 1px solid transparent;
+}
+.w-lang:hover { background: rgba(76,25,77,.05); opacity: 1; }
+
+/* Nav must let the oversized dog overflow upward */
+.w-nav { overflow: visible; }
+.w-nav-inner { overflow: visible; }
+
+.w-btn {
+  font-family: var(--w-font-body); font-size: 15px; font-weight: 600;
+  padding: 13px 20px; border-radius: var(--w-r-md);
+  border: 1px solid transparent; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 9px;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.w-btn-primary { background: var(--w-orange); color: #fff; box-shadow: var(--w-shadow-cta); }
+.w-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(221,83,28,.36); }
+.w-btn-secondary { background: var(--w-purple-deep); color: #fff; }
+.w-btn-secondary:hover { background: var(--w-purple-ink); }
+.w-btn-ghost { background: transparent; color: var(--w-purple-deep); border-color: var(--w-hairline-strong); }
+.w-btn-ghost:hover { background: var(--w-cream); }
+.w-btn-lg { padding: 16px 24px; font-size: 16px; }
+.w-btn-sm { padding: 9px 14px; font-size: 13.5px; gap: 7px; }
+.w-btn .w-ico { width: 16px; height: 16px; flex: none; }
+.w-btn-sm .w-ico { width: 14px; height: 14px; }
+.w-btn-lg .w-ico { width: 18px; height: 18px; }
+
+/* ───────── Eyebrow / labels ───────── */
+.w-eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  color: var(--w-orange); font-size: 12px; font-weight: 700;
+  letter-spacing: .22em; text-transform: uppercase;
+}
+.w-eyebrow::before { content: ""; width: 28px; height: 1px; background: var(--w-orange); }
+.w-eyebrow.is-purple { color: var(--w-purple); }
+.w-eyebrow.is-purple::before { background: var(--w-purple); }
+
+/* ───────── Display type ───────── */
+.w-display {
+  font-family: var(--w-font-display); font-weight: 800;
+  font-size: clamp(40px, 6vw, 80px); line-height: 0.98;
+  letter-spacing: -0.035em; color: var(--w-purple-deep);
+  text-wrap: balance; margin: 0;
+}
+.w-h1 {
+  font-family: var(--w-font-display); font-weight: 800;
+  font-size: clamp(36px, 4.5vw, 56px); line-height: 1.0;
+  letter-spacing: -0.03em; color: var(--w-purple-deep);
+  text-wrap: balance; margin: 0;
+}
+.w-h2 {
+  font-family: var(--w-font-display); font-weight: 800;
+  font-size: clamp(28px, 3.4vw, 40px); line-height: 1.05;
+  letter-spacing: -0.025em; color: var(--w-purple-deep);
+  text-wrap: balance; margin: 0;
+}
+.w-h3 {
+  font-family: var(--w-font-display); font-weight: 700;
+  font-size: 22px; line-height: 1.2;
+  letter-spacing: -0.02em; color: var(--w-purple-deep);
+  margin: 0;
+}
+.w-lede {
+  font-size: 18px; line-height: 1.55; color: var(--w-ink);
+  margin: 20px 0 0;
+}
+
+/* ───────── Card primitive ───────── */
+.w-card {
+  background: var(--w-paper);
+  border: 1px solid var(--w-hairline);
+  border-radius: var(--w-r-lg);
+  padding: 28px;
+  transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+.w-card:hover { border-color: var(--w-hairline-strong); }
+
+/* Decorative diamonds */
+.w-diamond { display: inline-block; width: 10px; height: 10px; background: var(--w-orange); transform: rotate(45deg); }
+.w-diamond.is-purple { background: var(--w-purple-deep); }
+.w-diamond.is-small { width: 7px; height: 7px; }
+.w-diamond.is-large { width: 16px; height: 16px; }
+
+/* ───────── Footer ───────── */
+.w-footer {
+  background: var(--w-purple-ink);
+  color: #fff;
+  padding: 100px 40px 40px;
+  margin-top: 120px;
+  position: relative; overflow: hidden;
+}
+.w-footer .w-foot-deco {
+  position: absolute; right: -40px; top: 40px;
+  font-family: var(--w-font-serif); font-style: italic; font-size: 320px;
+  color: rgba(255,255,255,.03); line-height: 1; pointer-events: none;
+  user-select: none;
+}
+.w-footer-inner { max-width: 1440px; margin: 0 auto; position: relative; z-index: 1; }
+.w-footer-grid {
+  display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 60px;
+  padding-bottom: 60px; border-bottom: 1px solid rgba(255,255,255,.10);
+}
+.w-foot-brand .w-foot-logo {
+  display: inline-flex; align-items: center; gap: 12px; margin-bottom: 24px;
+}
+.w-foot-brand .w-foot-logo .w-mark {
+  position: relative;
+  width: 34px; height: 34px;
+  background: transparent;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.w-foot-brand .w-foot-logo .w-mark .w-inner {
+  display: block;
+  width: 64px; height: 64px;
+  background: url("assets/Wonderelo-logo-symbol.png") center / contain no-repeat;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) rotate(-6deg);
+  pointer-events: none;
+}
+.w-foot-brand .w-foot-logo .w-word {
+  font-family: var(--w-font-display); font-weight: 800; font-size: 22px;
+  letter-spacing: -0.025em; color: #fff;
+}
+.w-foot-brand .w-foot-logo .w-word em {
+  font: inherit; color: inherit; font-style: normal;
+}
+.w-foot-brand p {
+  font-size: 14.5px; line-height: 1.55; color: rgba(255,255,255,.65);
+  max-width: 320px; margin: 0 0 24px;
+}
+.w-foot-brand .w-foot-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 10px; background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 13.5px; font-weight: 600; color: #fff;
+  text-decoration: none;
+}
+.w-foot-brand .w-foot-cta .w-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
+
+.w-foot-col h5 {
+  margin: 0 0 18px; font-family: var(--w-font-display); font-weight: 700;
+  font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--w-orange-bright);
+}
+.w-foot-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.w-foot-col a {
+  color: rgba(255,255,255,.72); text-decoration: none; font-size: 14.5px;
+  transition: color .15s, transform .15s;
+  display: inline-block;
+}
+.w-foot-col a:hover { color: #fff; transform: translateX(3px); }
+
+.w-foot-bottom {
+  display: flex; justify-content: space-between; align-items: center; gap: 24px;
+  padding-top: 32px;
+  font-size: 12.5px; color: rgba(255,255,255,.5);
+}
+.w-foot-bottom .w-foot-legal { display: flex; gap: 24px; }
+.w-foot-bottom .w-foot-legal a { color: inherit; text-decoration: none; }
+.w-foot-bottom .w-foot-legal a:hover { color: #fff; }
+
+/* ───────── Utility ───────── */
+.w-shell { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
+.w-shell-narrow { max-width: 880px; margin: 0 auto; padding: 0 40px; }
+
+@media (max-width: 980px) {
+  .w-nav-inner { grid-template-columns: auto auto; gap: 16px; padding: 16px 24px; }
+  .w-nav-links { display: none; }
+  .w-shell, .w-shell-narrow { padding: 0 24px; }
+  .w-footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+  .w-foot-brand { grid-column: 1 / -1; }
+  .w-foot-bottom { flex-direction: column; align-items: flex-start; }
+}
