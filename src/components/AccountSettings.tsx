@@ -414,33 +414,39 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     setIsChangingPassword(true);
     try {
       debugLog('Changing password...');
-      
-      const { apiBaseUrl } = await import('../utils/supabase/info');
-      const response = await fetch(
-        `${apiBaseUrl}/change-password`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword,
-            newPassword,
-          }),
-        }
-      );
 
-      if (response.ok) {
+      // No backend route exists for password changes (POST /change-password 404s).
+      // Use the Supabase JS client directly — updateUser({ password }) is the
+      // standard, secure way and needs no custom edge function.
+      const { supabase } = await import('../utils/supabase/client');
+
+      // Re-authenticate with the current password first, so the "Current password"
+      // field is actually enforced (not a silent no-op) and a leftover/stolen session
+      // can't change the password without it. Signing the same user in just refreshes
+      // the session; the resulting SIGNED_IN event is ignored by the app's auth listener.
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+      if (reauthError) {
+        errorLog('Re-authentication failed:', reauthError);
+        toast.error('Current password is incorrect');
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        errorLog('Failed to change password:', updateError);
+        toast.error(updateError.message || 'Failed to change password');
+      } else {
         toast.success('Password changed successfully');
         // Clear password fields
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-      } else {
-        const errorData = await response.json();
-        errorLog('Failed to change password:', errorData);
-        toast.error(errorData.error || 'Failed to change password');
       }
     } catch (error) {
       errorLog('Error changing password:', error);
@@ -464,36 +470,40 @@ export function AccountSettings({ accessToken, userEmail, onBack, onProfileUpdat
     setIsChangingEmail(true);
     try {
       debugLog('Changing email...');
-      
-      const { apiBaseUrl } = await import('../utils/supabase/info');
-      const response = await fetch(
-        `${apiBaseUrl}/change-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: emailChangePassword,
-            newEmail,
-          }),
-        }
-      );
 
-      if (response.ok) {
-        const result = await response.json();
+      // No backend route exists for email changes (POST /change-email 404s). Use the
+      // Supabase JS client directly — updateUser({ email }) makes Supabase send a
+      // confirmation link to the new address (and a change notice to the old one).
+      const { supabase } = await import('../utils/supabase/client');
+
+      // Re-authenticate with the current password first so the "Current password"
+      // field is enforced before this sensitive change. Same-user sign-in just
+      // refreshes the session; the SIGNED_IN event is ignored by the app's auth listener.
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: emailChangePassword,
+      });
+      if (reauthError) {
+        errorLog('Re-authentication failed:', reauthError);
+        toast.error('Current password is incorrect');
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (updateError) {
+        errorLog('Failed to change email:', updateError);
+        toast.error(updateError.message || 'Failed to change email');
+      } else {
         toast.success('Verification email sent', {
-          description: result.message || 'Please check your new email to confirm the change'
+          description: 'Please check your new email to confirm the change',
         });
         // Clear email fields and hide form
         setNewEmail('');
         setEmailChangePassword('');
         setShowEmailChangeForm(false);
-      } else {
-        const errorData = await response.json();
-        errorLog('Failed to change email:', errorData);
-        toast.error(errorData.error || 'Failed to change email');
       }
     } catch (error) {
       errorLog('Error changing email:', error);

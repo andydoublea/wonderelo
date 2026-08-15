@@ -3,8 +3,9 @@
    Renders inside a page that already carries the `.wonderelo` scope — do NOT
    self-scope here. Styles live in src/styles/wonderelo-public.css.
 
-   Phase 1: footer links are visual-only (href="#") EXCEPT the routes wired
-   below via react-router (Pricing, Our story, Newsroom) and Contact us (mailto). */
+   Footer links route via react-router (Pricing, Our story, Newsroom, Help center,
+   Terms of use, Privacy policy) with Contact us as a mailto. Features / How it
+   works and the social icons remain visual-only (href="#"). */
 import { useNavigate } from 'react-router';
 
 const SOCIALS: Array<{ label: string; path: string }> = [
@@ -51,14 +52,14 @@ export function PublicFooter() {
           <div className="w-foot-col">
             <h5>Support</h5>
             <ul>
-              <li><a className="w-foot-link" href="#">Help center</a></li>
+              <li><a className="w-foot-link" href="#" onClick={go('/help')}>Help center</a></li>
             </ul>
           </div>
           <div className="w-foot-col">
             <h5>Legal</h5>
             <ul>
-              <li><a className="w-foot-link" href="#">Terms of use</a></li>
-              <li><a className="w-foot-link" href="#">Privacy policy</a></li>
+              <li><a className="w-foot-link" href="#" onClick={go('/terms')}>Terms of use</a></li>
+              <li><a className="w-foot-link" href="#" onClick={go('/privacy')}>Privacy policy</a></li>
             </ul>
           </div>
         </div>

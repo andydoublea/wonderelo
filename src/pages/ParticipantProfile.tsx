@@ -11,7 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Mail, Phone, Loader2, Check, X, ArrowLeft, User, ChevronsUpDown, Linkedin, Instagram, Globe } from 'lucide-react';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import { debugLog, errorLog } from '../utils/debug';
-import { COUNTRY_CODES, flagForPrefix } from '../utils/countryCodes';
+import { COUNTRY_CODES, flagForPrefix, flagForCode } from '../utils/countryCodes';
 
 export interface ParticipantProfileFormData {
   firstName: string;
@@ -100,7 +100,46 @@ export function ParticipantProfileView({
               {field('email', 'Email address', Ico.mail, 'email', 'you@gmail.com', true, 'You can share this with your match if you choose to.')}
               <div className="ac-field full">
                 <label className="ac-label">Phone number</label>
-                <div className="ac-input is-focus"><span className="prefix">{flagForPrefix(formData.phoneCountry)} {formData.phoneCountry}</span><input type="tel" placeholder="903 555 218" value={formData.phone || ''} onChange={(e) => onFieldChange('phone', e.target.value)} disabled={saving} /></div>
+                <div className="ac-input is-focus">
+                  <Popover open={phoneCountryOpen} onOpenChange={onPhoneCountryOpenChange}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="prefix"
+                        disabled={saving}
+                        aria-label="Select country calling code"
+                        aria-expanded={phoneCountryOpen}
+                        style={{ background: 'transparent', border: 0, padding: 0, cursor: saving ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                      >
+                        {flagForPrefix(formData.phoneCountry)} {formData.phoneCountry}
+                        <ChevronsUpDown style={{ width: 12, height: 12, opacity: 0.5 }} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" style={{ padding: 0, width: 264 }}>
+                      <Command>
+                        <CommandInput placeholder="Search country…" />
+                        <CommandList>
+                          <CommandEmpty>No country found.</CommandEmpty>
+                          <CommandGroup>
+                            {COUNTRY_CODES.map((c) => (
+                              <CommandItem
+                                key={c.code}
+                                value={`${c.name} ${c.prefix}`}
+                                onSelect={() => { onFieldChange('phoneCountry', c.prefix); onPhoneCountryOpenChange(false); }}
+                              >
+                                <span aria-hidden="true">{flagForCode(c.code)}</span>
+                                <span style={{ flex: 1 }}>{c.name}</span>
+                                <span style={{ opacity: 0.6 }}>{c.prefix}</span>
+                                <Check style={{ width: 14, height: 14, opacity: formData.phoneCountry === c.prefix ? 1 : 0 }} />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <input type="tel" placeholder="903 555 218" value={formData.phone || ''} onChange={(e) => onFieldChange('phone', e.target.value)} disabled={saving} />
+                </div>
                 <span className="ac-hint">We send a reminder 5 minutes before the round starts.</span>
               </div>
             </div>

@@ -94,6 +94,9 @@ export interface ParticipantDashboardViewProps {
   // Handlers
   onAddMoreRoundsNavigate: (slug: string) => void;
   onAddressBookNavigate: () => void;
+  onDashboardNavigate?: () => void;
+  onProfileNavigate?: () => void;
+  onShowRoundNavigate?: () => void;
   onSetShowMeetingPoints: (open: boolean) => void;
   onSetShowRoundRules: (open: boolean) => void;
   onSetShowUnregisterDialog: (open: boolean) => void;
@@ -120,6 +123,7 @@ export function ParticipantDashboardView({
   globalNextUpcomingRoundId,
   hasFreshData,
   lastConfirmTimestamp,
+  token,
   showMeetingPoints,
   selectedSessionForDialog,
   showRoundRules,
@@ -130,6 +134,9 @@ export function ParticipantDashboardView({
   debugLogs,
   onAddMoreRoundsNavigate,
   onAddressBookNavigate,
+  onDashboardNavigate,
+  onProfileNavigate,
+  onShowRoundNavigate,
   onSetShowMeetingPoints,
   onSetShowRoundRules,
   onSetShowUnregisterDialog,
@@ -308,8 +315,8 @@ export function ParticipantDashboardView({
           firstName={firstName}
           lastName={lastName}
           onBrandClick={() => token && onAddMoreRoundsNavigate('')}
-          onDashboard={() => token && onAddMoreRoundsNavigate('')}
-          onProfile={onAddressBookNavigate}
+          onDashboard={onDashboardNavigate}
+          onProfile={onProfileNavigate}
           onAddressBook={onAddressBookNavigate}
           onHome={() => onAddMoreRoundsNavigate('')}
           onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
@@ -384,7 +391,7 @@ export function ParticipantDashboardView({
                 <div className="pd-hero-clock-wrap"><FlipClock seconds={secsLeft} /></div>
                 <div className="pd-hero-context">{hero?.session.meetingPoints?.[0]?.name ? <>You're at <strong>{hero.session.meetingPoints[0].name}</strong></> : 'Your round is live'}</div>
                 <div style={{ textAlign: 'center' }}>
-                  <button className="pd-hero-cta" type="button" onClick={() => token && onAddMoreRoundsNavigate('')}>
+                  <button className="pd-hero-cta" type="button" onClick={onShowRoundNavigate}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                     Show your round
                   </button>
@@ -1794,7 +1801,7 @@ export function ParticipantDashboard() {
           lastName={lastName}
           onBrandClick={() => navigate('/')}
           onDashboard={() => fetchData()}
-          onProfile={() => token && navigate(`/p/${token}/address-book`)}
+          onProfile={() => token && navigate(`/p/${token}/profile`)}
           onAddressBook={() => token && navigate(`/p/${token}/address-book`)}
           onHome={() => navigate('/')}
         />
@@ -1957,6 +1964,9 @@ export function ParticipantDashboard() {
       debugLogs={debugLogs}
       onAddMoreRoundsNavigate={(slug) => navigate(`/${slug}`)}
       onAddressBookNavigate={() => navigate(`/p/${token}/address-book`)}
+      onDashboardNavigate={() => navigate(`/p/${token}`)}
+      onProfileNavigate={() => navigate(`/p/${token}/profile`)}
+      onShowRoundNavigate={() => navigate(`/p/${token}/match-point`)}
       onSetShowMeetingPoints={setShowMeetingPoints}
       onSetShowRoundRules={setShowRoundRules}
       onSetShowUnregisterDialog={setShowUnregisterDialog}

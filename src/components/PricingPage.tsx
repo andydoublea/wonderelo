@@ -196,7 +196,7 @@ export function PricingPage({ onGetStarted, onSignIn }: PricingPageProps) {
               <p>You don't need a credit card. Spin up a free event, share the URL with five people, and see how it feels before you commit to anything.</p>
             </div>
             <div className="pr-cta-actions">
-              <a className="w-btn w-btn-ghost" href="#" onClick={(e) => { e.preventDefault(); navigate('/blog'); }}>Watch a demo</a>
+              <a className="w-btn w-btn-ghost" href="#" onClick={(e) => { e.preventDefault(); navigate('/demo'); }}>Watch a demo</a>
               <a className="w-btn w-btn-primary w-btn-lg" href="#" onClick={(e) => { e.preventDefault(); handleGetStarted(); }}>
                 Start for free
                 <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>

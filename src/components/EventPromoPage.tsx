@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NetworkingSession } from '../App';
 import { errorLog } from '../utils/debug';
 import { C, Italic, Diamond, Logo } from './redesign/organizerAtoms';
+import { DownloadableAssets } from './DownloadableAssets';
 
 interface EventPromoPageProps {
   eventSlug: string;
@@ -402,6 +403,8 @@ export function EventPromoPageView({
 
 export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, profileImageUrl, displaySlug, onBack }: EventPromoPageProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  // Download / Print panel — additive app chrome layered over the live slide.
+  const [assetsOpen, setAssetsOpen] = useState(false);
 
   const publicUrl = `${window.location.origin}/${eventSlug}`;
 
@@ -430,16 +433,80 @@ export function EventPromoPage({ eventSlug, sessions, organizerName, eventName, 
   const publishedSessions = sessions.filter(s => s.status === 'published');
 
   return (
-    <EventPromoPageView
-      eventSlug={eventSlug}
-      qrCodeUrl={qrCodeUrl}
-      displayName={displayName}
-      publishedSessions={publishedSessions}
-      organizerName={organizerName}
-      eventName={eventName}
-      profileImageUrl={profileImageUrl}
-      displaySlug={displaySlug}
-      onBack={onBack}
-    />
+    <>
+      <EventPromoPageView
+        eventSlug={eventSlug}
+        qrCodeUrl={qrCodeUrl}
+        displayName={displayName}
+        publishedSessions={publishedSessions}
+        organizerName={organizerName}
+        eventName={eventName}
+        profileImageUrl={profileImageUrl}
+        displaySlug={displaySlug}
+        onBack={onBack}
+      />
+
+      {/* Download / Print control — additive over the live slide, hidden while
+          the panel is open. The pure EventPromoPageView (used by
+          AdminPagePreview) never renders this chrome, so the projected preview
+          stays clean. */}
+      {!assetsOpen && (
+        <button
+          type="button"
+          onClick={() => setAssetsOpen(true)}
+          style={{
+            position: 'fixed', top: 20, right: 20, zIndex: 50,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '10px 16px', borderRadius: 12, cursor: 'pointer',
+            background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.22)',
+            color: '#fff', fontFamily: C.fontBody, fontSize: 14, fontWeight: 600,
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          ⤓ Download / Print
+        </button>
+      )}
+
+      {/* Asset panel — mounts DownloadableAssets, wired to the same event URL
+          the live QR uses so the printed QR + text match the slide exactly. */}
+      {assetsOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Download or print promo assets"
+          onClick={() => setAssetsOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 60,
+            background: 'rgba(10,8,20,.72)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            padding: 24, overflowY: 'auto',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 980, margin: 'auto' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => setAssetsOpen(false)}
+                style={{
+                  padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+                  background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.28)',
+                  color: '#fff', fontFamily: C.fontBody, fontSize: 14, fontWeight: 600,
+                }}
+              >
+                ✕ Close
+              </button>
+            </div>
+            <DownloadableAssets
+              eventSlug={eventSlug}
+              eventName={displayName}
+              eventPageUrl={publicUrl}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

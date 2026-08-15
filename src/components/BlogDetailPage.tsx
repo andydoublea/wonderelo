@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { toast } from 'sonner@2.0.3';
 import { PublicNav } from './redesign/PublicNav';
 import { PublicFooter } from './redesign/PublicFooter';
 import { debugLog, errorLog } from '../utils/debug';
@@ -219,6 +220,33 @@ export function BlogDetailPage() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // Share actions — open an intent window (X / LinkedIn) or copy the URL.
+  const shareOnX = () => {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(blogPost?.title || 'Wonderelo');
+    window.open(
+      `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+  const shareOnLinkedIn = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(
+      `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied to clipboard');
+    } catch {
+      toast.error('Could not copy the link');
+    }
+  };
+
   // Design byline uses day-month-year long form, e.g. "30 January 2026".
   const formattedDate = blogPost
     ? new Date(blogPost.createdAt).toLocaleDateString('en-GB', {
@@ -243,7 +271,7 @@ export function BlogDetailPage() {
   if (error || !blogPost) {
     return (
       <div className="wonderelo w-public bpg-page">
-        <PublicNav onGetStarted={() => navigate('/')} onSignIn={() => navigate('/')} />
+        <PublicNav onGetStarted={() => navigate('/signup')} onSignIn={() => navigate('/signin')} />
         <main className="w-shell">
           <header className="bp-header">
             <h1>{error || 'Blog post not found'}</h1>
@@ -293,9 +321,9 @@ export function BlogDetailPage() {
               {blogPost.readTime && <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {blogPost.readTime}</span>}
             </div>
             <div className="share">
-              <button type="button" aria-label="Share on X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
-              <button type="button" aria-label="Share on LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
-              <button type="button" aria-label="Copy link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+              <button type="button" aria-label="Share on X" onClick={shareOnX}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+              <button type="button" aria-label="Share on LinkedIn" onClick={shareOnLinkedIn}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
+              <button type="button" aria-label="Copy link" onClick={copyLink}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
             </div>
           </div>
         </header>
@@ -341,9 +369,9 @@ export function BlogDetailPage() {
               </div>
               <div className="share-row">
                 Share —
-                <button type="button" aria-label="X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
-                <button type="button" aria-label="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
-                <button type="button" aria-label="Copy link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                <button type="button" aria-label="X" onClick={shareOnX}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+                <button type="button" aria-label="LinkedIn" onClick={shareOnLinkedIn}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 18V10H5v8zM6.5 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M18 18v-4.5c0-1.4-1.1-2.5-2.5-2.5S13 12.1 13 13.5V18h-3v-8h3v1.2c.5-.8 1.6-1.4 2.5-1.4 1.9 0 3.5 1.6 3.5 3.5V18z"/></svg></button>
+                <button type="button" aria-label="Copy link" onClick={copyLink}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
               </div>
             </div>
 
@@ -420,7 +448,7 @@ export function BlogDetailPage() {
             className="w-btn w-btn-primary w-btn-lg"
             role="button"
             tabIndex={0}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/signup')}
           >
             Start for free
             <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>

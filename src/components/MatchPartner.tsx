@@ -122,9 +122,8 @@ export function MatchPartnerView({
                       {state === 'missed' && (
                         <>
                           <p className="pm-muted" style={{ margin: '8px 0 0', fontSize: '12.5px' }}>They didn't make it to the meeting point in time, so we closed this pairing. It happens — nothing to do on your side.</p>
-                          <div className="pm-noshow-foot" style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed rgba(138,107,98,.28)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: '11.5px', color: 'rgba(43,24,16,.6)' }}>
+                          <div className="pm-noshow-foot" style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed rgba(138,107,98,.28)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: '11.5px', color: 'rgba(43,24,16,.6)' }}>
                             <span>Your other matches are still open.</span>
-                            <button type="button" className="pm-noshow-report" style={{ padding: '7px 12px', borderRadius: 999, border: '1.5px solid var(--w-hairline-strong)', background: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: 'var(--w-purple-deep)', cursor: 'pointer' }}>Report a no-show</button>
                           </div>
                         </>
                       )}

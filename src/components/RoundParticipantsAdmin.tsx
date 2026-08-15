@@ -11,7 +11,7 @@ import { ParticipantStatusBadge } from '../utils/statusBadge';
 
 // Helper function for anonymization
 function anonymizeParticipant(data: { name: string; email: string; phone?: string }, id: string) {
-  const anonymizedEmail = data.email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+  const anonymizedEmail = data.email?.replace(/(.{2})(.*)(@.*)/, '$1***$3') || '';
   const anonymizedPhone = data.phone?.replace(/(\d{3})(\d*)(\d{3})/, '$1***$3') || '';
   return {
     displayName: data.name,
@@ -315,7 +315,7 @@ export function RoundParticipantsAdmin({
                           <span>Check-ins</span>
                         </div>
                         <p className="text-sm">
-                          {match.checkIns.length} / {match.participantIds.length}
+                          {match.checkIns?.length ?? 0} / {match.participantIds.length}
                         </p>
                       </div>
                     </div>
@@ -334,7 +334,7 @@ export function RoundParticipantsAdmin({
                             },
                             participant.id
                           );
-                          const isCheckedIn = match.checkIns.some(
+                          const isCheckedIn = (match.checkIns || []).some(
                             ci => ci.participantId === participant.id
                           );
 

@@ -704,6 +704,32 @@ export async function getRegistrationsForRound(sessionId: string, roundId: strin
   });
 }
 
+// Like getRegistrationsForRound but for a whole session (no round filter).
+// Joins participant details so organizer views can list every participant
+// registered in the session with their per-round registrations.
+export async function getRegistrationsForSessionWithParticipants(sessionId: string) {
+  const { data, error } = await db()
+    .from('registrations')
+    .select('*, participants(*)')
+    .eq('session_id', sessionId);
+  if (error) throw error;
+  return (data || []).map(r => {
+    const reg = mapRegistrationFromDb(r);
+    if (r.participants) {
+      return {
+        ...reg,
+        email: r.participants.email,
+        firstName: r.participants.first_name,
+        lastName: r.participants.last_name,
+        phone: r.participants.phone,
+        phoneCountry: r.participants.phone_country,
+        token: r.participants.token,
+      };
+    }
+    return reg;
+  });
+}
+
 export async function getRegistrationsForSession(sessionId: string) {
   const { data, error } = await db()
     .from('registrations')
@@ -802,6 +828,24 @@ export async function updateRegistrationStatus(
     .eq('session_id', sessionId)
     .eq('round_id', roundId);
   if (error) throw error;
+}
+
+// Update a participant's status for a single round, identified by
+// (participant_id, round_id) only — a round belongs to exactly one session, so
+// this pair is unique. Returns the updated rows so callers can detect "not found".
+export async function updateRegistrationStatusByRound(
+  participantId: string,
+  roundId: string,
+  status: string,
+) {
+  const { data, error } = await db()
+    .from('registrations')
+    .update({ status, last_status_update: new Date().toISOString() })
+    .eq('participant_id', participantId)
+    .eq('round_id', roundId)
+    .select('id');
+  if (error) throw error;
+  return data || [];
 }
 
 export async function deleteRegistration(participantId: string, sessionId: string, roundId: string) {
@@ -1156,13 +1200,30 @@ export async function getContactSharing(matchId: string, participantId: string) 
   return data?.preferences || null;
 }
 
-export async function setContactSharing(matchId: string, participantId: string, preferences: any) {
+export async function setContactSharing(
+  matchId: string,
+  participantId: string,
+  preferences: any,
+  extra?: { feedback?: any; wondereloFeedback?: any },
+) {
+  // Contact-sharing consent is a { [partnerId]: boolean } map. Partner feedback
+  // and Wonderelo feedback are persisted alongside it inside the same
+  // `preferences` JSONB, under reserved keys. Partner IDs are UUID-like and never
+  // collide with these keys, and every consumer reads consent via
+  // preferences[partnerId] (strict === true), so the extra keys are inert for the
+  // existing bilateral-sharing logic.
+  const stored: Record<string, any> = {
+    ...(preferences && typeof preferences === 'object' ? preferences : {}),
+  };
+  if (extra?.feedback !== undefined) stored.__feedback = extra.feedback;
+  if (extra?.wondereloFeedback !== undefined) stored.__wondereloFeedback = extra.wondereloFeedback;
+
   const { error } = await db()
     .from('contact_sharing')
     .upsert({
       match_id: matchId,
       participant_id: participantId,
-      preferences,
+      preferences: stored,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'match_id,participant_id' });
   if (error) throw error;

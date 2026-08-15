@@ -78,6 +78,9 @@ import { InlineEditToggle } from './components/i18n/InlineEditToggle';
 import { AdminVersionBadge } from './components/AdminVersionBadge';
 const UseCaseLandingPage = lazy(() => import('./components/UseCaseLandingPage').then(m => ({ default: m.UseCaseLandingPage })));
 const OurStoryPage = lazy(() => import('./components/OurStoryPage').then(m => ({ default: m.OurStoryPage })));
+const TermsOfUsePage = lazy(() => import('./components/TermsOfUsePage').then(m => ({ default: m.TermsOfUsePage })));
+const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
+const HelpCenterPage = lazy(() => import('./components/HelpCenterPage').then(m => ({ default: m.HelpCenterPage })));
 
 // Lazy load CRM components
 const CrmLayout = lazy(() => import('./components/crm/CrmLayout'));
@@ -421,7 +424,7 @@ function ResetPasswordRoute() {
   return (
     <ResetPasswordFlow
       onComplete={handleResetPasswordComplete}
-      onBack={() => navigate('/')}
+      onBack={() => navigate('/signin')}
     />
   );
 }
@@ -1213,7 +1216,7 @@ function AdminOrganizerRequestsRoute() {
         onSignOut={handleSignOut}
       />
       <Suspense fallback={<RouteLoader />}>
-        <AdminOrganizerRequests accessToken={accessToken} />
+        <AdminOrganizerRequests accessToken={accessToken} onBack={() => navigate('/admin')} />
       </Suspense>
     </>
   );
@@ -1288,6 +1291,42 @@ function OurStoryPageRoute() {
   return (
     <Suspense fallback={<RouteLoader />}>
       <OurStoryPage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
+}
+
+function TermsOfUsePageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <TermsOfUsePage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
+}
+
+function PrivacyPolicyPageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <PrivacyPolicyPage
+        onGetStarted={() => navigate('/signup')}
+        onSignIn={() => navigate('/signin')}
+      />
+    </Suspense>
+  );
+}
+
+function HelpCenterPageRoute() {
+  const navigate = useNavigate();
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <HelpCenterPage
         onGetStarted={() => navigate('/signup')}
         onSignIn={() => navigate('/signin')}
       />
@@ -2143,6 +2182,9 @@ function AppProviderWithRouter() {
             h(Route, { path: '/blog', element: h(BlogListingPageRoute) }),
             h(Route, { path: '/blog/:slug', element: h(BlogDetailPageRoute) }),
             h(Route, { path: '/our-story', element: h(OurStoryPageRoute) }),
+            h(Route, { path: '/terms', element: h(TermsOfUsePageRoute) }),
+            h(Route, { path: '/privacy', element: h(PrivacyPolicyPageRoute) }),
+            h(Route, { path: '/help', element: h(HelpCenterPageRoute) }),
 
             // Use case landing pages
             h(Route, { path: '/for/:useCase', element: h(UseCaseLandingPageRoute) }),

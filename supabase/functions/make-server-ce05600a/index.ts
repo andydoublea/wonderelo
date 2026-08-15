@@ -1874,6 +1874,181 @@ app.put('/make-server-ce05600a/admin/users/:userId/role', async (c) => {
 });
 
 // ============================================================
+// Organizer: Session / round participants
+// ============================================================
+
+// Every participant registered in a session, each with their per-round
+// registrations. Consumed by SessionAdministration (participant table) and
+// NetworkingDashboard (live-round status breakdown, which reads
+// registrations[*].roundId + status).
+app.get('/make-server-ce05600a/organizer/:slug/session/:sessionId/participants', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const sessionId = c.req.param('sessionId');
+    const session = await db.getSessionById(sessionId);
+    if (!session || session.userId !== user.id) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
+
+    const roundsById: Record<string, any> = {};
+    for (const r of session.rounds || []) roundsById[r.id] = r;
+
+    const regs = await db.getRegistrationsForSessionWithParticipants(sessionId);
+
+    // Group registrations by participant.
+    const byParticipant = new Map<string, any>();
+    for (const reg of regs) {
+      let entry = byParticipant.get(reg.participantId);
+      if (!entry) {
+        const firstName = reg.firstName || '';
+        const lastName = reg.lastName || '';
+        entry = {
+          participantId: reg.participantId,
+          name: `${firstName} ${lastName}`.trim(),
+          firstName,
+          lastName,
+          email: reg.email || '',
+          phone: reg.phone || '',
+          phoneCountry: reg.phoneCountry || '',
+          registrations: [],
+        };
+        byParticipant.set(reg.participantId, entry);
+      }
+      const round = roundsById[reg.roundId];
+      entry.registrations.push({
+        sessionId: reg.sessionId,
+        sessionName: session.name || '',
+        date: round?.date || session.date || '',
+        startTime: round?.startTime || '',
+        roundId: reg.roundId,
+        roundName: round?.name || '',
+        duration: round?.duration ?? null,
+        status: reg.status,
+        registeredAt: reg.registeredAt || '',
+        statusUpdatedAt: reg.lastStatusUpdate || '',
+      });
+    }
+
+    const participants = Array.from(byParticipant.values());
+    return c.json({ count: participants.length, participants });
+  } catch (error) {
+    errorLog('Error getting session participants:', error);
+    return c.json({ error: 'Failed to get session participants' }, 500);
+  }
+});
+
+// Same as above but scoped to a single round, with each participant's match
+// partners (SessionAdministration round table renders firstName/lastName/status
+// + matchedWith[{firstName,lastName}]).
+app.get('/make-server-ce05600a/organizer/:slug/session/:sessionId/round/:roundId/participants', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const sessionId = c.req.param('sessionId');
+    const roundId = c.req.param('roundId');
+    const session = await db.getSessionById(sessionId);
+    if (!session || session.userId !== user.id) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
+
+    const regs = await db.getRegistrationsForRound(sessionId, roundId);
+
+    // Group by matchId so each participant can list who they were matched with.
+    const byMatch = new Map<string, any[]>();
+    for (const reg of regs) {
+      if (!reg.matchId) continue;
+      if (!byMatch.has(reg.matchId)) byMatch.set(reg.matchId, []);
+      byMatch.get(reg.matchId)!.push(reg);
+    }
+
+    const participants = regs.map((reg: any) => {
+      let matchedWith: Array<{ firstName: string; lastName: string }> = [];
+      if (reg.matchId && byMatch.has(reg.matchId)) {
+        matchedWith = byMatch.get(reg.matchId)!
+          .filter((o: any) => o.participantId !== reg.participantId)
+          .map((o: any) => ({ firstName: o.firstName || '', lastName: o.lastName || '' }));
+      }
+      return {
+        participantId: reg.participantId,
+        firstName: reg.firstName || '',
+        lastName: reg.lastName || '',
+        status: reg.status,
+        matchedWith,
+      };
+    });
+
+    return c.json({ count: participants.length, participants });
+  } catch (error) {
+    errorLog('Error getting round participants:', error);
+    return c.json({ error: 'Failed to get round participants' }, 500);
+  }
+});
+
+// Update a participant's status for a single round. Body: { status }.
+app.put('/make-server-ce05600a/participants/:participantId/rounds/:roundId/status', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Authorization required' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await getSupabase().auth.getUser(token);
+    if (error || !user) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const participantId = c.req.param('participantId');
+    const roundId = c.req.param('roundId');
+    const body = await c.req.json();
+    const status = body?.status;
+
+    if (!status || typeof status !== 'string') {
+      return c.json({ error: 'status is required' }, 400);
+    }
+
+    // Ownership: the round must belong to a session owned by the caller.
+    const round = await db.getRoundById(roundId);
+    if (!round) {
+      return c.json({ error: 'Round not found' }, 404);
+    }
+    const session = await db.getSessionById(round.sessionId);
+    if (!session || session.userId !== user.id) {
+      return c.json({ error: 'Round not found' }, 404);
+    }
+
+    const updated = await db.updateRegistrationStatusByRound(participantId, roundId, status);
+    if (!updated || updated.length === 0) {
+      return c.json({ error: 'Registration not found' }, 404);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error updating round status:', error);
+    return c.json({ error: 'Failed to update status' }, 500);
+  }
+});
+
+// ============================================================
 // Admin: Participant management
 // ============================================================
 

@@ -237,6 +237,8 @@ export function SessionRegistrationSelectRoundsView({
         onTeamSelect={onTeamSelect}
         onTopicSelect={onTopicSelect}
         onMultipleTopicsSelect={onMultipleTopicsSelect}
+        onUnregister={onUnregister}
+        onConfirmAttendance={onConfirmAttendance}
         onShowMeetingPoints={onShowMeetingPoints}
         onShowRoundRules={onShowRoundRules}
         onContinue={onContinue}
@@ -1074,12 +1076,22 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
       errors.phone = 'Please fill in this field';
     }
     
+    // Map form-field keys to the real input ids rendered by ContinueRegistrationAuthView
+    // (cr-first / cr-last / cr-email / cr-phone) so document.getElementById(...).focus() hits
+    // the actual elements instead of the non-existent firstName/lastName/email/phone ids.
+    const authFieldIds: { [key: string]: string } = {
+      firstName: 'cr-first',
+      lastName: 'cr-last',
+      email: 'cr-email',
+      phone: 'cr-phone',
+    };
+
     // Show errors if any
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       // Scroll to first error
       const firstErrorField = Object.keys(errors)[0];
-      document.getElementById(firstErrorField)?.focus();
+      document.getElementById(authFieldIds[firstErrorField] || firstErrorField)?.focus();
       return;
     }
 
@@ -1087,7 +1099,7 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
     const emailExists = await checkEmailExists(registrationData.email);
     if (emailExists) {
       setFormErrors({ email: 'Email already registered. Sign in below.' });
-      document.getElementById('email-create')?.focus();
+      document.getElementById(authFieldIds.email)?.focus();
       return;
     }
     

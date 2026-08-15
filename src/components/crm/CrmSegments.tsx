@@ -317,14 +317,16 @@ export default function CrmSegments() {
       setContactsLoading(true);
       setViewingSegment(segment);
 
-      const response = await authenticatedFetch(`/crm/segments/${segment.id}/contacts`);
+      // GET /crm/segments/:id returns { ...segment, contacts }; there is no
+      // dedicated /contacts sub-route.
+      const response = await authenticatedFetch(`/crm/segments/${segment.id}`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch contacts (${response.status})`);
       }
 
       const data = await response.json();
-      setSegmentContacts(data.contacts ?? data ?? []);
+      setSegmentContacts(data.contacts ?? []);
     } catch (err) {
       console.error('Failed to fetch segment contacts:', err);
       setSegmentContacts([]);

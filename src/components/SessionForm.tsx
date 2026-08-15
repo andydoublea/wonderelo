@@ -525,25 +525,25 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     return true;
   };
 
-  const handleSaveDraft = async (e: React.FormEvent) => {
+  const handleSaveDraft = async (e: React.FormEvent): Promise<boolean> => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    const validMeetingPoints = (formData.meetingPoints || []).filter(point => 
+
+    if (!validateForm()) return false;
+
+    const validMeetingPoints = (formData.meetingPoints || []).filter(point =>
       typeof point === 'string' ? point.trim() : point.name?.trim()
     );
     const sessionData = {
       ...formData,
       endTime: calculatedEndTime,
-      teams: formData.enableTeams 
+      teams: formData.enableTeams
         ? (formData.teams || []).filter(name => name.trim())
         : [],
-      topics: formData.enableTopics 
+      topics: formData.enableTopics
         ? (formData.topics || []).filter(name => name.trim())
         : [],
       meetingPoints: validMeetingPoints,
-      rounds: generateRounds(),
+      rounds: buildRoundsForSave(),
       status: 'draft' as const,
       registrationStart: undefined
     };
@@ -554,6 +554,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     } finally {
       setIsSubmitting(false);
     }
+    return true;
   };
 
   const handleMakeLive = async (e: React.FormEvent) => {
@@ -703,7 +704,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         ? (formData.topics || []).filter(name => name.trim())
         : [],
       meetingPoints: validMeetingPoints,
-      rounds: generateRounds(),
+      rounds: buildRoundsForSave(),
       status: 'published' as const,
       registrationStart: registrationStartISO
     };
@@ -865,7 +866,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         ? (formData.topics || []).filter(name => name.trim())
         : [],
       meetingPoints: validMeetingPoints,
-      rounds: generateRounds(),
+      rounds: buildRoundsForSave(),
       status: 'scheduled' as const,
       registrationStart: scheduledDateTime.toISOString()
     };
@@ -874,13 +875,14 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     setShowScheduleDialog(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Default submit behavior - save as draft
-    handleSaveDraft(e);
-    
-    if (!initialData) {
-      // Reset form only if creating new session
+    // Default submit behavior (e.g. pressing Enter) - save as draft.
+    const saved = await handleSaveDraft(e);
+
+    // Only reset after a CONFIRMED successful save of a new session.
+    // Resetting on validation failure would wipe the user's entered values.
+    if (saved && !initialData) {
       setFormData({
         name: '',
         date: '',
@@ -892,6 +894,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         limitParticipants: true,
         maxParticipants: 50,
         groupSize: 2,
+        limitGroups: false,
+        maxGroups: 10,
         status: 'draft',
         registrationStart: undefined,
         isRecurring: false,
@@ -904,7 +908,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
         enableTopics: false,
         allowMultipleTopics: false,
         topics: [],
-        meetingPoints: ['']
+        meetingPoints: [''],
+        iceBreakers: getDefaultIceBreakers()
       });
 
     }
@@ -1070,6 +1075,39 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
     }
 
     return rounds;
+  };
+
+  // Decide which rounds to persist on save.
+  // - Auto mode: the generated auto-sequence (generateRounds), which already
+  //   preserves already-started rounds when editing an existing session.
+  // - Custom mode: the user's per-round edits held in formData.rounds. We still
+  //   preserve any already-started rounds from initialData (their times/duration
+  //   are in the past and must not be rewritten), matching generateRounds' intent.
+  const buildRoundsForSave = () => {
+    if (!useCustomTimes) {
+      return generateRounds();
+    }
+
+    const customRounds = formData.rounds || [];
+
+    if (initialData && !isDuplicate && initialData.rounds && initialData.rounds.length > 0) {
+      const now = new Date();
+      return customRounds.map((round, i) => {
+        const original = initialData.rounds?.[i];
+        if (original && original.date && original.startTime) {
+          const [hours, minutes] = original.startTime.split(':').map(Number);
+          const roundStart = new Date(original.date);
+          roundStart.setHours(hours, minutes, 0, 0);
+          if (now >= roundStart) {
+            // Round already started — keep the original, ignore custom edits.
+            return { ...original };
+          }
+        }
+        return round;
+      });
+    }
+
+    return customRounds;
   };
 
   // Update rounds when relevant fields change for live preview (only in auto mode)
@@ -1790,7 +1828,7 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           <Button variant="outline" onClick={() => setShowScheduleDialog(false)}>
             Cancel
           </Button>
-          <Button onClick={confirmScheduleMakingLive}>
+          <Button onClick={confirmScheduleMakingLive} disabled={!!scheduleError}>
             Confirm
           </Button>
         </DialogFooter>

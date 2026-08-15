@@ -366,12 +366,11 @@ export function CrmContacts() {
     setIsBulkUpdating(true);
     try {
       const res = await fetch(`${apiBaseUrl}/crm/contacts/bulk`, {
-        method: 'PATCH',
+        method: 'POST',
         headers,
         body: JSON.stringify({
-          contact_ids: Array.from(selectedIds),
-          action: 'add_tag',
-          tag,
+          ids: Array.from(selectedIds),
+          updates: { tags: [tag] },
         }),
       });
       if (!res.ok) throw new Error('Bulk tag failed');
@@ -390,12 +389,11 @@ export function CrmContacts() {
     setIsBulkUpdating(true);
     try {
       const res = await fetch(`${apiBaseUrl}/crm/contacts/bulk`, {
-        method: 'PATCH',
+        method: 'POST',
         headers,
         body: JSON.stringify({
-          contact_ids: Array.from(selectedIds),
-          action: 'update_lead_stage',
-          lead_stage: bulkStage,
+          ids: Array.from(selectedIds),
+          updates: { lead_stage: bulkStage },
         }),
       });
       if (!res.ok) throw new Error('Bulk stage update failed');

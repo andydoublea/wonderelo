@@ -214,12 +214,12 @@ export function NetworkingDashboard({
   };
 
   const handleDeleteSession = async (id: string) => {
-    if (confirm('Are you sure you want to delete this session?')) {
-      try {
-        await onDeleteSession(id);
-      } catch (error) {
-        errorLog('Error deleting session:', error);
-      }
+    // The round card's AlertDialog already confirms deletion; no native confirm() here
+    // (that produced a second, redundant browser prompt).
+    try {
+      await onDeleteSession(id);
+    } catch (error) {
+      errorLog('Error deleting session:', error);
     }
   };
 
@@ -323,7 +323,7 @@ export function NetworkingDashboard({
         const profileRes = await fetch(`${apiBaseUrl}/profile`, { headers: auth });
         if (!profileRes.ok) return;
         const profile = await profileRes.json();
-        const slug = profile.user?.urlSlug;
+        const slug = profile.profile?.urlSlug;
         if (!slug) return;
         const res = await fetch(`${apiBaseUrl}/organizer/${slug}/session/${liveSessionId}/participants`, { headers: auth });
         if (!res.ok) return;
@@ -417,7 +417,7 @@ export function NetworkingDashboard({
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.orange, boxShadow: '0 0 0 4px rgba(221,83,28,.18)' }} />Live now
             </span>
             <h2 style={{ margin: '10px 0 0', fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 25, letterSpacing: '-.03em', color: C.purpleDeep, lineHeight: 1.1 }}>
-              Round {roundIdx >= 0 ? roundIdx + 1 : 1} of {totalRounds}: <Italic color={C.orange}>{liveRound.name || liveSession.name}</Italic>
+              Round {roundIdx >= 0 ? roundIdx + 1 : 1} of {totalRounds}: <Italic color={C.orange}>{liveSession.name}</Italic>
             </h2>
             <p style={{ margin: '8px 0 0', fontSize: 13.5, color: C.ink, opacity: .68, maxWidth: 440 }}>
               Ends at {endHHMM}. Groups start at their own pace, so some are still walking while others are already talking.

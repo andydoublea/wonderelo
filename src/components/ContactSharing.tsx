@@ -52,6 +52,10 @@ export interface ContactSharingPartnerFeedbackViewProps {
   onCustomFeedbackChange: (partnerId: string, text: string) => void;
   onContactToggle: (partnerId: string) => void;
   onNext: () => void;
+  onBrandClick?: () => void;
+  onDashboard?: () => void;
+  onProfile?: () => void;
+  onAddressBook?: () => void;
 }
 
 export function ContactSharingPartnerFeedbackView({
@@ -66,6 +70,10 @@ export function ContactSharingPartnerFeedbackView({
   onCustomFeedbackChange,
   onContactToggle,
   onNext,
+  onBrandClick,
+  onDashboard,
+  onProfile,
+  onAddressBook,
 }: ContactSharingPartnerFeedbackViewProps) {
   const [adding, setAdding] = useState<Record<string, boolean>>({});
   return (
@@ -73,6 +81,10 @@ export function ContactSharingPartnerFeedbackView({
       <div className="pm-shell">
         <PdNav
           firstName={firstName}
+          onBrandClick={onBrandClick}
+          onDashboard={onDashboard}
+          onProfile={onProfile}
+          onAddressBook={onAddressBook}
           onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
           onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
         />
@@ -125,6 +137,8 @@ export interface ContactSharingWondereloFeedbackViewProps {
   onFeedbackChange: (text: string) => void;
   onSave: () => void;
   onBack: () => void;
+  onProfile?: () => void;
+  onAddressBook?: () => void;
 }
 
 export function ContactSharingWondereloFeedbackView({
@@ -138,6 +152,8 @@ export function ContactSharingWondereloFeedbackView({
   onFeedbackChange,
   onSave,
   onBack,
+  onProfile,
+  onAddressBook,
 }: ContactSharingWondereloFeedbackViewProps) {
   const faces = [
     { id: 'sad', emoji: '😞', label: 'Not great' },
@@ -151,6 +167,8 @@ export function ContactSharingWondereloFeedbackView({
           firstName={firstName}
           onBrandClick={onBack}
           onDashboard={onBack}
+          onProfile={onProfile}
+          onAddressBook={onAddressBook}
           onHome={() => { if (typeof window !== 'undefined') window.location.href = '/'; }}
           onLogout={() => { if (typeof window !== 'undefined') { localStorage.removeItem('participant_token'); window.location.href = '/'; } }}
         />
@@ -296,10 +314,6 @@ export function ContactSharing() {
     setCurrentPage('wonderelo-feedback');
   };
 
-  const handleBack = () => {
-    setCurrentPage('partner-feedback');
-  };
-
   const handleSave = async () => {
     if (!token || !networkingData) return;
 
@@ -440,6 +454,10 @@ export function ContactSharing() {
         }
         onContactToggle={handleContactSharingToggle}
         onNext={handleNext}
+        onBrandClick={backToDashboard}
+        onDashboard={backToDashboard}
+        onProfile={() => navigate(`/p/${token}/profile`)}
+        onAddressBook={() => navigate(`/p/${token}/address-book`)}
       />
     );
   }
@@ -455,7 +473,9 @@ export function ContactSharing() {
       onRatingChange={setWondereloRating}
       onFeedbackChange={setWondereloFeedback}
       onSave={handleSave}
-      onBack={handleBack}
+      onBack={backToDashboard}
+      onProfile={() => navigate(`/p/${token}/profile`)}
+      onAddressBook={() => navigate(`/p/${token}/address-book`)}
     />
   );
 }

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner@2.0.3';
 import { PublicNav } from './redesign/PublicNav';
 import { FooterSection } from './Homepage';
 import { debugLog, errorLog } from '../utils/debug';
@@ -20,6 +22,7 @@ interface BlogPost {
   published?: boolean;
   status?: string;
   tags?: string[];
+  category?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +31,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '6',
     slug: 'meeting-points-guide',
+    category: 'Networking',
     title: 'Meeting points: the secret ingredient of great networking rounds',
     excerpt: 'Why designated meeting spots make networking less awkward, more efficient, and way more fun for everyone involved. With practical examples from three real events.',
     content: '',
@@ -39,6 +43,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '5',
     slug: 'how-to-promote-your-event',
+    category: 'Event design',
     title: 'How to promote your event and get more signups',
     excerpt: 'From social media to on-site QR codes — practical ways to drive attendance and get people excited about networking rounds.',
     content: '',
@@ -50,6 +55,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '4',
     slug: 'random-vs-ai-matching',
+    category: 'Case studies',
     title: 'Random vs AI matching: which one actually works?',
     excerpt: 'We tested both approaches at real events. The results surprised us — and changed how we think about networking.',
     content: '',
@@ -61,6 +67,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '1',
     slug: '5-networking-tips',
+    category: 'Networking',
     title: '5 networking tips to maximize your event ROI',
     excerpt: 'Learn how to create meaningful connections that drive real business value at your next event.',
     content: '',
@@ -72,6 +79,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '2',
     slug: 'speed-dating-format',
+    category: 'Event design',
     title: 'Why the speed-dating format works for networking',
     excerpt: 'Discover the psychology behind structured networking and why it beats traditional mingling.',
     content: '',
@@ -83,6 +91,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '3',
     slug: 'hybrid-events',
+    category: 'Product',
     title: 'Running networking at hybrid events',
     excerpt: 'Bridge the gap between online and in-person attendees with these proven strategies.',
     content: '',
@@ -94,6 +103,7 @@ const fallbackPosts: BlogPost[] = [
   {
     id: '7',
     slug: 'techfuture-2025-case-study',
+    category: 'Stories',
     title: 'TechFuture 2025: 1 600 attendees, 18 rounds',
     excerpt: "How Europe's largest design conference used Wonderelo to make sure no one left without a handful of new contacts.",
     content: '',
@@ -141,14 +151,38 @@ function initials(author?: string) {
   return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
 }
 
+// Build a compact page list (e.g. [1, 2, 3, 'dots', 8]) for the pagination bar.
+function buildPageItems(current: number, total: number): (number | 'dots')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items: (number | 'dots')[] = [1];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  if (left > 2) items.push('dots');
+  for (let i = left; i <= right; i++) items.push(i);
+  if (right < total - 1) items.push('dots');
+  items.push(total);
+  return items;
+}
+
 export function BlogListingPage() {
   const navigate = useNavigate();
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const POSTS_PER_PAGE = 6;
 
   useEffect(() => {
     fetchBlogPosts();
   }, []);
+
+  // Reset to the first page whenever the active filter or search changes.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
 
   const fetchBlogPosts = async () => {
     try {
@@ -179,8 +213,36 @@ export function BlogListingPage() {
     }
   };
 
-  const featured = blogPosts[0];
-  const recent = blogPosts.slice(1);
+  // Client-side filtering: category chips + search box, over the loaded posts.
+  const isFiltering = selectedCategory !== 'All' || searchQuery.trim() !== '';
+
+  const matchesCategory = (p: BlogPost) => {
+    if (selectedCategory === 'All') return true;
+    const sel = selectedCategory.toLowerCase();
+    if (p.category && p.category.toLowerCase() === sel) return true;
+    return (p.tags || []).some((t) => t.toLowerCase() === sel);
+  };
+  const matchesSearch = (p: BlogPost) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      p.title.toLowerCase().includes(q) ||
+      p.excerpt.toLowerCase().includes(q) ||
+      (p.category ? p.category.toLowerCase().includes(q) : false) ||
+      (p.tags || []).some((t) => t.toLowerCase().includes(q))
+    );
+  };
+  const filteredPosts = blogPosts.filter((p) => matchesCategory(p) && matchesSearch(p));
+
+  // The featured hero belongs to the default (unfiltered) view; while filtering
+  // or searching, every match — including the newest post — flows into the grid.
+  const featured = isFiltering ? undefined : blogPosts[0];
+  const gridSource = isFiltering ? filteredPosts : blogPosts.slice(1);
+
+  const totalPages = Math.max(1, Math.ceil(gridSource.length / POSTS_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const recent = gridSource.slice((page - 1) * POSTS_PER_PAGE, page * POSTS_PER_PAGE);
+  const pageItems = buildPageItems(page, totalPages);
 
   // Category chips: derive from post tags when present, else the mock's hardcoded set.
   const derivedCategories = (() => {
@@ -193,12 +255,45 @@ export function BlogListingPage() {
   })();
   const categories = derivedCategories || fallbackCategories;
 
-  const featuredTag = featured?.tags?.[0] || 'Networking';
+  const featuredTag = featured?.tags?.[0] || featured?.category || 'Networking';
+
+  const handleNewsletterSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const email = newsletterEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+    setNewsletterSubmitting(true);
+    try {
+      // Reuse the Homepage lead-magnet endpoint (POST /public/lead-magnet); it
+      // requires a name, so derive one from the email's local part.
+      const response = await fetch(`${apiBaseUrl}/public/lead-magnet`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, name: email.split('@')[0], eventType: 'newsletter' }),
+      });
+      if (response.ok) {
+        toast.success('You are subscribed! Check your inbox to confirm.');
+        setNewsletterEmail('');
+      } else {
+        toast.error('Something went wrong. Please try again.');
+      }
+    } catch (err) {
+      errorLog('Error subscribing to newsletter:', err);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setNewsletterSubmitting(false);
+    }
+  };
 
   return (
     <div className="wonderelo w-public bl-page">
       {/* Nav */}
-      <PublicNav onGetStarted={() => navigate('/')} onSignIn={() => navigate('/')} />
+      <PublicNav onGetStarted={() => navigate('/signup')} onSignIn={() => navigate('/signin')} />
 
       <main className="w-shell">
 
@@ -230,13 +325,23 @@ export function BlogListingPage() {
           <div className="bl-cats">
             <span className="label">Topics</span>
             {categories.map((cat) => (
-              <button key={cat.label} className={`bl-chip${cat.active ? ' is-active' : ''}`} type="button">
+              <button
+                key={cat.label}
+                className={`bl-chip${selectedCategory === cat.label ? ' is-active' : ''}`}
+                type="button"
+                onClick={() => setSelectedCategory(cat.label)}
+              >
                 {cat.label} <span className="count">· {cat.count}</span>
               </button>
             ))}
             <div className="bl-search">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-              <input type="text" placeholder="Search articles" />
+              <input
+                type="text"
+                placeholder="Search articles"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
         </section>
@@ -285,7 +390,7 @@ export function BlogListingPage() {
                 href={`/blog/${post.slug}`}
                 onClick={(e) => { e.preventDefault(); navigate(`/blog/${post.slug}`); }}
               >
-                <div className="cover"><div className="pattern"></div><span className="tag">{post.tags?.[0] || fallbackTags[i % fallbackTags.length]}</span></div>
+                <div className="cover"><div className="pattern"></div><span className="tag">{post.tags?.[0] || post.category || fallbackTags[i % fallbackTags.length]}</span></div>
                 <div className="body">
                   <h3>{post.title}</h3>
                   <p>{post.excerpt}</p>
@@ -295,15 +400,37 @@ export function BlogListingPage() {
             ))}
           </div>
 
+          {isFiltering && filteredPosts.length === 0 && (
+            <p style={{ textAlign: 'center', padding: '48px 0', color: 'var(--w-ink)', opacity: 0.55 }}>
+              No articles match your search yet. Try a different topic or keyword.
+            </p>
+          )}
+
           {/* Pagination */}
-          <div className="bl-pagination">
-            <button className="is-current" type="button">1</button>
-            <button type="button">2</button>
-            <button type="button">3</button>
-            <button className="dots" type="button">…</button>
-            <button type="button">8</button>
-            <button type="button" aria-label="Next">→</button>
-          </div>
+          {totalPages > 1 && (
+            <div className="bl-pagination">
+              {page > 1 && (
+                <button type="button" aria-label="Previous" onClick={() => setCurrentPage(page - 1)}>←</button>
+              )}
+              {pageItems.map((item, idx) =>
+                item === 'dots' ? (
+                  <button key={`dots-${idx}`} className="dots" type="button" disabled>…</button>
+                ) : (
+                  <button
+                    key={item}
+                    className={item === page ? 'is-current' : undefined}
+                    type="button"
+                    onClick={() => setCurrentPage(item)}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
+              {page < totalPages && (
+                <button type="button" aria-label="Next" onClick={() => setCurrentPage(page + 1)}>→</button>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Newsletter */}
@@ -315,9 +442,14 @@ export function BlogListingPage() {
             <p>One email a month with our newest field notes, a behind-the-scenes look at a real event, and an idea you can steal for yours.</p>
           </div>
           <div>
-            <form onSubmit={(e) => e.preventDefault()}>
-              <input type="email" placeholder="your.email@where.you.work" />
-              <button className="w-btn w-btn-primary" type="submit">
+            <form onSubmit={handleNewsletterSubmit}>
+              <input
+                type="email"
+                placeholder="your.email@where.you.work"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+              />
+              <button className="w-btn w-btn-primary" type="submit" disabled={newsletterSubmitting}>
                 Subscribe
                 <svg className="w-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
               </button>

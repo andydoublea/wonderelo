@@ -443,20 +443,38 @@ export function useAdminSessions(accessToken?: string) {
     queryKey: adminQueryKeys.sessions,
     queryFn: async () => {
       const token = accessToken || await getAccessToken();
-      const data = await adminFetch('/admin/sessions', token);
-      return (data.sessions || []).map((s: any) => ({
-        sessionId: s.id,
-        sessionName: s.name,
-        status: s.status,
-        date: s.date,
-        endTime: s.endTime,
-        registrationStart: s.registrationStart,
-        rounds: s.rounds || [],
-        organizerId: s.userId,
-        organizerName: 'Loading...',
-        organizerEmail: '',
-        organizerUrlSlug: '',
-      }));
+      // The /admin/sessions payload only carries the organizer's userId — no name/email.
+      // Fetch organizers alongside sessions and resolve each session's organizer
+      // client-side, so the Organizer column shows a real value (or "—" if the
+      // organizer can't be found) instead of a permanent "Loading...".
+      const [sessionsData, usersData] = await Promise.all([
+        adminFetch('/admin/sessions', token),
+        adminFetch('/admin/users', token).catch(() => ({ users: [] })),
+      ]);
+
+      const organizersById = new Map<string, any>(
+        (usersData.users || []).map((u: any) => [u.id, u])
+      );
+
+      return (sessionsData.sessions || []).map((s: any) => {
+        const organizer = organizersById.get(s.userId);
+        const organizerName = organizer?.name && organizer.name !== 'Not set'
+          ? organizer.name
+          : (organizer?.email || '—');
+        return {
+          sessionId: s.id,
+          sessionName: s.name,
+          status: s.status,
+          date: s.date,
+          endTime: s.endTime,
+          registrationStart: s.registrationStart,
+          rounds: s.rounds || [],
+          organizerId: s.userId,
+          organizerName,
+          organizerEmail: organizer?.email || '',
+          organizerUrlSlug: organizer?.urlSlug && organizer.urlSlug !== 'Not set' ? organizer.urlSlug : '',
+        };
+      });
     },
     staleTime: 2 * 60 * 1000,
   });

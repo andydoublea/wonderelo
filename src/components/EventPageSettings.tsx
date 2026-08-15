@@ -5,6 +5,18 @@ import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { debugLog, errorLog } from '../utils/debug';
 import { C, PageShell, PageHead, Italic } from './redesign/organizerAtoms';
 
+// Read a Blob as a base64 data URL. Used to persist the optimized profile image
+// inline via PUT /profile — this app has no image-upload endpoint and no Storage
+// bucket wired, and organizer_profiles.profile_image_url is a TEXT column.
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read image'));
+    reader.readAsDataURL(blob);
+  });
+}
+
 interface EventPageSettingsProps {
   accessToken: string;
   onBack: () => void;
@@ -477,75 +489,50 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
 
     setIsUploadingImage(true);
 
+    let previewUrl: string | null = null;
     try {
       // Optimize image on frontend
       debugLog(`Original image: ${formatFileSize(file.size)}`);
       const optimizedBlob = await optimizeImage(file, 400, 0.85);
       debugLog(`Optimized image: ${formatFileSize(optimizedBlob.size)}`);
-      
+
       const savingsPercent = Math.round((1 - optimizedBlob.size / file.size) * 100);
       debugLog(`Size reduction: ${savingsPercent}%`);
 
       // Show preview immediately
-      const previewUrl = URL.createObjectURL(optimizedBlob);
+      previewUrl = URL.createObjectURL(optimizedBlob);
       setPreviewImageUrl(previewUrl);
 
-      const { apiBaseUrl } = await import('../utils/supabase/info');
-      
-      // Create FormData to send the optimized file
-      const formData = new FormData();
-      formData.append('file', optimizedBlob, 'profile.jpg');
+      // There is no image-upload endpoint (POST /upload-profile-image 404s) and no
+      // Storage bucket is wired anywhere in the app. Persist the optimized image
+      // inline as a base64 data URL via the existing (working) PUT /profile route —
+      // organizer_profiles.profile_image_url is TEXT, and the image is already resized
+      // to a small 400px / 16:9 JPEG @0.85, so the encoded string stays modest.
+      const dataUrl = await blobToDataUrl(optimizedBlob);
 
-      // Upload to backend
-      const response = await fetch(
-        `${apiBaseUrl}/upload-profile-image`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: formData,
-        }
-      );
+      // Swap the transient object-URL preview for the persistent data URL.
+      URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+      setPreviewImageUrl(null);
+      setProfileImageUrl(dataUrl);
 
-      if (response.ok) {
-        const result = await response.json();
-        debugLog('Image uploaded:', result);
-        
-        // Clear preview URL
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewImageUrl(null);
-        
-        // Update profile image URL
-        setProfileImageUrl(result.url);
-        
-        // Automatically save to profile
-        await saveImageToProfile(result.url);
-        
+      // Persist to the profile. saveImageToProfile reports success/failure so we
+      // never show a success toast for a save that silently failed.
+      const saved = await saveImageToProfile(dataUrl);
+      if (saved) {
         toast.success(`Image uploaded (${savingsPercent}% size reduction)`);
       } else {
-        const errorText = await response.text();
-        errorLog('Image upload failed:', errorText);
-        
-        // Clear preview on error
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewImageUrl(null);
-        
-        toast.error('Failed to upload image. Please try again.');
+        toast.error('Failed to save image. Please try again.');
       }
     } catch (error) {
       errorLog('Error uploading image:', error);
-      
+
       // Clear preview on error
-      if (previewImageUrl) {
-        URL.revokeObjectURL(previewImageUrl);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
       setPreviewImageUrl(null);
-      
+
       toast.error('Error uploading image. Please try again.');
     } finally {
       setIsUploadingImage(false);
@@ -556,10 +543,10 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
     }
   };
 
-  const saveImageToProfile = async (imageUrl: string) => {
+  const saveImageToProfile = async (imageUrl: string): Promise<boolean> => {
     try {
       debugLog('Saving optimized image to profile...');
-      
+
       const { authenticatedFetch } = await import('../utils/supabase/apiClient');
       const response = await authenticatedFetch(
         '/profile',
@@ -574,17 +561,20 @@ export function EventPageSettings({ accessToken, onBack, onProfileUpdate }: Even
 
       if (response.ok) {
         debugLog('Optimized image saved to profile successfully');
-        
+
         // Notify parent component
         if (onProfileUpdate) {
           onProfileUpdate({ profileImageUrl: imageUrl });
         }
+        return true;
       } else {
         const errorText = await response.text();
         errorLog('Failed to save image to profile:', errorText);
+        return false;
       }
     } catch (error) {
       errorLog('Error saving image to profile:', error);
+      return false;
     }
   };
 

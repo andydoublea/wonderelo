@@ -117,7 +117,7 @@ export function SessionAdministration({ session, onBack }: SessionAdministration
 
       if (response.ok) {
         const data = await response.json();
-        setUserSlug(data.user?.urlSlug || '');
+        setUserSlug(data.profile?.urlSlug || '');
       }
     } catch (error) {
       errorLog('Error loading user slug:', error);

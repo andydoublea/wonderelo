@@ -904,9 +904,9 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
     try {
       const token = c.req.param('token');
       const body = await c.req.json();
-      const { matchId, preferences } = body;
+      const { matchId, preferences, feedback, wondereloFeedback } = body;
 
-      debugLog('[POST /contact-sharing] Saving contact preferences:', { matchId, preferences });
+      debugLog('[POST /contact-sharing] Saving contact preferences:', { matchId, preferences, feedback, wondereloFeedback });
 
       if (!token) {
         return c.json({ error: 'Token required' }, 400);
@@ -918,8 +918,9 @@ export function registerParticipantRoutes(app: Hono, getCurrentTime: (c: any) =>
         return c.json({ error: 'Invalid token' }, 404);
       }
 
-      // Save preferences to contact_sharing table
-      await db.setContactSharing(matchId, participant.participantId, preferences);
+      // Save preferences to contact_sharing table. Partner feedback and Wonderelo
+      // feedback (when the client sends them) are persisted alongside the consent map.
+      await db.setContactSharing(matchId, participant.participantId, preferences, { feedback, wondereloFeedback });
 
       debugLog('[POST /contact-sharing] Contact preferences saved successfully');
 

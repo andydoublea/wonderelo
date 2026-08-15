@@ -33,6 +33,8 @@ export interface EventSessionsViewProps {
   onMultipleTopicsSelect: (roundId: string, topic: string) => void;
   onShowMeetingPoints: (sessionId: string) => void;
   onShowRoundRules: (open: boolean, sessionName?: string) => void;
+  onUnregister: (roundId: string, roundName: string) => void;
+  onConfirmAttendance: (roundId: string) => void;
   onContinue: () => void;
 }
 
@@ -121,7 +123,7 @@ export function EventSessionsView(props: EventSessionsViewProps) {
     participantStatusMap, isRoundRegisterable, getRoundTimeState, getRoundCloseSeconds,
     canContinue, errorMessage, selectedCount, hideStickyBar,
     onRoundSelect, onTeamSelect, onTopicSelect, onMultipleTopicsSelect,
-    onShowMeetingPoints, onShowRoundRules, onContinue,
+    onShowMeetingPoints, onShowRoundRules, onUnregister, onConfirmAttendance, onContinue,
   } = props;
 
   // Empty state — organizer hasn't published any rounds yet (design v06).
@@ -200,6 +202,13 @@ export function EventSessionsView(props: EventSessionsViewProps) {
                     : timeState === 'live' ? 'Live'
                     : timeState === 'closed' ? 'Closed' : 'Open';
 
+                  // Registered-row affordances. Unregister stays available while the round is
+                  // still upcoming (open/closed — not live/wrapped). Confirm-attendance only
+                  // shows in the pre-start confirmation window ('closed') for the not-yet-
+                  // confirmed 'registered' status.
+                  const showUnregister = isRegistered && !disabled;
+                  const showConfirm = isRegistered && status === 'registered' && timeState === 'closed';
+
                   const note = hasTeams ? matchNote(session, sel.team) : null;
 
                   return (
@@ -207,16 +216,58 @@ export function EventSessionsView(props: EventSessionsViewProps) {
                       className={cls.join(' ')}
                       key={round.id}
                       aria-disabled={disabled || undefined}
-                      onClick={() => { if (!disabled) onRoundSelect(session, round.id); }}
+                      onClick={() => { if (!disabled && !isRegistered) onRoundSelect(session, round.id); }}
                     >
                       <span className="ev-cb">{(isSelected || isRegistered) && I.check}</span>
                       <div className="ev-rt"><span>{round.startTime}</span></div>
 
-                      {isSelected && closeSeconds != null
-                        ? <EvFlipClock seconds={closeSeconds} />
-                        : <span className={`ev-state${timeState === 'live' ? ' is-live' : ''}`}>
-                            {timeState === 'live' && <span className="dot" />}{stateLabel}
-                          </span>}
+                      {isSelected && closeSeconds != null ? (
+                        <EvFlipClock seconds={closeSeconds} />
+                      ) : isRegistered ? (
+                        <div className="ev-reg-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                          <span className="ev-state">{stateLabel}</span>
+                          {showConfirm && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onConfirmAttendance(round.id); }}
+                              title="Confirm your attendance for this round"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                padding: '5px 11px', borderRadius: '999px',
+                                fontSize: '10.5px', fontWeight: 700, letterSpacing: '.06em',
+                                background: 'var(--w-orange)', color: '#fff',
+                                border: '1px solid var(--w-orange)', cursor: 'pointer',
+                                lineHeight: 1, whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {I.check}Confirm
+                            </button>
+                          )}
+                          {showUnregister && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onUnregister(round.id, round.name || session.name); }}
+                              title="Unregister from this round"
+                              aria-label={`Unregister from ${round.name || session.name}`}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                padding: '4px 9px', borderRadius: '999px',
+                                fontSize: '10.5px', fontWeight: 700, letterSpacing: '.06em',
+                                background: 'transparent', color: 'var(--w-purple-deep)',
+                                border: '1px solid rgba(76,25,77,.20)', cursor: 'pointer',
+                                lineHeight: 1, whiteSpace: 'nowrap', opacity: 0.72,
+                              }}
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className={`ev-state${timeState === 'live' ? ' is-live' : ''}`}>
+                          {timeState === 'live' && <span className="dot" />}{stateLabel}
+                        </span>
+                      )}
 
                       {hasOptions && (
                         <div className="ev-expand" onClick={(e) => e.stopPropagation()}>
