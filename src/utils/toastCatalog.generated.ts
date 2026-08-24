@@ -1088,10 +1088,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Blog"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:379",
+    "id": "src/components/EventPageSettings.tsx:375",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 379,
+    "line": 375,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Failed to load settings: ${response.status}",
@@ -1101,10 +1101,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:383",
+    "id": "src/components/EventPageSettings.tsx:379",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 383,
+    "line": 379,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Error loading settings. Please try again.",
@@ -1114,10 +1114,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:479",
+    "id": "src/components/EventPageSettings.tsx:475",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 479,
+    "line": 475,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Please select a valid image file",
@@ -1127,10 +1127,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:486",
+    "id": "src/components/EventPageSettings.tsx:482",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 486,
+    "line": 482,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Image size must be less than 10MB",
@@ -1140,10 +1140,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:523",
+    "id": "src/components/EventPageSettings.tsx:519",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 523,
+    "line": 519,
     "component": "EventPageSettings",
     "type": "success",
     "message": "Image uploaded (${savingsPercent}% size reduction)",
@@ -1153,10 +1153,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:525",
+    "id": "src/components/EventPageSettings.tsx:521",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 525,
+    "line": 521,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Failed to save image. Please try again.",
@@ -1166,10 +1166,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:536",
+    "id": "src/components/EventPageSettings.tsx:532",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 536,
+    "line": 532,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Error uploading image. Please try again.",
@@ -1179,10 +1179,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:584",
+    "id": "src/components/EventPageSettings.tsx:580",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 584,
+    "line": 580,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Event page URL must be at least 3 characters",
@@ -1192,10 +1192,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:589",
+    "id": "src/components/EventPageSettings.tsx:585",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 589,
+    "line": 585,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Please choose an available URL",
@@ -1205,10 +1205,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:618",
+    "id": "src/components/EventPageSettings.tsx:614",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 618,
+    "line": 614,
     "component": "EventPageSettings",
     "type": "success",
     "message": "Settings saved successfully",
@@ -1218,10 +1218,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:645",
+    "id": "src/components/EventPageSettings.tsx:641",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 645,
+    "line": 641,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Failed to save settings: ${response.status}",
@@ -1231,10 +1231,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Event"
   },
   {
-    "id": "src/components/EventPageSettings.tsx:649",
+    "id": "src/components/EventPageSettings.tsx:645",
     "kind": "direct",
     "filePath": "src/components/EventPageSettings.tsx",
-    "line": 649,
+    "line": 645,
     "component": "EventPageSettings",
     "type": "error",
     "message": "Error saving settings. Please try again.",
@@ -1738,10 +1738,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/DownloadableAssets.tsx:281",
+    "id": "src/components/DownloadableAssets.tsx:300",
     "kind": "direct",
     "filePath": "src/components/DownloadableAssets.tsx",
-    "line": 281,
+    "line": 300,
     "component": "DownloadableAssets",
     "type": "error",
     "message": "Allow pop-ups to print",
@@ -1751,10 +1751,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/DownloadableAssets.tsx:310",
+    "id": "src/components/DownloadableAssets.tsx:329",
     "kind": "direct",
     "filePath": "src/components/DownloadableAssets.tsx",
-    "line": 310,
+    "line": 329,
     "component": "DownloadableAssets",
     "type": "success",
     "message": "${label} downloaded",
@@ -1764,10 +1764,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/DownloadableAssets.tsx:312",
+    "id": "src/components/DownloadableAssets.tsx:331",
     "kind": "direct",
     "filePath": "src/components/DownloadableAssets.tsx",
-    "line": 312,
+    "line": 331,
     "component": "DownloadableAssets",
     "type": "success",
     "message": "${label} sent to print",
@@ -1777,10 +1777,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/DownloadableAssets.tsx:317",
+    "id": "src/components/DownloadableAssets.tsx:336",
     "kind": "direct",
     "filePath": "src/components/DownloadableAssets.tsx",
-    "line": 317,
+    "line": 336,
     "component": "DownloadableAssets",
     "type": "error",
     "message": "Failed to generate ${CONFIG[kind].label.toLowerCase()}",
@@ -2063,10 +2063,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Other"
   },
   {
-    "id": "src/components/redesign/PublicNav.tsx:181",
+    "id": "src/components/redesign/PublicNav.tsx:204",
     "kind": "direct",
     "filePath": "src/components/redesign/PublicNav.tsx",
-    "line": 181,
+    "line": 204,
     "component": "PublicNav",
     "type": "success",
     "message": "Logged out successfully",
@@ -2713,10 +2713,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionDisplayCard.tsx:771",
+    "id": "src/components/SessionDisplayCard.tsx:774",
     "kind": "direct",
     "filePath": "src/components/SessionDisplayCard.tsx",
-    "line": 771,
+    "line": 774,
     "component": "SessionDisplayCard",
     "type": "success",
     "message": "Round completed",
@@ -3116,10 +3116,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionSuccessPage.tsx:193",
+    "id": "src/components/SessionSuccessPage.tsx:280",
     "kind": "direct",
     "filePath": "src/components/SessionSuccessPage.tsx",
-    "line": 193,
+    "line": 280,
     "component": "SessionSuccessPage",
     "type": "success",
     "message": "Event URL copied to clipboard!",
@@ -3129,10 +3129,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionSuccessPage.tsx:196",
+    "id": "src/components/SessionSuccessPage.tsx:283",
     "kind": "direct",
     "filePath": "src/components/SessionSuccessPage.tsx",
-    "line": 196,
+    "line": 283,
     "component": "SessionSuccessPage",
     "type": "error",
     "message": "Failed to copy URL",
@@ -3142,10 +3142,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionSuccessPage.tsx:211",
+    "id": "src/components/SessionSuccessPage.tsx:298",
     "kind": "direct",
     "filePath": "src/components/SessionSuccessPage.tsx",
-    "line": 211,
+    "line": 298,
     "component": "SessionSuccessPage",
     "type": "success",
     "message": "QR code downloaded!",
@@ -3155,10 +3155,10 @@ export const TOAST_CATALOG: ToastCatalogEntry[] = [
     "page": "Session"
   },
   {
-    "id": "src/components/SessionSuccessPage.tsx:213",
+    "id": "src/components/SessionSuccessPage.tsx:300",
     "kind": "direct",
     "filePath": "src/components/SessionSuccessPage.tsx",
-    "line": 213,
+    "line": 300,
     "component": "SessionSuccessPage",
     "type": "error",
     "message": "Failed to download QR code",
@@ -4303,5 +4303,5 @@ export const TOAST_CATALOG_STATS = {
   total: 317,
   byType: {"error":177,"success":125,"info":14,"warning":1},
   byPage: {"Account & Billing":27,"Admin":45,"Auth":2,"Blog":7,"Event":24,"Hooks":21,"Match":1,"Other":35,"Participant":25,"Routing":11,"Session":43,"Shared":76},
-  scannedAt: "2026-08-15T15:06:37.952Z",
+  scannedAt: "2026-08-24T12:44:16.573Z",
 };

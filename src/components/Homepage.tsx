@@ -52,6 +52,139 @@ const NAV_LINKS: Array<{ label: string; target: string }> = [
   { label: 'Pricing', target: '/pricing' },
 ];
 
+/* "Who is it for?" mega-menu — the seven `/for/:slug` landing pages (v09
+   hero-variants.js `WHO_ITEMS` / wonderelo-nav.js `.who-pop`). Icon markup is
+   copied VERBATIM and injected as-is so `<circle>`/`<rect>` primitives survive
+   and this nav matches the shared PublicNav. */
+const WHO_MENU_ITEMS: Array<{ slug: string; key: string; fallback: string; noteKey: string; note: string; icon: string }> = [
+  { slug: 'conferences', key: 'nav.for.conferences', fallback: 'Conferences & barcamps', noteKey: 'nav.for.conferences.note', note: 'Break the badge-scanning ice', icon: '<path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/>' },
+  { slug: 'meetups', key: 'nav.for.meetups', fallback: 'Meetups', noteKey: 'nav.for.meetups.note', note: 'Regulars meet the new faces', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>' },
+  { slug: 'festivals', key: 'nav.for.festivals', fallback: 'Festivals & parties', noteKey: 'nav.for.festivals.note', note: 'Crowds turn into groups', icon: '<path d="m2 22 8-8"/><path d="m14 4 6 6"/><path d="M11 7 7 11l6 6 4-4z"/><path d="M19 3v2M22 6h-2M17 1v2"/>' },
+  { slug: 'weddings', key: 'nav.for.weddings', fallback: 'Weddings', noteKey: 'nav.for.weddings.note', note: 'Two families, one dance floor', icon: '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l8.8 8.8 8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/>' },
+  { slug: 'bars', key: 'nav.for.bars', fallback: 'Bars & cafés', noteKey: 'nav.for.bars.note', note: 'Turn a quiet night social', icon: '<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><path d="M6 1v3M10 1v3M14 1v3"/>' },
+  { slug: 'schools', key: 'nav.for.schools', fallback: 'Schools & universities', noteKey: 'nav.for.schools.note', note: 'Freshers find their people', icon: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>' },
+  { slug: 'teams', key: 'nav.for.teams', fallback: 'Company teams', noteKey: 'nav.for.teams.note', note: 'Cross-team, not same-desk', icon: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' },
+];
+
+// Renders the verbatim v09 icon path markup (orange, 1.8 stroke).
+function WhoIcon({ markup, size = 17 }: { markup: string; size?: number }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
+  );
+}
+
+/* v09 "Who is it for?" mega-menu trigger + panel. Supports light (default) and
+   dark palettes (hero-variants.js `WhoMenu` `dark` prop) so it reads correctly
+   on both the light and the dark homepage nav. */
+function WhoMenu({
+  dark = false,
+  linkColor,
+  onNavigate,
+  onTrigger,
+  t,
+}: {
+  dark?: boolean;
+  linkColor: string;
+  onNavigate: (path: string) => void;
+  onTrigger: () => void;
+  t: (key: string, fallback: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const pal = dark
+    ? {
+        panelBg: '#1a0f1c',
+        panelBorder: 'rgba(255,255,255,.14)',
+        tileBg: 'rgba(255,255,255,.06)',
+        tileBorder: 'rgba(255,255,255,.12)',
+        label: '#fff',
+        note: 'rgba(255,255,255,.6)',
+        itemHover: 'rgba(255,255,255,.07)',
+      }
+    : {
+        panelBg: '#fbf6ec',
+        panelBorder: 'rgba(76,25,77,.12)',
+        tileBg: '#fff',
+        tileBorder: 'rgba(76,25,77,.10)',
+        label: '#4b1d51',
+        note: 'rgba(43,24,16,.62)',
+        itemHover: 'rgba(76,25,77,.06)',
+      };
+  return (
+    <span
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+    >
+      <a
+        href="#who-is-it-for"
+        className="wn-nav-link"
+        onClick={(e) => { e.preventDefault(); onTrigger(); }}
+        style={{ color: linkColor, textDecoration: 'none', padding: '6px 0', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+      >
+        {t('nav.whoIsItFor', 'Who is it for?')}
+        <svg
+          width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </a>
+      {/* Hover bridge so the pointer can travel from link to panel. */}
+      <span style={{ position: 'absolute', left: 0, right: 0, top: '100%', height: 16 }} />
+      <div
+        style={{
+          position: 'absolute', left: '50%', top: 'calc(100% + 14px)', zIndex: 60,
+          width: 520, padding: 12, boxSizing: 'border-box',
+          transform: open ? 'translate(-50%, 0)' : 'translate(-50%, -6px)',
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? 'auto' : 'none',
+          transition: 'opacity .18s ease, transform .18s ease',
+          background: pal.panelBg,
+          border: `1px solid ${pal.panelBorder}`,
+          borderRadius: 20,
+          boxShadow: '0 28px 60px rgba(76,25,77,.18)',
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
+        }}
+      >
+        {WHO_MENU_ITEMS.map((item) => (
+          <a
+            key={item.slug}
+            href={`/for/${item.slug}`}
+            onClick={(e) => { e.preventDefault(); setOpen(false); onNavigate(`/for/${item.slug}`); }}
+            style={{
+              display: 'grid', gridTemplateColumns: '34px 1fr', alignItems: 'center', gap: 12,
+              padding: '9px 11px', borderRadius: 13, textDecoration: 'none',
+              transition: 'background-color .16s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = pal.itemHover)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <span
+              style={{
+                width: 34, height: 34, borderRadius: 10, display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: pal.tileBg, border: `1px solid ${pal.tileBorder}`, color: '#dd531c',
+              }}
+            >
+              <WhoIcon markup={item.icon} />
+            </span>
+            {/* Homepage mega-menu shows the label only — no note row (matches
+                hero-variants.js WhoMenu; the marketing <PublicNav> keeps the note). */}
+            <b style={{ fontFamily: '"Bricolage Grotesque", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: '-.01em', color: pal.label }}>
+              {t(item.key, item.fallback)}
+            </b>
+          </a>
+        ))}
+      </div>
+    </span>
+  );
+}
+
 /* Event-type tiles keep the legacy `/for/:slug` routes. */
 const EVENT_TYPES = [
   { title: 'Conferences & barcamps', desc: 'Ensure everyone leaves with new contacts — even introverts and solo attendees.', path: '/for/conferences' },
@@ -335,16 +468,18 @@ function Nav({
   onSignIn,
   onNavigate,
   logoSize = 120,
+  dark = false,
 }: {
   onGetStarted: () => void;
   onSignIn?: () => void;
   onNavigate: (path: string) => void;
   logoSize?: number;
+  dark?: boolean;
 }) {
   const { t } = useTranslation();
-  const ink = C.purpleDeep;
-  const linkColor = 'rgba(76,25,77,.78)';
-  const borderCol = 'rgba(76,25,77,.10)';
+  const ink = dark ? '#fff' : C.purpleDeep;
+  const linkColor = dark ? 'rgba(255,255,255,.78)' : 'rgba(76,25,77,.78)';
+  const borderCol = dark ? 'rgba(255,255,255,.12)' : 'rgba(76,25,77,.10)';
   // Mobile hamburger (mock's `.burger` + `.mobnav`) — below the desktop breakpoint the
   // centre links collapse into this toggle-driven dropdown.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -360,11 +495,11 @@ function Nav({
 
   return (
     <div
-      className="wn-nav wn-nav-light"
+      className={`wn-nav ${dark ? 'wn-nav-dark' : 'wn-nav-light'}`}
       style={{
         position: 'sticky', top: 0, left: 0, right: 0, height: 80, zIndex: 50,
         borderBottom: `1px solid ${borderCol}`,
-        background: 'rgba(247,241,230,.85)',
+        background: dark ? 'rgba(45,17,51,.85)' : 'rgba(247,241,230,.85)',
         backdropFilter: 'saturate(140%) blur(10px)',
         WebkitBackdropFilter: 'saturate(140%) blur(10px)',
       }}
@@ -392,17 +527,28 @@ function Nav({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 32, fontSize: 14, color: linkColor, fontWeight: 500 }}>
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.label}
-              href={l.target}
-              className="wn-nav-link"
-              onClick={(e) => { e.preventDefault(); goto(l.target); }}
-              style={{ color: linkColor, textDecoration: 'none', padding: '6px 0', position: 'relative' }}
-            >
-              {l.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((l) =>
+            l.label === 'Who is it for?' ? (
+              <WhoMenu
+                key={l.label}
+                dark={dark}
+                linkColor={linkColor}
+                onNavigate={onNavigate}
+                onTrigger={() => goto(l.target)}
+                t={t}
+              />
+            ) : (
+              <a
+                key={l.label}
+                href={l.target}
+                className="wn-nav-link"
+                onClick={(e) => { e.preventDefault(); goto(l.target); }}
+                style={{ color: linkColor, textDecoration: 'none', padding: '6px 0', position: 'relative' }}
+              >
+                {l.label}
+              </a>
+            ),
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: ink }}>

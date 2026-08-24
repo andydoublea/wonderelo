@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { NetworkingSession } from '../App';
+import { getEffectiveStatus } from '../utils/sessionStatus';
 import { C } from './redesign/organizerAtoms';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -408,7 +409,9 @@ export function SessionDisplayCard({
       draft:     { label: 'Draft',     fg: '#9a8478', bg: 'rgba(154,132,120,.14)', bd: 'rgba(154,132,120,.34)' },
       completed: { label: 'Completed', fg: '#1f8a4d', bg: 'rgba(31,138,77,.10)',   bd: 'rgba(31,138,77,.28)' },
     };
-    const st = STATUS_STYLE[session.status] || STATUS_STYLE.draft;
+    // Badge reflects the EFFECTIVE status: a published/scheduled round whose
+    // rounds have all ended shows as "Completed" rather than lingering.
+    const st = STATUS_STYLE[getEffectiveStatus(session)] || STATUS_STYLE.draft;
 
     const CIcon = ({ d, size = 14, sw = 2 }: { d: string; size?: number; sw?: number }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: d }} />

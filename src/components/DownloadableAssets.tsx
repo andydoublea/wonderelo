@@ -11,6 +11,25 @@ interface DownloadableAssetsProps {
   eventPageUrl: string;
 }
 
+// Wonderelo brand palette (mirrors design/v08 tokens + organizerAtoms C).
+// Canvas artwork is drawn with these so the generated PNGs match the live
+// promo slide / brand instead of the old generic-purple placeholder look.
+const BRAND = {
+  purple: '#5C2277',
+  purpleDeep: '#4b1d51',
+  purpleInk: '#2d1133',
+  orange: '#dd531c',
+  orangeBright: '#ff6a2a',
+  cream: '#f7f1e6',
+  paper: '#fbf6ec',
+  paperDeep: '#f1e9d8',
+  ink: '#3a2e34',
+  inkMuted: 'rgba(58,46,52,.62)',
+  hairline: 'rgba(76,25,77,.18)',
+  fontDisplay: '"Bricolage Grotesque", system-ui, sans-serif',
+  fontBody: '"Space Grotesk", system-ui, sans-serif',
+} as const;
+
 type AssetKind = 'rollup' | 'promo' | 'stickers';
 type OutputMode = 'download' | 'print';
 
@@ -50,29 +69,29 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
     const ctx = canvas.getContext('2d')!;
 
     // Background
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = BRAND.paper;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Primary color bar at top
-    ctx.fillStyle = '#7c3aed'; // primary purple
+    ctx.fillStyle = BRAND.purpleDeep;
     ctx.fillRect(0, 0, canvas.width, 120);
 
     // Wonderelo logo text
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 48px system-ui, sans-serif';
+    ctx.font = `bold 48px ${BRAND.fontDisplay}`;
     ctx.textAlign = 'center';
-    ctx.fillText('Wonderelo', canvas.width / 2, 80);
+    ctx.fillText('wonderelo', canvas.width / 2, 80);
 
     // Main headline
-    ctx.fillStyle = '#1a1a2e';
-    ctx.font = 'bold 64px system-ui, sans-serif';
+    ctx.fillStyle = BRAND.purpleDeep;
+    ctx.font = `bold 64px ${BRAND.fontDisplay}`;
     ctx.textAlign = 'center';
-    const headline = 'Meet Someone New';
+    const headline = 'Meet someone new';
     ctx.fillText(headline, canvas.width / 2, 300);
 
     // Subheadline
-    ctx.font = '36px system-ui, sans-serif';
-    ctx.fillStyle = '#6b7280';
+    ctx.font = `36px ${BRAND.fontBody}`;
+    ctx.fillStyle = BRAND.inkMuted;
     ctx.fillText('Scan the QR code below', canvas.width / 2, 380);
     ctx.fillText('to join the networking round', canvas.width / 2, 430);
 
@@ -86,28 +105,28 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
     ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
     // Event URL
-    ctx.fillStyle = '#7c3aed';
-    ctx.font = 'bold 28px system-ui, sans-serif';
+    ctx.fillStyle = BRAND.orange;
+    ctx.font = `bold 28px ${BRAND.fontBody}`;
     ctx.fillText(eventPageUrl, canvas.width / 2, qrY + qrSize + 80);
 
     // Event name
     if (eventName) {
-      ctx.fillStyle = '#1a1a2e';
-      ctx.font = 'bold 40px system-ui, sans-serif';
+      ctx.fillStyle = BRAND.purpleDeep;
+      ctx.font = `bold 40px ${BRAND.fontDisplay}`;
       ctx.fillText(eventName, canvas.width / 2, qrY + qrSize + 160);
     }
 
     // Instructions section
     const instructionsY = 1300;
-    ctx.fillStyle = '#f3f4f6';
+    ctx.fillStyle = BRAND.paperDeep;
     ctx.fillRect(40, instructionsY, canvas.width - 80, 400);
 
-    ctx.fillStyle = '#1a1a2e';
-    ctx.font = 'bold 32px system-ui, sans-serif';
+    ctx.fillStyle = BRAND.purpleDeep;
+    ctx.font = `bold 32px ${BRAND.fontDisplay}`;
     ctx.fillText('How it works', canvas.width / 2, instructionsY + 50);
 
-    ctx.font = '24px system-ui, sans-serif';
-    ctx.fillStyle = '#4b5563';
+    ctx.font = `24px ${BRAND.fontBody}`;
+    ctx.fillStyle = BRAND.ink;
     ctx.textAlign = 'left';
     const steps = [
       '1. Scan the QR code with your phone',
@@ -121,10 +140,10 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
     });
 
     // Bottom bar
-    ctx.fillStyle = '#7c3aed';
+    ctx.fillStyle = BRAND.purpleDeep;
     ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
     ctx.fillStyle = '#ffffff';
-    ctx.font = '28px system-ui, sans-serif';
+    ctx.font = `28px ${BRAND.fontBody}`;
     ctx.textAlign = 'center';
     ctx.fillText('wonderelo.com', canvas.width / 2, canvas.height - 30);
 
@@ -138,15 +157,15 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
     canvas.height = 1080;
     const ctx = canvas.getContext('2d')!;
 
-    // Background gradient
+    // Background gradient — brand purpleDeep → purpleInk (matches promo slide)
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#1a1a2e');
-    gradient.addColorStop(1, '#16213e');
+    gradient.addColorStop(0, BRAND.purpleDeep);
+    gradient.addColorStop(1, BRAND.purpleInk);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Decorative circles
-    ctx.fillStyle = 'rgba(124, 58, 237, 0.15)';
+    // Decorative circles — warm orange glow
+    ctx.fillStyle = 'rgba(221,83,28,0.15)';
     ctx.beginPath();
     ctx.arc(200, 200, 300, 0, Math.PI * 2);
     ctx.fill();
@@ -155,18 +174,18 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
     ctx.fill();
 
     // Wonderelo logo
-    ctx.fillStyle = '#7c3aed';
-    ctx.font = 'bold 36px system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold 36px ${BRAND.fontDisplay}`;
     ctx.textAlign = 'left';
-    ctx.fillText('Wonderelo', 80, 80);
+    ctx.fillText('wonderelo', 80, 80);
 
     // Main text
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 72px system-ui, sans-serif';
+    ctx.font = `bold 72px ${BRAND.fontDisplay}`;
     ctx.textAlign = 'center';
-    ctx.fillText('Networking Round', canvas.width / 2, 350);
+    ctx.fillText('Meet someone new', canvas.width / 2, 350);
 
-    ctx.font = '48px system-ui, sans-serif';
+    ctx.font = `48px ${BRAND.fontBody}`;
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.fillText('Scan the QR code to join', canvas.width / 2, 440);
 
@@ -183,14 +202,14 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
     ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
     // Event URL
-    ctx.fillStyle = '#a78bfa';
-    ctx.font = 'bold 32px system-ui, sans-serif';
+    ctx.fillStyle = BRAND.orangeBright;
+    ctx.font = `bold 32px ${BRAND.fontBody}`;
     ctx.fillText(eventPageUrl, canvas.width / 2, qrY + qrSize + 60);
 
     // Bottom text
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '24px system-ui, sans-serif';
-    ctx.fillText('Meet someone new • Takes 30 seconds to register', canvas.width / 2, canvas.height - 60);
+    ctx.font = `24px ${BRAND.fontBody}`;
+    ctx.fillText('Break your bubble • Takes 30 seconds to register', canvas.width / 2, canvas.height - 60);
 
     return canvas;
   };
@@ -220,7 +239,7 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
         const label = labels[row * 3 + col];
 
         // Circular sticker outline (for cutting)
-        ctx.strokeStyle = '#d1d5db';
+        ctx.strokeStyle = BRAND.hairline;
         ctx.lineWidth = 2;
         ctx.setLineDash([10, 5]);
         ctx.beginPath();
@@ -229,7 +248,7 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
         ctx.setLineDash([]);
 
         // Colored fill
-        ctx.fillStyle = '#7c3aed';
+        ctx.fillStyle = BRAND.purpleDeep;
         ctx.beginPath();
         ctx.arc(x + stickerSize / 2, y + stickerSize / 2, stickerSize / 2 - 10, 0, Math.PI * 2);
         ctx.fill();
@@ -243,20 +262,20 @@ export function DownloadableAssets({ eventSlug, eventName, eventPageUrl }: Downl
 
         // Label letter
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 200px system-ui, sans-serif';
+        ctx.font = `bold 200px ${BRAND.fontDisplay}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(label, x + stickerSize / 2, y + stickerSize / 2 - 20);
 
         // "Meeting Point" text
-        ctx.font = '28px system-ui, sans-serif';
+        ctx.font = `28px ${BRAND.fontBody}`;
         ctx.fillText('Meeting Point', x + stickerSize / 2, y + stickerSize / 2 + 100);
       }
     }
 
     // Title
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '24px system-ui, sans-serif';
+    ctx.fillStyle = BRAND.inkMuted;
+    ctx.font = `24px ${BRAND.fontBody}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText('Wonderelo Floor Stickers — Cut along the dashed lines', canvas.width / 2, 60);

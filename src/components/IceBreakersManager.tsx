@@ -10,6 +10,26 @@ interface IceBreakersManagerProps {
   onChange: (iceBreakers: IceBreaker[]) => void;
 }
 
+// Client-side fallback pool so "Regenerate" always works even if the
+// /ice-breakers endpoint is unavailable or returns an empty set.
+const FALLBACK_ICE_BREAKERS: string[] = [
+  'What are you working on right now?',
+  "What's a problem you wish someone would solve?",
+  'What brought you to this event?',
+  "What's something you've changed your mind about recently?",
+  "What's the best advice you've received this year?",
+  'If you had an extra hour every day, how would you use it?',
+  "What's a project you're proud of?",
+  'What are you hoping to get out of today?',
+  "What's a tool or app you can't work without?",
+  "Who's someone you'd love to meet here?",
+  "What's a trend in your field you're excited about?",
+  "What's a skill you're trying to learn?",
+  'What does a great day at work look like for you?',
+  "What's a book, podcast, or article worth sharing?",
+  "What's the last thing that genuinely surprised you?",
+];
+
 export function IceBreakersManager({ iceBreakers, onChange }: IceBreakersManagerProps) {
   const [availableIceBreakers, setAvailableIceBreakers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,12 +52,17 @@ export function IceBreakersManager({ iceBreakers, onChange }: IceBreakersManager
       );
       if (response.ok) {
         const data = await response.json();
-        setAvailableIceBreakers(data.iceBreakers || []);
+        const pool = Array.isArray(data.iceBreakers) && data.iceBreakers.length > 0
+          ? data.iceBreakers
+          : FALLBACK_ICE_BREAKERS;
+        setAvailableIceBreakers(pool);
       } else {
         errorLog('Failed to fetch ice breakers, status:', response.status);
+        setAvailableIceBreakers(FALLBACK_ICE_BREAKERS);
       }
     } catch (error) {
       errorLog('Error fetching ice breakers:', error);
+      setAvailableIceBreakers(FALLBACK_ICE_BREAKERS);
     } finally {
       setIsLoading(false);
     }

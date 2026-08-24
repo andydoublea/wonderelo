@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { errorLog } from '../utils/debug';
 import { ServiceType } from '../App';
 import { C, Btn, Italic } from './redesign/organizerAtoms';
-import { hasRunningRounds, isRoundRunning } from '../utils/sessionStatus';
+import { hasRunningRounds, isRoundRunning, getEffectiveStatus } from '../utils/sessionStatus';
 import { getParametersOrDefault } from '../utils/systemParameters';
 
 /* ─────────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ export function NetworkingDashboard({
   // Filter and sort sessions
   const filteredSessions = sessions.filter(session => {
     // Status filter
-    if (filterStatus !== 'all' && session.status !== filterStatus) {
+    if (filterStatus !== 'all' && getEffectiveStatus(session) !== filterStatus) {
       return false;
     }
     
@@ -349,7 +349,7 @@ export function NetworkingDashboard({
     return () => { cancelled = true; };
   }, [liveRoundId, liveSessionId]);
 
-  const statusCount = (st: NetworkingSession['status']) => sessions.filter(s => s.status === st).length;
+  const statusCount = (st: NetworkingSession['status']) => sessions.filter(s => getEffectiveStatus(s) === st).length;
 
   const hero = (
     <div style={{
@@ -444,7 +444,7 @@ export function NetworkingDashboard({
 
   // Shared toolbar — search + status filter pills (design has no sort / view controls).
   const toolbar = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22, flexWrap: 'wrap' }}>
       <div style={{ width: 260, maxWidth: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderRadius: 999, background: '#fff', border: `1.5px solid ${C.hairStrong}` }}>
         <span style={{ color: 'rgba(75,29,81,.5)', display: 'inline-flex' }}><DIcon d={DI.search} size={15} /></span>
         <input
@@ -509,13 +509,15 @@ export function NetworkingDashboard({
   // ── Welcome-modal size config. `compact` fits the whole card on a 13" MacBook ──
   const compact = typeof window !== 'undefined' && (window.innerHeight < 820 || window.innerWidth < 560);
   const wz = compact
-    ? { modalW: 468, photoH: 126, pad: '15px 30px 17px', h2: 20, body: 12.75, lh: 1.45, gap: 7, mtBody: 9,
+    ? { modalW: 640, photoH: 132, pad: '15px 34px 18px', h2: 21, body: 13, lh: 1.45, gap: 7, mtBody: 9,
         callPad: '10px 14px', callFs: 12.75, callMt: 11, avatar: 46, name: 19, role: 11, rowMt: 11,
         btnPad: '10px 18px', btnFs: 13.5, btnMt: 12, eyebrowFs: 9.5, lblFs: 20 }
     : { modalW: 540, photoH: 264, pad: '26px 36px 28px', h2: 29, body: 15, lh: 1.58, gap: 12, mtBody: 15,
         callPad: '15px 18px', callFs: 15, callMt: 16, avatar: 74, name: 27, role: 12.5, rowMt: 18,
         btnPad: '14px 20px', btnFs: 15, btnMt: 20, eyebrowFs: 11, lblFs: 26 };
-  // Arrow tip tracks the founder's face as the crop height changes.
+  // Arrow geometry per Claude Design (v09) — the whole overlay (arrow + label) is
+  // shifted down 25px via translateY on the wrapper so it points below the chin,
+  // rather than re-tuning the path coordinates.
   const faceY = Math.round(-22 + 0.38 * wz.photoH);
   const arrowPath = `M${266 + 66} ${faceY + 60} C ${266 + 42} ${faceY + 36}, ${266 + 18} ${faceY + 14}, 266 ${faceY}`;
   const arrowHead = `M266 ${faceY} L 279 ${faceY + 3} M266 ${faceY} L 267 ${faceY + 13}`;
@@ -529,8 +531,9 @@ export function NetworkingDashboard({
         {/* Photo from the founder's 30th birthday party — the night Wonderelo began */}
         <div style={{ position: 'relative', borderRadius: '24px 24px 0 0', overflow: 'hidden', background: C.cream, height: wz.photoH }}>
           <img src="/Andy-birthday-30-Wonderelo.png" alt="Andy's 30th birthday party — the night Wonderelo began" style={{ display: 'block', width: '100%', height: wz.photoH, objectFit: 'cover', objectPosition: '50% 38%' }} />
-          {/* "That's me!" founder annotation — hand label + drawn arrow to his face */}
-          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none' }}>
+          {/* "That's me!" founder annotation — hand label + drawn arrow to his face.
+              translateY(25px) per Claude Design v09 (moves arrow+label below the chin). */}
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none', transform: 'translateY(25px)' }}>
             <svg viewBox={`0 0 540 ${wz.photoH}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.45))' }}>
               <path d={arrowPath} stroke="#fff" strokeWidth="2.4" strokeLinecap="round" fill="none" />
               <path d={arrowHead} stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
