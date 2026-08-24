@@ -294,7 +294,7 @@ export function ParticipantDashboardView({
   const HowSteps = [
     { n: '01', img: '/how-it-works-3.png', title: 'Confirm attendance', desc: "You'll get an SMS 5 minutes before each round. Tap to confirm you're joining." },
     { n: '02', img: '/meeting-bar.png', title: 'Go to meeting point', desc: "We'll reveal your spot the moment matching runs — head there once you know where to go." },
-    { n: '03', img: '/how-it-works-4.png', title: 'Find your match', desc: "At the spot, your phone shows a unique image — same as your match's, with a different number. Confirm by entering your partner's number." },
+    { n: '03', img: '/find-match.png', title: 'Find your match', desc: "At the spot, your phone shows a unique image — same as your match's, with a different number. Confirm by entering your partner's number." },
     { n: '04', img: '/how-it-works-5.png', title: 'Exchange contacts', desc: 'After the round, you can choose to exchange contacts — sharing only happens if both of you agree.' },
   ];
 

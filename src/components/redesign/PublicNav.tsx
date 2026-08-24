@@ -16,21 +16,33 @@
    Right side: ghost Sign in + primary Get started. */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Mic, HandHeart, Music, Heart, Coffee, BookOpen, GitBranch } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { toast } from 'sonner@2.0.3';
 import { useTranslation } from '../../hooks/useTranslation';
 
+/* "Who is it for?" mega-menu items — the seven `/for/:slug` landing pages.
+   Icon markup is copied VERBATIM from the v09 design (hero-variants.js `WHO_ITEMS`
+   / wonderelo-nav.js `WHO`) and injected as-is so `<circle>`/`<rect>` primitives
+   survive and both public navs match. */
 const whoIsItForItems = [
-  { key: 'nav.for.conferences', fallback: 'Conferences & barcamps', path: '/for/conferences', icon: Mic },
-  { key: 'nav.for.meetups', fallback: 'Meetups', path: '/for/meetups', icon: HandHeart },
-  { key: 'nav.for.festivals', fallback: 'Festivals & Parties', path: '/for/festivals', icon: Music },
-  { key: 'nav.for.weddings', fallback: 'Weddings', path: '/for/weddings', icon: Heart },
-  { key: 'nav.for.bars', fallback: 'Bars & cafés', path: '/for/bars', icon: Coffee },
-  { key: 'nav.for.schools', fallback: 'Schools & universities', path: '/for/schools', icon: BookOpen },
-  { key: 'nav.for.teams', fallback: 'Company teams', path: '/for/teams', icon: GitBranch },
+  { key: 'nav.for.conferences', fallback: 'Conferences & barcamps', noteKey: 'nav.for.conferences.note', note: 'Break the badge-scanning ice', path: '/for/conferences', icon: '<path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/>' },
+  { key: 'nav.for.meetups', fallback: 'Meetups', noteKey: 'nav.for.meetups.note', note: 'Regulars meet the new faces', path: '/for/meetups', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>' },
+  { key: 'nav.for.festivals', fallback: 'Festivals & parties', noteKey: 'nav.for.festivals.note', note: 'Crowds turn into groups', path: '/for/festivals', icon: '<path d="m2 22 8-8"/><path d="m14 4 6 6"/><path d="M11 7 7 11l6 6 4-4z"/><path d="M19 3v2M22 6h-2M17 1v2"/>' },
+  { key: 'nav.for.weddings', fallback: 'Weddings', noteKey: 'nav.for.weddings.note', note: 'Two families, one dance floor', path: '/for/weddings', icon: '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l8.8 8.8 8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/>' },
+  { key: 'nav.for.bars', fallback: 'Bars & cafés', noteKey: 'nav.for.bars.note', note: 'Turn a quiet night social', path: '/for/bars', icon: '<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><path d="M6 1v3M10 1v3M14 1v3"/>' },
+  { key: 'nav.for.schools', fallback: 'Schools & universities', noteKey: 'nav.for.schools.note', note: 'Freshers find their people', path: '/for/schools', icon: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>' },
+  { key: 'nav.for.teams', fallback: 'Company teams', noteKey: 'nav.for.teams.note', note: 'Cross-team, not same-desk', path: '/for/teams', icon: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' },
 ];
+
+// Renders the verbatim v09 icon path markup at the given size (orange, 1.8 stroke).
+const WhoIcon = ({ markup, size = 17 }: { markup: string; size?: number }) => (
+  <svg
+    width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+    dangerouslySetInnerHTML={{ __html: markup }}
+  />
+);
 
 // Small caret matching the design's icon weight (see PdNav).
 const Caret = ({ open }: { open: boolean }) => (
@@ -91,10 +103,11 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
             "Who is it for?" is a hover dropdown (7 `/for/:slug` items), then two
             flat links "How it works / Pricing". */}
         <div className="w-nav-links">
-          {/* Who is it for? — hover mega-menu (v07 wonderelo-nav.js `has-menu`). */}
+          {/* Who is it for? — v09 hover mega-menu (wonderelo-nav.js `.who-pop`):
+              2-column grid of icon-tile + bold label + one-line note, centered
+              under the trigger with a hover bridge so the pointer can travel down. */}
           <div
-            className="relative"
-            style={{ position: 'relative' }}
+            style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
             onMouseEnter={() => setWhoIsItForOpen(true)}
             onMouseLeave={() => setWhoIsItForOpen(false)}
           >
@@ -102,42 +115,52 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
               {t('nav.whoIsItFor', 'Who is it for?')}
               <Caret open={whoIsItForOpen} />
             </button>
-            {whoIsItForOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 4, zIndex: 60 }}>
-                <div
+            {/* Hover bridge — invisible span across the 14px gap to the panel. */}
+            <span style={{ position: 'absolute', left: 0, right: 0, top: '100%', height: 16 }} />
+            <div
+              style={{
+                position: 'absolute', left: '50%', top: 'calc(100% + 14px)', zIndex: 60,
+                width: 520, padding: 12, boxSizing: 'border-box',
+                transform: whoIsItForOpen ? 'translate(-50%, 0)' : 'translate(-50%, -6px)',
+                opacity: whoIsItForOpen ? 1 : 0,
+                pointerEvents: whoIsItForOpen ? 'auto' : 'none',
+                transition: 'opacity .18s ease, transform .18s ease',
+                background: '#fbf6ec',
+                border: '1px solid rgba(76,25,77,.12)',
+                borderRadius: 20,
+                boxShadow: '0 28px 60px rgba(76,25,77,.18)',
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
+              }}
+            >
+              {whoIsItForItems.map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => { navigate(item.path); setWhoIsItForOpen(false); }}
                   style={{
-                    background: 'var(--w-paper)',
-                    border: '1px solid var(--w-hairline)',
-                    borderRadius: 'var(--w-r-md)',
-                    boxShadow: 'var(--w-shadow-soft)',
-                    padding: '10px 0',
-                    minWidth: 300,
+                    display: 'grid', gridTemplateColumns: '34px 1fr', alignItems: 'center', gap: 12,
+                    padding: '9px 11px', borderRadius: 13, textAlign: 'left',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    transition: 'background-color .16s ease',
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.06)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  {whoIsItForItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setWhoIsItForOpen(false); }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                          padding: '10px 22px', fontSize: 14, fontWeight: 600,
-                          fontFamily: 'var(--w-font-body)', color: 'var(--w-ink)',
-                          textAlign: 'left', background: 'transparent', border: 'none',
-                          cursor: 'pointer', whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.06)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <Icon className="h-4 w-4 flex-shrink-0" style={{ opacity: 0.65 }} />
-                        {t(item.key, item.fallback)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                  <span
+                    style={{
+                      width: 34, height: 34, borderRadius: 10, display: 'inline-flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      background: '#fff', border: '1px solid rgba(76,25,77,.10)', color: '#dd531c',
+                    }}
+                  >
+                    <WhoIcon markup={item.icon} />
+                  </span>
+                  {/* Label only — no note row (matches homepage WhoMenu; user wants notes removed from both navs). */}
+                  <b style={{ fontFamily: '"Bricolage Grotesque", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: '-.01em', color: '#4b1d51' }}>
+                    {t(item.key, item.fallback)}
+                  </b>
+                </button>
+              ))}
+            </div>
           </div>
           <button type="button" className="w-nav-link" onClick={() => goToHash('how-it-works')}>
             {t('homepage.nav.howItWorks', 'How it works')}
@@ -224,21 +247,20 @@ export function PublicNav({ onGetStarted, onSignIn }: PublicNavProps) {
               </button>
               {mobileWhoOpen && (
                 <div style={{ paddingBottom: '0.25rem' }}>
-                  {whoIsItForItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.625rem 1.5rem 0.625rem 2.25rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'var(--w-font-body)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--w-ink)', opacity: 0.75 }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <Icon style={{ width: '1rem', height: '1rem', flexShrink: 0 }} />
-                        {t(item.key, item.fallback)}
-                      </button>
-                    );
-                  })}
+                  {whoIsItForItems.map((item) => (
+                    <button
+                      key={item.path}
+                      onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.625rem 1.5rem 0.625rem 2.25rem', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'var(--w-font-body)', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--w-ink)', opacity: 0.75 }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(76,25,77,.05)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      <span style={{ display: 'inline-flex', flexShrink: 0, color: '#dd531c' }}>
+                        <WhoIcon markup={item.icon} size={16} />
+                      </span>
+                      {t(item.key, item.fallback)}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

@@ -127,6 +127,23 @@ export const isRoundRunning = (session: NetworkingSession, round: Round): boolea
 };
 
 /**
+ * Effective (display) status for a session's card/badge/filter.
+ * The DB keeps `status` as draft/scheduled/published/completed, but a
+ * published (or scheduled) session whose rounds have ALL ended is really
+ * over — surface it as "completed" so it doesn't linger as "published".
+ * Draft and already-completed sessions are returned unchanged.
+ */
+export const getEffectiveStatus = (session: NetworkingSession): NetworkingSession['status'] => {
+  const stored = session.status;
+  if (stored === 'draft' || stored === 'completed') return stored;
+  const rounds = session.rounds || [];
+  if (rounds.length > 0 && rounds.every((r) => getRoundStatus(session, r) === 'completed')) {
+    return 'completed';
+  }
+  return stored;
+};
+
+/**
  * Checks if a round is available for registration
  * A round is available until safetyWindowMinutes before it starts
  */

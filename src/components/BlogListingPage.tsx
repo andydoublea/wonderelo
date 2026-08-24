@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner@2.0.3';
 import { PublicNav } from './redesign/PublicNav';
-import { FooterSection } from './Homepage';
+import { PublicFooter } from './redesign/PublicFooter';
 import { debugLog, errorLog } from '../utils/debug';
 import { apiBaseUrl, publicAnonKey } from '../utils/supabase/info';
 import '../styles/wonderelo-public.css';
@@ -459,10 +459,10 @@ export function BlogListingPage() {
 
       </main>
 
-      {/* Footer — Blog.html uses the dark social-icon footer (unlike the other
-          public pages, which use the light `.w-footer`/PublicFooter). Reuse the
-          homepage FooterSection, which is that exact dark footer. */}
-      <FooterSection onNavigate={(p) => navigate(p)} />
+      {/* Footer — Blog.html uses the shared dark `.w-footer` markup, i.e. the
+          same PublicFooter as every other public page (Our Story, Use Case,
+          Blog Post). Use it here too for 1:1 parity and cross-page consistency. */}
+      <PublicFooter />
     </div>
   );
 }

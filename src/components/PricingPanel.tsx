@@ -163,7 +163,8 @@ export function PricingPanel({ accessToken, hasSubscription, title, showFreeTier
   // Live-derived display values (mirror the mock's render()) ────────────
   const capValue = grp(currentPricing.capacity);
   const sliderIdx = getSliderValue(selectedCapacity);
-  const annualPerMonth = Math.round(currentPricing.premiumAnnualPrice / 12);
+  // Mock floors the per-month figure to whole euros: Math.floor(yr / 12 / 100) * 100 cents.
+  const annualPerMonth = Math.floor(currentPricing.premiumAnnualPrice / 12 / 100) * 100;
 
   // ── Gift-card control (shared under the plans; opened from either foot) ──
   const giftCardControl = appliedGiftCard ? (

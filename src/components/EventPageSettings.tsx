@@ -4,6 +4,7 @@ import { toast } from 'sonner@2.0.3';
 import { optimizeImage, formatFileSize } from '../utils/imageOptimization';
 import { debugLog, errorLog } from '../utils/debug';
 import { C, PageShell, PageHead, Italic } from './redesign/organizerAtoms';
+import { EventPagePreview } from './redesign/EventPagePreview';
 
 // Read a Blob as a base64 data URL. Used to persist the optimized profile image
 // inline via PUT /profile — this app has no image-upload endpoint and no Storage
@@ -281,8 +282,11 @@ export function EventPageSettingsView({
             </div>
             </div>
 
-            {/* Event page preview — static browser-chrome frame (matches the mock's
-                visual; reflects the live event name / slug / image, no iframe). */}
+            {/* Event page preview — the REAL public event page rendered live in a
+                browser-chrome frame (design/v08 screen-event-settings.jsx uses an
+                iframe of Event Page.html here). Shares the exact `.ev-*` miniature
+                the Round form uses, so the settings preview tracks the live page 1:1.
+                With no round data it shows the real `.ev-empty` state. */}
             <div style={{ position: 'sticky', top: 96 }}>
               <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 8, height: 8, background: C.orange, transform: 'rotate(45deg)', display: 'inline-block' }} />
@@ -293,16 +297,8 @@ export function EventPageSettingsView({
                   <span style={{ display: 'inline-flex', gap: 5 }}>{['#ff5f57', '#febc2e', '#28c840'].map((c) => <span key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />)}</span>
                   <span style={{ fontFamily: C.fontMono, fontSize: 10.5, opacity: .8 }}>wonderelo.com/{urlSlug || 'your-event'}</span>
                 </div>
-                <div style={{ minHeight: 420, background: C.cream, padding: '44px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 18 }}>
-                  {hasImage ? (
-                    <img src={previewImageUrl || profileImageUrl} alt="" style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C.hair}` }} />
-                  ) : (
-                    <div style={{ width: 84, height: 84, borderRadius: '50%', background: `linear-gradient(135deg, ${C.purpleDeep} 0%, ${C.purple} 60%, ${C.orange} 130%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 30, color: '#fff', letterSpacing: '-.02em' }}>{eventInitials}</span>
-                    </div>
-                  )}
-                  <h2 style={{ margin: 0, fontFamily: C.fontDisplay, fontWeight: 800, fontSize: 26, color: C.purpleDeep, letterSpacing: '-.02em', lineHeight: 1.1 }}>{eventName || 'My networking event'}</h2>
-                  <span style={{ fontFamily: C.fontMono, fontSize: 12, color: C.ink, opacity: .6 }}>wonderelo.com/{urlSlug || 'your-event'}</span>
+                <div style={{ maxHeight: 760, overflowY: 'auto', overflowX: 'hidden', background: C.cream }}>
+                  <EventPagePreview eventName={eventName} profileImageUrl={previewImageUrl || profileImageUrl} />
                 </div>
               </div>
               <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Changes here update your public event page.</p>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { NetworkingSession } from '../App';
 import { C } from './redesign/organizerAtoms';
+import { EventPagePreview } from './redesign/EventPagePreview';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -14,7 +15,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from './ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
-import { SessionPreview } from './SessionPreview';
 import { TimePicker } from './TimePicker';
 import { DatePicker } from './DatePicker';
 import { MeetingPointsManager } from './MeetingPointsManager';
@@ -1743,7 +1743,20 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
           {/* Mobile preview — before action buttons */}
           {!isDesktop && (
             <div style={{ marginTop: 8, marginBottom: 8 }}>
-              <SessionPreview formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
+              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, background: C.orange, transform: 'rotate(45deg)', display: 'inline-block' }} />
+                <span style={{ fontFamily: C.fontBody, fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: C.purpleDeep }}>Event page preview</span>
+              </div>
+              <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${C.hairStrong}`, background: '#fff', boxShadow: '0 22px 48px rgba(75,29,81,.16)' }}>
+                <div style={{ padding: '11px 16px', background: C.purpleDeep, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'inline-flex', gap: 5 }}>{['#ff5f57', '#febc2e', '#28c840'].map(c => <span key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />)}</span>
+                  <span style={{ fontFamily: C.fontMono, fontSize: 10.5, opacity: .8 }}>wonderelo.com/{previewSlug}</span>
+                </div>
+                <div style={{ background: C.cream }}>
+                  <EventPagePreview formData={formData} eventName={organizerName} profileImageUrl={profileImageUrl} />
+                </div>
+              </div>
+              <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Only published rounds show up on your public event page.</p>
             </div>
           )}
 
@@ -1998,8 +2011,8 @@ export function SessionForm({ initialData, onSubmit, onCancel, userEmail, organi
             <span style={{ display: 'inline-flex', gap: 5 }}>{['#ff5f57', '#febc2e', '#28c840'].map(c => <span key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />)}</span>
             <span style={{ fontFamily: C.fontMono, fontSize: 10.5, opacity: .8 }}>wonderelo.com/{previewSlug}</span>
           </div>
-          <div style={{ maxHeight: 760, overflowY: 'auto', overflowX: 'hidden', background: C.cream, padding: 16 }}>
-            <SessionPreview embedded formData={formData} userEmail={userEmail} organizerName={organizerName} profileImageUrl={profileImageUrl} userSlug={userSlug} />
+          <div style={{ maxHeight: 760, overflowY: 'auto', overflowX: 'hidden', background: C.cream }}>
+            <EventPagePreview formData={formData} eventName={organizerName} profileImageUrl={profileImageUrl} />
           </div>
         </div>
         <p style={{ margin: '12px 2px 0', fontSize: 12, color: C.ink, opacity: .6, lineHeight: 1.5 }}>Only published rounds show up on your public event page.</p>
