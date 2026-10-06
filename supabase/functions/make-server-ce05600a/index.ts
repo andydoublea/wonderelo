@@ -13,7 +13,7 @@ import { getParticipantDashboard, updateSessionStatusBasedOnRounds } from './par
 import { getCurrentTime, parseRoundStartTime } from './time-helpers.tsx';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
-import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
+import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildPasswordResetEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
 import { createMatchesForRound } from './matching.tsx';
 import { sendSms, renderSmsTemplate } from './sms.tsx';
 import { registerStripeRoutes, checkCapacity, consumeEventCredit, refundEventCredit } from './route-stripe.tsx';
@@ -235,6 +235,83 @@ app.post('/make-server-ce05600a/signin', async (c) => {
   } catch (error) {
     errorLog('Error in signin:', error);
     return c.json({ error: 'Failed to sign in' }, 500);
+  }
+});
+
+// Request password reset — emails a link to {APP_URL}/reset-password?token=...
+// The link base comes only from APP_URL (never from the request), so a reset
+// token can't be sent to a foreign domain. Always answers success to avoid
+// revealing which emails have accounts.
+app.post('/make-server-ce05600a/reset-password', async (c) => {
+  try {
+    const { email } = await c.req.json();
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      return c.json({ error: 'Please enter a valid email address' }, 400);
+    }
+
+    const { data, error } = await getSupabase().auth.admin.generateLink({
+      type: 'recovery',
+      email: normalizedEmail,
+    });
+
+    if (error || !data?.properties?.hashed_token) {
+      // Unknown email or generation failure — don't leak which.
+      debugLog('Password reset link not generated:', error?.message);
+      return c.json({ success: true });
+    }
+
+    const appUrl = (Deno.env.get('APP_URL') || 'https://wonderelo.com').replace(/\/$/, '');
+    const resetLink = `${appUrl}/reset-password?token=${encodeURIComponent(data.properties.hashed_token)}`;
+    const { subject, html } = buildPasswordResetEmail({ resetLink });
+    const sent = await sendEmail({ to: normalizedEmail, subject, html });
+    if (sent.devMode) {
+      console.log('🔑 Password reset link (dev, email not sent):', resetLink);
+    } else if (!sent.success) {
+      errorLog('Password reset email failed:', sent.error);
+      return c.json({ error: 'Failed to send reset email' }, 500);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error in reset-password:', error);
+    return c.json({ error: 'Failed to send reset email' }, 500);
+  }
+});
+
+// Complete password reset — verifies the recovery token, then sets the new password
+app.post('/make-server-ce05600a/reset-password-with-token', async (c) => {
+  try {
+    const { token, newPassword } = await c.req.json();
+    if (!token || typeof newPassword !== 'string' || newPassword.length < 6) {
+      return c.json({ error: 'Invalid request' }, 400);
+    }
+
+    // Verify via the Auth REST API so the shared service-role client's session isn't touched.
+    const verifyRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
+      },
+      body: JSON.stringify({ type: 'recovery', token_hash: token }),
+    });
+    const verified = await verifyRes.json().catch(() => null);
+    const userId = verified?.user?.id;
+    if (!verifyRes.ok || !userId) {
+      return c.json({ error: 'This reset link is invalid or has expired. Please request a new one.' }, 400);
+    }
+
+    const { error } = await getSupabase().auth.admin.updateUserById(userId, { password: newPassword });
+    if (error) {
+      errorLog('Failed to update password:', error);
+      return c.json({ error: error.message || 'Failed to reset password' }, 400);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    errorLog('Error in reset-password-with-token:', error);
+    return c.json({ error: 'Failed to reset password' }, 500);
   }
 });
 

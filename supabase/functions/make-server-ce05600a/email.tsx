@@ -225,6 +225,48 @@ export function buildMagicLinkEmail(params: {
 }
 
 /**
+ * Generate password reset email HTML
+ */
+export function buildPasswordResetEmail(params: {
+  resetLink: string;
+}): { subject: string; html: string } {
+  const { resetLink } = params;
+
+  const subject = 'Reset your Wonderelo password';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1a1a1a; background-color: #f9fafb;">
+  <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h1 style="font-size: 24px; margin: 0 0 8px 0;">Reset your password</h1>
+    <p style="color: #666; margin: 0 0 24px 0;">Click the button below to choose a new password. The link is valid for one hour and can be used once.</p>
+
+    <a href="${resetLink}" style="display: inline-block; background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Set new password</a>
+
+    <p style="margin: 24px 0 0 0; color: #888; font-size: 13px;">
+      Or copy this link: <a href="${resetLink}" style="color: #666; word-break: break-all;">${resetLink}</a>
+    </p>
+
+    <p style="margin: 16px 0 0 0; color: #aaa; font-size: 12px;">
+      If you didn't ask to reset your password, you can safely ignore this email.
+    </p>
+  </div>
+
+  <p style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">
+    Sent by Wonderelo · Networking made simple
+  </p>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+/**
  * Generate lead magnet ebook delivery email HTML
  */
 /**
