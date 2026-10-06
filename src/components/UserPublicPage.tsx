@@ -756,7 +756,7 @@ export function UserPublicPage({ userSlug, onBack, isPreview = false }: UserPubl
         }, 1500);
       } else {
         toast.success('Check your email for the magic link!', {
-          description: 'We sent you a secure link to access your registrations'
+          description: 'If this email has registrations, we sent you a secure link to access them'
         });
       }
       

@@ -844,7 +844,7 @@ export function SignInFlow({ onComplete, onBack, onSwitchToSignUp }: SignInFlowP
             Check your <Italic>inbox</Italic>
           </h1>
           <p style={{ margin: '0 auto', maxWidth: 360, fontSize: 14.5, lineHeight: 1.55, color: C.ink, opacity: 0.82 }}>
-            We emailed a magic link to <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>{participantEmail}</strong>. Click it on this device and you're back in.
+            If <strong style={{ color: C.purpleDeep, fontWeight: 600 }}>{participantEmail}</strong> is registered, we emailed it a magic link. Click it on this device and you're back in.
           </p>
         </div>
         <Btn variant="primary" full onClick={() => window.open('https://mail.google.com', '_blank', 'noopener')} leadingIcon={<ExternalLinkIcon size={16} />}>
