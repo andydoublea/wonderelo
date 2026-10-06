@@ -11,6 +11,7 @@ import * as db from './db.ts';
 import { errorLog, debugLog } from './debug.tsx';
 import { getParticipantDashboard, updateSessionStatusBasedOnRounds } from './participant-dashboard.tsx';
 import { getCurrentTime, parseRoundStartTime } from './time-helpers.tsx';
+import { resolveAppUrl } from './app-url.ts';
 import { registerParticipant } from './route-registration.tsx';
 import { registerParticipantRoutes } from './route-participants.tsx';
 import { sendEmail, buildRegistrationEmail, buildMagicLinkEmail, buildPasswordResetEmail, buildLeadMagnetEmail, buildWelcomeEmail, buildOnboardingEmail1_CreateRound, buildOnboardingEmail2_CustomizeUrl, buildOnboardingEmail3_PublishRound, buildOnboardingEmail4_FirstParticipant } from './email.tsx';
@@ -1061,8 +1062,8 @@ app.post('/make-server-ce05600a/participant/send-magic-link', async (c) => {
     const { participantId, token } = participant;
     const firstName = participant.firstName || '';
 
-    // Build magic link URL — prefer client-provided appUrl, then env var, then default
-    const appUrl = clientAppUrl || Deno.env.get('APP_URL') || 'https://wonderelo.com';
+    // Build magic link URL — client-provided appUrl only if allowlisted, else APP_URL
+    const appUrl = resolveAppUrl(clientAppUrl);
     const baseUrl = userSlug
       ? `${appUrl}/${userSlug}`
       : appUrl;
