@@ -13,6 +13,7 @@ import Stripe from 'npm:stripe';
 import { getGlobalSupabaseClient } from './global-supabase.tsx';
 import { errorLog, debugLog } from './debug.tsx';
 import * as db from './db.ts';
+import { resolveAppUrl } from './app-url.ts';
 
 // Lazy-init Stripe client
 let stripeClient: Stripe | null = null;
@@ -29,14 +30,7 @@ function getStripe(): Stripe {
 // Uses the request's Origin header so Stripe redirects back to the same origin
 // (avoids localhost vs 127.0.0.1 mismatch which causes different localStorage = wrong session).
 function getAppUrl(c: any): string {
-  const origin = c.req.header('origin') || c.req.header('referer');
-  if (origin) {
-    try {
-      const url = new URL(origin);
-      return url.origin; // e.g. "http://localhost:3011"
-    } catch { /* fall through */ }
-  }
-  return Deno.env.get('APP_URL') || 'https://wonderelo.com';
+  return resolveAppUrl(c.req.header('origin') || c.req.header('referer'));
 }
 
 // Pricing tiers (must match frontend pricing.tsx) — all prices in EUR cents, excl. VAT
