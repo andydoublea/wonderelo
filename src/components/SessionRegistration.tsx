@@ -1036,7 +1036,9 @@ export function SessionRegistration({ sessions, userSlug, eventName, registeredR
           duration: 5000
         });
       } else {
-        toast.success('Magic link sent! Check your email to continue.');
+        toast.success('Check your email to continue.', {
+          description: 'If this email has an account, we sent you a magic link.'
+        });
       }
       
       setMagicLinkSent(true);

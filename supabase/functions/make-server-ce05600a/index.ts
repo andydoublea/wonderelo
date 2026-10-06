@@ -1007,7 +1007,9 @@ app.post('/make-server-ce05600a/participant/send-magic-link', async (c) => {
     // Look up participant by email
     const participant = await db.getParticipantByEmail(normalizedEmail);
     if (!participant) {
-      return c.json({ error: 'No account found with this email' }, 404);
+      // Same answer as for a known email, so this can't be used to check
+      // whether someone is registered.
+      return c.json({ success: true, message: 'Magic link sent' });
     }
 
     const { participantId, token } = participant;
@@ -1037,8 +1039,9 @@ app.post('/make-server-ce05600a/participant/send-magic-link', async (c) => {
 
     if (result.success) {
       return c.json({ success: true, message: 'Magic link sent' });
-    } else if (result.devMode) {
-      // No API key - return the link directly for dev purposes
+    } else if (result.devMode && !(Deno.env.get('SUPABASE_URL') || '').includes('.supabase.co')) {
+      // No API key on a local stack - return the link directly for dev purposes.
+      // Never on hosted projects: it would hand anyone's link to whoever asks.
       return c.json({ success: true, message: 'Dev mode - no email sent', magicLink });
     } else {
       return c.json({ success: false, error: result.error }, 500);
